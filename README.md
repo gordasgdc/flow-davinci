@@ -5,12 +5,10 @@ on Windows. Arrange them across your displays, snap them against Resolve's main
 window or each other, and restore your workspace between sessions.
 
 - Dock or undock with the overlapping-squares button beside a pane's menu.
-- Undocking automatically turns off the native pane toggle to reclaim main-window
-  space. Docking turns it back on to show the restored pane.
 - Snap window edges when moving or resizing, including display work-area edges.
   Hold **Alt** to bypass snapping.
-- Remember window positions, sizes, docking and native pane-toggle states.
-- Hide floating panes when leaving their page and restore them on return.
+- Unbound remembers window positions, sizes, docking and pane-toggle states.
+- Unbound hides floating panes when leaving their page and restore them on return.
 
 **Edit:** Media Pool, Effects, Sound Library, Keyframe Editor, Edit Index,
 Inspector, Metadata and Mixer. **Color:** Nodes, Gallery, LUTs and Media Pool.
@@ -27,6 +25,15 @@ Settings are stored in `%LOCALAPPDATA%\Unbound\Unbound.json`.
 See [settings documentation](<doc/Unbound settings.md>). Restart Resolve to load an
 updated Unbound DLL.
 
+## Compatibility
+
+Unbound is unofficial and depends on Resolve's internal Qt widgets and layouts.
+The tested configuration is Resolve 21.1.0.14, Windows x64, Qt 5.15.2; other
+versions are unverified. Save work before testing a new configuration.
+Native minimum pane sizes apply. Nodes may need panning after docking into a
+narrower area. Media Pool can widen during startup restoration and overlap an
+adjacent pane. Color Clips and panes on other pages are not supported.
+
 ## Build
 
 Requires Windows x64, Visual Studio 2022 C++ build tools and Windows SDK, CMake on
@@ -42,15 +49,6 @@ icons from `src/assets/filmhaus.png`, builds,
 runs regression tests and audits imports, then puts the two release binaries in
 `release/win/YYYY.MM.DD.NNN/`. Use `-Date YYYY.MM.DD -BuildNumber N` for an explicit
 version. Application code is in `src/`; regression tests are in `tests/`.
-
-## Compatibility
-
-Unbound is unofficial and depends on Resolve's internal Qt widgets and layouts.
-The tested configuration is Resolve 21.1.0.14, Windows x64, Qt 5.15.2; other
-versions are unverified. Save work before testing a new configuration.
-Native minimum pane sizes apply. Nodes may need panning after docking into a
-narrower area. Media Pool can widen during startup restoration and overlap an
-adjacent pane. Color Clips and panes on other pages are not supported.
 
 ## License
 
