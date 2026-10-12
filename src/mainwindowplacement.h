@@ -26,20 +26,33 @@ public:
     std::function<void(const QString &)> error;
     void attach(QWidget *window)
     {
-        if (m_window == window && m_stack) { refresh(); return; }
+        if (m_window == window && m_stack) return;
         flush();
+        for (auto marker:m_dualScreenMarkers) if (marker) marker->removeEventFilter(this);
+        m_dualScreenMarkers.clear();
         if (m_window) m_window->removeEventFilter(this);
         if (m_stack) disconnect(m_stack,nullptr,this,nullptr);
         m_window=window; m_stack=nullptr; m_page.clear(); m_last.clear();
         if (!window) return;
         m_stack=window->findChild<QStackedWidget *>(QStringLiteral("widgetStack_Panel"));
         window->installEventFilter(this);
+        for (auto child:window->findChildren<QWidget *>()) observeWidget(child);
         if (m_stack) connect(m_stack,&QStackedWidget::currentChanged,this,[this] {
             // Save the last outgoing placement before the incoming page's
             // layout constraints can resize the main window.
             flush(); scheduleRefresh();
         });
         refresh();
+    }
+    void observeWidget(QWidget *widget)
+    {
+        if (!m_window || !m_window->isAncestorOf(widget)) return;
+        const auto name=widget->objectName();
+        if (!name.contains(QLatin1String("DualScreenMode")) && !name.endsWith(QLatin1String("InDSM"))) return;
+        for (auto marker:m_dualScreenMarkers) if (marker==widget) return;
+        m_dualScreenMarkers.append(widget);
+        widget->installEventFilter(this);
+        scheduleRefresh();
     }
     static QRect reachable(QRect geometry, const QList<QRect> &screens)
     {
@@ -59,12 +72,6 @@ public:
     void refresh()
     {
         if (!m_window || !m_stack || m_applying) return;
-        m_dualScreenMarkers.clear();
-        for (auto child : m_window->findChildren<QWidget *>()) {
-            const auto name=child->objectName();
-            if (name.contains(QLatin1String("DualScreenMode")) || name.endsWith(QLatin1String("InDSM")))
-                m_dualScreenMarkers.append(child);
-        }
         if (!eligible()) {
             // Do not overwrite normal page placements with special-mode sizes.
             flush(); m_page.clear(); m_last.clear(); return;
@@ -125,6 +132,7 @@ public:
 protected:
     bool eventFilter(QObject *object,QEvent *event) override
     {
+        if (object!=m_window && (event->type()==QEvent::Show || event->type()==QEvent::Hide)) scheduleRefresh();
         if (object == m_window && !m_applying) {
             if (event->type()==QEvent::Move || event->type()==QEvent::Resize) capture();
             if (event->type()==QEvent::WindowStateChange || event->type()==QEvent::Show)

@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QSet>
 #include <QMessageBox>
+#include <QChildEvent>
 #include <atomic>
 #include "panesettings.h"
 #include "mainwindowsnap.h"
@@ -67,30 +68,131 @@ public:
             {"frameEditPageMetadata", "Metadata"}, {"frameEditAudioMeter", "Mixer"},
             {"m_pFrameNodeGraph", "Nodes"}, {"m_pWidgetGallery", "Gallery"},
             {"m_pWidgetLutBrowser", "LUTs"}, {"m_pWidgetMediaPool", "Media Pool"}};
-        auto timer = new QTimer(this);
-        connect(timer, &QTimer::timeout, this, [this] { discover(); });
-        timer->start(1000);
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { delete this; }, Qt::DirectConnection);
+        qApp->installEventFilter(this);
+        // One initial inventory. Later work is restricted to newly added
+        // branches and the small set of supported panes/selectors we retain.
+        for (auto window : QApplication::topLevelWidgets())
+            if (window->objectName() == QLatin1String("UiMainWindow")) indexBranch(window);
         discover();
     }
     ~Controller() override
     {
+        qApp->removeEventFilter(this);
         m_mainPlacement.flush();
         m_mainPlacement.error = {};
         m_mainSnap.setWindow(nullptr);
         qDeleteAll(m_decorations);
         qDeleteAll(m_sessions);
     }
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        switch (event->type()) {
+        case QEvent::ChildAdded:
+        case QEvent::ChildPolished:
+            // ChildAdded can arrive before the child is a complete QWidget.
+            // Inspect it only after construction, on this same GUI thread.
+            if (object->isWidgetType()) queueBranch(static_cast<QChildEvent *>(event)->child());
+            break;
+        case QEvent::Show:
+        case QEvent::ParentChange:
+            if (auto widget=qobject_cast<QWidget *>(object)) {
+                const auto name=widget->objectName();
+                if (name==QLatin1String("UiMainWindow") && widget!=m_window) queueBranch(widget);
+                else if (name==QLatin1String("frameEditPageWidgetsContainer")
+                    || name==QLatin1String("WStackPage_Conform") || name==QLatin1String("WStackPage_Color"))
+                    { if (!m_pages.contains(widget)) queueBranch(widget); else scheduleDiscovery(); }
+                else if (m_names.contains(name)) { indexWidget(widget); scheduleDiscovery(); }
+                else if (m_watchedToggles.contains(qobject_cast<QAbstractButton *>(widget))) scheduleDiscovery();
+            }
+            break;
+        case QEvent::LayoutRequest:
+            // A supported slot can acquire its layout/content after creation.
+            if (m_names.contains(object->objectName())) scheduleDiscovery();
+            break;
+        case QEvent::Hide:
+            if (auto widget=qobject_cast<QWidget *>(object))
+                if (widget->isModal()) scheduleDiscovery(); // Resume deferred restoration.
+            break;
+        default: break; // No work on paint, input, timer or playback events.
+        }
+        return false;
+    }
 private:
+    void scheduleDiscovery()
+    {
+        if (m_discoveryQueued || QCoreApplication::closingDown()) return;
+        m_discoveryQueued=true;
+        QTimer::singleShot(0,this,[this] {
+            m_discoveryQueued=false;
+            const auto pending=m_pendingBranches;
+            m_pendingBranches.clear();
+            for (const auto &object : pending) {
+                if (!object) continue;
+                bool covered=false;
+                for (auto parent=object->parent();parent;parent=parent->parent())
+                    if (pending.contains(parent) && pending.value(parent)) { covered=true; break; }
+                if (!covered) if (auto widget=qobject_cast<QWidget *>(object.data())) indexBranch(widget);
+            }
+            discover();
+        });
+    }
+    void queueBranch(QObject *object)
+    {
+        if (!object || QCoreApplication::closingDown()) return;
+        m_pendingBranches.insert(object,object);
+        scheduleDiscovery();
+    }
+    void indexBranch(QWidget *root)
+    {
+        if (root->objectName()==QLatin1String("UiMainWindow") && m_window!=root) {
+            m_window=root;
+            m_mainSnap.setWindow(root);
+            m_mainPlacement.attach(root);
+        }
+        if (!m_window || (root!=m_window && !m_window->isAncestorOf(root))) return;
+        indexWidget(root);
+        for (auto widget:root->findChildren<QWidget *>()) indexWidget(widget);
+    }
+    void indexWidget(QWidget *widget)
+    {
+        if (!m_window || (widget!=m_window && !m_window->isAncestorOf(widget))) return;
+        m_mainPlacement.observeWidget(widget);
+        if (widget->objectName()==QLatin1String("widgetStack_Panel")) m_mainPlacement.attach(m_window);
+        const auto name=widget->objectName();
+        if ((name==QLatin1String("frameEditPageWidgetsContainer") || name==QLatin1String("WStackPage_Conform")
+            || name==QLatin1String("WStackPage_Color")) && !m_pages.contains(widget)) {
+            m_pages.insert(widget);
+            connect(widget,&QObject::destroyed,this,[this,widget] { m_pages.remove(widget); });
+        }
+        if (m_names.contains(name) && panePage(widget)) {
+            if (m_candidates.value(name)!=widget) {
+                m_candidates.insert(name,widget);
+                connect(widget,&QObject::destroyed,this,[this] { scheduleDiscovery(); });
+            }
+        }
+        auto button=qobject_cast<QAbstractButton *>(widget);
+        if (!button || m_watchedToggles.contains(button)) return;
+        for (auto it=m_names.cbegin();it!=m_names.cend();++it) {
+            if (!matchesNativeToggle(it.key(),name)) continue;
+            m_toggles[it.key()].append(button);
+            m_watchedToggles.insert(button);
+            connect(button,&QAbstractButton::clicked,this,[this] { queueRememberUserToggles(); scheduleDiscovery(); });
+            connect(button,&QObject::destroyed,this,[this,button] { m_watchedToggles.remove(button); scheduleDiscovery(); });
+            if (auto session=m_sessions.value(it.key()))
+                if (session->active() && !colorToggle(it.key()).isEmpty()) session->observeNativeToggle(button);
+            break;
+        }
+    }
     QAbstractButton *nativeToggle(QWidget *pane, const QString &name)
     {
         // Use Resolve's own toggle to initialize the pane, including lazy
         // content and internal visibility state. Do not unhide descendants:
         // some of them are alternative meter views that must remain hidden.
         QAbstractButton *toggle = nullptr;
-        for (auto button : pane->window()->findChildren<QAbstractButton *>()) {
-            const bool matches = matchesNativeToggle(name, button->objectName());
-            if (!matches || !button->isVisible()
+        for (auto button : m_toggles.value(name)) {
+            if (!button || button->window()!=pane->window() || !button->isVisible()
                 || !button->isCheckable() || !button->isEnabled()) continue;
             if (toggle) return nullptr; // Ambiguous UI: never click an arbitrary control.
             toggle = button;
@@ -144,16 +246,23 @@ private:
     }
     bool prepareNativePane(QWidget *pane, const QString &name, bool &requested)
     {
+        if (m_initializingNative.contains(name)) { requested=true; return false; }
         auto toggle=nativeToggle(pane,name);
         if (!toggle) return false;
         if (!toggle->isChecked()) {
             if (m_activationRequested.contains(name)) return false;
             m_activationRequested.insert(name);
+            m_initializingNative.insert(name);
             requested = true;
             m_restoringToggles = true;
             toggle->click();
             m_restoringToggles = false;
-            QTimer::singleShot(0, this, [this] { discover(); });
+            // Other widget events may already have queued discovery ahead of
+            // Resolve's toggle handler. Do not detach until that handler ran.
+            QTimer::singleShot(0,this,[this,name] {
+                m_initializingNative.remove(name);
+                scheduleDiscovery();
+            });
             return false; // Let Resolve finish its handlers before detaching.
         }
         return true;
@@ -197,9 +306,10 @@ private:
                 // Also suppress retries if saving the user's choice failed.
                 m_restoreAttempted.insert(name);
                 m_pendingDockToggles.insert(name);
+                if (auto decoration=m_decorations.value(name)) decoration->setFloating(false);
                 showDockedPanes();
             };
-            session->report = [this](const QString &text) { error(text); discover(); };
+            session->report = [this](const QString &text) { error(text); scheduleDiscovery(); };
             m_sessions.insert(name, session);
         }
         if (session->active()) {
@@ -216,9 +326,11 @@ private:
         const bool preserveNativeLayout = !colorToggle(name).isEmpty();
         error(session->start(pane, m_names.value(name), panePage(pane), name == QStringLiteral("frameEditAudioMeter"), automatic, preserveNativeLayout));
         if (session->active()) {
-            if (preserveNativeLayout) for (auto button : pane->window()->findChildren<QAbstractButton *>()) {
-                if (matchesColorToggle(name, button->objectName())) session->observeNativeToggle(button);
-            }
+            // Manual detachment also resolves startup intent. Lifecycle events
+            // must not interpret its newly saved floating state as a restore.
+            m_restoreAttempted.insert(name);
+            if (preserveNativeLayout) for (auto button : m_toggles.value(name))
+                if (button) session->observeNativeToggle(button);
             if (toggle) {
                 const bool savedChoice=automatic && m_settings.hasToggle(settingsKey(name));
                 if (savedChoice && preserveNativeLayout) m_pendingColorToggles.insert(name);
@@ -233,11 +345,6 @@ private:
                     session->reclaimNativeSpace(toggle);
                 }
                 if (!savedChoice) settingsError(m_settings.saveToggle(settingsKey(name),toggle->isChecked()));
-                if (!m_watchedToggles.contains(toggle)) {
-                    m_watchedToggles.insert(toggle);
-                    connect(toggle, &QAbstractButton::clicked, this, [this] { queueRememberUserToggles(); });
-                    connect(toggle, &QObject::destroyed, this, [this,toggle] { m_watchedToggles.remove(toggle); });
-                }
             }
             session->rememberGeometry();
             settingsError(m_settings.saveFloating(settingsKey(name), true));
@@ -254,19 +361,16 @@ private:
     }
     void discover()
     {
-        for (auto window : QApplication::topLevelWidgets())
-            if (window->objectName() == QLatin1String("UiMainWindow")) {
-                m_mainSnap.setWindow(window); m_mainPlacement.attach(window); break;
-            }
         for (auto it = m_decorations.begin(); it != m_decorations.end();) {
             if (!it.value()->pane()) {
                 m_activationRequested.remove(it.key());
                 m_restoreAttempted.remove(it.key());
                 delete it.value(); it = m_decorations.erase(it);
             }
-            else { it.value()->setFloating(m_sessions.value(it.key()) && m_sessions.value(it.key())->active()); ++it; }
+            else ++it;
         }
-        if (m_decorations.size() != m_names.size()) for (auto pane : QApplication::allWidgets()) {
+        for (auto pane : m_candidates) {
+            if (!pane) continue;
             const auto name = pane->objectName();
             if (!m_names.contains(name) || m_decorations.contains(name) || !panePage(pane)
                 || (!qobject_cast<QBoxLayout *>(pane->layout()) && !qobject_cast<QGridLayout *>(pane->layout()))) continue;
@@ -279,17 +383,6 @@ private:
         // intent pending, without selecting a page or touching empty layouts.
         if (QCoreApplication::closingDown() || QApplication::activeModalWidget()) return;
         showDockedPanes();
-        // Watch all selectors, including docked siblings: selecting one can
-        // turn off a floating sibling's mutually exclusive sidebar selector.
-        for (auto it=m_decorations.cbegin(); it!=m_decorations.cend(); ++it) {
-            auto pane=it.value()->pane();
-            if (!pane) continue;
-            auto toggle=nativeToggle(pane,it.key());
-            if (!toggle || m_watchedToggles.contains(toggle)) continue;
-            m_watchedToggles.insert(toggle);
-            connect(toggle,&QAbstractButton::clicked,this,[this] { queueRememberUserToggles(); });
-            connect(toggle,&QObject::destroyed,this,[this,toggle] { m_watchedToggles.remove(toggle); });
-        }
         for (auto it = m_decorations.cbegin(); it != m_decorations.cend(); ++it) {
             const auto name = it.key();
             if (!m_settings.floating(settingsKey(name)) || m_restoreAttempted.contains(name)) continue;
@@ -310,6 +403,12 @@ private:
         }
         restoreColorToggles();
     }
+    QPointer<QWidget> m_window;
+    QSet<QWidget *> m_pages;
+    QMap<QString,QPointer<QWidget>> m_candidates;
+    QMap<QString,QList<QPointer<QAbstractButton>>> m_toggles;
+    QMap<QObject *,QPointer<QObject>> m_pendingBranches;
+    bool m_discoveryQueued=false;
     Unbound::PaneSettings m_settings;
     Unbound::MainWindowPlacement m_mainPlacement{m_settings};
     Unbound::MainWindowSnap m_mainSnap;
@@ -317,6 +416,7 @@ private:
     bool m_restoringToggles = false;
     QSet<QAbstractButton *> m_watchedToggles;
     QSet<QString> m_activationRequested;
+    QSet<QString> m_initializingNative;
     QSet<QString> m_restoreAttempted;
     QSet<QString> m_pendingColorToggles;
     QSet<QString> m_pendingDockToggles;
@@ -329,8 +429,9 @@ std::atomic<bool> started{false};
 
 // Invoked by the launcher on a short-lived remote thread. All Qt widget work
 // is queued to Resolve's existing GUI thread; no work is done in DllMain.
-extern "C" __declspec(dllexport) DWORD WINAPI UnboundStart(void *)
+extern "C" __declspec(dllexport) DWORD WINAPI UnboundStart(void *argument)
 {
+    if (argument) return 0;
     auto app = qobject_cast<QApplication *>(QCoreApplication::instance());
     if (!app || QCoreApplication::closingDown()) return 0;
     if (started.exchange(true)) return 1;

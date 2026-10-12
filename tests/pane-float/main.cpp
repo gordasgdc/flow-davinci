@@ -16,6 +16,7 @@
 #include <cstdio>
 #ifdef Q_OS_WIN
 #include "../../src/mainwindowsnap.h"
+
 #endif
 
 static void check(bool ok, const char *message)
@@ -76,6 +77,57 @@ int main(int argc, char **argv)
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 #endif
     QApplication app(argc, argv);
+#ifdef Q_OS_WIN
+    if (app.arguments().contains("--discovery-test")) {
+        QTemporaryDir directory;
+        check(directory.isValid(),"Cannot create discovery settings directory");
+        qputenv("UNBOUND_SETTINGS_FILE",directory.filePath("Unbound.json").toUtf8());
+        QLibrary helper(app.arguments().last()); helper.setLoadHints(QLibrary::PreventUnloadHint);
+        check(helper.load(),qPrintable(helper.errorString()));
+        auto start=reinterpret_cast<DWORD (WINAPI *)(void *)>(helper.resolve("UnboundStart"));
+        check(start && start(reinterpret_cast<void *>(1))==0,"Normal helper accepted a startup mode argument");
+        check(start(nullptr)==1,"Discovery bootstrap failed");
+        app.processEvents();
+        auto settle=[] { for (int i=0;i<8;++i) QCoreApplication::processEvents(); };
+        // The project main window and its panes do not exist at injection time.
+        QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
+        auto page=new QWidget(&main); page->setObjectName("frameEditPageWidgetsContainer"); page->show();
+        auto makePane=[&] {
+            auto pane=new QWidget(page); pane->setObjectName("frameEditPageMediaPool");
+            auto layout=new QVBoxLayout(pane); layout->addWidget(new QPushButton("Live content",pane));
+            pane->show(); return pane;
+        };
+        auto pane=makePane(); settle();
+        check(pane->findChildren<QToolButton *>("resolvePaneUndockButton").size()==1,"Late pane not discovered");
+        auto toggle=new QPushButton("Native pool",page); toggle->setObjectName("btnEditToggleMediaPoolInSSM");
+        toggle->setCheckable(true); toggle->setChecked(true); toggle->show(); settle();
+        auto button=pane->findChild<QToolButton *>("resolvePaneUndockButton");
+        button->click(); settle();
+        check(button->toolTip()=="Dock" && !toggle->isChecked(),"Late toggle not cached or manual detach failed");
+        button->click(); settle();
+        check(button->toolTip()=="Undock" && toggle->isChecked(),"Dock state not synchronized without polling");
+        delete pane; delete toggle; settle();
+        pane=makePane(); settle();
+        check(pane->findChildren<QToolButton *>("resolvePaneUndockButton").size()==1,"Replacement pane not discovered");
+        // A hidden lazy page is indexed when constructed, without selecting it.
+        auto color=new QWidget(&main); color->setObjectName("WStackPage_Color"); color->hide();
+        auto nodes=new QWidget(color); nodes->setObjectName("m_pFrameNodeGraph");
+        settle();
+        check(nodes->findChildren<QToolButton *>("resolvePaneUndockButton").isEmpty(),"Layout-less pane decorated");
+        auto grid=new QGridLayout(nodes); grid->addWidget(new QPushButton("Graph",nodes)); settle();
+        check(nodes->findChildren<QToolButton *>("resolvePaneUndockButton").size()==1,"Late hidden layout not discovered");
+        page->hide(); color->show(); settle(); color->hide(); page->show(); settle();
+        auto controller=app.findChild<QObject *>("UnboundPaneController");
+        check(controller,"Controller missing");
+        QEventLoop idle; QTimer::singleShot(1250,&idle,&QEventLoop::quit); idle.exec();
+        for (auto timer:controller->findChildren<QTimer *>())
+            check(!timer->isActive() || timer->isSingleShot(),"Recurring controller timer remains active");
+        check(pane->findChildren<QToolButton *>("resolvePaneUndockButton").size()==1,"Page switching duplicated decoration");
+        delete controller;
+        std::puts("PASS: injection before project, late pane/toggle/layout, replacement, page switching and no recurring discovery timer");
+        return 0;
+    }
+#endif
     if (app.arguments().contains("--reclaim-test")) {
         WarningCapture warnings;
         app.installEventFilter(&warnings);
