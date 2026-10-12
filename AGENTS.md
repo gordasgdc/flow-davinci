@@ -1,0 +1,95 @@
+﻿# Unbound development
+
+## Product
+
+Unbound makes DaVinci Resolve panes independent, movable, resizable windows on
+Windows x64. Edit supports Media Pool, Effects, Sound Library, Keyframe Editor,
+Edit Index, Inspector, Metadata and Mixer; Color supports Nodes, Gallery, LUTs
+and Media Pool. Floating windows and the main window snap to one another and
+display work-area edges during movement/resizing; Alt bypasses snapping.
+
+The overlapping-squares header button toggles docking; closing a floating window
+also docks it. Strokes stay muted grey (#848484) in either state and brighten
+only on hover. Tooltips are "Undock" and "Dock". Manual undocking turns off the
+native Resolve pane toggle to reclaim main-window space; docking turns it on
+to show the restored pane, deferred until page return if inactive. Native toggles
+remain usable, and startup restoration honors saved choices. Remember geometry, docking and native toggle
+states across sessions; hide/show retained floating windows with their page.
+Main-window placement is remembered per page. Unbound can start first and wait
+silently for Resolve, without launching it.
+
+## Architecture
+
+- `src/launcher.cpp`: Win32 launcher locates a ready Resolve process, loads the
+  adjacent `Unbound.dll` into it and invokes its bootstrap. The launcher then
+  exits; the helper lives inside Resolve. Waiting launchers use a single-instance
+  guard. No network service, temporary DLL extraction or autostart registration.
+- `src/controller.cpp`: Qt GUI-thread discovery by widget object names, native
+  initialization, pane registration, toggle tracking and deferred page restoration.
+- `sidebarfloatsession.h`, `panefloatsession.h`: reparent existing widgets into
+  floating hosts while preserving original layout slots, constraints and ownership.
+  Docking restores them. Resolve owns content; Unbound owns hosts/placeholders.
+- `panedecoration.h`: inserts the vector toggle beside recognized native header
+  menus, with a compact fallback strip when necessary.
+- `panefloatingwindow.h`, `panetaskbar.h`: floating hosts, native dark captions,
+  taskbar identity, page visibility and mouse handling. Nonmodal drag handling and
+  deferred content layout during resizing preserve playback responsiveness.
+- `panesnap*.h`, `mainwindowsnap.h`: native window/contact bounds, display work
+  areas, snapping and resize constraints. `nodescanvasbounds.h` maintains Nodes
+  scene bounds as its viewport changes.
+- `panesettings.h`, `geometryjson.h`, `mainwindowplacement.h`: readable JSON,
+  atomic saves, geometry conversion, per-page placement and monitor checks.
+  Settings: `%LOCALAPPDATA%\Unbound\Unbound.json`; `UNBOUND_SETTINGS_FILE` overrides
+  the path for tests. Page/pane keys are actual Resolve widget names. Qt geometry
+  records exist only in memory; persisted fields are unencoded and named.
+
+## Build and validate
+
+Run from this repository root:
+
+```powershell
+.\build-unbound-release.cmd
+# Override the default %USERPROFILE%\Qt\5.15.2\msvc2019_64 when needed:
+.\build-unbound-release.cmd -QtPath C:\Qt\5.15.2\msvc2019_64
+```
+
+Requires Windows x64, VS2022 C++ tools/Windows SDK, CMake, PowerShell and Qt 5.15.2
+MSVC x64 development files. Runtime uses Resolve's Qt libraries. The script builds
+both binaries, runs `tests/launcher` and `tests/pane-float`, and audits dependencies.
+Successful releases contain only `Unbound.exe` and `Unbound.dll` in
+`release/win/YYYY.MM.DD.NNN/`. Never overwrite published version directories.
+`-Date` and `-BuildNumber` set an explicit version. Build/release output is ignored
+by Git. The release build regenerates icons from `src/assets/filmhaus.png`;
+assets are in `src/assets`.
+
+## Development constraints
+
+- Keep widget/layout manipulation on Resolve's Qt GUI thread. Preserve native
+  signals, ownership, user state, page context and reversible docking.
+- Initialize native pane content before automatic detachment; some widgets are
+  lazily populated. Restore saved native toggle states after initialization.
+- Preserve native dark window decorations and immediate page switching with
+  retained hosts/content. Initial restoration has a separate short fade.
+- Maintain explicit coordinate-space distinctions: Qt logical client geometry,
+  Windows placement coordinates and visible frame/contact bounds differ. Diagnose
+  restoration errors at their source before adding positional corrections.
+- Automated fixtures cannot fully model Resolve. Use a fresh Resolve instance
+  to validate a new helper; already injected DLLs are not updated by replacing files.
+  Do not terminate the user's Resolve session without instruction.
+- Tested configuration: Resolve 21.1.0.14, Windows x64, Qt 5.15.2. Other versions
+  need validation. Known issue: Media Pool may widen on startup restoration and
+  overlap its neighbor. Native minimum sizes apply; Nodes may need manual panning
+  after docking into a narrower viewport.
+- Source license is MIT. Filmhaus logo/derived icons: copyright 2026 Wolfgang Woehl;
+  artwork rights are recorded in NOTICE. Preserve dependency notices in src.
+
+Keep README.md and doc/Unbound settings.md accurate for current behavior. This repository
+is self-contained for development apart from the installed toolchain and Resolve.
+
+## Local inspection tools
+
+`tools/gammaray/` is ignored by Git and contains the modified JSON-export GammaRay
+package, `run-gammaray.cmd`, and page snapshots. See its README for capture steps.
+Edit's page widget is `WStackPage_Conform`; Color is `WStackPage_Color`, Fairlight
+is `WStackPage_Audio`. Use a fresh Resolve session without Unbound for native
+captures, and verify exports have `truncated: false`.

@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: MIT
+#ifndef UNBOUND_PANEDECORATION_H
+#define UNBOUND_PANEDECORATION_H
+#include <QWidget>
+#include <QToolButton>
+#include <QAbstractButton>
+#include <QBoxLayout>
+#include <QPointer>
+#include <QEvent>
+#include <QIconEngine>
+#include <QPainter>
+#include <QPainterPath>
+#include <functional>
+namespace Unbound {
+// Proposal 5, rendered as vectors without adding a QtSvg runtime dependency.
+class UndockIconEngine : public QIconEngine
+{
+public:
+    QIconEngine *clone() const override { return new UndockIconEngine; }
+    void paint(QPainter *p,const QRect &r,QIcon::Mode mode,QIcon::State) override
+    {
+        p->save(); p->setRenderHint(QPainter::Antialiasing);
+        const qreal scale=qMin(r.width(),r.height())/20.0;
+        p->translate(r.x()+(r.width()-20*scale)/2,r.y()+(r.height()-20*scale)/2); p->scale(scale,scale);
+        const int brightness=mode==QIcon::Disabled ? 90 : mode==QIcon::Active ? 220 : 132;
+        p->setPen(QPen(QColor(brightness,brightness,brightness),1.5,Qt::SolidLine,Qt::FlatCap,Qt::MiterJoin));
+        p->setBrush(Qt::NoBrush);
+        QPainterPath large; large.moveTo(15.5,7); large.lineTo(15.5,4.75); large.quadTo(15.5,3.5,14.25,3.5);
+        large.lineTo(3.75,3.5); large.quadTo(2.5,3.5,2.5,4.75); large.lineTo(2.5,15.25);
+        large.quadTo(2.5,16.5,3.75,16.5); large.lineTo(14.25,16.5); large.quadTo(15.5,16.5,15.5,15.25); large.lineTo(15.5,13);
+        p->drawPath(large); p->drawRoundedRect(QRectF(12.5,7,6,6),.75,.75); p->restore();
+    }
+    QPixmap pixmap(const QSize &size,QIcon::Mode mode,QIcon::State state) override
+    { QPixmap pm(size); pm.fill(Qt::transparent); QPainter p(&pm); paint(&p,QRect(QPoint(),size),mode,state); return pm; }
+};
+// Paint only the glyph: Resolve's inherited button styles must not add a
+// hover/checked background. QToolButton still supplies clicks and tooltips.
+class UndockButton : public QToolButton
+{
+public:
+    using QToolButton::QToolButton;
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        icon().paint(&painter,rect(),Qt::AlignCenter,
+            !isEnabled() ? QIcon::Disabled : underMouse() ? QIcon::Active : QIcon::Normal,
+            isChecked() ? QIcon::On : QIcon::Off);
+    }
+    void enterEvent(QEvent *event) override { QToolButton::enterEvent(event); update(); }
+    void leaveEvent(QEvent *event) override { QToolButton::leaveEvent(event); update(); }
+};
+class PaneDecoration : public QObject
+{
+public:
+    PaneDecoration(QWidget *pane,QObject *owner,std::function<void()> action)
+        : QObject(owner),m_pane(pane),m_margins(pane->contentsMargins()),m_action(std::move(action))
+    {
+        pane->installEventFilter(this);
+        refresh();
+    }
+    ~PaneDecoration() override
+    {
+        if(m_pane) {m_pane->removeEventFilter(this); removeStrip();}
+        for(auto button:m_buttons) delete button.data();
+    }
+    QWidget *pane() const { return m_pane; }
+    QToolButton *button() const { for(auto b:m_buttons) if(b) return b; return nullptr; }
+    bool usesNativeHeader() const { return m_native; }
+    void setFloating(bool floating)
+    {
+        m_floating=floating;
+        if(!floating) refresh();
+        for(auto b:m_buttons) if(b) {
+            b->setChecked(floating);
+            b->setToolTip(floating ? "Dock" : "Undock");
+            b->setAccessibleName(floating ? "Dock" : "Undock");
+            b->show();
+        }
+        position();
+    }
+protected:
+    bool eventFilter(QObject *,QEvent *event) override
+    {
+        if(event->type()==QEvent::Resize || event->type()==QEvent::Show || event->type()==QEvent::LayoutRequest) {
+            if(!m_floating) refresh();
+            position();
+        }
+        return false;
+    }
+private:
+    bool isAnchor(QAbstractButton *b) const
+    {
+        const auto pane=m_pane->objectName(), name=b->objectName();
+        const auto parent=b->parentWidget() ? b->parentWidget()->objectName() : QString();
+        if(pane=="frameEditPageMediaPool" || pane=="m_pWidgetMediaPool") return name=="btnMediaPoolOptions" && parent=="frameMediaPoolTitleBarTop";
+        if(pane=="frameEditPageInspector") return name=="btnTitleOptions" && parent=="frameEffectsWidgetsTitle";
+        if(pane=="frameEditAudioMeter") return name=="btnAudioMixerOptions" && (parent=="frameOptions" || parent=="frameHeaderContainer");
+        if(pane=="frameEditPageEffectsLibrary") return name=="btnOptions" && parent=="frameEffectTopBar";
+        if(pane=="frameEditPageSoundLibrary") return name=="m_BtnDisplayOptions" && parent=="frameMenu";
+        if(pane=="frameEditPageKeyframeEditor") return name=="btnCurveSettingsOptions" && parent=="keyframeToolbarButtons";
+        if(pane=="frameEditPageEditIndex") return (name=="btnEdlOptions" && parent=="frameEDLTopBar")
+            || (name=="m_BtnMenu" && (parent=="frameTitlebar" || parent=="frameHeaderTitle"));
+        if(pane=="frameEditPageMetadata") return name=="btnPresetsSelector" && parent=="frameMetadataTop";
+        if(pane=="m_pWidgetLutBrowser") return name=="btnOptions" && parent=="frameLutBrowserTitleBarTop";
+        if(pane=="m_pWidgetGallery") return name=="btnOptions" && parent=="frameTopColorGallery";
+        if(pane=="m_pFrameNodeGraph") return name=="btnOptions" && parent=="rightFrame"
+            && b->parentWidget()->parentWidget() && b->parentWidget()->parentWidget()->objectName()=="m_NGHeaderFrame";
+        return false;
+    }
+    QToolButton *makeButton(QWidget *parent)
+    {
+        auto b=new UndockButton(parent); b->setObjectName("resolvePaneUndockButton");
+        b->setIcon(QIcon(new UndockIconEngine)); b->setIconSize(QSize(20,20));
+        b->setCheckable(true); b->setChecked(m_floating);
+        b->setToolButtonStyle(Qt::ToolButtonIconOnly); b->setAccessibleName(m_floating ? "Dock" : "Undock");
+        b->setToolTip(m_floating ? "Dock" : "Undock"); b->setFocusPolicy(Qt::NoFocus);
+        b->setFixedSize(20,20);
+        b->setStyleSheet("QToolButton { background: transparent; border: none; padding: 0px; }");
+        connect(b,&QToolButton::clicked,this,[this] {m_action();});
+        m_buttons.append(b); return b;
+    }
+    void removeStrip()
+    {
+        if(m_strip && m_pane && m_pane->contentsMargins()==QMargins(m_margins.left(),m_margins.top()+m_strip,m_margins.right(),m_margins.bottom()))
+            m_pane->setContentsMargins(m_margins);
+        m_strip=0;
+    }
+    void refresh()
+    {
+        if(m_refreshing || !m_pane || m_floating) return;
+        m_refreshing=true;
+        bool any=false; for(auto b:m_buttons) if(b) any=true;
+        if(m_native && any) {m_refreshing=false; return;}
+        QList<QAbstractButton *> anchors;
+        for(auto b:m_pane->findChildren<QAbstractButton *>()) {
+            if(!isAnchor(b)) continue;
+            auto layout=qobject_cast<QBoxLayout *>(b->parentWidget()->layout());
+            if(layout && layout->direction()==QBoxLayout::LeftToRight && layout->indexOf(b)>=0) anchors.append(b);
+        }
+        if(!anchors.isEmpty()) {
+            for(auto b:m_buttons) delete b.data(); m_buttons.clear(); removeStrip(); m_native=true;
+            for(auto anchor:anchors) {
+                auto layout=static_cast<QBoxLayout *>(anchor->parentWidget()->layout());
+                auto b=makeButton(anchor->parentWidget());
+                layout->insertWidget(layout->indexOf(anchor),b,0,Qt::AlignVCenter); b->show();
+            }
+        } else if(!any) {
+            m_native=false; m_buttons.clear(); m_strip=24;
+            m_pane->setContentsMargins(m_margins.left(),m_margins.top()+m_strip,m_margins.right(),m_margins.bottom());
+            makeButton(m_pane)->show();
+        }
+        position(); m_refreshing=false;
+    }
+    void position()
+    {
+        if(m_native || !m_pane || !button()) return;
+        button()->move(qMax(m_margins.left(),m_pane->width()-m_margins.right()-22),m_margins.top()+2);
+        button()->raise();
+    }
+    QPointer<QWidget> m_pane;
+    QList<QPointer<QToolButton>> m_buttons;
+    QMargins m_margins;
+    std::function<void()> m_action;
+    int m_strip=0;
+    bool m_native=false,m_floating=false,m_refreshing=false;
+};
+}
+#endif

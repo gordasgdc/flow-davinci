@@ -1,0 +1,2 @@
+// Launcher icon; all DPI variants are bundled into a single resource.
+1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/assets/unbound.ico"
