@@ -97,6 +97,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
             MessageBoxW(nullptr, UNBOUND_VERSION, L"Unbound", MB_OK);
             return 0;
         }
+        require(std::wstring(command).empty(), L"Unknown argument. Run Unbound without arguments, or use --version.");
         // Keep repeated launches from accumulating invisible waiting helpers.
         Handle waiter(CreateMutexW(nullptr, FALSE, L"Local\\Unbound.Launcher.Wait"));
         const DWORD mutexError = GetLastError();
@@ -160,7 +161,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         VirtualFreeEx(process.h, argument, 0, MEM_RELEASE);
         auto injected = findModule(modules(pid), L"Unbound.dll");
         require(injected.modBaseAddr != nullptr, L"Resolve could not load Unbound.dll. Its existing Qt/MSVC runtime must satisfy the helper dependencies.");
-        require(invoke(process.h, reinterpret_cast<LPTHREAD_START_ROUTINE>(injected.modBaseAddr + offset), nullptr) == 1,
+        require(invoke(process.h, reinterpret_cast<LPTHREAD_START_ROUTINE>(injected.modBaseAddr + offset),
+            nullptr) == 1,
             L"Unbound loaded, but could not queue startup on Resolve's GUI thread. Restart Resolve before retrying.");
         return 0;
     } catch (const std::wstring &error) {

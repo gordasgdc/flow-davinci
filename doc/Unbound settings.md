@@ -67,3 +67,8 @@ save at most one of Gallery/LUTs/Media Pool as checked. All can be unchecked.
 No field contains Base64 data. Qt's binary restoration record is reconstructed
 in memory. This preserves the existing restoration behavior while allowing
 direct edits. Content minimum sizes and off-screen recovery still apply.
+
+Pane discovery and deferred restoration run on widget/page lifecycle events;
+there is no recurring discovery timer or settings change needed to enable this.
+Normal releases have no diagnostic switches. The separate diagnostic build is
+documented in tests/diagnostic/README.md and uses the same settings format.

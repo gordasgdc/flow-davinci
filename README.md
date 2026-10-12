@@ -34,6 +34,16 @@ Native minimum pane sizes apply. Nodes may need panning after docking into a
 narrower area. Media Pool can widen during startup restoration and overlap an
 adjacent pane. Color Clips and panes on other pages are not supported.
 
+## Playback performance
+
+Discovery caches panes and native selectors and handles widget creation/page
+changes through queued events, without a recurring discovery timer. Playback
+was reported stable on Windows 10 / Xeon E5-2687W v4 / Resolve 21.1.1.10 after
+this change, including with an undocked pane.
+
+Normal releases have no diagnostic switches. The separate diagnostic source,
+build command and investigation notes are in [tests/diagnostic](tests/diagnostic/README.md).
+
 ## Build
 
 Requires Windows x64, Visual Studio 2022 C++ build tools and Windows SDK, CMake on
