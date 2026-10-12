@@ -172,6 +172,31 @@ public:
         placeholderLayout->addWidget(placeholder);
         placeholder->show();
         }
+        if (slot->objectName()==QLatin1String("frameEditPageInspector")) {
+            auto header=host->findChild<QWidget *>(QStringLiteral("frameEffectsWidgetsTitle"));
+            auto title=header ? header->findChild<QLabel *>(QStringLiteral("labelTitle"),Qt::FindDirectChildrenOnly) : nullptr;
+            // Resolve already paints this label with middle elision. Its full
+            // text minimum-size hint must not become a top-level window minimum.
+            if (title && title->property("elideMode").isValid()
+                && title->property("elideMode").toInt()==int(Qt::ElideMiddle)) {
+                m_inspectorTitle=title;
+                m_inspectorTitlePolicy=title->sizePolicy();
+                auto policy=m_inspectorTitlePolicy;
+                // Qt requires the canonical Ignored policy to discard the hint.
+                // Stretch still lets the title use available header space.
+                policy.setHorizontalPolicy(QSizePolicy::Ignored);
+                policy.setHorizontalStretch(qMax(1,policy.horizontalStretch()));
+                title->setSizePolicy(policy);
+                // Recompute before restoring geometry/showing the host, rather
+                // than waiting for queued layout requests with the old minimum.
+                for (auto parent=title->parentWidget(); parent; parent=parent->parentWidget()) {
+                    if (parent->layout()) parent->layout()->invalidate();
+                    parent->updateGeometry();
+                    if (parent==host) break;
+                }
+                host->layout()->activate();
+            }
+        }
         host->installEventFilter(this);
         m_root->installEventFilter(this);
         // If Resolve deletes the original slot, dispose only of our displaced
@@ -219,6 +244,7 @@ public:
         static_cast<PaneFloatingWindow *>(m_host.data())->finishDeferredResize();
         rememberGeometry();
         m_restoring = true;
+        restoreInspectorTitlePolicy();
         if (m_root) m_root->removeEventFilter(this);
         disconnect(m_destroyConnection);
         m_host->removeEventFilter(this);
@@ -314,6 +340,11 @@ protected:
     }
 
 private:
+    void restoreInspectorTitlePolicy()
+    {
+        if (m_inspectorTitle) m_inspectorTitle->setSizePolicy(m_inspectorTitlePolicy);
+        m_inspectorTitle=nullptr;
+    }
     void addNativeContent(QWidget *widget)
     {
         if (auto grid=qobject_cast<QGridLayout *>(m_nativeLayout.data()))
@@ -348,6 +379,7 @@ private:
     }
     void clear()
     {
+        restoreInspectorTitlePolicy();
         delete m_nodesBounds; m_nodesBounds=nullptr;
         m_geometryTimer->stop();
         m_returnFade->stop();
@@ -363,6 +395,8 @@ private:
         m_layout = nullptr; m_placeholderLayout = nullptr; m_placeholder = nullptr;
     }
     QPointer<QWidget> m_slot, m_root, m_host, m_placeholder;
+    QPointer<QLabel> m_inspectorTitle;
+    QSizePolicy m_inspectorTitlePolicy;
     NodesCanvasBounds *m_nodesBounds=nullptr;
     QPointer<QLayout> m_layout;
     QPointer<QLayout> m_nativeLayout;

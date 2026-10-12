@@ -68,6 +68,11 @@ No field contains Base64 data. Qt's binary restoration record is reconstructed
 in memory. This preserves the existing restoration behavior while allowing
 direct edits. Content minimum sizes and off-screen recovery still apply.
 
+The floating Edit Inspector excludes its native middle-eliding title label's
+horizontal size hint from the window minimum. Other content minimums remain in
+effect. Docking restores the label's original sizing policy; no setting or
+filename modification is involved.
+
 Pane discovery and deferred restoration run on widget/page lifecycle events;
 there is no recurring discovery timer or settings change needed to enable this.
 Normal releases have no diagnostic switches. The separate diagnostic build is

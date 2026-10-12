@@ -71,12 +71,73 @@ protected:
     }
 };
 
+// Models the native UiElidedLabel's observed full-text minimum-size hint.
+class InspectorTitleLabel : public QLabel
+{
+public:
+    using QLabel::QLabel;
+    QSize minimumSizeHint() const override { return sizeHint(); }
+};
+
 int main(int argc, char **argv)
 {
 #ifdef Q_OS_WIN
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 #endif
     QApplication app(argc, argv);
+    if (app.arguments().contains("--inspector-title-test")) {
+        QWidget page; page.resize(700,500);
+        auto slot=new QWidget(&page); slot->setObjectName("frameEditPageInspector"); slot->resize(600,400);
+        auto outer=new QVBoxLayout(slot);
+        auto inspector=new QWidget(slot); outer->addWidget(inspector);
+        auto column=new QVBoxLayout(inspector);
+        auto header=new QWidget(inspector); header->setObjectName("frameEffectsWidgetsTitle"); column->addWidget(header);
+        auto row=new QHBoxLayout(header);
+        auto action=new QPushButton("Menu",header); action->setFixedSize(40,24); row->addWidget(action);
+        const QString filename=QString(180,QLatin1Char('W'))+QStringLiteral("_[000001-999999].dpx");
+        auto title=new InspectorTitleLabel(filename,header); title->setObjectName("labelTitle");
+        title->setProperty("elideMode",int(Qt::ElideMiddle));
+        QSizePolicy original(QSizePolicy::Expanding,QSizePolicy::Preferred);
+        original.setHorizontalStretch(2); title->setSizePolicy(original); row->addWidget(title);
+        auto content=new QWidget(inspector); content->setMinimumSize(360,100); column->addWidget(content);
+        page.show(); app.processEvents();
+        const auto fullWidth=title->minimumSizeHint().width();
+        check(fullWidth>1000,"Inspector fixture filename is too short");
+        for (int pass=0;pass<4;++pass) {
+            original.setHorizontalStretch(pass%2 ? 2 : 0);
+            title->setSizePolicy(original);
+            Unbound::SidebarFloatSession session;
+            check(session.start(slot,"Inspector",&page).isEmpty(),"Inspector detach failed");
+            auto host=session.floatingWindow(); host->resize(420,300); app.processEvents();
+            check(host->width()==420 && host->minimumWidth()>=360 && host->minimumWidth()<fullWidth,
+                "Filename still constrains floating width or content minimum was lost");
+            check(title->width()<fullWidth && title->text()==filename && title->property("elideMode").toInt()==int(Qt::ElideMiddle),
+                "Native label lost its full text/elision mode or cannot shrink");
+            const int narrowTitleWidth=title->width();
+            host->resize(520,300); app.processEvents();
+            check(title->width()>narrowTitleWidth,"Title does not use additional header space");
+            host->resize(420,300); app.processEvents();
+            check(title->sizePolicy().horizontalStretch()==qMax(1,original.horizontalStretch())
+                && title->sizePolicy().verticalPolicy()==original.verticalPolicy(),"Title expansion/stretch/height policy changed");
+            title->setText(filename+filename); app.processEvents();
+            check(host->width()==420 && host->minimumWidth()<fullWidth,"Clip selection update widened Inspector");
+            title->setText(filename); app.processEvents();
+            if (pass<2) {
+                check(session.dock().isEmpty(),"Inspector docking failed");
+                check(title->sizePolicy()==original,"Docking did not restore title policy");
+            }
+            // Last two passes exercise destructor restoration.
+        }
+        check(title->sizePolicy()==original && slot->layout()==outer,"Docking did not restore original policy/layout");
+        title->setProperty("elideMode",int(Qt::ElideRight));
+        {
+            Unbound::SidebarFloatSession session;
+            check(session.start(slot,"Inspector",&page).isEmpty(),"Unrecognized title detach failed");
+            check(title->sizePolicy()==original,"Nonmatching title sizing was changed");
+        }
+        std::puts("PASS: Inspector filename does not constrain floating width; native text, elision, other minimums and docking policy preserved");
+        return 0;
+    }
 #ifdef Q_OS_WIN
     if (app.arguments().contains("--discovery-test")) {
         QTemporaryDir directory;

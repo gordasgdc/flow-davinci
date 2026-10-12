@@ -8,6 +8,8 @@ window or each other, and restore your workspace between sessions.
 - Snap window edges when moving or resizing, including display work-area edges.
   Hold **Alt** to bypass snapping.
 - Unbound remembers window positions, sizes, docking and pane-toggle states.
+- The floating Edit Inspector lets its native title label elide long filenames
+  in the middle instead of using their full length as the window's minimum width.
 - Unbound hides floating panes when leaving their page and restore them on return.
 
 **Edit:** Media Pool, Effects, Sound Library, Keyframe Editor, Edit Index,
