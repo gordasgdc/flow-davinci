@@ -3,9 +3,9 @@
 Build from the repository root:
 
 ```powershell
-cmake -S tests/inspector-probe -B build/inspector-probe -G "Visual Studio 17 2022" -A x64 "-DCMAKE_PREFIX_PATH=$env:USERPROFILE/Qt/5.15.2/msvc2019_64"
-cmake --build build/inspector-probe --config Release
-.\build\inspector-probe\Release\inspector-probe.exe
+cmake -S tests/platforms/windows/inspector-probe -B build/windows/inspector-probe -G "Visual Studio 17 2022" -A x64 "-DCMAKE_PREFIX_PATH=$env:USERPROFILE/Qt/5.15.2/msvc2019_64"
+cmake --build build/windows/inspector-probe --config Release
+.\build\windows\inspector-probe\Release\inspector-probe.exe
 ```
 
 The launcher loads `InspectorProbe.dll` alongside any existing Unbound helper.

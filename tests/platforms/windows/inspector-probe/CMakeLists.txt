@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(InspectorProbe LANGUAGES CXX)
+if(NOT WIN32 OR NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "Inspector probe requires Windows x64 and MSVC")
+endif()
 set(CMAKE_CXX_STANDARD 17)
 find_package(Qt5 5.15.2 EXACT REQUIRED COMPONENTS Widgets)
 add_library(InspectorProbe SHARED snapshot.cpp)

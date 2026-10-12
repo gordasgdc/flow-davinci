@@ -44,7 +44,7 @@ was reported stable on Windows 10 / Xeon E5-2687W v4 / Resolve 21.1.1.10 after
 this change, including with an undocked pane.
 
 Normal releases have no diagnostic switches. The separate diagnostic source,
-build command and investigation notes are in [tests/diagnostic](tests/diagnostic/README.md).
+build command and investigation notes are in [Windows diagnostics](tests/platforms/windows/diagnostic/README.md).
 
 ## Build
 
@@ -60,7 +60,24 @@ The default Qt path is `%USERPROFILE%\Qt\5.15.2\msvc2019_64`. The script regener
 icons from `src/assets/filmhaus.png`, builds,
 runs regression tests and audits imports, then puts the two release binaries in
 `release/win/YYYY.MM.DD.NNN/`. Use `-Date YYYY.MM.DD -BuildNumber N` for an explicit
-version. Application code is in `src/`; regression tests are in `tests/`.
+version. Windows build output is in `build/windows/`; published release paths
+remain unchanged. The root command delegates to `infrastructure/windows/`.
+
+## Source layout
+
+- `src/core/`: shared Qt pane behavior, settings and snapping calculations.
+- `src/platform/`: contracts used by shared code.
+- `src/platforms/windows/`: the Windows launcher, bootstrap, native window backend
+  and resources.
+- `src/platforms/macos/`: reserved for the macOS backend; not implemented yet.
+- `infrastructure/<platform>/`: platform build, audit and packaging workflows.
+- `tests/core/`: shared fixtures; `tests/platforms/<platform>/`: native adapters,
+  launcher tests and diagnostic tools.
+
+See [architecture](doc/architecture.md), [Windows development](doc/platforms/windows.md)
+and [macOS development status](doc/platforms/macos.md). The root CMake project
+selects one backend; macOS configuration currently stops with an explicit
+not-implemented message. This reorganization does not add macOS support.
 
 ## License
 

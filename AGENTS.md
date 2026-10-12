@@ -20,11 +20,11 @@ silently for Resolve, without launching it.
 
 ## Architecture
 
-- `src/launcher.cpp`: Win32 launcher locates a ready Resolve process, loads the
+- `src/platforms/windows/launcher.cpp`: Win32 launcher locates a ready Resolve process, loads the
   adjacent `Unbound.dll` into it and invokes its bootstrap. The launcher then
   exits; the helper lives inside Resolve. Waiting launchers use a single-instance
   guard. No network service, temporary DLL extraction or autostart registration.
-- `src/controller.cpp`: Qt GUI-thread discovery by widget object names, native
+- `src/core/controller.cpp`: Qt GUI-thread discovery by widget object names, native
   initialization, pane registration, toggle tracking and deferred page restoration.
 - `sidebarfloatsession.h`, `panefloatsession.h`: reparent existing widgets into
   floating hosts while preserving original layout slots, constraints and ownership.
@@ -43,6 +43,16 @@ silently for Resolve, without launching it.
   the path for tests. Page/pane keys are actual Resolve widget names. Qt geometry
   records exist only in memory; persisted fields are unencoded and named.
 
+Shared pane behavior and persistence live in `src/core/`. OS contracts live in
+`src/platform/`; CMake selects the implementation under `src/platforms/<platform>/`.
+Keep native APIs out of shared code. Windows bootstrap is in
+`src/platforms/windows/bootstrap.cpp`; native placement is in that directory's
+`windowplacement.cpp`, while per-page tracking remains in core.
+The root release entry points delegate to `infrastructure/windows/`.
+macOS source, infrastructure and tests have separate development areas; the
+macOS backend is not implemented. Do not substitute a no-op backend for a release.
+See `doc/architecture.md` and `doc/platforms/` for platform status.
+
 ## Build and validate
 
 Run from this repository root:
@@ -55,12 +65,14 @@ Run from this repository root:
 
 Requires Windows x64, VS2022 C++ tools/Windows SDK, CMake, PowerShell and Qt 5.15.2
 MSVC x64 development files. Runtime uses Resolve's Qt libraries. The script builds
-both binaries, runs `tests/launcher` and `tests/pane-float`, and audits dependencies.
+both binaries, runs `tests/platforms/windows/launcher` and
+`tests/core/pane-float` with the Windows test adapter, and audits dependencies.
 Successful releases contain only `Unbound.exe` and `Unbound.dll` in
 `release/win/YYYY.MM.DD.NNN/`. Never overwrite published version directories.
 `-Date` and `-BuildNumber` set an explicit version. Build/release output is ignored
 by Git. The release build regenerates icons from `src/assets/filmhaus.png`;
-assets are in `src/assets`.
+shared artwork is in `src/assets`; the ICO is in
+`src/platforms/windows/resources`. Build output is in `build/windows/`.
 
 ## Development constraints
 

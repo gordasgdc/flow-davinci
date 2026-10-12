@@ -2,7 +2,8 @@
 
 This directory preserves the diagnostic launcher and controller from build
 2026.10.12.010, together with the startup-mode definitions and six smoke tests.
-It uses the shared pane/window headers and artwork in `src/`; it is not a frozen
+It uses the shared pane headers in `src/core/`, Windows window backend in
+`src/platforms/windows/`, and artwork in `src/assets/`; it is not a frozen
 copy of every dependency. These sources are deliberately separate from the
 normal build. Changes to the production controller are not automatically copied
 here; keep the diagnostic copy in sync when investigating future behavior.
@@ -10,13 +11,13 @@ here; keep the diagnostic copy in sync when investigating future behavior.
 From the repository root:
 
 ```powershell
-.\tests\diagnostic\build-diagnostic.cmd
+.\infrastructure\windows\build-diagnostic.cmd
 # Optional Qt location:
-.\tests\diagnostic\build-diagnostic.cmd -QtPath C:\Qt\5.15.2\msvc2019_64
+.\infrastructure\windows\build-diagnostic.cmd -QtPath C:\Qt\5.15.2\msvc2019_64
 ```
 
 The command builds the launcher, helper and smoke tests, then tests each mode in
-a separate process. Output is `build/diagnostic/Release/`, outside the normal
+a separate process. Output is `build/windows/diagnostic/Release/`, outside the normal
 versioned releases. Product versions end in `.000-diagnostic`. Rebuilds replace
 this development output; they never overwrite `release/win/`.
 
@@ -24,7 +25,7 @@ Start a fresh Resolve process for each mode, load the same project, and confirm
 normal playback before running, for example:
 
 ```powershell
-.\build\diagnostic\Release\Unbound.exe --diagnostic=load-only
+.\build\windows\diagnostic\Release\Unbound.exe --diagnostic=load-only
 ```
 
 | Mode | Behavior |

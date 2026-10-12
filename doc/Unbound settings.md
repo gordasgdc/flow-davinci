@@ -76,4 +76,4 @@ filename modification is involved.
 Pane discovery and deferred restoration run on widget/page lifecycle events;
 there is no recurring discovery timer or settings change needed to enable this.
 Normal releases have no diagnostic switches. The separate diagnostic build is
-documented in tests/diagnostic/README.md and uses the same settings format.
+documented in tests/platforms/windows/diagnostic/README.md and uses the same settings format.
