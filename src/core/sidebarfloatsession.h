@@ -15,6 +15,7 @@
 #include <functional>
 #include "windowintegration.h"
 #include "nodescanvasbounds.h"
+#include "auditionactivationbridge.h"
 
 namespace Unbound {
 // Move the entire layout, including all widgets/spacers/stretch factors. This
@@ -122,9 +123,8 @@ public:
         m_root = pageRoot ? pageRoot : slot->parentWidget();
         m_layout = layout;
         auto host = new PaneFloatingWindow;
-        // Audition diagnostic: retain a Qt ancestor path to the original
-        // Fairlight container, while keeping an independent top-level window.
-        // Resolve audio must be validated live; fixtures only verify lifecycle.
+        // Keep the Fairlight Media Pool's original Qt ownership/ancestor path
+        // while its host remains an independent top-level window.
         if (slot->objectName()==QLatin1String("frameAudioPanelMediaPoolContainer"))
             host->setParent(slot, Qt::Window);
         inheritPaneTaskbarIdentity(host, slot->window());
@@ -199,6 +199,14 @@ public:
                 host->layout()->activate();
             }
         }
+        if (slot->objectName() == QLatin1String("frameAudioPanelMediaPoolContainer")
+            && m_root->objectName() == QLatin1String("WStackPage_Audio")
+            && slot->window()->objectName() == QLatin1String("UiMainWindow")) {
+            // One targeted lookup inside this pane per detach, before its first
+            // activation (also for startup restoration). No recurring discovery.
+            if (auto preview = host->findChild<QWidget *>(QStringLiteral("previewPlayer")))
+                m_auditionBridge = new AuditionActivationBridge(slot->window(), m_root, preview, this);
+        }
         host->installEventFilter(this);
         m_root->installEventFilter(this);
         // If Resolve deletes the original slot, dispose only of our displaced
@@ -246,6 +254,7 @@ public:
         static_cast<PaneFloatingWindow *>(m_host.data())->finishDeferredResize();
         rememberGeometry();
         m_restoring = true;
+        stopAuditionBridge();
         restoreInspectorTitlePolicy();
         if (m_root) m_root->removeEventFilter(this);
         disconnect(m_destroyConnection);
@@ -342,6 +351,15 @@ protected:
     }
 
 private:
+    void stopAuditionBridge()
+    {
+        if (!m_auditionBridge) return;
+        m_auditionBridge->stop();
+        // Native event processing can dock reentrantly. Keep the stopped filter
+        // alive until its synthetic notification has finished unwinding.
+        m_auditionBridge->deleteLater();
+        m_auditionBridge = nullptr;
+    }
     void restoreInspectorTitlePolicy()
     {
         if (m_inspectorTitle) m_inspectorTitle->setSizePolicy(m_inspectorTitlePolicy);
@@ -381,6 +399,7 @@ private:
     }
     void clear()
     {
+        stopAuditionBridge();
         restoreInspectorTitlePolicy();
         delete m_nodesBounds; m_nodesBounds=nullptr;
         m_geometryTimer->stop();
@@ -400,6 +419,7 @@ private:
     QPointer<QLabel> m_inspectorTitle;
     QSizePolicy m_inspectorTitlePolicy;
     NodesCanvasBounds *m_nodesBounds=nullptr;
+    QPointer<AuditionActivationBridge> m_auditionBridge;
     QPointer<QLayout> m_layout;
     QPointer<QLayout> m_nativeLayout;
     int m_boxStretch=0;

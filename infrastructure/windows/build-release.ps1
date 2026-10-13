@@ -57,6 +57,7 @@ try {
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
+    Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
     Invoke-Checked $test @()
     Invoke-Checked $test @('--main-placement-test')
     Invoke-Checked $test @('--settings-json-test')

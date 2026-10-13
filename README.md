@@ -22,12 +22,12 @@ Inspector, Metadata and Mixer. **Color:** Nodes, Gallery, LUTs and Media Pool.
 Metadata and Inspector. Fairlight's dock button sits immediately left of the
 native options menu (Create Group for Groups). Meters is not supported.
 
-The current build diagnoses silent Fairlight Media Pool audition by retaining
-the floating host's Qt parent connection to the original pane container. Normal
-space reclamation is restored; leaving the native toggle on did not recover
-audio. The parent connection also failed to restore audition audio and remains
-an unsuccessful diagnostic experiment. See the
-[investigation findings](docs/fairlight-audition-investigation-2026-10-13.txt).
+Floating Fairlight Media Pool audition retains audio, smooth waveform updates
+and Control Room metering through an event-driven activation correction. The
+event-only fix was validated on Resolve 21.1.1.10 / Windows 10 / Xeon
+E5-2687W v4, including Resolve/Unbound restart. It uses public Qt
+events without private memory access or polling. See the
+[investigation findings](doc/fairlight-audition-investigation-2026-10-13.txt).
 
 ## Use
 

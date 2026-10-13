@@ -59,8 +59,9 @@ Fairlight pane keys under `pages.WStackPage_Audio.panes` are
 `frameTimelineMixerContainer`, `frameMetadataContainer`, and `frameInspectorContainer`.
 Meters is excluded. Fairlight uses the same geometry, docking and native toggle
 fields as Edit and Color, with restoration deferred until the page is active.
-The audition diagnostic uses the normal saved toggle preference and space
-reclamation behavior; its experimental parent connection adds no settings.
+Floating Media Pool audition uses an automatic activation correction with no
+additional setting or diagnostic switch. Saved toggle preferences and space
+reclamation behave normally; docking removes the correction.
 
 `mainWindow` contains:
 
