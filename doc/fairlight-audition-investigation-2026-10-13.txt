@@ -1,0 +1,245 @@
+Fairlight Media Pool audition investigation - 2026-10-13
+
+Status
+------
+No root cause is proven. No implementation changes or Resolve attachment were
+made during this investigation. A standalone Qt probe and static inspection
+provide narrower, testable hypotheses. Builds 004 and 005 did not fix audio.
+The installed Resolve executable inspected here reports version 21.1.1.10.
+The current source retains the unsuccessful 005 parent-connection experiment;
+it must not be mistaken for a confirmed fix.
+
+Current conclusion
+------------------
+The best-supported description is a failed playback handoff: floating audition
+enters a visual playback state and freezes timeline indicators, but does not
+stop the running timeline or become audible. The failing internal call or
+condition is not known. Investigation should target coordination between
+audition transport, timeline transport and active audio-source selection.
+
+Observed in Resolve (reported by Wolfgang)
+------------------------------------------
+1. Docked Media Pool audition produces audible audio and Control Room meter
+   signal. Undocked audition has working transport and waveform movement but
+   neither audible audio nor Control Room meter signal.
+2. Docking restores audio.
+3. Turning the native Media Pool toggle back on while floating does not help.
+4. Build 004 never turned that toggle off during detachment/restoration. It
+   remained silent, so the automatic off transition is not necessary to fail.
+5. Build 005 attached the floating Qt window to the original slot. It remained
+   silent, so an intact parentWidget chain alone is insufficient.
+6. Starting floating audition and clicking an empty part of Resolve's main
+   window does not restore audio or meter signal. A simple foreground-main-
+   window requirement is therefore a weaker explanation.
+
+The initial inference that silence and stationary meters locate a break before
+the Control Room meter is not established. The later observations below show
+that the meter displays can freeze while timeline audio continues normally.
+
+Later concurrent-playback observation (supersedes the meter inference above)
+--------------------------------------------------------------------------
+With timeline playback already running, starting the floating audition player
+moves its waveform but freezes the main timeline playhead and the Bus 1,
+Control Room and Loudness meter displays. Timeline audio AND the viewer image
+continue playing. Stopping audition immediately restores the main playhead and
+meter updates, without an audio glitch.
+
+Therefore, a stationary Control Room meter cannot by itself establish that no
+audition samples reach a particular point in the engine. Its display may not be
+updating. The audible absence of audition remains a separate observation.
+Nor is this a complete GUI-thread stall: the audition display and timeline
+viewer still update. Selected display subscriptions, playback UI modes, or
+selective update suppression are better candidates than a general GUI freeze.
+
+This strengthens a split-state hypothesis: audition playback changes a shared
+UI/transport state while the engine continues timeline playback and does not
+make the expected audible audition transition. That can explain both a moving
+audition waveform and frozen timeline indicators without requiring the timeline
+engine to stop. It is not yet established whether the state is an active-player
+selection, a signal subscription, an update-suppression flag, or another shared
+playback controller.
+
+Docked baseline (subsequently confirmed by Wolfgang)
+---------------------------------------------------
+With timeline playback running, starting docked audition stops the timeline and
+seamlessly starts audible audition playback. Stopping audition leaves the
+timeline stopped; it does not resume previous timeline playback.
+
+                                Docked audition       Floating audition
+Timeline on audition start      Stops                 Keeps playing A/V
+Timeline playhead and meters    Stop with timeline    Freeze despite playback
+Audition waveform              Moves                 Moves
+Audition audio                 Audible               Silent
+Timeline on audition stop      Remains stopped       Continues; indicators resume
+
+This isolates a playback-handoff failure more precisely than the original
+description of lost audition audio. Some shared UI state responds to audition
+start/stop while the expected timeline-stop/audio-source transition does not.
+That is a behavioral inference, not proof of a particular internal API failure.
+
+Extend the proposed trace to include timeline transport state and indicator
+updates at audition start/stop, not only at detach/dock. Compare the identical
+sequence docked and floating. Track player identity on each transport event,
+IsActiveChanged and MuteAudioChanged where available, and whether main playhead
+and meter objects still receive update events. Sample this with bounded
+instrumentation; do not add unbounded frame-by-frame logging or playback polling.
+
+The actual operation is broader than reparenting one splitter
+------------------------------------------------------------
+The snapshot has frameAudioPanelMediaPoolContainer -> mediaPoolSplitter ->
+frameAudioPagePreviewPlayerContainer -> previewPlayer (UiPlayerWidgetImp).
+The player's direct parent remains unchanged during our transfer.
+
+SidebarFloatSession::start creates a PaneFloatingWindow; in 005 only, it gives
+that host the original slot as its QWidget parent with Qt::Window flags.
+It copies the icon/taskbar identity, sets geometry/title, and calls
+host->setLayout(originalLayout). Fairlight does NOT use preserveNativeLayout:
+that option is currently enabled only for Color.
+
+Consequently both the original QLayout and its managed splitter change parent.
+The original slot receives a new placeholder layout. Any cached pointer to the
+original layout now refers to a layout owned by the floating host, while
+slot->layout() returns a different object. The host is then shown, and normally
+the native Media Pool toggle is clicked off. Restored geometry and startup fade
+may also apply. Native window creation occurs when platform helpers use winId().
+We have no evidence that native child handles are actually recreated in this
+Resolve subtree; that must be measured rather than assumed.
+
+Qt consequences verified separately
+----------------------------------
+A disposable probe was built using the installed Qt 5.15.2, with the offscreen
+backend. It transfers a layout containing a splitter and a child player model.
+Three variants were run: unparented top-level host (003-style), slot-parented
+top-level host (005-style), and a child host within the same main window.
+This models the Qt transfer, not Resolve's proprietary player or Windows audio.
+
+Results after showing the host:
+
+                                   docked   unparented   parented   same-window
+player->window()                    main     host         host       main
+parentWidget chain reaches page    yes      no           yes        yes
+page->isAncestorOf(player)          yes      no           no         yes
+original layout owner              slot     host         host       host
+original clicked connection works  yes      yes          yes        yes
+
+The top-level variants sent Hide to the splitter and its player descendants,
+ParentAboutToChange/ParentChange to the splitter, FocusOut, then Show and
+window activation/deactivation events. The player's direct parent was unchanged.
+The same-window variant also had hide/show and focus loss in this fixture, so
+same-window reparenting is not an event-free control.
+
+Important correction to the reasoning behind 005: QWidget::isAncestorOf checks
+membership within one window and stops at a window boundary. A parented Qt
+top-level window preserves QObject ancestry but does not preserve that test or
+player->window(). Also, the shown probe reports isVisibleTo(page)==true even
+across the window boundary; it must not be treated as equivalent to isAncestorOf.
+
+An existing cross-object signal connection delivered once after every transfer.
+Neither our transfer code nor the Qt reparent path intrinsically requires
+disconnecting the player's signals. Resolve's own event handlers could still
+change subscriptions or routing; this probe cannot establish what they do.
+
+Artifacts (ignored build output):
+  build/audition-investigation/probe.cpp
+  build/audition-investigation/CMakeLists.txt
+  build/audition-investigation/unparented.txt
+  build/audition-investigation/parented.txt
+  build/audition-investigation/same-window.txt
+
+Static Resolve evidence
+-----------------------
+Read-only extraction from Resolve.exe found the following names in apparent
+Qt metaobject string blocks. These are not runtime connection traces; no private
+method was invoked, and no source-level implementation was recovered.
+
+UiPlayerWidgetImp (block starts at file offset 0x1b000170):
+  TransportControlTriggered, PositionChanged, FocusReceived, IsActiveChanged,
+  MuteAudioChanged, ChangePlayerCinemaMode, ReplaceCinemaViewer,
+  OnRequestToShowFairlightDocker.
+UiAudioPanelImp (block starts at 0x1b0c0a18):
+  MuteAudioTriggered, SetPlayerFrame, PopOutPlayer, DockPlayer,
+  RefreshTimelineViewer.
+UiFocusedWidgetManager (block starts at 0x1b0c22c8):
+  FocusChanged, p_OldFocusWidget, p_NewFocusWidget.
+
+Other pages have SetActivePlayer and SetAudioMonitorWidgetActive names, but those
+were found beside Conform/Browse/FirstCut metadata, NOT as proven Fairlight
+audition handlers. They must not be presented as the missing Fairlight call.
+
+PopOutPlayer/DockPlayer make native player pop-out handling worth inspecting.
+They do not establish that Resolve supports popping out this specific Media
+Pool audition player or that those methods are safe to call without context.
+
+Ranked explanations
+-------------------
+1. Player recognition/registration depends on the original window or same-window
+   ancestry. A window() comparison/cast, isAncestorOf test, or window-scoped
+   active-player registry would fail in both 004 and 005 and recover on docking.
+   Clicking the main window would not repair the player's window identity.
+   This fits the evidence best, but no such Resolve condition has been observed.
+
+2. Resolve responds to hide/reparent/window transitions by unregistering or
+   deactivating the audition source, and normal show/focus handling does not
+   reactivate it in an unfamiliar host. This also fits all observations. A
+   stopped visual transport is not required for separate audio deactivation.
+
+3. The moved native layout, direct-parent expectations around the splitter, or
+   context lookup through its old slot breaks an audio-specific lookup. 005
+   retains an ancestor chain but does not retain the splitter's immediate parent
+   or the original layout's owner. This has not been isolated by either build.
+
+4. Native window/surface identity is used by player/audio integration. Qt can
+   change native parenting or effective window handles. Possible, but there is
+   presently no handle trace or evidence of an HWND-bound audio endpoint.
+
+Weaker explanations: automatic toolbar reclamation (004 rules it out as a
+necessary trigger), absence of all QObject ancestry (005), simple main-window
+foreground state (user test), generic automatic Qt signal disconnection (probe
+and source), and a pure speaker-device failure (docking plus meter observations).
+
+Next investigation should collect data, not guess at private calls
+----------------------------------------------------------------
+Use a bounded, GUI-thread observer scoped to the actual audition subtree and
+Fairlight controller. Capture on explicit checkpoints/events, never on recurring
+polling, paint, resize loops, or audio callbacks. Do not force native handles
+into existence just to log them; read existing handles only.
+
+Record before transfer, after transfer, after showing, after requesting playback,
+after switching foreground back to main, and after docking:
+  - original object identities, immediate parents, parent chains, window(),
+    same-window ancestry, existing window handles, layout owner and contents;
+  - visible/hidden/enabled state, activeWindow, focusWidget, mute button state;
+  - Hide/Show, ParentAboutToChange/ParentChange, FocusIn/Out, WindowActivate/
+    Deactivate and relevant native-window changes;
+  - actual metaobject method signatures first, then passive observation of
+    FocusReceived, IsActiveChanged, MuteAudioChanged and transport signals where
+    signatures and safe connections have been verified.
+
+Compare a fresh docked baseline with the failing floating case, including the
+confirmed timeline-to-audition handoff sequence above. Do not attach
+GammaRay to the already Unbound-modified user session; local capture instructions
+require an unmodified fresh process. Do not call guessed SetActivePlayer or
+PopOutPlayer methods, synthesize focus events, or block native events globally.
+
+If state logging cannot distinguish the hypotheses, use isolated tests:
+  A. Reparent within the same main window (tests lifecycle/layout changes without
+     introducing a top-level boundary).
+  B. Keep the slot's original layout and move only its sole splitter into a host
+     (tests whether moving the layout adds the failure).
+  C. Inspect Resolve's native pop-out lifecycle, if applicable, for the missing
+     player-registration/monitoring transition.
+Each needs actual audition audio and Control Room meter observations. Standalone
+fixtures can validate lifecycle only; passing them is not an audio fix.
+
+Primary Qt source used (exact version)
+------------------------------------
+https://github.com/qt/qtbase/blob/v5.15.2/src/widgets/kernel/qwidget.cpp
+  QWidget::setLayout, QWidget::setParent, QWidget::isAncestorOf
+https://github.com/qt/qtbase/blob/v5.15.2/src/widgets/kernel/qlayout.cpp
+  QLayoutPrivate::reparentChildWidgets
+https://github.com/qt/qtbase/blob/v5.15.2/src/corelib/kernel/qobject.cpp
+  QObject parenting and connection lifecycle
+
+The probe establishes Qt behavior; metadata establishes names present in this
+Resolve binary; user tests establish the actual audible symptom. None alone
+reveals Resolve's internal audio-routing condition.

@@ -3,3 +3,4 @@
 #include "panefloatingwindow.h"
 #include "mainwindowsnap.h"
 #include "panetaskbar.h"
+#include "windowgroupactivation.h"

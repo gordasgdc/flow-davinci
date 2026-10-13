@@ -89,10 +89,26 @@ protected:
         return false;
     }
 private:
+    bool requiresNativeHeader() const
+    {
+        const auto name=m_pane->objectName();
+        return name.startsWith("frameAudioPanel") || name=="frameTimelineMixerContainer"
+            || name=="frameMetadataContainer" || name=="frameInspectorContainer";
+    }
     bool isAnchor(QAbstractButton *b) const
     {
-        const auto pane=m_pane->objectName(), name=b->objectName();
+        auto pane=m_pane->objectName();
+        const auto name=b->objectName();
         const auto parent=b->parentWidget() ? b->parentWidget()->objectName() : QString();
+        if(pane=="frameAudioPanelGroupsContainer") return name=="m_BtnMenu" && parent=="frameHeaderTitle";
+        if(pane=="frameAudioPanelAdrContainer") return name=="optionsBtn" && parent=="headerFrame";
+        if(pane=="frameAudioPanelMediaPoolContainer") pane="frameEditPageMediaPool";
+        if(pane=="frameAudioPanelEffectsLibraryContainer") pane="frameEditPageEffectsLibrary";
+        if(pane=="frameAudioPanelIndexContainer") pane="frameEditPageEditIndex";
+        if(pane=="frameAudioPanelSoundLibraryContainer") pane="frameEditPageSoundLibrary";
+        if(pane=="frameTimelineMixerContainer") pane="frameEditAudioMeter";
+        if(pane=="frameMetadataContainer") pane="frameEditPageMetadata";
+        if(pane=="frameInspectorContainer") pane="frameEditPageInspector";
         if(pane=="frameEditPageMediaPool" || pane=="m_pWidgetMediaPool") return name=="btnMediaPoolOptions" && parent=="frameMediaPoolTitleBarTop";
         if(pane=="frameEditPageInspector") return name=="btnTitleOptions" && parent=="frameEffectsWidgetsTitle";
         if(pane=="frameEditAudioMeter") return name=="btnAudioMixerOptions" && (parent=="frameOptions" || parent=="frameHeaderContainer");
@@ -145,7 +161,7 @@ private:
                 auto b=makeButton(anchor->parentWidget());
                 layout->insertWidget(layout->indexOf(anchor),b,0,Qt::AlignVCenter); b->show();
             }
-        } else if(!any) {
+        } else if(!any && !requiresNativeHeader()) {
             m_native=false; m_buttons.clear(); m_strip=24;
             m_pane->setContentsMargins(m_margins.left(),m_margins.top()+m_strip,m_margins.right(),m_margins.bottom());
             makeButton(m_pane)->show();

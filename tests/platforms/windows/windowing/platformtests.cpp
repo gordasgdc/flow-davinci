@@ -1,5 +1,7 @@
 #include "fixtures.h"
 #include "mainwindowsnap.h"
+#include "windowgroupactivation.h"
+#include <QDialog>
 
 void initializePlatformTests()
 {
@@ -90,6 +92,68 @@ bool runPlatformDiscoveryTests(QApplication &app)
 }
 bool runPlatformWindowTests(QApplication &app)
 {
+    if (app.arguments().contains("--group-activation-native")) {
+        check(QGuiApplication::platformName() == "windows", "Group activation requires the Windows platform");
+        QWidget main, outsider;
+        Unbound::PaneFloatingWindow first, second, hidden, minimized;
+        Unbound::WindowGroupActivation group;
+        group.setWindow(&main);
+        main.setGeometry(80, 80, 300, 200);
+        first.setGeometry(400, 80, 250, 200);
+        second.setGeometry(670, 80, 250, 200);
+        for (auto window : {&main, &outsider, static_cast<QWidget *>(&first), static_cast<QWidget *>(&second),
+                static_cast<QWidget *>(&minimized)}) {
+            window->show();
+        }
+        minimized.showMinimized();
+        auto settle = [&] { for (int i = 0; i < 4; ++i) app.processEvents(); };
+        settle();
+        auto handle = [](QWidget &window) { return reinterpret_cast<HWND>(window.winId()); };
+        auto activate = [](HWND window) {
+            SetForegroundWindow(window);
+            return GetForegroundWindow() == window;
+        };
+        auto rank = [](HWND target) {
+            int index = 0;
+            for (auto window = GetTopWindow(nullptr); window; window = GetWindow(window, GW_HWNDNEXT), ++index)
+                if (window == target) return index;
+            return -1;
+        };
+        const auto mainRect = nativeWindowBounds(main), firstRect = nativeWindowBounds(first), secondRect = nativeWindowBounds(second);
+        for (auto selected : {&main, static_cast<QWidget *>(&first), static_cast<QWidget *>(&second)}) {
+            SetWindowPos(handle(second), HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(handle(first), HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(handle(outsider), HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            check(activate(handle(*selected)), "Cannot activate test window");
+            // Also covers activation while already foreground; no app switch is required.
+            QEvent activation(QEvent::WindowActivate); app.sendEvent(selected, &activation);
+            settle();
+            check(GetForegroundWindow() == handle(*selected), "Group activation stole selected window focus");
+            for (auto peer : {&main, static_cast<QWidget *>(&first), static_cast<QWidget *>(&second)})
+                check(rank(handle(*peer)) < rank(handle(outsider)), "Group member remained behind unrelated window");
+            if (selected == &main) check(rank(handle(first)) < rank(handle(second)), "Peer relative order changed");
+            check(!hidden.isVisible() && minimized.isMinimized(), "Group activation exposed hidden/minimized pane");
+            check(nativeWindowBounds(main) == mainRect && nativeWindowBounds(first) == firstRect
+                && nativeWindowBounds(second) == secondRect, "Group activation changed geometry");
+            for (auto peer : {&main, static_cast<QWidget *>(&first), static_cast<QWidget *>(&second)})
+                check(!(GetWindowLongPtr(handle(*peer), GWL_EXSTYLE) & WS_EX_TOPMOST), "Group became always-on-top");
+        }
+        QEvent activation(QEvent::WindowActivate);
+        app.sendEvent(&first, &activation);
+        check(activate(handle(outsider)), "Cannot activate unrelated test window");
+        settle();
+        check(GetForegroundWindow() == handle(outsider) && rank(handle(outsider)) < rank(handle(first)),
+            "Stale activation pulled group over another window");
+        QDialog modal(&main); modal.setModal(true); modal.show(); settle();
+        const auto modalForeground = GetForegroundWindow();
+        app.sendEvent(&main, &activation); settle();
+        check(GetForegroundWindow() == modalForeground && rank(handle(modal)) < rank(handle(main)),
+            "Group activation covered or stole focus from modal dialog");
+        modal.hide();
+        group.setWindow(nullptr);
+        std::puts("PASS: native group activation from main/each pane, selected focus, peer order, geometry, hidden/minimized exclusion, stale activation and modal dialog");
+        return true;
+    }
     if (app.arguments().contains("--snap-native")) {
         QWidget main;
         main.setObjectName("UiMainWindow");

@@ -79,7 +79,7 @@ public:
         auto host = new QWidget(parent->window(), Qt::Window);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setObjectName(QStringLiteral("gammarayFloatingEditMediaPool"));
-        host->setWindowTitle(QStringLiteral("Resolve Media Pool - experimental; close to restore"));
+        host->setWindowTitle(QStringLiteral("Media Pool"));
         host->resize(content->size().expandedTo(QSize(360, 300)));
         m_host = host;
         auto hostLayout = new QVBoxLayout(host);

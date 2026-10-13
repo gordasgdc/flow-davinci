@@ -15,6 +15,19 @@
 #include "panedecoration.h"
 
 namespace {
+QString audioToggle(const QString &name)
+{
+    static const QMap<QString, QString> panes = {
+        {"frameAudioPanelMediaPoolContainer", "MediaPool"},
+        {"frameAudioPanelEffectsLibraryContainer", "EffectsLibrary"},
+        {"frameAudioPanelIndexContainer", "Index"},
+        {"frameAudioPanelGroupsContainer", "Groups"},
+        {"frameAudioPanelSoundLibraryContainer", "SoundLibrary"},
+        {"frameAudioPanelAdrContainer", "Adr"},
+        {"frameTimelineMixerContainer", "Mixer"},
+        {"frameMetadataContainer", "Metadata"}, {"frameInspectorContainer", "Inspector"}};
+    return panes.value(name);
+}
 QString colorToggle(const QString &name)
 {
     if (name == QLatin1String("m_pFrameNodeGraph")) return QStringLiteral("btnColorToggleNodeGraph");
@@ -31,6 +44,10 @@ bool matchesColorToggle(const QString &name, const QString &buttonName)
 bool matchesNativeToggle(const QString &name, const QString &buttonName)
 {
     if (!colorToggle(name).isEmpty()) return matchesColorToggle(name, buttonName);
+    if (!audioToggle(name).isEmpty()) {
+        const auto base = QStringLiteral("btnAudioPanel") + audioToggle(name);
+        return buttonName == base + QStringLiteral("InSSM") || buttonName == base + QStringLiteral("InDSM");
+    }
     static const QMap<QString, QString> editToggles = {
         {"frameEditPageMediaPool", "MediaPool"}, {"frameEditPageEffectsLibrary", "EffectsLibrary"},
         {"frameEditPageSoundLibrary", "SoundLibrary"}, {"frameEditPageKeyframeEditor", "KeyframeEditor"},
@@ -46,11 +63,13 @@ bool matchesNativeToggle(const QString &name, const QString &buttonName)
 QString settingsKey(const QString &name)
 {
     // Preserve existing Edit keys; new pages use an explicit namespace.
+    if (!audioToggle(name).isEmpty()) return QStringLiteral("Audio/") + name;
     return !colorToggle(name).isEmpty() ? QStringLiteral("Color/") + name : name;
 }
 QWidget *panePage(QWidget *pane)
 {
-    const auto rootName = !colorToggle(pane->objectName()).isEmpty()
+    const auto rootName = !audioToggle(pane->objectName()).isEmpty() ? QStringLiteral("WStackPage_Audio")
+        : !colorToggle(pane->objectName()).isEmpty()
         ? QStringLiteral("WStackPage_Color") : QStringLiteral("frameEditPageWidgetsContainer");
     for (auto p = pane->parentWidget(); p; p = p->parentWidget())
         if (p->objectName() == rootName) return p;
@@ -68,7 +87,12 @@ public:
             {"frameEditPageEditIndex", "Edit Index"}, {"frameEditPageInspector", "Inspector"},
             {"frameEditPageMetadata", "Metadata"}, {"frameEditAudioMeter", "Mixer"},
             {"m_pFrameNodeGraph", "Nodes"}, {"m_pWidgetGallery", "Gallery"},
-            {"m_pWidgetLutBrowser", "LUTs"}, {"m_pWidgetMediaPool", "Media Pool"}};
+            {"m_pWidgetLutBrowser", "LUTs"}, {"m_pWidgetMediaPool", "Media Pool"},
+            {"frameAudioPanelMediaPoolContainer", "Media Pool"}, {"frameAudioPanelEffectsLibraryContainer", "Effects"},
+            {"frameAudioPanelIndexContainer", "Index"}, {"frameAudioPanelGroupsContainer", "Groups"},
+            {"frameAudioPanelSoundLibraryContainer", "Sound Library"}, {"frameAudioPanelAdrContainer", "ADR"},
+            {"frameTimelineMixerContainer", "Mixer"}, {"frameMetadataContainer", "Metadata"},
+            {"frameInspectorContainer", "Inspector"}};
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { delete this; }, Qt::DirectConnection);
         qApp->installEventFilter(this);
         // One initial inventory. Later work is restricted to newly added
@@ -83,6 +107,7 @@ public:
         m_mainPlacement.flush();
         m_mainPlacement.error = {};
         m_mainSnap.setWindow(nullptr);
+        m_windowGroup.setWindow(nullptr);
         qDeleteAll(m_decorations);
         qDeleteAll(m_sessions);
     }
@@ -102,7 +127,8 @@ protected:
                 const auto name=widget->objectName();
                 if (name==QLatin1String("UiMainWindow") && widget!=m_window) queueBranch(widget);
                 else if (name==QLatin1String("frameEditPageWidgetsContainer")
-                    || name==QLatin1String("WStackPage_Conform") || name==QLatin1String("WStackPage_Color"))
+                    || name==QLatin1String("WStackPage_Conform") || name==QLatin1String("WStackPage_Color")
+                    || name==QLatin1String("WStackPage_Audio"))
                     { if (!m_pages.contains(widget)) queueBranch(widget); else scheduleDiscovery(); }
                 else if (m_names.contains(name)) { indexWidget(widget); scheduleDiscovery(); }
                 else if (m_watchedToggles.contains(qobject_cast<QAbstractButton *>(widget))) scheduleDiscovery();
@@ -150,6 +176,7 @@ private:
         if (root->objectName()==QLatin1String("UiMainWindow") && m_window!=root) {
             m_window=root;
             m_mainSnap.setWindow(root);
+            m_windowGroup.setWindow(root);
             m_mainPlacement.attach(root);
         }
         if (!m_window || (root!=m_window && !m_window->isAncestorOf(root))) return;
@@ -163,7 +190,7 @@ private:
         if (widget->objectName()==QLatin1String("widgetStack_Panel")) m_mainPlacement.attach(m_window);
         const auto name=widget->objectName();
         if ((name==QLatin1String("frameEditPageWidgetsContainer") || name==QLatin1String("WStackPage_Conform")
-            || name==QLatin1String("WStackPage_Color")) && !m_pages.contains(widget)) {
+            || name==QLatin1String("WStackPage_Color") || name==QLatin1String("WStackPage_Audio")) && !m_pages.contains(widget)) {
             m_pages.insert(widget);
             connect(widget,&QObject::destroyed,this,[this,widget] { m_pages.remove(widget); });
         }
@@ -325,7 +352,8 @@ private:
         auto pane = decoration->pane();
         auto toggle = nativeToggle(pane,name);
         const bool preserveNativeLayout = !colorToggle(name).isEmpty();
-        error(session->start(pane, m_names.value(name), panePage(pane), name == QStringLiteral("frameEditAudioMeter"), automatic, preserveNativeLayout));
+        error(session->start(pane, m_names.value(name), panePage(pane),
+            name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout));
         if (session->active()) {
             // Manual detachment also resolves startup intent. Lifecycle events
             // must not interpret its newly saved floating state as a restore.
@@ -337,7 +365,10 @@ private:
                 if (savedChoice && preserveNativeLayout) m_pendingColorToggles.insert(name);
                 else if (savedChoice) {
                     m_restoringToggles = true;
-                    if (toggle->isChecked() != m_settings.toggle(settingsKey(name))) toggle->click();
+                    if (toggle->isChecked() != m_settings.toggle(settingsKey(name))) {
+                        if (toggle->isChecked()) session->reclaimNativeSpace(toggle);
+                        else toggle->click();
+                    }
                     m_restoringToggles = false;
                 }
                 else if (!automatic && toggle->isChecked()) {
@@ -392,13 +423,16 @@ private:
             if (!root || !root->isVisible() || !pane->layout() || !pane->layout()->count()) continue;
             bool requested = false;
             if ((name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameEditPageInspector")
-                || name == QStringLiteral("frameEditPageMetadata") || !colorToggle(name).isEmpty())
+                || name == QStringLiteral("frameEditPageMetadata") || !colorToggle(name).isEmpty() || !audioToggle(name).isEmpty())
                 && !prepareNativePane(pane, name, requested)) {
                 // Shared sidebar selectors are mutually exclusive. Let one
                 // native activation finish and detach it before selecting next.
-                if (requested && !colorToggle(name).isEmpty()) return;
+                if (requested && (!colorToggle(name).isEmpty() || !audioToggle(name).isEmpty())) return;
                 continue;
             }
+            // Fairlight controls belong beside native header actions, never in
+            // a fallback strip. Lazy native initialization may create them.
+            if (!audioToggle(name).isEmpty() && !it.value()->usesNativeHeader()) continue;
             m_restoreAttempted.insert(name); // No repeated errors for incompatible panes.
             undock(name, true);
         }
@@ -413,6 +447,7 @@ private:
     Unbound::PaneSettings m_settings;
     Unbound::MainWindowPlacement m_mainPlacement{m_settings};
     Unbound::MainWindowSnap m_mainSnap;
+    Unbound::WindowGroupActivation m_windowGroup;
     bool m_settingsErrorShown = false;
     bool m_restoringToggles = false;
     QSet<QAbstractButton *> m_watchedToggles;

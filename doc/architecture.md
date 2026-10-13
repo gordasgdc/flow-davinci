@@ -18,6 +18,8 @@ and retains the existing idempotency guard.
   The backend supplies `PaneFloatingWindow`, `MainWindowSnap`, dark-caption and
   window-identity helpers. This compile-time contract preserves the existing
   Windows classes without introducing another window ownership layer.
+  `WindowGroupActivation` raises visible peers on activation without changing focus
+  or introducing a recurring timer; its native implementation belongs to the backend.
 - `windowplacement.h` declares native capture, restoration and eligibility hooks.
   The common placement tracker retains monitor checks, page lifecycle and Qt
   geometry fallback. Native Windows placement records and coordinate conventions

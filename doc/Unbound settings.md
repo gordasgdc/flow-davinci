@@ -52,6 +52,16 @@ Color pane keys are `m_pFrameNodeGraph`, `m_pWidgetGallery`, `m_pWidgetLutBrowse
 and `m_pWidgetMediaPool`. Color's shared sidebar selectors are exclusive;
 save at most one of Gallery/LUTs/Media Pool as checked. All can be unchecked.
 
+Fairlight pane keys under `pages.WStackPage_Audio.panes` are
+`frameAudioPanelMediaPoolContainer`, `frameAudioPanelEffectsLibraryContainer`,
+`frameAudioPanelIndexContainer`, `frameAudioPanelGroupsContainer`,
+`frameAudioPanelSoundLibraryContainer`, `frameAudioPanelAdrContainer`,
+`frameTimelineMixerContainer`, `frameMetadataContainer`, and `frameInspectorContainer`.
+Meters is excluded. Fairlight uses the same geometry, docking and native toggle
+fields as Edit and Color, with restoration deferred until the page is active.
+The audition diagnostic uses the normal saved toggle preference and space
+reclamation behavior; its experimental parent connection adds no settings.
+
 `mainWindow` contains:
 
 - `normalRect`: native Windows position and size, with `x`, `y`, `width`, `height`.

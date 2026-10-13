@@ -8,6 +8,11 @@ Edit Index, Inspector, Metadata and Mixer; Color supports Nodes, Gallery, LUTs
 and Media Pool. Floating windows and the main window snap to one another and
 display work-area edges during movement/resizing; Alt bypasses snapping.
 
+Fairlight supports Media Pool, Effects, Index, Groups, Sound Library, ADR, Mixer,
+Metadata and Inspector; Meters is excluded. Fairlight docking controls must sit
+immediately left of the native options action (Create Group for Groups), never
+in a fallback strip. Fairlight settings belong to `WStackPage_Audio`.
+
 The overlapping-squares header button toggles docking; closing a floating window
 also docks it. Strokes stay muted grey (#848484) in either state and brighten
 only on hover. Tooltips are "Undock" and "Dock". Manual undocking turns off the
@@ -17,6 +22,8 @@ remain usable, and startup restoration honors saved choices. Remember geometry, 
 states across sessions; hide/show retained floating windows with their page.
 Main-window placement is remembered per page. Unbound can start first and wait
 silently for Resolve, without launching it.
+Activating the main window or a floating pane raises the visible, non-minimized
+group while preserving selected-window focus. Group activation is event-driven.
 
 ## Architecture
 

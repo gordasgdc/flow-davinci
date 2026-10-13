@@ -122,10 +122,15 @@ public:
         m_root = pageRoot ? pageRoot : slot->parentWidget();
         m_layout = layout;
         auto host = new PaneFloatingWindow;
+        // Audition diagnostic: retain a Qt ancestor path to the original
+        // Fairlight container, while keeping an independent top-level window.
+        // Resolve audio must be validated live; fixtures only verify lifecycle.
+        if (slot->objectName()==QLatin1String("frameAudioPanelMediaPoolContainer"))
+            host->setParent(slot, Qt::Window);
         inheritPaneTaskbarIdentity(host, slot->window());
         m_host = host;
         host->setObjectName(QStringLiteral("gammarayFloating_") + slot->objectName());
-        host->setWindowTitle(QStringLiteral("Resolve %1").arg(label));
+        host->setWindowTitle(label);
         host->resize(slot->size().expandedTo(QSize(360, 300)));
         if (preserveNativeLayout) {
             // Retain Resolve's native layout during visibility/selector changes.
@@ -169,7 +174,7 @@ public:
         placeholderLayout->addWidget(placeholder);
         placeholder->show();
         }
-        if (slot->objectName()==QLatin1String("frameEditPageInspector")) {
+        if (slot->objectName()==QLatin1String("frameEditPageInspector") || slot->objectName()==QLatin1String("frameInspectorContainer")) {
             auto header=host->findChild<QWidget *>(QStringLiteral("frameEffectsWidgetsTitle"));
             auto title=header ? header->findChild<QLabel *>(QStringLiteral("labelTitle"),Qt::FindDirectChildrenOnly) : nullptr;
             // Resolve already paints this label with middle elision. Its full

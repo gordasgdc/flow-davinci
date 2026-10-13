@@ -1,9 +1,11 @@
 #include "fixtures.h"
+#include "fairlighttest.h"
 
 int main(int argc, char **argv)
 {
     initializePlatformTests();
     QApplication app(argc, argv);
+    if (runFairlightTest(app)) return 0;
     if (app.arguments().contains("--inspector-title-test")) {
         QWidget page; page.resize(700,500);
         auto slot=new QWidget(&page); slot->setObjectName("frameEditPageInspector"); slot->resize(600,400);

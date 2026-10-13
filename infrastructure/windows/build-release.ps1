@@ -70,6 +70,8 @@ try {
     Invoke-Checked $test @('--standalone-test', '--toggle-state-test', $dll)
     Invoke-Checked $test @('--standalone-test', '--color-selected-test', $dll)
     Invoke-Checked $test @('--reclaim-test', $dll)
+    Invoke-Checked $test @('--fairlight-test', $dll)
+    Invoke-Checked $test @('--fairlight-test', '--restore', $dll)
     Invoke-Checked $test @('--discovery-test', $dll)
     # Only these two runtime files are distributed; build records stay in build/.
     New-Item -ItemType Directory -Path $destination | Out-Null

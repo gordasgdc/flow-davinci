@@ -5,15 +5,29 @@ on Windows. Arrange them across your displays, snap them against Resolve's main
 window or each other, and restore your workspace between sessions.
 
 - Dock or undock with the overlapping-squares button beside a pane's menu.
+- Floating window titles show the pane name alongside the Resolve icon.
 - Snap window edges when moving or resizing, including display work-area edges.
   Hold **Alt** to bypass snapping.
 - Unbound remembers window positions, sizes, docking and pane-toggle states.
 - The floating Edit Inspector lets its native title label elide long filenames
   in the middle instead of using their full length as the window's minimum width.
 - Unbound hides floating panes when leaving their page and restore them on return.
+- Activating Resolve's main window or a floating pane brings the visible window
+  group forward, keeping focus on the selected window. Hidden and minimized panes
+  keep their state. This works with taskbar previews, Alt+Tab and direct clicks.
 
 **Edit:** Media Pool, Effects, Sound Library, Keyframe Editor, Edit Index,
 Inspector, Metadata and Mixer. **Color:** Nodes, Gallery, LUTs and Media Pool.
+**Fairlight:** Media Pool, Effects, Index, Groups, Sound Library, ADR, Mixer,
+Metadata and Inspector. Fairlight's dock button sits immediately left of the
+native options menu (Create Group for Groups). Meters is not supported.
+
+The current build diagnoses silent Fairlight Media Pool audition by retaining
+the floating host's Qt parent connection to the original pane container. Normal
+space reclamation is restored; leaving the native toggle on did not recover
+audio. The parent connection also failed to restore audition audio and remains
+an unsuccessful diagnostic experiment. See the
+[investigation findings](docs/fairlight-audition-investigation-2026-10-13.txt).
 
 ## Use
 

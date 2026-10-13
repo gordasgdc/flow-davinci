@@ -115,8 +115,11 @@ private:
     static QPair<QString,QString> location(const QString &name)
     {
         if(name.startsWith("MainWindow/")) return {legacyPages().contains(name.mid(11)) ? name.mid(11) : QString(),"mainWindow"};
-        if(!legacyPanes().contains(name)) return {};
-        return {name.startsWith("Color/") ? "WStackPage_Color" : "WStackPage_Conform",name.section('/',-1)};
+        static const QStringList audioPanes={"frameAudioPanelMediaPoolContainer","frameAudioPanelEffectsLibraryContainer",
+            "frameAudioPanelIndexContainer","frameAudioPanelGroupsContainer","frameAudioPanelSoundLibraryContainer",
+            "frameAudioPanelAdrContainer","frameTimelineMixerContainer","frameMetadataContainer","frameInspectorContainer"};
+        if(!legacyPanes().contains(name) && !(name.startsWith("Audio/") && audioPanes.contains(name.mid(6)))) return {};
+        return {name.startsWith("Audio/") ? "WStackPage_Audio" : name.startsWith("Color/") ? "WStackPage_Color" : "WStackPage_Conform",name.section('/',-1)};
     }
     QJsonObject entry(const QString &name) const
     {
