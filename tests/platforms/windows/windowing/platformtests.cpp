@@ -224,6 +224,51 @@ bool runPlatformWindowTests(QApplication &app)
         std::puts("PASS: native main move/resize routing, floating resize, exact contact alignment, bypass and hidden-window exclusion");
         return true;
     }
+    if (app.arguments().contains("--audition-taskbar-native")) {
+        check(QGuiApplication::platformName()==QLatin1String("windows"),"Taskbar fixture requires native Windows backend");
+        QWidget main;main.setObjectName("UiMainWindow");main.resize(360,260);
+        QWidget page(&main);page.setObjectName("WStackPage_Audio");page.resize(340,240);
+        QWidget slot(&page);slot.setObjectName("frameAudioPanelMediaPoolContainer");slot.resize(320,220);
+        auto layout=new QVBoxLayout(&slot);
+        auto preview=new QWidget(&slot);preview->setObjectName("previewPlayer");layout->addWidget(preview);
+        const auto mainHandle=reinterpret_cast<HWND>(main.winId());
+        IPropertyStore *properties=nullptr;
+        check(SUCCEEDED(SHGetPropertyStoreForWindow(mainHandle,IID_PPV_ARGS(&properties))),"Source property store unavailable");
+        PROPVARIANT id;PropVariantInit(&id);id.vt=VT_LPWSTR;
+        id.pwszVal=const_cast<wchar_t *>(L"Unbound.AuditionTaskbarTest");
+        check(SUCCEEDED(properties->SetValue(PKEY_AppUserModel_ID,id)),"Setting audition test identity failed");
+        properties->Release();
+        main.setAttribute(Qt::WA_ShowWithoutActivating);main.show();page.show();slot.show();app.processEvents();
+        Unbound::SidebarFloatSession session;
+        for (bool automatic : {false,true}) {
+            check(session.start(&slot,"Audition taskbar fixture",&page,false,automatic).isEmpty(),"Native audition detach failed");
+            auto host=session.floatingWindow();
+            const auto handle=reinterpret_cast<HWND>(host->winId());
+            auto verify=[&] {
+                check(host->parentWidget()==&slot && preview->window()==host,"Audition Qt ancestry changed");
+                check(GetWindow(handle,GW_OWNER)==mainHandle,"Native audition owner changed");
+                const auto style=GetWindowLongPtr(handle,GWL_EXSTYLE);
+                check((style & WS_EX_APPWINDOW) && !(style & (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE)),"Owned audition host is excluded from shell switching");
+                check(SUCCEEDED(SHGetPropertyStoreForWindow(handle,IID_PPV_ARGS(&properties))),"Audition property store unavailable");
+                PROPVARIANT result;PropVariantInit(&result);
+                check(SUCCEEDED(properties->GetValue(PKEY_AppUserModel_ID,&result)) && result.vt==VT_LPWSTR
+                    && wcscmp(result.pwszVal,L"Unbound.AuditionTaskbarTest")==0,"Audition grouping identity lost");
+                PropVariantClear(&result);properties->Release();
+            };
+            verify();app.processEvents();verify();
+            slot.hide();verify(); // Native pane toggle reclaims main-window space.
+            page.hide();app.processEvents();
+            check(!host->isVisible(),"Leaving page did not hide audition host");
+            page.show();app.processEvents();verify();
+            check(host->isVisible(),"Returning page did not restore audition host");
+            host->showMinimized();app.processEvents();verify();
+            host->showNormal();app.processEvents();verify();
+            check(session.dock().isEmpty() && preview->window()==&main,"Native audition docking failed");
+            slot.show();app.processEvents();
+        }
+        std::puts("PASS: owned audition host has taskbar/Alt+Tab style and copied grouping identity; Qt/native ownership, manual/startup detach, page return, minimize/restore and docking preserved");
+        return true;
+    }
     if (app.arguments().contains("--taskbar-native")) {
         QWidget source;
         IPropertyStore *properties = nullptr;
