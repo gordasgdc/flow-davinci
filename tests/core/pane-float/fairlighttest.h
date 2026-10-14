@@ -1,9 +1,48 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 
+void verifyFairlightMixerRecovery()
+{
+    // Cover callbacks racing docking/page changes, including a synchronous
+    // native host hide before the page itself becomes hidden.
+    for(int mode=0;mode<3;++mode) {
+        QWidget page; page.resize(600,400);
+        auto splitter=new QSplitter(&page); splitter->resize(600,400);
+        new QWidget(splitter);
+        auto slot=new QWidget(splitter); slot->setObjectName("frameTimelineMixerContainer");
+        auto layout=new QVBoxLayout(slot);
+        auto content=new QLabel("Mixer",slot); layout->addWidget(content);
+        auto alternate=new QLabel("Hidden alternate",slot); layout->addWidget(alternate); alternate->hide();
+        QPushButton toggle(&page); toggle.setCheckable(true); toggle.setChecked(true);
+        auto settle=[] {for(int i=0;i<8;++i) QCoreApplication::processEvents();};
+        page.show(); settle();
+        Unbound::SidebarFloatSession session;
+        check(session.start(slot,"Mixer",&page,true).isEmpty(),"Mixer recovery setup failed"); settle();
+        QPointer<QWidget> host=session.floatingWindow();
+        QObject::connect(&toggle,&QPushButton::clicked,&page,[content](bool checked) {
+            content->parentWidget()->setVisible(checked);
+        });
+        session.reclaimNativeSpace(&toggle);
+        if(mode==1) page.hide();
+        if(mode==2) check(session.dock().isEmpty(),"Dock during Mixer recovery failed");
+        settle();
+        check(!toggle.isChecked() && alternate->isHidden(),"Recovery changed toggle or exposed alternate Mixer");
+        if(mode==2) {
+            check(!session.active() && (!host || !host->isVisible()) && slot->layout()==layout,
+                "Queued Mixer recovery reopened a docked host");
+        } else {
+            check(host && host->isVisible()==(mode==0),"Mixer recovery ignored page visibility");
+            if(mode==1) {page.show(); settle(); check(host->isVisible(),"Mixer lost page-return visibility after native hide");}
+            check(slot->isHidden() && content->isVisible(),"Mixer recovery failed to retain reclaimed space/content");
+            check(session.dock().isEmpty(),"Mixer recovery docking failed");
+        }
+    }
+}
+
 bool runFairlightTest(QApplication &app)
 {
     if (!app.arguments().contains("--fairlight-test")) return false;
+    verifyFairlightMixerRecovery();
     QTemporaryDir directory;
     check(directory.isValid(), "Cannot create Fairlight settings directory");
     const auto path=directory.filePath("Unbound.json");
@@ -41,8 +80,13 @@ bool runFairlightTest(QApplication &app)
         if(i==6) {auto alternate=new QWidget(slot); alternate->setObjectName("hiddenMixer"); layout->addWidget(alternate); alternate->hide();}
         auto toggle=new QPushButton("Native toggle",page); toggle->setObjectName("btnAudioPanel"+suffixes[i]+"InSSM");
         toggle->setCheckable(true); toggle->setChecked(!restore);
-        QObject::connect(toggle,&QPushButton::clicked,page,[slot,content](bool checked) {
-            QTimer::singleShot(0,slot,[slot,content,checked]{slot->setVisible(checked); content->setVisible(checked);});
+        QObject::connect(toggle,&QPushButton::clicked,page,[slot,content,i](bool checked) {
+            QTimer::singleShot(0,slot,[slot,content,i,checked]{
+                slot->setVisible(checked); content->setVisible(checked);
+                // Fairlight may address the mixer's current container through
+                // its retained content pointer. After transfer this is the host.
+                if(i==6) content->parentWidget()->setVisible(checked);
+            });
         });
         paneSlots.append(slot); contents.append(content); original.append(layout); rows.append(row); actions.append(action); toggles.append(toggle);
         if(restore) {seed.saveFloating("Audio/"+names[i],true); seed.saveToggle("Audio/"+names[i],false); slot->hide();}

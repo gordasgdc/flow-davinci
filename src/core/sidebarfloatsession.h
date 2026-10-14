@@ -74,6 +74,11 @@ public:
     {
         if (!m_host || !button || !button->isChecked()) return;
         const auto host = m_host;
+        const auto generation = m_generation;
+        // Fairlight's Mixer toggle can hide the transferred content's current
+        // container (our host), whereas child-only recovery suffices for Edit.
+        const bool restoreHost = m_slot && m_slot->objectName()==QLatin1String("frameTimelineMixerContainer")
+            && host->isVisible();
         QList<QPointer<QWidget>> visibleContent;
         // Some Edit handlers hide their retained content pointers as well as
         // the native slot. Preserve only the floating layout's visible children;
@@ -83,10 +88,18 @@ public:
         button->click();
         // Let Resolve's queued toggle handler finish before restoring content.
         // Parent checks also make a quick dock safe before this callback runs.
-        QTimer::singleShot(0, this, [host, visibleContent] {
-            if (!host) return;
+        QTimer::singleShot(0, this, [this, host, visibleContent, generation, restoreHost] {
+            if (!host || m_host!=host || m_generation!=generation) return;
             for (auto child : visibleContent)
                 if (child && child->parentWidget() == host) child->show();
+            if (restoreHost && m_root && !m_root->isVisible()) {
+                m_hiddenByPage=true; // The native hide may precede page Hide.
+            } else if (restoreHost && m_root && !host->isVisible()) {
+                const bool withoutActivation=host->testAttribute(Qt::WA_ShowWithoutActivating);
+                host->setAttribute(Qt::WA_ShowWithoutActivating,true);
+                host->show();
+                host->setAttribute(Qt::WA_ShowWithoutActivating,withoutActivation);
+            }
         });
     }
     void observeNativeToggle(QAbstractButton *button)
