@@ -35,8 +35,9 @@ For example, `pages.WStackPage_Conform.panes.frameEditPageMediaPool` contains:
   False allows the native main-window area to collapse while the pane floats.
   Manual undocking turns this toggle off automatically; docking turns it on.
   Startup restoration honors the saved choice after initializing native content.
-- `clientRect`: position and size of the window's content, excluding its title
-  bar and borders. This is the rectangle used to restore a normal floating window.
+- `clientRect`: position and size of the window's content, excluding its resize
+  borders. Floating panes have no Windows title bar. This is the rectangle used
+  to restore a normal floating window; existing saved client sizes remain valid.
 - `normalClientRect`: the unmaximized rectangle used for maximized/fullscreen
   restoration. When editing an ordinary window, update it alongside `clientRect`.
 - `frameRect`: recorded outer Qt frame; retained for Qt's geometry record.

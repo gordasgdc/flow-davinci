@@ -2,6 +2,7 @@
 #include "mainwindowsnap.h"
 #include "windowgroupactivation.h"
 #include <QDialog>
+#include <QWindow>
 
 void initializePlatformTests()
 {
@@ -64,7 +65,7 @@ bool runPlatformDiscoveryTests(QApplication &app)
         toggle->setCheckable(true); toggle->setChecked(true); toggle->show(); settle();
         auto button=pane->findChild<QToolButton *>("resolvePaneUndockButton");
         button->click(); settle();
-        check(button->toolTip()=="Dock" && !toggle->isChecked(),"Late toggle not cached or manual detach failed");
+        check(button->toolTip()=="Click to dock; drag to move" && !toggle->isChecked(),"Late toggle not cached or manual detach failed");
         button->click(); settle();
         check(button->toolTip()=="Undock" && toggle->isChecked(),"Dock state not synchronized without polling");
         delete pane; delete toggle; settle();
@@ -92,6 +93,177 @@ bool runPlatformDiscoveryTests(QApplication &app)
 }
 bool runPlatformWindowTests(QApplication &app)
 {
+    if (app.arguments().contains("--frame-paint-native")) {
+        check(QGuiApplication::platformName() == "windows", "Frame painting requires Windows");
+        Unbound::PaneFloatingWindow host;
+        host.setGeometry(700, 250, 420, 240);
+        QWidget header(&host);
+        header.setGeometry(0, 0, 420, 40);
+        header.setAutoFillBackground(true);
+        auto palette = header.palette();
+        palette.setColor(QPalette::Window, QColor(29, 47, 39));
+        header.setPalette(palette);
+        host.show(); app.processEvents(); header.repaint(); DwmFlush();
+        const auto handle = reinterpret_cast<HWND>(host.winId());
+        auto pixel = [&](int y) {
+            auto dc = GetDC(handle);
+            const auto color = GetPixel(dc, 200, y);
+            ReleaseDC(handle, dc);
+            return color;
+        };
+        COLORREF before[10];
+        for (int y=0;y<10;++y) {
+            before[y] = pixel(y);
+            check(before[y] == RGB(29,47,39), "Frame paint fixture header was not rendered");
+        }
+        for (bool active : {false,true,false,true}) {
+            SendMessage(handle, WM_NCACTIVATE, active, 0);
+            GdiFlush(); DwmFlush();
+            // Inspect before any Qt repaint can conceal a native frame overdraw.
+            for (int y=0;y<10;++y)
+                check(pixel(y) == before[y], "Native activation painting overwrote the pane header");
+        }
+        std::puts("PASS: native activation/deactivation preserves header pixels before Qt repaint");
+        return true;
+    }
+    if (app.arguments().contains("--captionless-native")) {
+        check(QGuiApplication::platformName() == "windows", "Captionless fixture requires Windows");
+        QWidget main;
+        main.show();
+        Unbound::PaneFloatingWindow host;
+        host.setObjectName("gammarayFloating_dragTest");
+        host.setWindowTitle("Captionless pane fixture");
+        host.setGeometry(600, 200, 400, 300);
+        // Resolve headers may have their own native HWND; Qt must keep routing
+        // this child gesture rather than requiring mouse messages on the host.
+        QWidget header(&host);
+        header.setAttribute(Qt::WA_NativeWindow);
+        header.setGeometry(0, 0, 400, 70);
+        Unbound::UndockButton button(&header);
+        button.setGeometry(150, 20, 20, 20);
+        button.setCheckable(true);
+        button.setChecked(true);
+        POINT savedCursor{}; GetCursorPos(&savedCursor);
+        int clicks = 0;
+        QObject::connect(&button, &QToolButton::clicked, [&] { ++clicks; });
+        host.show(); app.processEvents(); DwmFlush();
+        auto handle = reinterpret_cast<HWND>(host.winId());
+        auto verifyFrame = [&] {
+            const auto style = GetWindowLongPtr(handle, GWL_STYLE);
+            check(!(style & WS_CAPTION) && (style & WS_THICKFRAME)
+                && (style & WS_SYSMENU) && (style & WS_MINIMIZEBOX) && (style & WS_MAXIMIZEBOX),
+                "Captionless host lost native window commands or resize frame");
+            check(!(GetWindowLongPtr(handle, GWL_EXSTYLE) & WS_EX_TOOLWINDOW), "Host became a tool window");
+            RECT frame{}; GetWindowRect(handle, &frame);
+            POINT client{0, 0}; ClientToScreen(handle, &client);
+            check(client.y - frame.top == 1, "Captionless host still has a thick top strip");
+            RECT clientRect{}; GetClientRect(handle, &clientRect);
+            check(qAbs(host.height() * host.devicePixelRatioF() - clientRect.bottom) <= 1,
+                "Qt client height disagrees with the native frame calculation");
+            const int middleX = (frame.left + frame.right) / 2;
+            const int middleY = (frame.top + frame.bottom) / 2;
+            const POINT points[] = {{frame.left+1,middleY},{frame.right-2,middleY},
+                {middleX,frame.top},{middleX,frame.bottom-2},
+                {frame.left+1,frame.top},{frame.right-2,frame.top},
+                {frame.left+1,frame.bottom-2},{frame.right-2,frame.bottom-2}};
+            const int hits[] = {HTLEFT,HTRIGHT,HTTOP,HTBOTTOM,HTTOPLEFT,HTTOPRIGHT,HTBOTTOMLEFT,HTBOTTOMRIGHT};
+            for (int i=0;i<8;++i)
+                check(SendMessage(handle, WM_NCHITTEST, 0, MAKELPARAM(points[i].x, points[i].y)) == hits[i],
+                    "Captionless edge/corner resizing hit test failed");
+        };
+        verifyFrame();
+        auto mouse = [&](QEvent::Type type, QPoint local, Qt::MouseButton changed, Qt::MouseButtons held) {
+            QMouseEvent event(type, local, button.mapToGlobal(local), changed, held, Qt::NoModifier);
+            QApplication::sendEvent(&button, &event);
+        };
+        auto press = [&] { mouse(QEvent::MouseButtonPress, {10,10}, Qt::LeftButton, Qt::LeftButton); };
+        auto release = [&] { mouse(QEvent::MouseButtonRelease, {10,10}, Qt::LeftButton, Qt::NoButton); };
+        press();
+        mouse(QEvent::MouseMove, {11,10}, Qt::NoButton, Qt::LeftButton);
+        check(!host.interactiveDragActive(), "Click jitter started a move");
+        release(); check(clicks == 1, "Stationary click did not toggle docking action");
+        button.setChecked(true);
+        auto startDrag = [&] {
+            press();
+            mouse(QEvent::MouseMove, {10 + QApplication::startDragDistance() + 1,10}, Qt::NoButton, Qt::LeftButton);
+            check(host.interactiveDragActive() && QWidget::mouseGrabber() == &button && !button.isDown(),
+                "Button drag did not retain its Qt mouse grab");
+        };
+        startDrag();
+        RECT before{}; GetWindowRect(handle, &before);
+        const auto cursor = host.dragStartPosition();
+        SetCursorPos(cursor.x + 80, cursor.y + 60);
+        mouse(QEvent::MouseMove, {40,20}, Qt::NoButton, Qt::LeftButton);
+        RECT after{}; GetWindowRect(handle, &after);
+        check(after.left == before.left + 80 && after.top == before.top + 60, "Button drag did not move window");
+        release(); check(clicks == 1 && !host.interactiveDragActive(), "Drag release docked or retained capture");
+        startDrag();
+        const auto cancelStart = nativeWindowBounds(host);
+        const auto cancelCursor = host.dragStartPosition();
+        SetCursorPos(cancelCursor.x + 70, cancelCursor.y + 50);
+        mouse(QEvent::MouseMove, {40,20}, Qt::NoButton, Qt::LeftButton);
+        QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(&header, &escape);
+        release();
+        check(nativeWindowBounds(host) == cancelStart && clicks == 1 && !host.interactiveDragActive(),
+            "Escape did not cancel movement without docking");
+        startDrag();
+        QEvent lostGrab(QEvent::UngrabMouse); QApplication::sendEvent(&button, &lostGrab);
+        release();
+        check(!host.interactiveDragActive() && clicks == 1, "Capture loss retained drag or docked");
+        startDrag(); host.hide(); app.processEvents(); release();
+        check(!host.interactiveDragActive() && clicks == 1, "Page hide retained drag or docked");
+        host.show(); app.processEvents();
+        press(); release(); check(clicks == 2, "Click after canceled drag stopped working");
+        // Docked controls must not drag their enclosing main window.
+        press(); mouse(QEvent::MouseMove, {40,10}, Qt::NoButton, Qt::LeftButton);
+        check(!host.interactiveDragActive(), "Unchecked dock button started a move");
+        mouse(QEvent::MouseButtonRelease, {40,10}, Qt::LeftButton, Qt::NoButton);
+        // Route through QWidgetWindow as well as directly to the button, so
+        // Qt's child targeting/implicit grab participates in the gesture.
+        button.setChecked(true);
+        const auto buttonPoint = button.mapTo(&header, QPoint(10,10));
+        auto windowMouse = [&](QEvent::Type type, QPoint local, Qt::MouseButton changed, Qt::MouseButtons held) {
+            QMouseEvent event(type, local, header.mapToGlobal(local), changed, held, Qt::NoModifier);
+            QApplication::sendEvent(header.windowHandle(), &event);
+        };
+        const int beforeWindow = clicks;
+        windowMouse(QEvent::MouseButtonPress, buttonPoint, Qt::LeftButton, Qt::LeftButton);
+        windowMouse(QEvent::MouseMove, buttonPoint + QPoint(QApplication::startDragDistance()+1,0), Qt::NoButton, Qt::LeftButton);
+        check(host.interactiveDragActive(), "Qt window delivery did not start button drag");
+        const auto childStart = nativeWindowBounds(host);
+        const auto childCursor = host.dragStartPosition();
+        SetCursorPos(childCursor.x + 90, childCursor.y + 60);
+        windowMouse(QEvent::MouseMove, buttonPoint + QPoint(90,60), Qt::NoButton, Qt::LeftButton);
+        check(nativeWindowBounds(host).topLeft() == childStart.topLeft() + QPoint(90,60),
+            "Native-child Qt mouse updates did not move floating host");
+        windowMouse(QEvent::MouseButtonRelease, buttonPoint, Qt::LeftButton, Qt::NoButton);
+        check(!host.interactiveDragActive() && clicks == beforeWindow, "Window drag release triggered docking");
+        windowMouse(QEvent::MouseButtonPress, buttonPoint, Qt::LeftButton, Qt::LeftButton);
+        windowMouse(QEvent::MouseButtonRelease, buttonPoint, Qt::LeftButton, Qt::NoButton);
+        check(clicks == beforeWindow + 1, "Window drag left Qt's button grab stuck");
+        SetCursorPos(savedCursor.x, savedCursor.y);
+        host.showMaximized(); app.processEvents();
+        check(host.isMaximized(), "Captionless maximization failed");
+        MONITORINFO maximizedMonitor{}; maximizedMonitor.cbSize = sizeof(maximizedMonitor);
+        check(GetMonitorInfo(MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST), &maximizedMonitor),
+            "Maximized fixture monitor unavailable");
+        POINT maximizedClient{}; ClientToScreen(handle, &maximizedClient);
+        check(maximizedClient.y == maximizedMonitor.rcWork.top,
+            "Thin top frame clipped maximized content above the work area");
+        host.showNormal(); app.processEvents(); verifyFrame();
+        const auto savedClient = host.geometry();
+        const auto savedGeometry = host.saveGeometry();
+        host.setGeometry(800, 350, 350, 250); app.processEvents();
+        check(host.restoreGeometry(savedGeometry), "Captionless geometry restoration failed");
+        app.processEvents(); verifyFrame();
+        check(host.geometry() == savedClient, "Thin top frame changed saved client geometry");
+        host.showMinimized(); app.processEvents();
+        check(host.isMinimized(), "Captionless minimization failed");
+        host.showNormal(); app.processEvents(); verifyFrame();
+        std::puts("PASS: captionless native frame, eight resize edges/corners, native-child Qt button movement, click/drag threshold, release suppression, Escape/capture-loss/hide cancellation and minimize/maximize/restore");
+        return true;
+    }
     if (app.arguments().contains("--group-activation-native")) {
         check(QGuiApplication::platformName() == "windows", "Group activation requires the Windows platform");
         QWidget main, outsider;

@@ -209,7 +209,7 @@ int main(int argc, char **argv)
             check(row->indexOf(button)+1==row->indexOf(menu) && row->count()==count+1,"Symbol is not immediately before native menu");
             menu->click(); check(menuClicks==1,"Native menu signal broken");
             button->click(); decoration.setFloating(true); app.processEvents();
-            check(button->isVisible() && button->isChecked() && button->toolTip()=="Dock" && header->window()==session.floatingWindow(),"Floating toggle state or tooltip incorrect");
+            check(button->isVisible() && button->isChecked() && button->toolTip()=="Click to dock; drag to move" && header->window()==session.floatingWindow(),"Floating toggle state or tooltip incorrect");
             const auto off=button->icon().pixmap(QSize(20,20),QIcon::Normal,QIcon::Off).toImage();
             const auto on=button->icon().pixmap(QSize(20,20),QIcon::Normal,QIcon::On).toImage();
             check(on==off,"Floating state changed icon brightness");
@@ -672,7 +672,7 @@ int main(int argc, char **argv)
         check(autoRecalled.restoreGeometry(autosaved.geometry("frameEditPageMediaPool")) && autoRecalled.size() == QSize(480, 350), "Placement not autosaved while floating");
         if (visibleStart) check(floating->close(), "Standalone close rejected");
         else {
-            check(buttons[0]->isChecked() && buttons[0]->toolTip()=="Dock","Restored pane toggle not synchronized");
+            check(buttons[0]->isChecked() && buttons[0]->toolTip()=="Click to dock; drag to move","Restored pane toggle not synchronized");
             buttons[0]->click();
         }
         app.processEvents();
@@ -1009,7 +1009,7 @@ int main(int argc, char **argv)
             decoration.button()->click(); app.processEvents();
             check(sidebars[i].active(), "Undock button failed");
             decoration.setFloating(true);
-            check(decoration.button()->isChecked() && decoration.button()->toolTip()=="Dock", "Floating toggle state missing");
+            check(decoration.button()->isChecked() && decoration.button()->toolTip()=="Click to dock; drag to move", "Floating toggle state missing");
             paneSlots[i]->resize(240, 300); app.processEvents();
             check(decoration.button()->geometry().right() < paneSlots[i]->width(), "Button outside resized pane");
             auto floating = sidebars[i].floatingWindow();

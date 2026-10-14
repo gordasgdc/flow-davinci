@@ -13,9 +13,12 @@ Metadata and Inspector; Meters is excluded. Fairlight docking controls must sit
 immediately left of the native options action (Create Group for Groups), never
 in a fallback strip. Fairlight settings belong to `WStackPage_Audio`.
 
-The overlapping-squares header button toggles docking; closing a floating window
-also docks it. Strokes stay muted grey (#848484) in either state and brighten
-only on hover. Tooltips are "Undock" and "Dock". Manual undocking turns off the
+The overlapping-squares header button toggles docking on click and moves an
+already-floating pane on drag. Floating windows have no Windows title bar but
+retain native resize borders, taskbar/Alt+Tab identity and window commands.
+Closing a floating window also docks it. Strokes stay muted grey (#848484) in
+either state and brighten only on hover. Tooltips are "Undock" and
+"Click to dock; drag to move". Manual undocking turns off the
 native Resolve pane toggle to reclaim main-window space; docking turns it on
 to show the restored pane, deferred until page return if inactive. Native toggles
 remain usable, and startup restoration honors saved choices. Remember geometry, docking and native toggle
@@ -38,7 +41,7 @@ group while preserving selected-window focus. Group activation is event-driven.
   Docking restores them. Resolve owns content; Unbound owns hosts/placeholders.
 - `panedecoration.h`: inserts the vector toggle beside recognized native header
   menus, with a compact fallback strip when necessary.
-- `panefloatingwindow.h`, `panetaskbar.h`: floating hosts, native dark captions,
+- `panefloatingwindow.h`, `panetaskbar.h`: captionless hosts, native dark borders,
   taskbar identity, page visibility and mouse handling. Nonmodal drag handling and
   deferred content layout during resizing preserve playback responsiveness.
 - `panesnap*.h`, `mainwindowsnap.h`: native window/contact bounds, display work
@@ -87,7 +90,7 @@ shared artwork is in `src/assets`; the ICO is in
   signals, ownership, user state, page context and reversible docking.
 - Initialize native pane content before automatic detachment; some widgets are
   lazily populated. Restore saved native toggle states after initialization.
-- Preserve native dark window decorations and immediate page switching with
+- Preserve native dark resize borders and immediate page switching with
   retained hosts/content. Initial restoration has a separate short fade.
 - Maintain explicit coordinate-space distinctions: Qt logical client geometry,
   Windows placement coordinates and visible frame/contact bounds differ. Diagnose

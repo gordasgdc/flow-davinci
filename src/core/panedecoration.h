@@ -10,6 +10,8 @@
 #include <QIconEngine>
 #include <QPainter>
 #include <QPainterPath>
+#include <QMouseEvent>
+#include "windowintegration.h"
 #include <functional>
 namespace Unbound {
 // Proposal 5, rendered as vectors without adding a QtSvg runtime dependency.
@@ -39,7 +41,66 @@ class UndockButton : public QToolButton
 {
 public:
     using QToolButton::QToolButton;
+    ~UndockButton() override { finishMove(true); }
 protected:
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        m_dragged = false;
+        m_moveCandidate = event->button() == Qt::LeftButton && isChecked();
+        m_pressPosition = event->globalPos();
+        QToolButton::mousePressEvent(event);
+    }
+    void mouseMoveEvent(QMouseEvent *event) override
+    {
+        if (m_dragged) {
+            if (m_dragHost) m_dragHost->updateButtonMove();
+            event->accept();
+            return;
+        }
+        if (m_moveCandidate && (event->buttons() & Qt::LeftButton)
+            && (event->globalPos() - m_pressPosition).manhattanLength() >= QApplication::startDragDistance()) {
+            m_moveCandidate = false;
+            if (auto host = dynamic_cast<PaneFloatingWindow *>(window())) {
+                // Keep delivery in Qt, even for Resolve's native child headers.
+                // Release after a drag must never emit clicked()/toggle docking.
+                m_dragged = true;
+                setDown(false);
+                if (host->beginButtonMove()) {
+                    m_dragHost = host;
+                    grabMouse();
+                    qApp->installEventFilter(this);
+                }
+                event->accept();
+                return;
+            }
+        }
+        QToolButton::mouseMoveEvent(event);
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        m_moveCandidate = false;
+        if (m_dragged) { finishMove(false); setDown(false); event->accept(); return; }
+        QToolButton::mouseReleaseEvent(event);
+    }
+    bool event(QEvent *event) override
+    {
+        if (event->type() == QEvent::Hide || event->type() == QEvent::UngrabMouse) {
+            m_moveCandidate = false;
+            setDown(false);
+            finishMove(true);
+        }
+        return QToolButton::event(event);
+    }
+    bool eventFilter(QObject *, QEvent *event) override
+    {
+        if (m_dragHost && event->type() == QEvent::KeyPress
+            && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+            finishMove(true);
+            return true;
+        }
+        if (event->type() == QEvent::ApplicationDeactivate) finishMove(true);
+        return false;
+    }
     void paintEvent(QPaintEvent *) override
     {
         QPainter painter(this);
@@ -49,6 +110,19 @@ protected:
     }
     void enterEvent(QEvent *event) override { QToolButton::enterEvent(event); update(); }
     void leaveEvent(QEvent *event) override { QToolButton::leaveEvent(event); update(); }
+private:
+    void finishMove(bool cancel)
+    {
+        const auto host = m_dragHost;
+        m_dragHost = nullptr;
+        if (qApp) qApp->removeEventFilter(this);
+        if (host) host->finishButtonMove(cancel);
+        if (QWidget::mouseGrabber() == this) releaseMouse();
+    }
+    QPointer<PaneFloatingWindow> m_dragHost;
+    QPoint m_pressPosition;
+    bool m_moveCandidate = false;
+    bool m_dragged = false;
 };
 class PaneDecoration : public QObject
 {
@@ -73,7 +147,7 @@ public:
         if(!floating) refresh();
         for(auto b:m_buttons) if(b) {
             b->setChecked(floating);
-            b->setToolTip(floating ? "Dock" : "Undock");
+            b->setToolTip(floating ? "Click to dock; drag to move" : "Undock");
             b->setAccessibleName(floating ? "Dock" : "Undock");
             b->show();
         }
@@ -130,7 +204,7 @@ private:
         b->setIcon(QIcon(new UndockIconEngine)); b->setIconSize(QSize(20,20));
         b->setCheckable(true); b->setChecked(m_floating);
         b->setToolButtonStyle(Qt::ToolButtonIconOnly); b->setAccessibleName(m_floating ? "Dock" : "Undock");
-        b->setToolTip(m_floating ? "Dock" : "Undock"); b->setFocusPolicy(Qt::NoFocus);
+        b->setToolTip(m_floating ? "Click to dock; drag to move" : "Undock"); b->setFocusPolicy(Qt::NoFocus);
         b->setFixedSize(20,20);
         b->setStyleSheet("QToolButton { background: transparent; border: none; padding: 0px; }");
         connect(b,&QToolButton::clicked,this,[this] {m_action();});

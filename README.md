@@ -4,8 +4,11 @@ Unbound lets you undock DaVinci Resolve panes into independent, resizable window
 on Windows. Arrange them across your displays, snap them against Resolve's main
 window or each other, and restore your workspace between sessions.
 
-- Dock or undock with the overlapping-squares button beside a pane's menu.
-- Floating window titles show the pane name alongside the Resolve icon.
+- Click the overlapping-squares button beside a pane's menu to dock or undock.
+  Drag that button to move an already-undocked pane; releasing after a drag does
+  not dock it. Press **Esc** to cancel a move.
+- Floating panes have no Windows title bar. Resize using their edges or corners;
+  taskbar previews and Alt+Tab retain the pane name and Resolve icon.
 - Snap window edges when moving or resizing, including display work-area edges.
   Hold **Alt** to bypass snapping.
   Snapping compensates for Windows 10's thin translucent frame and uses a

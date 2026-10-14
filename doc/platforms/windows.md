@@ -21,8 +21,12 @@ wrappers remain usable from other working directories.
 
 The Windows launcher still waits for Resolve, injects the adjacent DLL and exits.
 The exported `UnboundStart` calling convention and return values are unchanged.
-The export delegates to shared GUI-thread initialization. Native snapping, dark
-captions, drag handling and placement coordinate semantics are preserved.
+The export delegates to shared GUI-thread initialization. Floating hosts omit the
+Windows caption while retaining native dark resize borders and shell identity.
+The normal top frame is reduced to a one-physical-pixel outline, which is also
+the native top resize target; side and bottom resize margins remain native.
+Dragging their Dock button uses the nonmodal movement path; an ordinary click
+still docks. Native snapping and placement coordinate semantics are preserved.
 
 Window activation raises the main window and visible, non-minimized floating panes
 as a group. The selected window keeps focus; peer order and geometry are preserved.

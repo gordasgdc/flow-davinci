@@ -139,7 +139,7 @@ public:
         // Keep the Fairlight Media Pool's original Qt ownership/ancestor path
         // while its host remains an independent top-level window.
         if (slot->objectName()==QLatin1String("frameAudioPanelMediaPoolContainer"))
-            host->setParent(slot, Qt::Window);
+            host->setParent(slot, host->windowFlags());
         inheritPaneTaskbarIdentity(host, slot->window());
         m_host = host;
         host->setObjectName(QStringLiteral("gammarayFloating_") + slot->objectName());

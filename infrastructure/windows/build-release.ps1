@@ -78,6 +78,8 @@ try {
     try {
         Invoke-Checked $test @('--audition-taskbar-native')
         Invoke-Checked $test @('--snap-native')
+        Invoke-Checked $test @('--captionless-native')
+        Invoke-Checked $test @('--frame-paint-native')
     }
     finally { $env:QT_QPA_PLATFORM = 'offscreen' }
     # Only these two runtime files are distributed; build records stay in build/.
