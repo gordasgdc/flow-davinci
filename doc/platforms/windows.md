@@ -25,6 +25,8 @@ The export delegates to shared GUI-thread initialization. Floating hosts omit th
 Windows caption while retaining native dark resize borders and shell identity.
 The normal top frame is reduced to a one-physical-pixel outline, which is also
 the native top resize target; side and bottom resize margins remain native.
+Snap bounds omit top-border compensation where client content already reaches
+the visible frame edge, so Resolve's main top and the work-area top coincide.
 Dragging their Dock button uses the nonmodal movement path; an ordinary click
 still docks. Native snapping and placement coordinate semantics are preserved.
 

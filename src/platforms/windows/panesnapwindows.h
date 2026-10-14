@@ -36,8 +36,14 @@ inline QRect paneContactBounds(HWND handle)
             }
         }
     }
-    return QRect(bounds.left + inset, bounds.top + inset,
-        bounds.right - bounds.left - 2 * inset, bounds.bottom - bounds.top - 2 * inset);
+    // Resolve's custom main frame can have client content at its very top.
+    // Insetting that edge invents a target one pixel below the desktop edge.
+    // Never remove more top border than actually exists before the client.
+    POINT clientOrigin{};
+    const int topInset = ClientToScreen(handle, &clientOrigin)
+        ? qMin(inset, qMax(0, int(clientOrigin.y - bounds.top))) : inset;
+    return QRect(bounds.left + inset, bounds.top + topInset,
+        bounds.right - bounds.left - 2 * inset, bounds.bottom - bounds.top - topInset - inset);
 }
 class PaneSnapWindows
 {

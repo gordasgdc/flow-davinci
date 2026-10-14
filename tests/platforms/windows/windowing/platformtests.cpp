@@ -4,6 +4,26 @@
 #include <QDialog>
 #include <QWindow>
 
+// Model Resolve's main frame: client content reaches the outer top edge even
+// though the native style still includes a caption and resize frame.
+class ResolveTopEdgeFixture : public QWidget
+{
+protected:
+    bool nativeEvent(const QByteArray &type, void *message, long *result) override
+    {
+        const auto msg = static_cast<MSG *>(message);
+        if (msg->message == WM_NCCALCSIZE && !IsZoomed(msg->hwnd)) {
+            auto rect = reinterpret_cast<RECT *>(msg->lParam);
+            const LONG top = rect->top;
+            DefWindowProc(msg->hwnd, msg->message, msg->wParam, msg->lParam);
+            rect->top = top;
+            *result = 0;
+            return true;
+        }
+        return QWidget::nativeEvent(type, message, result);
+    }
+};
+
 void initializePlatformTests()
 {
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
@@ -328,7 +348,7 @@ bool runPlatformWindowTests(QApplication &app)
     }
     if (app.arguments().contains("--snap-native")) {
         check(QGuiApplication::platformName() == "windows", "Snapping requires the Windows platform");
-        QWidget main;
+        ResolveTopEdgeFixture main;
         main.setObjectName("UiMainWindow");
         main.setGeometry(100, 100, 400, 300);
         Unbound::PaneFloatingWindow peer;
@@ -352,8 +372,9 @@ bool runPlatformWindowTests(QApplication &app)
             const auto actual = Unbound::paneContactBounds(window);
             if (os.majorVersion() == 10 && os.minorVersion() == 0
                 && os.microVersion() >= 10240 && os.microVersion() < 22000) {
-                check(actual == QRect(frame.left + 1, frame.top + 1,
-                    frame.right - frame.left - 2, frame.bottom - frame.top - 2),
+                const int expectedTop = window == handle ? 0 : 1;
+                check(actual == QRect(frame.left + 1, frame.top + expectedTop,
+                    frame.right - frame.left - 2, frame.bottom - frame.top - expectedTop - 1),
                     "Windows 10 contact bounds did not exclude the one-pixel translucent outline");
             } else if (os.majorVersion() == 10 && os.microVersion() >= 22000) {
                 UINT border = 0;
@@ -415,6 +436,26 @@ bool runPlatformWindowTests(QApplication &app)
             std::fprintf(stderr,"Saved contact %d %d %d %d; restored %d %d %d %d\n",
                 originalContact.x(),originalContact.y(),originalContact.width(),originalContact.height(),
                 restoredContact.x(),restoredContact.y(),restoredContact.width(),restoredContact.height());
+        }
+        MONITORINFO monitor{}; monitor.cbSize = sizeof(monitor);
+        check(GetMonitorInfo(MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST), &monitor),
+            "Snap fixture monitor unavailable");
+        SetWindowPos(handle, nullptr, monitor.rcWork.left + 400, monitor.rcWork.top,
+            400, 300, SWP_NOZORDER | SWP_NOACTIVATE);
+        app.processEvents(); DwmFlush();
+        check(Unbound::paneContactBounds(handle).top() == monitor.rcWork.top,
+            "Resolve-like main frame invented a second top-edge target");
+        GetWindowRect(peerHandle, &peerRect);
+        const auto peerContact = Unbound::paneContactBounds(peerHandle);
+        const int topInset = peerContact.top() - peerRect.top;
+        snap.begin(peerHandle);
+        for (int delta = -3; delta <= 3; ++delta) {
+            RECT proposal = peerRect;
+            OffsetRect(&proposal, monitor.rcWork.left + 450 - proposal.left,
+                monitor.rcWork.top - topInset + delta - proposal.top);
+            snap.apply(proposal, HTCAPTION, limits);
+            check(proposal.top + topInset == monitor.rcWork.top,
+                "Window and desktop top edges produced a one-pixel double snap");
         }
         std::puts("PASS: native main move/resize routing, floating resize, exact contact alignment, bypass and hidden-window exclusion");
         return true;
