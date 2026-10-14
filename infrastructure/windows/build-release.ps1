@@ -75,7 +75,10 @@ try {
     Invoke-Checked $test @('--fairlight-test', '--restore', $dll)
     Invoke-Checked $test @('--discovery-test', $dll)
     $env:QT_QPA_PLATFORM = 'windows'
-    try { Invoke-Checked $test @('--audition-taskbar-native') }
+    try {
+        Invoke-Checked $test @('--audition-taskbar-native')
+        Invoke-Checked $test @('--snap-native')
+    }
     finally { $env:QT_QPA_PLATFORM = 'offscreen' }
     # Only these two runtime files are distributed; build records stay in build/.
     New-Item -ItemType Directory -Path $destination | Out-Null

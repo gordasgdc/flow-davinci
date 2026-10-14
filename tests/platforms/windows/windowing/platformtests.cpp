@@ -155,6 +155,7 @@ bool runPlatformWindowTests(QApplication &app)
         return true;
     }
     if (app.arguments().contains("--snap-native")) {
+        check(QGuiApplication::platformName() == "windows", "Snapping requires the Windows platform");
         QWidget main;
         main.setObjectName("UiMainWindow");
         main.setGeometry(100, 100, 400, 300);
@@ -169,6 +170,28 @@ bool runPlatformWindowTests(QApplication &app)
         GetWindowRect(handle, &original);
         auto contact = Unbound::paneContactBounds(handle);
         auto other = Unbound::paneContactBounds(peerHandle);
+        // Check contact bounds against DWM independently of the snap algorithm:
+        // exact contact alignment alone would also pass with the wrong inset.
+        const auto os = QOperatingSystemVersion::current();
+        for (auto window : {handle, peerHandle}) {
+            RECT frame{};
+            check(SUCCEEDED(DwmGetWindowAttribute(window, DWMWA_EXTENDED_FRAME_BOUNDS,
+                &frame, sizeof(frame))), "DWM frame unavailable for snap test");
+            const auto actual = Unbound::paneContactBounds(window);
+            if (os.majorVersion() == 10 && os.minorVersion() == 0
+                && os.microVersion() >= 10240 && os.microVersion() < 22000) {
+                check(actual == QRect(frame.left + 1, frame.top + 1,
+                    frame.right - frame.left - 2, frame.bottom - frame.top - 2),
+                    "Windows 10 contact bounds did not exclude the one-pixel translucent outline");
+            } else if (os.majorVersion() == 10 && os.microVersion() >= 22000) {
+                UINT border = 0;
+                check(SUCCEEDED(DwmGetWindowAttribute(window, DWMWA_VISIBLE_FRAME_BORDER_THICKNESS,
+                    &border, sizeof(border))), "Windows 11 border unavailable for snap test");
+                if (border <= 1)
+                    check(actual == QRect(frame.left, frame.top, frame.right - frame.left,
+                        frame.bottom - frame.top), "Windows 11 thin frame still overcompensates");
+            }
+        }
         Unbound::MainWindowSnap filter;
         filter.setWindow(&main);
         SendMessage(handle, WM_ENTERSIZEMOVE, 0, 0);

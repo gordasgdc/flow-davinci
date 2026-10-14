@@ -6,6 +6,7 @@
 #include <QWidget>
 #include <QPointer>
 #include <QMargins>
+#include <QOperatingSystemVersion>
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #include <dwmapi.h>
@@ -13,14 +14,28 @@ namespace Unbound {
 inline QRect paneContactBounds(HWND handle)
 {
     RECT bounds{};
-    if (FAILED(DwmGetWindowAttribute(handle, DWMWA_EXTENDED_FRAME_BOUNDS, &bounds, sizeof(bounds))))
-        GetWindowRect(handle, &bounds);
-    // DWM's decorative outline can leave a visible seam even when its bounding
-    // rectangles touch. Join the surfaces inside that outline; do not include
-    // invisible resize borders or shadows in the contact rectangle.
-    UINT border = 0;
-    DwmGetWindowAttribute(handle, DWMWA_VISIBLE_FRAME_BORDER_THICKNESS, &border, sizeof(border));
-    const int inset = qMin(int(border), 4);
+    const bool hasFrame = SUCCEEDED(DwmGetWindowAttribute(handle,
+        DWMWA_EXTENDED_FRAME_BOUNDS, &bounds, sizeof(bounds)));
+    if (!hasFrame && !GetWindowRect(handle, &bounds)) return {};
+    // Qt obtains the real Windows build through RtlGetVersion. A failed DWM
+    // attribute query alone does not identify Windows 10.
+    static const auto os = QOperatingSystemVersion::current();
+    int inset = 0;
+    if (hasFrame && os.majorVersion() == 10 && os.minorVersion() == 0) {
+        if (os.microVersion() >= 10240 && os.microVersion() < 22000) {
+            // Windows 10's translucent outline exposes the desktop between
+            // touching frames. Compensate by one physical pixel on each edge.
+            inset = 1;
+        } else if (os.microVersion() >= 22000) {
+            UINT border = 0;
+            if (SUCCEEDED(DwmGetWindowAttribute(handle, DWMWA_VISIBLE_FRAME_BORDER_THICKNESS,
+                    &border, sizeof(border)))) {
+                // Removing the full Windows 11 outline from both neighbours
+                // overcompensates. Retain one physical pixel of its thickness.
+                inset = int(qMin(border > 0 ? border - 1 : 0, UINT(4)));
+            }
+        }
+    }
     return QRect(bounds.left + inset, bounds.top + inset,
         bounds.right - bounds.left - 2 * inset, bounds.bottom - bounds.top - 2 * inset);
 }

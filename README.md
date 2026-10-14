@@ -8,6 +8,8 @@ window or each other, and restore your workspace between sessions.
 - Floating window titles show the pane name alongside the Resolve icon.
 - Snap window edges when moving or resizing, including display work-area edges.
   Hold **Alt** to bypass snapping.
+  Snapping compensates for Windows 10's thin translucent frame and uses a
+  reduced border inset on Windows 11 to avoid excessive overlap.
 - Unbound remembers window positions, sizes, docking and pane-toggle states.
 - The floating Edit Inspector lets its native title label elide long filenames
   in the middle instead of using their full length as the window's minimum width.
