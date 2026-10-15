@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QWindow>
 #include <QCursor>
+#include <QLineEdit>
 
 // Model Resolve's main frame: client content reaches the outer top edge even
 // though the native style still includes a caption and resize frame.
@@ -118,6 +119,65 @@ bool runPlatformDiscoveryTests(QApplication &app)
         return true;
     }
     return false;
+}
+void verifyAuditionHeaderDrag(QApplication &app)
+{
+    QWidget main; main.setObjectName("UiMainWindow"); main.setGeometry(50,600,600,500);
+    QWidget page(&main); page.setObjectName("WStackPage_Audio"); page.resize(600,500);
+    QWidget slot(&page); slot.setObjectName("frameAudioPanelMediaPoolContainer"); slot.resize(500,400);
+    auto layout = new QVBoxLayout(&slot);
+    auto content = new QWidget(&slot); layout->addWidget(content);
+    auto column = new QVBoxLayout(content);
+    auto preview = new QWidget(content); preview->setObjectName("previewPlayer"); column->addWidget(preview);
+    auto playerLayout = new QVBoxLayout(preview);
+    auto header = new QFrame(preview); header->setObjectName("framePlayerTime"); playerLayout->addWidget(header);
+    header->setAttribute(Qt::WA_NativeWindow);
+    auto row = new QHBoxLayout(header);
+    auto title = new QLabel("Audition clip",header); row->addWidget(title);
+    row->addStretch();
+    auto menu = new QPushButton("Title dropdown",header); row->addWidget(menu);
+    auto waveform = new QLabel("Waveform",preview); playerLayout->addWidget(waveform);
+    auto transport = new QPushButton("Play",preview); playerLayout->addWidget(transport);
+    main.show(); page.show(); slot.show(); app.processEvents();
+    int presses = 0;
+    QObject::connect(menu, &QPushButton::pressed, [&] { ++presses; });
+    auto mouse = [](QWidget *widget, QEvent::Type type, QPoint point, Qt::MouseButton changed, Qt::MouseButtons held) {
+        QMouseEvent event(type, point, widget->mapToGlobal(point), changed, held, Qt::NoModifier);
+        QApplication::sendEvent(widget, &event);
+    };
+    POINT savedCursor{}; GetCursorPos(&savedCursor);
+    Unbound::SidebarFloatSession session;
+    for (int pass=0; pass<2; ++pass) {
+        check(session.start(&slot,"Media Pool",&page,false,false,true).isEmpty(), "Audition header setup failed");
+        auto host = static_cast<Unbound::PaneFloatingWindow *>(session.floatingWindow());
+        host->setGeometry(1000,500,500,400); app.processEvents();
+        QCursor::setPos(title->mapToGlobal(QPoint(5,5)));
+        mouse(title,QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);
+        QCursor::setPos(QCursor::pos()+QPoint(QApplication::startDragDistance()+1,0));
+        mouse(title,QEvent::MouseMove,{30,5},Qt::NoButton,Qt::LeftButton);
+        check(host->interactiveDragActive(), "Fairlight audition title did not start a host drag");
+        const auto before = nativeWindowBounds(*host);
+        QCursor::setPos(QCursor::pos()+QPoint(60,20));
+        mouse(title,QEvent::MouseMove,{90,25},Qt::NoButton,Qt::LeftButton);
+        const auto movement = nativeWindowBounds(*host).topLeft()-before.topLeft();
+        if (movement!=QPoint(60,20)) std::fprintf(stderr,"Audition drag delta: %d,%d\n",movement.x(),movement.y());
+        check(nativeWindowBounds(*host).topLeft()==before.topLeft()+QPoint(60,20), "Audition title drag moved the wrong window");
+        mouse(title,QEvent::MouseButtonRelease,{90,25},Qt::LeftButton,Qt::NoButton);
+        check(!host->interactiveDragActive() && session.active(), "Audition header release docked the pane or retained a grab");
+        mouse(menu,QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);
+        check(presses==pass+1, "Audition header deferred a native dropdown press");
+        mouse(menu,QEvent::MouseButtonRelease,{5,5},Qt::LeftButton,Qt::NoButton);
+        for (auto control : {static_cast<QWidget *>(waveform),static_cast<QWidget *>(transport)}) {
+            mouse(control,QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);
+            mouse(control,QEvent::MouseMove,{40,5},Qt::NoButton,Qt::LeftButton);
+            check(!host->interactiveDragActive(), "Audition content/transport became a drag surface");
+            mouse(control,QEvent::MouseButtonRelease,{40,5},Qt::LeftButton,Qt::NoButton);
+        }
+        check(session.dock().isEmpty(), "Audition header docking failed"); app.processEvents();
+        check(content->parentWidget()==&slot && preview->window()==&main, "Audition header support changed docking ownership");
+    }
+    SetCursorPos(savedCursor.x,savedCursor.y);
+    std::puts("PASS: Fairlight audition header drag, immediate dropdowns, excluded waveform/transport and repeated docking");
 }
 bool runPlatformWindowTests(QApplication &app)
 {
@@ -272,6 +332,72 @@ bool runPlatformWindowTests(QApplication &app)
         windowMouse(QEvent::MouseButtonRelease, buttonPoint, Qt::LeftButton, Qt::NoButton);
         check(clicks == beforeWindow + 1, "Window drag left Qt's button grab stuck");
         SetCursorPos(savedCursor.x, savedCursor.y);
+        // Background and plain title labels share the button's movement path;
+        // controls still receive their original press immediately.
+        QLabel title("Media Pool", &header);
+        title.setAttribute(Qt::WA_NativeWindow);
+        title.setGeometry(8, 6, 115, 28); title.show();
+        QToolButton nativeAction(&header);
+        nativeAction.setGeometry(220, 15, 70, 25); nativeAction.show();
+        int nativePresses = 0;
+        QObject::connect(&nativeAction, &QToolButton::pressed, [&] { ++nativePresses; });
+        QLineEdit search(&header); search.setText("Native search text");
+        search.setGeometry(220, 45, 160, 24); search.show();
+        QLabel selectable("Selectable", &header);
+        selectable.setTextInteractionFlags(Qt::TextSelectableByMouse);
+        selectable.setGeometry(8, 40, 100, 25); selectable.show();
+        Unbound::PaneHeaderDrag headerDrag(&header, &header);
+        // Stack-owned test helper must be destroyed before its QObject parent.
+        auto headerMouse = [&](QWidget *target, QEvent::Type type, QPoint local, Qt::MouseButton changed, Qt::MouseButtons held) {
+            QMouseEvent event(type, local, target->mapToGlobal(local), changed, held, Qt::NoModifier);
+            QObject *receiver = target->windowHandle();
+            QApplication::sendEvent(receiver ? receiver : target, &event);
+        };
+        QCursor::setPos(title.mapToGlobal(QPoint(10,10)));
+        headerMouse(&title, QEvent::MouseButtonPress, {10,10}, Qt::LeftButton, Qt::LeftButton);
+        headerMouse(&title, QEvent::MouseMove, {11,10}, Qt::NoButton, Qt::LeftButton);
+        check(!host.interactiveDragActive(), "Title click jitter started movement");
+        headerMouse(&title, QEvent::MouseButtonRelease, {11,10}, Qt::LeftButton, Qt::NoButton);
+        auto startHeaderDrag = [&](QWidget *surface, QPoint point) {
+            QCursor::setPos(surface->mapToGlobal(point));
+            headerMouse(surface, QEvent::MouseButtonPress, point, Qt::LeftButton, Qt::LeftButton);
+            QCursor::setPos(QCursor::pos() + QPoint(QApplication::startDragDistance()+1,0));
+            headerMouse(surface, QEvent::MouseMove, point + QPoint(QApplication::startDragDistance()+1,0), Qt::NoButton, Qt::LeftButton);
+            check(host.interactiveDragActive(), "Header background/title did not start movement");
+        };
+        for (auto surface : {static_cast<QWidget *>(&title), &header}) {
+            const QPoint point = surface == &title ? QPoint(10,10) : QPoint(180,55);
+            startHeaderDrag(surface, point);
+            const auto start = nativeWindowBounds(host);
+            QCursor::setPos(QCursor::pos() + QPoint(40,30));
+            headerMouse(surface, QEvent::MouseMove, point + QPoint(50,30), Qt::NoButton, Qt::LeftButton);
+            check(nativeWindowBounds(host).topLeft() == start.topLeft() + QPoint(40,30),
+                "Header drag did not move host through native child delivery");
+            headerMouse(surface, QEvent::MouseButtonRelease, point, Qt::LeftButton, Qt::NoButton);
+            check(!host.interactiveDragActive() && clicks == beforeWindow + 1, "Header release docked or retained movement");
+        }
+        headerMouse(&header, QEvent::MouseButtonPress, {225,20}, Qt::LeftButton, Qt::LeftButton);
+        check(nativePresses == 1, "Header drag left Qt's implicit grab stuck on the title");
+        headerMouse(&header, QEvent::MouseButtonRelease, {225,20}, Qt::LeftButton, Qt::NoButton);
+        for (auto control : {static_cast<QWidget *>(&nativeAction), static_cast<QWidget *>(&search), static_cast<QWidget *>(&selectable)}) {
+            headerMouse(control, QEvent::MouseButtonPress, {5,10}, Qt::LeftButton, Qt::LeftButton);
+            if (control == &nativeAction) check(nativePresses == 2, "Header drag delayed a native action's press");
+            headerMouse(control, QEvent::MouseMove, {30,10}, Qt::NoButton, Qt::LeftButton);
+            check(!host.interactiveDragActive(), "Native control or selectable text became a header drag surface");
+            headerMouse(control, QEvent::MouseButtonRelease, {30,10}, Qt::LeftButton, Qt::NoButton);
+        }
+        const auto beforeCancel = nativeWindowBounds(host);
+        startHeaderDrag(&title, {10,10});
+        QCursor::setPos(QCursor::pos() + QPoint(40,30));
+        headerMouse(&title, QEvent::MouseMove, {50,40}, Qt::NoButton, Qt::LeftButton);
+        QKeyEvent headerEscape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(&title, &headerEscape);
+        check(!host.interactiveDragActive() && nativeWindowBounds(host) == beforeCancel,
+            "Escape did not restore header-drag geometry");
+        startHeaderDrag(&title, {10,10}); host.hide(); app.processEvents();
+        check(!host.interactiveDragActive() && !QWidget::mouseGrabber(), "Page hide retained a header drag/grab");
+        host.show(); app.processEvents();
+        SetCursorPos(savedCursor.x, savedCursor.y);
         host.showMaximized(); app.processEvents();
         check(host.isMaximized(), "Captionless maximization failed");
         MONITORINFO maximizedMonitor{}; maximizedMonitor.cbSize = sizeof(maximizedMonitor);
@@ -298,7 +424,8 @@ bool runPlatformWindowTests(QApplication &app)
         host.showMinimized(); app.processEvents();
         check(host.isMinimized(), "Captionless minimization failed");
         host.showNormal(); app.processEvents(); verifyFrame();
-        std::puts("PASS: captionless native frame, eight resize edges/corners, native-child Qt button movement, click/drag threshold, release suppression, Escape/capture-loss/hide cancellation and minimize/maximize/restore");
+        std::puts("PASS: captionless frame, resize edges, native-child button/title/background movement, immediate native controls, drag thresholds, cancellation, top restoration and window commands");
+        verifyAuditionHeaderDrag(app);
         return true;
     }
     if (app.arguments().contains("--group-activation-native")) {

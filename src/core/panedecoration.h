@@ -12,6 +12,7 @@
 #include <QPainterPath>
 #include <QMouseEvent>
 #include "windowintegration.h"
+#include "paneheaderdrag.h"
 #include <functional>
 namespace Unbound {
 // Proposal 5, rendered as vectors without adding a QtSvg runtime dependency.
@@ -135,6 +136,7 @@ public:
     }
     ~PaneDecoration() override
     {
+        qDeleteAll(m_headerDrags);
         if(m_pane) {m_pane->removeEventFilter(this); removeStrip();}
         for(auto button:m_buttons) delete button.data();
     }
@@ -229,16 +231,25 @@ private:
             if(layout && layout->direction()==QBoxLayout::LeftToRight && layout->indexOf(b)>=0) anchors.append(b);
         }
         if(!anchors.isEmpty()) {
+            qDeleteAll(m_headerDrags); m_headerDrags.clear();
             for(auto b:m_buttons) delete b.data(); m_buttons.clear(); removeStrip(); m_native=true;
             for(auto anchor:anchors) {
                 auto layout=static_cast<QBoxLayout *>(anchor->parentWidget()->layout());
                 auto b=makeButton(anchor->parentWidget());
                 layout->insertWidget(layout->indexOf(anchor),b,0,Qt::AlignVCenter); b->show();
+                auto header = anchor->parentWidget();
+                if ((header->objectName()==QLatin1String("frameOptions")
+                        && header->parentWidget()->objectName()==QLatin1String("frameMixerMeterTitle"))
+                    || (header->objectName()==QLatin1String("rightFrame")
+                        && header->parentWidget()->objectName()==QLatin1String("m_NGHeaderFrame")))
+                    header = header->parentWidget();
+                m_headerDrags.append(new PaneHeaderDrag(header, this));
             }
         } else if(!any && !requiresNativeHeader()) {
             m_native=false; m_buttons.clear(); m_strip=24;
             m_pane->setContentsMargins(m_margins.left(),m_margins.top()+m_strip,m_margins.right(),m_margins.bottom());
             makeButton(m_pane)->show();
+            m_headerDrags.append(new PaneHeaderDrag(m_pane, this, m_strip, m_margins.top()));
         }
         position(); m_refreshing=false;
     }
@@ -250,6 +261,7 @@ private:
     }
     QPointer<QWidget> m_pane;
     QList<QPointer<QToolButton>> m_buttons;
+    QList<PaneHeaderDrag *> m_headerDrags;
     QMargins m_margins;
     std::function<void()> m_action;
     int m_strip=0;

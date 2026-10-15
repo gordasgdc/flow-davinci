@@ -16,6 +16,7 @@
 #include "windowintegration.h"
 #include "nodescanvasbounds.h"
 #include "auditionactivationbridge.h"
+#include "paneheaderdrag.h"
 
 namespace Unbound {
 // Move the entire layout, including all widgets/spacers/stretch factors. This
@@ -217,8 +218,11 @@ public:
             && slot->window()->objectName() == QLatin1String("UiMainWindow")) {
             // One targeted lookup inside this pane per detach, before its first
             // activation (also for startup restoration). No recurring discovery.
-            if (auto preview = host->findChild<QWidget *>(QStringLiteral("previewPlayer")))
+            if (auto preview = host->findChild<QWidget *>(QStringLiteral("previewPlayer"))) {
                 m_auditionBridge = new AuditionActivationBridge(slot->window(), m_root, preview, this);
+                if (auto header = preview->findChild<QWidget *>(QStringLiteral("framePlayerTime"), Qt::FindDirectChildrenOnly))
+                    m_auditionHeaderDrag = new PaneHeaderDrag(header, this);
+            }
         }
         host->installEventFilter(this);
         m_root->installEventFilter(this);
@@ -366,6 +370,7 @@ protected:
 private:
     void stopAuditionBridge()
     {
+        delete m_auditionHeaderDrag; m_auditionHeaderDrag = nullptr;
         if (!m_auditionBridge) return;
         m_auditionBridge->stop();
         // Native event processing can dock reentrantly. Keep the stopped filter
@@ -433,6 +438,7 @@ private:
     QSizePolicy m_inspectorTitlePolicy;
     NodesCanvasBounds *m_nodesBounds=nullptr;
     QPointer<AuditionActivationBridge> m_auditionBridge;
+    PaneHeaderDrag *m_auditionHeaderDrag = nullptr;
     QPointer<QLayout> m_layout;
     QPointer<QLayout> m_nativeLayout;
     int m_boxStretch=0;

@@ -37,6 +37,11 @@ saved client rectangles instead of Qt's generic title-bar safety margin.
 Windows 10 retains its one-physical-pixel translucent-outline compensation.
 Dragging their Dock button uses the nonmodal movement path; an ordinary click
 still docks. Native snapping and placement coordinate semantics are preserved.
+Plain title labels and unused native header background use that same movement
+path after the drag threshold. Header controls retain immediate native input;
+editable/selectable text and custom control widgets are excluded. Header event
+filters are scoped to recognized header subtrees; application-wide filtering
+exists only for an active mouse gesture, including Escape and page-hide cleanup.
 
 Window activation raises the main window and visible, non-minimized floating panes
 as a group. The selected window keeps focus; peer order and geometry are preserved.

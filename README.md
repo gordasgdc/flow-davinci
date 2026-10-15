@@ -7,6 +7,8 @@ window or each other, and restore your workspace between sessions.
 - Click the overlapping-squares button beside a pane's menu to dock or undock.
   Drag that button to move an already-undocked pane; releasing after a drag does
   not dock it. Press **Esc** to cancel a move.
+- Drag native header title text or unused background to move a floating pane.
+  Buttons, dropdowns, editable fields and selectable text keep their native behavior.
 - Floating panes have no Windows title bar. Resize using their edges or corners;
   taskbar previews and Alt+Tab retain the pane name and Resolve icon.
 - Snap window edges when moving or resizing, including display work-area edges.
@@ -26,6 +28,8 @@ Inspector, Metadata and Mixer. **Color:** Nodes, Gallery, LUTs and Media Pool.
 **Fairlight:** Media Pool, Effects, Index, Groups, Sound Library, ADR, Mixer,
 Metadata and Inspector. Fairlight's dock button sits immediately left of the
 native options menu (Create Group for Groups). Meters is not supported.
+Fairlight Media Pool's audition-player header also supports dragging from its
+unused background and plain title labels; its dropdowns retain native behavior.
 
 Floating Fairlight Media Pool audition retains audio, smooth waveform updates
 and Control Room metering through an event-driven activation correction. The

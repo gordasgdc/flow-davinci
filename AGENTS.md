@@ -14,7 +14,9 @@ immediately left of the native options action (Create Group for Groups), never
 in a fallback strip. Fairlight settings belong to `WStackPage_Audio`.
 
 The overlapping-squares header button toggles docking on click and moves an
-already-floating pane on drag. Floating windows have no Windows title bar but
+already-floating pane on drag. Floating windows have no Windows title bar. They
+can also be moved by dragging plain title text or unused native header background;
+native controls and selectable text are excluded from those drag surfaces. They
 retain native resize borders, taskbar/Alt+Tab identity and window commands.
 Closing a floating window also docks it. Strokes stay muted grey (#848484) in
 either state and brighten only on hover. Tooltips are "Undock" and
