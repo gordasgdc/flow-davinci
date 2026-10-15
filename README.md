@@ -7,8 +7,8 @@ panel-toggle states.
 
 ## Use
 
-Keep `Unbound.exe` and `Unbound.dll` together and run Unbound as the same ordinary
-Windows user as Resolve. Unbound waits silently if Resolve is not running yet.
+Keep `Unbound.exe` and `Unbound.dll` together and run `Unbound.exe`. Unbound waits
+silently if Resolve is not running yet.
 Open a project, then use a panel's dock/undock button. Resolve's native panel
 toggles remain available to control the space in the main window.
 
