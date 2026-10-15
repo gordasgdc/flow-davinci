@@ -38,7 +38,7 @@ protected:
         if (!m_main || !m_page || !m_preview || !m_page->isVisible() || !m_preview->isVisible()) return false;
         auto host = m_preview->window();
         if (object != host || host == m_main || !host->isWindow() || host->isMinimized()
-            || host->objectName() != QLatin1String("gammarayFloating_frameAudioPanelMediaPoolContainer")
+            || host->objectName() != QLatin1String("unboundFloating_frameAudioPanelMediaPoolContainer")
             || QApplication::activeWindow() != host || QApplication::activeModalWidget()
             || QApplication::activePopupWidget()) return false;
 

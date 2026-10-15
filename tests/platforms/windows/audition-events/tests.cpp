@@ -56,7 +56,7 @@ int main(int argc,char **argv)
     TestApplication app(argc,argv);
     Target main;QWidget page(&main),slot(&page);
     Target preview(&slot),play(&preview),mainChild(&main);
-    Target host(&slot,Qt::Window);host.setObjectName("gammarayFloating_frameAudioPanelMediaPoolContainer");
+    Target host(&slot,Qt::Window);host.setObjectName("unboundFloating_frameAudioPanelMediaPoolContainer");
     app.main=&main;app.preview=&preview;app.host=&host;
     preview.setFocusPolicy(Qt::StrongFocus);play.setFocusPolicy(Qt::StrongFocus);
     main.show();page.show();slot.show();mainChild.show();host.show();
@@ -97,7 +97,7 @@ int main(int argc,char **argv)
     // Scope implementation has no direct reads; an unknown host name is excluded.
     host.setObjectName("unrelatedWindow");activateEvent(&host);
     check(app.mainNotifications==hidden,"Unrecognized host excluded");
-    host.setObjectName("gammarayFloating_frameAudioPanelMediaPoolContainer");
+    host.setObjectName("unboundFloating_frameAudioPanelMediaPoolContainer");
     // Stop inside native application handling still consumes the synthetic event.
     main.activations=0;app.onMain=[&]{bridge.stop();};activateEvent(&host);app.onMain={};
     check(!bridge.enabled() && main.activations==0,"Stop during notification safely suppresses widget activation");
@@ -108,7 +108,7 @@ int main(int argc,char **argv)
     const int native=app.mainNotifications;activateEvent(&main);
     check(app.mainNotifications==native+1,"Docked/main activation is never duplicated");
     // Reparent into a NEW host to exercise retained controller references.
-    Target secondHost(&slot,Qt::Window);secondHost.setObjectName("gammarayFloating_frameAudioPanelMediaPoolContainer");
+    Target secondHost(&slot,Qt::Window);secondHost.setObjectName("unboundFloating_frameAudioPanelMediaPoolContainer");
     preview.setParent(&secondHost);secondHost.show();preview.show();play.show();app.processEvents();
     QApplication::setActiveWindow(&main);const int redetach=app.mainNotifications;
     QApplication::setActiveWindow(&secondHost);app.processEvents();

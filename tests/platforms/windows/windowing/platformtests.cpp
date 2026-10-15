@@ -219,7 +219,7 @@ bool runPlatformWindowTests(QApplication &app)
         QWidget main;
         main.show();
         Unbound::PaneFloatingWindow host;
-        host.setObjectName("gammarayFloating_dragTest");
+        host.setObjectName("unboundFloating_dragTest");
         host.setWindowTitle("Captionless pane fixture");
         host.setGeometry(600, 200, 400, 300);
         // Resolve headers may have their own native HWND; Qt must keep routing
@@ -496,7 +496,7 @@ bool runPlatformWindowTests(QApplication &app)
         main.setObjectName("UiMainWindow");
         main.setGeometry(100, 100, 400, 300);
         Unbound::PaneFloatingWindow peer;
-        peer.setObjectName("gammarayFloating_snapTest");
+        peer.setObjectName("unboundFloating_snapTest");
         peer.setGeometry(950, 120, 250, 300);
         main.show(); peer.show(); app.processEvents();
         const auto handle = reinterpret_cast<HWND>(main.winId());

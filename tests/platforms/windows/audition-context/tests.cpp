@@ -78,7 +78,7 @@ int main(int argc,char **argv)
     check(trace.begin(),"Start observer/intervention");
     click(&button);
     check(app.notifications==0 && button.presses==1,"Docked events unmodified");
-    QWidget host(&slot,Qt::Window); host.setObjectName("gammarayFloating_frameAudioPanelMediaPoolContainer");
+    QWidget host(&slot,Qt::Window); host.setObjectName("unboundFloating_frameAudioPanelMediaPoolContainer");
     player.setParent(&host);host.show();player.show();button.show();app.processEvents();
     const auto before=app.notifications;
     QPointer<QWidget> focus=QApplication::focusWidget();

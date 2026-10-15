@@ -52,7 +52,7 @@ int main(int argc,char **argv)
     Target preview(&slot),play(&preview);
     play.setObjectName("btnTransportPlay");
     app.main=&main;app.preview=&preview;
-    QWidget host(&slot,Qt::Window);host.setObjectName("gammarayFloating_frameAudioPanelMediaPoolContainer");
+    QWidget host(&slot,Qt::Window);host.setObjectName("unboundFloating_frameAudioPanelMediaPoolContainer");
     main.show();page.show();slot.show();host.show();
     preview.setParent(&host);preview.show();play.show();app.processEvents();
     QApplication::setActiveWindow(&host);play.setFocus();app.processEvents();

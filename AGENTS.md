@@ -85,6 +85,8 @@ Successful releases contain only `Unbound.exe` and `Unbound.dll` in
 by Git. The release build regenerates icons from `src/assets/unbound-symbol.svg`;
 shared artwork is in `src/assets`; the ICO is in
 `src/platforms/windows/resources`. Build output is in `build/windows/`.
+Create distribution ZIP packages only when explicitly requested, never
+automatically as part of a build.
 
 ## Development constraints
 
@@ -104,7 +106,8 @@ shared artwork is in `src/assets`; the ICO is in
   need validation. Known issue: Media Pool may widen on startup restoration and
   overlap its neighbor. Native minimum sizes apply; Nodes may need manual panning
   after docking into a narrower viewport.
-- Source and symbol artwork license is MIT. Preserve dependency notices in src.
+- Source and symbol artwork license is MIT. Preserve applicable third-party
+  notices. GammaRay is a local inspection tool and is not shipped with Unbound.
 
 Keep README.md and doc/Unbound settings.md accurate for current behavior. This repository
 is self-contained for development apart from the installed toolchain and Resolve.

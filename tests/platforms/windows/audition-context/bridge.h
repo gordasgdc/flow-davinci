@@ -44,7 +44,7 @@ protected:
         if (host==m_page->window() || !host->isWindow() || widget->window()!=host) return false;
         // Restrict intervention to the known Media Pool host, never a different
         // floating pane or the native Dock control itself.
-        if (host->objectName()!="gammarayFloating_frameAudioPanelMediaPoolContainer") return false;
+        if (host->objectName()!="unboundFloating_frameAudioPanelMediaPoolContainer") return false;
         if (widget->objectName()=="resolvePaneUndockButton") return false;
         if (!m_page->isAncestorOf(m_slot) || m_proxy->parentWidget()!=m_slot) return false;
         QScopedValueRollback<bool> guard(m_relaying,true);

@@ -33,7 +33,7 @@ protected:
         if (!m_main || !m_page || !m_preview || !m_page->isVisible() || !m_preview->isVisible()) return false;
         auto host=m_preview->window();
         if (object!=host || host==m_main || !host->isWindow() || host->isMinimized() ||
-            host->objectName()!="gammarayFloating_frameAudioPanelMediaPoolContainer" ||
+            host->objectName()!="unboundFloating_frameAudioPanelMediaPoolContainer" ||
             QApplication::activeWindow()!=host || QApplication::activeModalWidget() || QApplication::activePopupWidget()) return false;
         // One notification per actual host activation, before its normal focus
         // delivery. Propagated child activation and later clicks do no work.

@@ -61,7 +61,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI UnboundStart(void *)
                     for (auto parent=pane->parentWidget();parent;parent=parent->parentWidget()) ancestors.append(describe(parent));
                 }
             }
-            if (window->objectName()==QLatin1String("gammarayFloating_frameEditPageInspector")) append(window,-1,widgets);
+            if (window->objectName()==QLatin1String("unboundFloating_frameEditPageInspector")) append(window,-1,widgets);
         }
         HMODULE module=nullptr;
         GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,

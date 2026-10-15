@@ -63,7 +63,7 @@ public:
         m_geometry = content->geometry();
         m_wasHidden = content->isHidden();
         auto placeholder = new QLabel(QStringLiteral("Media Pool is floating.\nClose its window to restore it."), parent);
-        placeholder->setObjectName(QStringLiteral("gammarayMediaPoolPlaceholder"));
+        placeholder->setObjectName(QStringLiteral("unboundMediaPoolPlaceholder"));
         placeholder->setAlignment(Qt::AlignCenter);
         placeholder->setSizePolicy(content->sizePolicy());
         placeholder->setMinimumSize(content->minimumSize());
@@ -78,7 +78,7 @@ public:
         m_placeholder = placeholder;
         auto host = new QWidget(parent->window(), Qt::Window);
         host->setAttribute(Qt::WA_QuitOnClose, false);
-        host->setObjectName(QStringLiteral("gammarayFloatingEditMediaPool"));
+        host->setObjectName(QStringLiteral("unboundFloatingEditMediaPool"));
         host->setWindowTitle(QStringLiteral("Media Pool"));
         host->resize(content->size().expandedTo(QSize(360, 300)));
         m_host = host;

@@ -177,7 +177,7 @@ int main(int argc, char **argv)
         poolButton->click(); app.processEvents(); app.processEvents();
         check(interceptor.closeEvents == 0 && selectors[0]->isChecked() && paneSlots[0]->isVisible()
             && controls[0]->parentWidget() == paneSlots[0] && controls[0]->isVisible()
-            && paneSlots[0]->findChildren<QLabel *>("gammaraySidebarPlaceholder").isEmpty()
+            && paneSlots[0]->findChildren<QLabel *>("unboundSidebarPlaceholder").isEmpty()
             && !Unbound::PaneSettings(settingsPath).floating(names[0]),
             "Dock command depended on intercepted Close event or left placeholder/floating intent");
         app.removeEventFilter(&interceptor);
@@ -659,7 +659,7 @@ int main(int argc, char **argv)
         }
         QWidget *floating = nullptr;
         for (auto widget : QApplication::topLevelWidgets())
-            if (widget->objectName() == "gammarayFloating_frameEditPageMediaPool") floating = widget;
+            if (widget->objectName() == "unboundFloating_frameEditPageMediaPool") floating = widget;
         check(floating && floating->layout() == original, "Standalone Undock failed");
         check(floating->size() == sample.size(), "Standalone startup did not recall saved dimensions");
         floating->resize(480, 350);
@@ -697,7 +697,7 @@ int main(int argc, char **argv)
         }
         QWidget *restoredMetadata = nullptr;
         for (auto widget : QApplication::topLevelWidgets())
-            if (widget->objectName() == "gammarayFloating_frameEditPageMetadata") restoredMetadata = widget;
+            if (widget->objectName() == "unboundFloating_frameEditPageMetadata") restoredMetadata = widget;
         check(restoredMetadata && restoredMetadata->layout() == metadataLayout && metadataContent->isVisible()
             && metadataActivations == (visibleStart ? 2 : 1), "Metadata detach/activation failed");
         metadataContent->click();
@@ -709,7 +709,7 @@ int main(int argc, char **argv)
         std::puts("PASS: Metadata discovery, manual/automatic detach, native initialization, live controls and persisted docking");
         QWidget *restoredMixer = nullptr;
         for (auto widget : QApplication::topLevelWidgets())
-            if (widget->objectName() == "gammarayFloating_frameEditAudioMeter") restoredMixer = widget;
+            if (widget->objectName() == "unboundFloating_frameEditAudioMeter") restoredMixer = widget;
         check(restoredMixer && restoredMixer->layout() == savedMixerLayout && lazyMixerContent->isVisible(),
             "Automatic Mixer restoration did not initialize native content");
         check(mixerActivations == (restoreToggles ? 2 : 1) && alternateMeter->isHidden() && savedMixer->isHidden(),
@@ -718,7 +718,7 @@ int main(int argc, char **argv)
         check(savedMixer->layout() == savedMixerLayout && !savedMixer->isHidden(), "Mixer failed to reclaim its docked slot");
         QWidget *restoredInspector = nullptr;
         for (auto widget : QApplication::topLevelWidgets())
-            if (widget->objectName() == "gammarayFloating_frameEditPageInspector") restoredInspector = widget;
+            if (widget->objectName() == "unboundFloating_frameEditPageInspector") restoredInspector = widget;
         check(restoredInspector && restoredInspector->layout() == inspectorLayout && inspectorContent->isVisible(),
             "Automatic Inspector restoration did not initialize native content");
         check(inspectorActivations == (inspectorInitiallyActive ? 0 : 1) + (restoreToggles ? 1 : 0)
@@ -749,8 +749,8 @@ int main(int argc, char **argv)
         QWidget *floatingNodes = nullptr;
         QWidget *floatingEdit = nullptr;
         for (auto widget : QApplication::topLevelWidgets()) {
-            if (widget->objectName() == "gammarayFloating_m_pFrameNodeGraph") floatingNodes = widget;
-            if (widget->objectName() == "gammarayFloating_frameEditPageMediaPool") floatingEdit = widget;
+            if (widget->objectName() == "unboundFloating_m_pFrameNodeGraph") floatingNodes = widget;
+            if (widget->objectName() == "unboundFloating_frameEditPageMediaPool") floatingEdit = widget;
         }
         check(floatingNodes && floatingNodes->isVisible() && nodes->layout() == nodesGrid
             && nodeControl->parentWidget() == floatingNodes && nodeControl->isVisible(),
@@ -762,7 +762,7 @@ int main(int argc, char **argv)
         check(unrelatedLightBox->findChildren<QToolButton *>("resolvePaneUndockButton").isEmpty(),"Unsupported Clips acquired an Undock button");
         for (int i=0;i<3;++i) {
             auto host=colorControls[i]->window(); colorHosts.append(host);
-            check(host->objectName()=="gammarayFloating_"+colorNames[i] && host->isVisible() && colorControls[i]->isVisible(),
+            check(host->objectName()=="unboundFloating_"+colorNames[i] && host->isVisible() && colorControls[i]->isVisible(),
                 "New Color pane failed pending restore/native initialization");
             check(colorActivations[i]==(restoreToggles && (i==2 || (selectedColor && i==0)) ? 2 : 1),"Shared Color sidebar activation was repeated or skipped");
             check(colorSlots[i]->layout()==colorLayouts[i],"Color sidebar native grid replaced");
@@ -812,7 +812,7 @@ int main(int argc, char **argv)
             check(nodes->isVisible() == nodesToggle->isChecked(), "Nodes toolbar no longer controls main-window space");
             check(nodeControl->parentWidget() == floatingNodes && nodeControl->isVisible()
                 && floatingNodes->isVisible(), "Native toggle stole or hid floating graph");
-            check(nodesGrid->count() == 1 && nodesGrid->itemAt(0)->widget()->objectName() == "gammaraySidebarPlaceholder",
+            check(nodesGrid->count() == 1 && nodesGrid->itemAt(0)->widget()->objectName() == "unboundSidebarPlaceholder",
                 "Native toggle damaged retained Nodes grid/placeholder");
         }
         check(floatingEdit && !floatingEdit->isVisible(), "Edit floating pane leaked onto Color");
@@ -840,7 +840,7 @@ int main(int argc, char **argv)
             nodesButton->click(); app.processEvents();
             QWidget *repeatedHost = nullptr;
             for (auto host : QApplication::topLevelWidgets())
-                if (host->objectName() == "gammarayFloating_m_pFrameNodeGraph" && host->isVisible()) repeatedHost = host;
+                if (host->objectName() == "unboundFloating_m_pFrameNodeGraph" && host->isVisible()) repeatedHost = host;
             check(repeatedHost != nodes && nodes->layout() == nodesGrid && nodesToggle->isEnabled(), "Repeated Nodes undock failed");
             if (cycle < 2) {
                 app.processEvents(); app.processEvents();

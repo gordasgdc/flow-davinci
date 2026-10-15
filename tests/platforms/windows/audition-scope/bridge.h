@@ -35,7 +35,7 @@ protected:
         auto widget=static_cast<QWidget *>(object);
         auto host=m_preview->window();
         const bool floating=host!=m_main && host->isWindow() &&
-            host->objectName()=="gammarayFloating_frameAudioPanelMediaPoolContainer";
+            host->objectName()=="unboundFloating_frameAudioPanelMediaPoolContainer";
         const bool inHost=floating && widget->window()==host;
         bool insidePreview=false;
         for (auto p=widget;p;p=p->parentWidget()) if (p==m_preview) insidePreview=true;

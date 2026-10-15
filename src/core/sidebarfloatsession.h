@@ -143,7 +143,7 @@ public:
             host->setParent(slot, host->windowFlags());
         inheritPaneTaskbarIdentity(host, slot->window());
         m_host = host;
-        host->setObjectName(QStringLiteral("gammarayFloating_") + slot->objectName());
+        host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
         host->setWindowTitle(label);
         host->resize(slot->size().expandedTo(QSize(360, 300)));
         if (preserveNativeLayout) {
@@ -163,7 +163,7 @@ public:
             m_content->show();
             m_hostLayout = hostLayout;
             auto placeholder = new QLabel(QStringLiteral("%1 is floating.").arg(label), slot);
-            placeholder->setObjectName(QStringLiteral("gammaraySidebarPlaceholder"));
+            placeholder->setObjectName(QStringLiteral("unboundSidebarPlaceholder"));
             placeholder->setAlignment(Qt::AlignCenter);
             m_placeholder = placeholder;
             addNativeContent(placeholder);
@@ -183,7 +183,7 @@ public:
         m_placeholderLayout = placeholderLayout;
         auto placeholder = new QLabel(QStringLiteral("%1 is floating.").arg(label), slot);
         m_placeholder = placeholder;
-        placeholder->setObjectName(QStringLiteral("gammaraySidebarPlaceholder"));
+        placeholder->setObjectName(QStringLiteral("unboundSidebarPlaceholder"));
         placeholder->setAlignment(Qt::AlignCenter);
         placeholderLayout->addWidget(placeholder);
         placeholder->show();

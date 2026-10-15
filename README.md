@@ -58,4 +58,3 @@ not-implemented message.
 ## License
 
 Unbound source and symbol artwork: [MIT](LICENSE).
-See [NOTICE](NOTICE) for artwork and dependency notices.

@@ -75,7 +75,7 @@ public:
         for (auto widget : QApplication::topLevelWidgets()) {
             if (reinterpret_cast<HWND>(widget->effectiveWinId()) != handle
                 && (widget->objectName() == QLatin1String("UiMainWindow")
-                    || widget->objectName().startsWith(QLatin1String("gammarayFloating_"))))
+                    || widget->objectName().startsWith(QLatin1String("unboundFloating_"))))
                 m_windows.append(widget);
         }
         RECT bounds{};
