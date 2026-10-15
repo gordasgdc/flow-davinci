@@ -1,33 +1,43 @@
-# Unbound for DaVinci Resolve
+# Unbound - Floating panels for DaVinci Resolve
 
-Unbound lets you undock DaVinci Resolve panels into independent, resizable windows
-on Windows. Arrange them across your displays and restore your custom workspace
-between sessions. Unbound remembers window positions, sizes, docking and
-panel-toggle states.
+Unbound lets you undock DaVinci Resolve panels into independent, resizable windows.
+Arrange them across your displays and restore your custom workspace between sessions.
+Unbound remembers window positions, sizes, docking and panel-toggle states.
 
-## Use
+For now we have builds for Windows 10/11. No MacOS and Linux builds yet.
 
-Keep `Unbound.exe` and `Unbound.dll` together and run `Unbound.exe`. Unbound waits
-silently if Resolve is not running yet.
-Open a project, then use a panel's dock/undock button. Resolve's native panel
+## How to use
+
+Download from [Releases](../../releases), unzip and run
+`Unbound.exe`. Or start Resolve and _then_ run `Unbound.exe`. Unbound waits
+silently if Resolve is not running yet. This will add a Dock/Undock button
+to supported panels.
+
+Open a project, then use a panel's Dock/Undock button. Resolve's native panel
 toggles remain available to control the space in the main window.
+
+Native minimum panel sizes apply. Nodes may need panning after docking into a
+narrower area.
 
 Settings are stored in `%LOCALAPPDATA%\Unbound\Unbound.json`.
 See [settings documentation](<doc/Unbound settings.md>).
 
 ## Compatibility
 
-Unbound is unofficial and depends on Resolve's internal Qt widgets and layouts.
-The oldest tested configuration is Resolve 21.1.0.14, Windows x64, Qt 5.15.2; other
-tested versions include 21.1.1.10. Save work before testing a new configuration.
-Native minimum panel sizes apply. Nodes may need panning after docking into a
-narrower area.
+Unbound is unofficial and depends on Resolve's internal widget hierarchy and layouts.
+The oldest tested configuration is Resolve 21.1.0.14 on Windows x64 (10 and 11);
+other tested versions include 21.1.1.10. Save work before testing a new configuration.
+
+Windows may nag about the Unbound helper when running it. That's a good thing - OS
+should notice and say something when DLLs attach to applications. That said: Unbound is
+minimally intrusive - does not do any harm - does not phone home. If unsure: let your
+agent check the open source.
 
 ## Build
 
 Requires Windows x64, Visual Studio 2022 C++ build tools and Windows SDK, CMake on
 PATH, PowerShell, and **Qt 5.15.2 MSVC x64 development files** (headers, import
-libraries and CMake configuration; Qt Creator is not required).
+libraries and CMake configuration).
 
 ```powershell
 .\build-unbound-release.cmd
