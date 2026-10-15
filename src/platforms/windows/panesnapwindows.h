@@ -30,9 +30,25 @@ inline QRect paneContactBounds(HWND handle)
             UINT border = 0;
             if (SUCCEEDED(DwmGetWindowAttribute(handle, DWMWA_VISIBLE_FRAME_BORDER_THICKNESS,
                     &border, sizeof(border)))) {
-                // Removing the full Windows 11 outline from both neighbours
-                // overcompensates. Retain one physical pixel of its thickness.
-                inset = int(qMin(border > 0 ? border - 1 : 0, UINT(4)));
+                // Use the measured physical outline thickness. Keeping one
+                // pixel on each neighbour leaves a two-pixel seam.
+                inset = int(qMin(border, UINT(4)));
+                RECT client{};
+                POINT origin{};
+                if (GetClientRect(handle, &client) && ClientToScreen(handle, &origin)) {
+                    // Resolve's custom client rectangle includes DWM's top
+                    // outline. ClientToScreen alone therefore cannot measure
+                    // that edge; use DWM's reported thickness there.
+                    const int left = qMin(inset, qMax(0, int(origin.x - bounds.left)));
+                    const int top = inset;
+                    const int right = qMin(inset, qMax(0, int(bounds.right - origin.x - client.right)));
+                    const int bottom = qMin(inset, qMax(0, int(bounds.bottom - origin.y - client.bottom)));
+                    return QRect(bounds.left + left, bounds.top + top,
+                        bounds.right - bounds.left - left - right,
+                        bounds.bottom - bounds.top - top - bottom);
+                }
+                // Without client bounds, do not risk overlapping content.
+                inset = 0;
             }
         }
     }

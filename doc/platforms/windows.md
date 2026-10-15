@@ -25,8 +25,16 @@ The export delegates to shared GUI-thread initialization. Floating hosts omit th
 Windows caption while retaining native dark resize borders and shell identity.
 The normal top frame is reduced to a one-physical-pixel outline, which is also
 the native top resize target; side and bottom resize margins remain native.
-Snap bounds omit top-border compensation where client content already reaches
-the visible frame edge, so Resolve's main top and the work-area top coincide.
+Windows 11 uses DWM's visible border thickness without subtracting a pixel;
+side and bottom compensation stops at client content. Resolve's custom client
+rectangle includes the DWM top outline, so the top compensation uses DWM's
+thickness even when ClientToScreen reports no top margin. Snapping to the
+work-area top places that outline outside the work area, alongside floating panes.
+The main window commits its negotiated top snap after the native move loop ends
+if release clamps it by the outline thickness; cancellation, maximization and
+Alt bypass do not replay the snap. Captionless pane restoration preserves valid
+saved client rectangles instead of Qt's generic title-bar safety margin.
+Windows 10 retains its one-physical-pixel translucent-outline compensation.
 Dragging their Dock button uses the nonmodal movement path; an ordinary click
 still docks. Native snapping and placement coordinate semantics are preserved.
 

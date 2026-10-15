@@ -6,6 +6,8 @@
 #include <QPointer>
 #include <QPainter>
 #include <QApplication>
+#include <QScreen>
+#include "geometryjson.h"
 #include "panesnapwindows.h"
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
@@ -19,6 +21,28 @@ public:
     {
         // Auxiliary taskbar windows must not keep Resolve alive.
         setAttribute(Qt::WA_QuitOnClose, false);
+    }
+    bool restoreGeometry(const QByteArray &bytes)
+    {
+        const bool restored = QWidget::restoreGeometry(bytes);
+        if (!restored || QGuiApplication::platformName() != QLatin1String("windows")
+            || isMaximized() || isFullScreen()) return restored;
+        // Qt's generic restoration reserves a title-bar-height safety margin,
+        // even for this captionless host. Restore the saved client rectangle
+        // exactly when it is reachable on the current monitor layout; retain
+        // Qt's recovery for removed displays or changed screen dimensions.
+        const auto saved = qtGeometryJson(bytes);
+        QRect client;
+        if (!readRectangle(saved.value("clientRect"), client)) return restored;
+        for (auto screen : QGuiApplication::screens()) {
+            if (screen->availableGeometry().contains(client)
+                && (!saved.value("screenWidth").toInt()
+                    || saved.value("screenWidth").toInt() == screen->geometry().width())) {
+                setGeometry(client);
+                break;
+            }
+        }
+        return restored;
     }
     bool beginButtonMove()
     {

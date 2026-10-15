@@ -3,15 +3,23 @@
 #include "windowgroupactivation.h"
 #include <QDialog>
 #include <QWindow>
+#include <QCursor>
 
 // Model Resolve's main frame: client content reaches the outer top edge even
 // though the native style still includes a caption and resize frame.
 class ResolveTopEdgeFixture : public QWidget
 {
+public:
+    bool clampTopOnMoveExit = false;
 protected:
     bool nativeEvent(const QByteArray &type, void *message, long *result) override
     {
         const auto msg = static_cast<MSG *>(message);
+        if (msg->message == WM_EXITSIZEMOVE && clampTopOnMoveExit) {
+            RECT rect{}; GetWindowRect(msg->hwnd, &rect);
+            SetWindowPos(msg->hwnd, nullptr, rect.left, rect.top + 1, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
         if (msg->message == WM_NCCALCSIZE && !IsZoomed(msg->hwnd)) {
             auto rect = reinterpret_cast<RECT *>(msg->lParam);
             const LONG top = rect->top;
@@ -204,6 +212,7 @@ bool runPlatformWindowTests(QApplication &app)
         release(); check(clicks == 1, "Stationary click did not toggle docking action");
         button.setChecked(true);
         auto startDrag = [&] {
+            QCursor::setPos(button.mapToGlobal(QPoint(10,10)));
             press();
             mouse(QEvent::MouseMove, {10 + QApplication::startDragDistance() + 1,10}, Qt::NoButton, Qt::LeftButton);
             check(host.interactiveDragActive() && QWidget::mouseGrabber() == &button && !button.isDown(),
@@ -278,6 +287,14 @@ bool runPlatformWindowTests(QApplication &app)
         check(host.restoreGeometry(savedGeometry), "Captionless geometry restoration failed");
         app.processEvents(); verifyFrame();
         check(host.geometry() == savedClient, "Thin top frame changed saved client geometry");
+        host.setGeometry(300, 0, 420, 300); app.processEvents(); DwmFlush();
+        const auto topSaved = Unbound::qtGeometryBytes(Unbound::qtGeometryJson(host.saveGeometry()));
+        const auto topContact = Unbound::paneContactBounds(handle);
+        Unbound::PaneFloatingWindow topRestored;
+        topRestored.winId();
+        topRestored.restoreGeometry(topSaved); topRestored.show(); app.processEvents(); DwmFlush();
+        const auto restoredTopContact = Unbound::paneContactBounds(reinterpret_cast<HWND>(topRestored.winId()));
+        check(restoredTopContact == topContact, "Captionless startup restoration displaced a top-snapped pane");
         host.showMinimized(); app.processEvents();
         check(host.isMinimized(), "Captionless minimization failed");
         host.showNormal(); app.processEvents(); verifyFrame();
@@ -380,9 +397,18 @@ bool runPlatformWindowTests(QApplication &app)
                 UINT border = 0;
                 check(SUCCEEDED(DwmGetWindowAttribute(window, DWMWA_VISIBLE_FRAME_BORDER_THICKNESS,
                     &border, sizeof(border))), "Windows 11 border unavailable for snap test");
-                if (border <= 1)
-                    check(actual == QRect(frame.left, frame.top, frame.right - frame.left,
-                        frame.bottom - frame.top), "Windows 11 thin frame still overcompensates");
+                POINT origin{};
+                RECT client{};
+                check(GetClientRect(window, &client) && ClientToScreen(window, &origin),
+                    "Windows 11 client bounds unavailable for snap test");
+                const int thickness = int(qMin(border, UINT(4)));
+                const QRect interior(frame.left + thickness, frame.top + thickness,
+                    frame.right - frame.left - 2 * thickness, frame.bottom - frame.top - 2 * thickness);
+                const int contentTop = qMax(int(origin.y), int(frame.top) + thickness);
+                const QRect content(origin.x, contentTop, client.right, origin.y + client.bottom - contentTop);
+                check(actual == interior.united(content).intersected(QRect(frame.left, frame.top,
+                    frame.right - frame.left, frame.bottom - frame.top)),
+                    "Windows 11 snap bounds retained an outline or overlapped pane content");
             }
         }
         Unbound::MainWindowSnap filter;
@@ -440,11 +466,41 @@ bool runPlatformWindowTests(QApplication &app)
         MONITORINFO monitor{}; monitor.cbSize = sizeof(monitor);
         check(GetMonitorInfo(MonitorFromWindow(handle, MONITOR_DEFAULTTONEAREST), &monitor),
             "Snap fixture monitor unavailable");
-        SetWindowPos(handle, nullptr, monitor.rcWork.left + 400, monitor.rcWork.top,
+        const auto mainContactBefore = Unbound::paneContactBounds(handle);
+        RECT mainRectBefore{}; GetWindowRect(handle, &mainRectBefore);
+        const int mainTopInset = mainContactBefore.top() - mainRectBefore.top;
+        SetWindowPos(handle, nullptr, monitor.rcWork.left + 400, monitor.rcWork.top - mainTopInset,
             400, 300, SWP_NOZORDER | SWP_NOACTIVATE);
         app.processEvents(); DwmFlush();
         check(Unbound::paneContactBounds(handle).top() == monitor.rcWork.top,
-            "Resolve-like main frame invented a second top-edge target");
+            "Resolve-like main visible content did not reach the work-area top");
+        if (mainTopInset > 0) {
+            filter.setWindow(&main);
+            SendMessage(handle, WM_ENTERSIZEMOVE, 0, 0);
+            RECT proposal{}; GetWindowRect(handle, &proposal);
+            SendMessage(handle, WM_MOVING, 0, reinterpret_cast<LPARAM>(&proposal));
+            SetWindowPos(handle, nullptr, proposal.left, proposal.top, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            main.clampTopOnMoveExit = true;
+            SendMessage(handle, WM_EXITSIZEMOVE, 0, 0);
+            main.clampTopOnMoveExit = false;
+            app.processEvents(); DwmFlush();
+            check(Unbound::paneContactBounds(handle).top() == monitor.rcWork.top,
+                "Move-loop release displaced the main window from its negotiated top snap");
+            SendMessage(handle, WM_ENTERSIZEMOVE, 0, 0);
+            GetWindowRect(handle, &proposal);
+            SendMessage(handle, WM_MOVING, 0, reinterpret_cast<LPARAM>(&proposal));
+            SendMessage(handle, WM_CANCELMODE, 0, 0);
+            main.clampTopOnMoveExit = true;
+            SendMessage(handle, WM_EXITSIZEMOVE, 0, 0);
+            main.clampTopOnMoveExit = false;
+            app.processEvents(); DwmFlush();
+            check(Unbound::paneContactBounds(handle).top() == monitor.rcWork.top + 1,
+                "Canceled movement replayed a stale snap rectangle");
+            SetWindowPos(handle, nullptr, monitor.rcWork.left + 400, monitor.rcWork.top - mainTopInset,
+                0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            filter.setWindow(nullptr);
+        }
         GetWindowRect(peerHandle, &peerRect);
         const auto peerContact = Unbound::paneContactBounds(peerHandle);
         const int topInset = peerContact.top() - peerRect.top;
