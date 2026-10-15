@@ -76,7 +76,7 @@ libraries and CMake configuration; Qt Creator is not required).
 ```
 
 The default Qt path is `%USERPROFILE%\Qt\5.15.2\msvc2019_64`. The script regenerates
-icons from `src/assets/filmhaus.png`, builds,
+icons from `src/assets/unbound-symbol.svg`, builds,
 runs regression tests and audits imports, then puts the two release binaries in
 `release/win/YYYY.MM.DD.NNN/`. Use `-Date YYYY.MM.DD -BuildNumber N` for an explicit
 version. Windows build output is in `build/windows/`; published release paths
@@ -100,6 +100,5 @@ not-implemented message. This reorganization does not add macOS support.
 
 ## License
 
-Unbound source: [MIT](LICENSE).
-Filmhaus logo and derived icons: Copyright (c) 2026 Wolfgang Woehl.
+Unbound source and symbol artwork: [MIT](LICENSE).
 See [NOTICE](NOTICE) for artwork and dependency notices.

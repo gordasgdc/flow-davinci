@@ -80,7 +80,7 @@ both binaries, runs `tests/platforms/windows/launcher` and
 Successful releases contain only `Unbound.exe` and `Unbound.dll` in
 `release/win/YYYY.MM.DD.NNN/`. Never overwrite published version directories.
 `-Date` and `-BuildNumber` set an explicit version. Build/release output is ignored
-by Git. The release build regenerates icons from `src/assets/filmhaus.png`;
+by Git. The release build regenerates icons from `src/assets/unbound-symbol.svg`;
 shared artwork is in `src/assets`; the ICO is in
 `src/platforms/windows/resources`. Build output is in `build/windows/`.
 
@@ -102,8 +102,7 @@ shared artwork is in `src/assets`; the ICO is in
   need validation. Known issue: Media Pool may widen on startup restoration and
   overlap its neighbor. Native minimum sizes apply; Nodes may need manual panning
   after docking into a narrower viewport.
-- Source license is MIT. Filmhaus logo/derived icons: copyright 2026 Wolfgang Woehl;
-  artwork rights are recorded in NOTICE. Preserve dependency notices in src.
+- Source and symbol artwork license is MIT. Preserve dependency notices in src.
 
 Keep README.md and doc/Unbound settings.md accurate for current behavior. This repository
 is self-contained for development apart from the installed toolchain and Resolve.
