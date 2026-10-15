@@ -6,7 +6,7 @@ CMake, PowerShell and Qt 5.15.2 MSVC x64 development files.
 From the repository root, the existing entry point is unchanged:
 
 ```powershell
-.\build-unbound-release.cmd -QtPath C:\Qt\5.15.2\msvc2019_64
+.\build-unbound-release.cmd -QtPath C:\%USERPROFILE%\Qt\5.15.2\msvc2019_64
 ```
 
 `-Date` and `-BuildNumber` retain their existing meaning. The command configures the
@@ -51,5 +51,3 @@ event-driven and adds no polling. The native regression test is
 
 For development tools, see the [diagnostic build](../../tests/platforms/windows/diagnostic/README.md)
 and [Inspector probe](../../tests/platforms/windows/inspector-probe/README.md).
-The restructure requires validation with the Windows release command; macOS cannot
-run the MSVC build or Win32 fixtures. Never stop the user's Resolve session to test.
