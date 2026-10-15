@@ -1,6 +1,6 @@
 # Compatibility entry point; Windows implementation lives under infrastructure/.
 param(
-    [string]$Date = (Get-Date -Format 'yyyy.MM.dd'),
+    [string]$Version = '',
     [int]$BuildNumber = 0,
     [string]$QtPath = "$env:USERPROFILE\Qt\5.15.2\msvc2019_64"
 )

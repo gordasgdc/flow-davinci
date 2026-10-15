@@ -6,14 +6,30 @@ CMake, PowerShell and Qt 5.15.2 MSVC x64 development files.
 From the repository root, the existing entry point is unchanged:
 
 ```powershell
-.\build-unbound-release.cmd -QtPath C:\%USERPROFILE%\Qt\5.15.2\msvc2019_64
+.\build-unbound-release.cmd
 ```
 
-`-Date` and `-BuildNumber` retain their existing meaning. The command configures the
+The public semantic version comes from the root `VERSION` file; override it with
+`-Version 0.2.0-dev.1`. `-QtPath` overrides the default
+`%USERPROFILE%\Qt\5.15.2\msvc2019_64`. The command configures the
 root CMake project, builds under `build/windows/unbound/<version>/`, runs launcher
 and pane fixtures, audits dependencies and publishes only `Unbound.exe` and
 `Unbound.dll` under `release/win/<version>/`. Existing releases are never overwritten.
 Pane fixture builds use `build/windows/pane-tests/`.
+
+EXE and DLL file/product version strings contain the complete semantic version.
+Their numeric Windows resources map `MAJOR.MINOR.PATCH` to `MAJOR,MINOR,PATCH,0`;
+`-BuildNumber` overrides only that final numeric revision (0..65535). Each public
+numeric component must also fit 0..65535. UTC build IDs remain in resource comments
+and `release-manifest.json`, alongside the version, revision, dependencies and hashes.
+Diagnostics use the same numeric version with a diagnostic suffix in the strings.
+
+ZIP creation is never automatic. After committing and tagging `v<version>`, run
+`infrastructure/windows/package-release.ps1` explicitly. It checks the clean tagged
+source, embedded versions and manifest hashes, then writes
+`release/packages/Unbound-<version>-windows-x64.zip` with one enclosing folder.
+The package contains the two binaries, MIT license and a short README recording
+the source tag and commit. Existing packages are never overwritten.
 
 Source is in `src/platforms/windows/`; shared behavior is in `src/core/`.
 Build/release implementation is in `infrastructure/windows/`. Both root release

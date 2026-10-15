@@ -44,11 +44,8 @@ replace_checked(controller [=[Unbound::PaneSettings m_settings;]=]
         QDir(qEnvironmentVariable("LOCALAPPDATA")).filePath("Unbound/audition-child.json"))};]=])
 file(WRITE "${overlay}/controller.cpp" "${controller}")
 
-string(TIMESTAMP UNBOUND_YEAR "%Y")
-string(TIMESTAMP UNBOUND_MONTH "%m")
-string(TIMESTAMP UNBOUND_DAY "%d")
-set(UNBOUND_BUILD 0)
-set(UNBOUND_VERSION "${UNBOUND_YEAR}.${UNBOUND_MONTH}.${UNBOUND_DAY}.000-audition-child")
+include("${UNBOUND_ROOT}/infrastructure/windows/version.cmake")
+string(APPEND UNBOUND_VERSION "-audition-child")
 set(native "${UNBOUND_ROOT}/src/platforms/windows")
 set(UNBOUND_FILE_TYPE VFT_APP)
 set(UNBOUND_FILENAME Unbound.exe)

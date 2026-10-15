@@ -1,13 +1,16 @@
 param(
-    [string]$Date = (Get-Date -Format 'yyyy.MM.dd'),
+    [string]$Version = '',
     [int]$BuildNumber = 0,
     [string]$QtPath = "$env:USERPROFILE\Qt\5.15.2\msvc2019_64"
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-StrictMode -Version Latest
-$day = [datetime]::ParseExact($Date, 'yyyy.MM.dd', [Globalization.CultureInfo]::InvariantCulture)
-if ($BuildNumber -lt 0 -or $BuildNumber -gt 65535) { throw 'BuildNumber must be 0 (automatic) or 1..65535.' }
+. (Join-Path $PSScriptRoot 'version.ps1')
+$releaseVersion = Get-UnboundReleaseVersion -repoRoot $repoRoot -Version $Version
+$version = $releaseVersion.Version
+$buildId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+if ($BuildNumber -lt 0 -or $BuildNumber -gt 65535) { throw 'BuildNumber must be 0..65535 (the Windows numeric revision; default 0).' }
 if (!(Test-Path -LiteralPath (Join-Path $QtPath 'lib\cmake\Qt5\Qt5Config.cmake'))) { throw "Qt 5.15.2 development files not found at $QtPath" }
 $releaseRoot = Join-Path $repoRoot 'release\win'
 New-Item -ItemType Directory -Force -Path $releaseRoot | Out-Null
@@ -22,31 +25,25 @@ function Invoke-Checked([string]$Program, [string[]]$Arguments) {
 try {
     try { $locked = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $locked = $true }
     if (!$locked) { throw 'Another Unbound release build is running.' }
-    if ($BuildNumber -eq 0) {
-        $maxBuild = 0
-        foreach ($folder in Get-ChildItem -LiteralPath $releaseRoot -Directory) {
-            if ($folder.Name -match ('^' + [regex]::Escape($Date) + '\.(\d+)$')) {
-                $maxBuild = [Math]::Max($maxBuild, [int]$Matches[1])
-            }
-        }
-        $BuildNumber = $maxBuild + 1
-    }
-    if ($BuildNumber -gt 65535) { throw 'Daily build number exceeds Windows version limits.' }
-    $version = '{0}.{1:D3}' -f $Date, $BuildNumber
     $destination = Join-Path $releaseRoot $version
     if (Test-Path -LiteralPath $destination) { throw "Release already exists: $destination. Existing releases are never overwritten." }
     Build-UnboundIcons -repoRoot $repoRoot
     $build = Join-Path $repoRoot "build\windows\unbound\$version"
     Invoke-Checked 'cmake' @('-S', $repoRoot, '-B', $build,
         '-G', 'Visual Studio 17 2022', '-A', 'x64', "-DCMAKE_PREFIX_PATH=$QtPath",
-        "-DUNBOUND_VERSION=$version", "-DUNBOUND_YEAR=$($day.Year)", "-DUNBOUND_MONTH=$($day.Month)",
-        "-DUNBOUND_DAY=$($day.Day)", "-DUNBOUND_BUILD=$BuildNumber")
+        "-DUNBOUND_VERSION=$version", "-DUNBOUND_BUILD=$BuildNumber", "-DUNBOUND_BUILD_ID=$buildId")
     Invoke-Checked 'cmake' @('--build', $build, '--config', 'Release', '--', '/m:1', '/nr:false')
     Invoke-Checked (Join-Path $build 'Release\UnboundLauncherTests.exe') @()
+    & (Join-Path $repoRoot 'tests\platforms\windows\version\main.ps1')
     $exe = Join-Path $build 'Release\Unbound.exe'
     $dll = Join-Path $build 'Release\Unbound.dll'
     foreach ($file in @($exe, $dll)) {
-        if ((Get-Item -LiteralPath $file).VersionInfo.ProductVersion -ne $version) { throw "Version resource mismatch: $file" }
+        $info = (Get-Item -LiteralPath $file).VersionInfo
+        if ($info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
+            $info.FileMajorPart -ne $releaseVersion.Major -or $info.FileMinorPart -ne $releaseVersion.Minor -or
+            $info.FileBuildPart -ne $releaseVersion.Patch -or $info.FilePrivatePart -ne $BuildNumber) {
+            throw "Version resource mismatch: $file"
+        }
     }
     $dependencyReport = Get-UnboundDependencies -exe $exe -dll $dll
     # Tests exercise the same shared pane code plus the standalone DLL bootstrap.
@@ -86,7 +83,7 @@ try {
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Version=$version; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport } |
+    @{ Version=$version; BuildId=$buildId; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Write-Host "Unbound $version ready: $destination"
 } finally {

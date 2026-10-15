@@ -80,8 +80,10 @@ MSVC x64 development files. Runtime uses Resolve's Qt libraries. The script buil
 both binaries, runs `tests/platforms/windows/launcher` and
 `tests/core/pane-float` with the Windows test adapter, and audits dependencies.
 Successful releases contain only `Unbound.exe` and `Unbound.dll` in
-`release/win/YYYY.MM.DD.NNN/`. Never overwrite published version directories.
-`-Date` and `-BuildNumber` set an explicit version. Build/release output is ignored
+`release/win/<version>/`. Never overwrite published version directories.
+The default semantic version is read from root `VERSION`; `-Version` overrides it.
+`-BuildNumber` sets the fourth numeric Windows revision (default 0), not the public
+version. Build/release output is ignored
 by Git. The release build regenerates icons from `src/assets/unbound-symbol.svg`;
 shared artwork is in `src/assets`; the ICO is in
 `src/platforms/windows/resources`. Build output is in `build/windows/`.

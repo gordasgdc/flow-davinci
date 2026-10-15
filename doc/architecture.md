@@ -52,13 +52,13 @@ and dependency-audit helpers. Windows diagnostic build commands live there too.
 Each script resolves paths from its own location, not the caller's directory.
 
 Build output is ignored under `build/<platform>/`. Windows release artifacts remain
-exactly `Unbound.exe` and `Unbound.dll` in immutable `release/win/YYYY.MM.DD.NNN/`
+exactly `Unbound.exe` and `Unbound.dll` in immutable `release/win/<version>/`
 directories. Future macOS releases belong under `release/mac/`; no macOS package
 or signing policy is implemented yet.
 
 Original artwork and shared PNGs live in `src/assets/`. The Windows ICO and resource
-templates live in `src/platforms/windows/resources/`. Existing dependency notices
-remain in `src/` and artwork rights remain in `NOTICE`.
+templates live in `src/platforms/windows/resources/`. Source and artwork are covered
+by the root MIT `LICENSE`. Local inspection tools are not release dependencies.
 
 ## Tests
 
