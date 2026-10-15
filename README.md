@@ -18,8 +18,8 @@ See [settings documentation](<doc/Unbound settings.md>).
 ## Compatibility
 
 Unbound is unofficial and depends on Resolve's internal Qt widgets and layouts.
-The tested configuration is Resolve 21.1.0.14, Windows x64, Qt 5.15.2; other
-versions are unverified. Save work before testing a new configuration.
+The oldest tested configuration is Resolve 21.1.0.14, Windows x64, Qt 5.15.2; other
+tested versions include 21.1.1.10. Save work before testing a new configuration.
 Native minimum panel sizes apply. Nodes may need panning after docking into a
 narrower area.
 
