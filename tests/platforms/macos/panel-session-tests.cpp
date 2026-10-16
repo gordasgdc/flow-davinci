@@ -1,8 +1,14 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QStackedLayout>
+#include <QTemporaryDir>
+#include <QSaveFile>
+#include <QElapsedTimer>
+#include <QThread>
 #include <cstdio>
 #include "panelsession.h"
+#include "panelcontrols.h"
+#include "controlservice.h"
 
 static int failures = 0;
 static void check(bool condition, const char *message)
@@ -18,6 +24,11 @@ static void settle()
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    QTemporaryDir logs;
+    qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
+    qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
+    Unbound::WindowDiagnostics windowLogs(&app);
+    app.installEventFilter(&windowLogs);
     app.setQuitOnLastWindowClosed(false);
     {
         QWidget page;
@@ -103,6 +114,60 @@ int main(int argc, char **argv)
     }
     {
         QWidget page;
+        auto row = new QHBoxLayout(&page);
+        auto stack = new QStackedWidget(&page);
+        auto source = new QWidget;
+        auto offline = new QWidget;
+        auto sourceTimeline = new QWidget;
+        stack->addWidget(source); stack->addWidget(offline); stack->addWidget(sourceTimeline);
+        auto program = new QWidget(&page);
+        row->addWidget(stack); row->addWidget(program);
+        page.show(); settle();
+        Unbound::MacPanelSession session;
+        check(session.undock(source, &page, "Source").isEmpty(), "source child detaches from stack");
+        check(source->parentWidget() == session.window() && stack->parentWidget() == &page &&
+              offline->parentWidget() == stack && sourceTimeline->parentWidget() == stack &&
+              program->parentWidget() == &page, "source floats without stack, alternate viewers or program");
+        check(session.dock().isEmpty() && stack->widget(0) == source && stack->widget(1) == offline &&
+              stack->widget(2) == sourceTimeline && stack->currentWidget() == source, "source stack order and selection restored");
+        check(session.undock(source, &page, "Source").isEmpty(), "second source detach");
+        stack->setCurrentWidget(offline);
+        check(session.dock().isEmpty() && stack->currentWidget() == offline && source->isHidden(), "native viewer selection change survives docking");
+    }
+    {
+        QWidget main;
+        main.setObjectName(QStringLiteral("UiMainWindow"));
+        auto page = new QWidget(&main);
+        page->setObjectName(QStringLiteral("WStackPage_Conform"));
+        auto mainLayout = new QVBoxLayout(&main);
+        mainLayout->addWidget(page);
+        auto row = new QHBoxLayout(page);
+        auto stack = new QStackedWidget(page);
+        auto source = new QWidget;
+        source->setObjectName(QStringLiteral("widgetEditSourcePlayer"));
+        stack->addWidget(source); row->addWidget(stack);
+        auto program = new QWidget(page);
+        program->setObjectName(QStringLiteral("widgetEditTimelinePlayer")); row->addWidget(program);
+        main.show(); settle();
+        PanelControls controls;
+        controls.show(); settle();
+        auto sourceUndock = controls.findChild<QPushButton *>(QStringLiteral("undock_widgetEditSourcePlayer"));
+        auto sourceDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditSourcePlayer"));
+        auto programDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditTimelinePlayer"));
+        check(sourceUndock && sourceDock && programDock, "controls have distinct panel identities");
+        check(!sourceDock->isEnabled() && !programDock->isEnabled(), "inactive Dock buttons are disabled");
+        sourceUndock->click(); settle();
+        check(sourceDock->isEnabled() && !sourceUndock->isEnabled() && !programDock->isEnabled(), "only detached panel enables Dock");
+        programDock->click();
+        check(source->parentWidget() != stack, "unrelated Dock cannot claim or change source state");
+        sourceDock->click(); settle();
+        check(source->parentWidget() == stack && !sourceDock->isEnabled() && sourceUndock->isEnabled(), "source Dock button restores correct child");
+        sourceUndock->click(); settle();
+        check(source->window()->close(), "source close-to-dock"); settle();
+        check(source->parentWidget() == stack && !sourceDock->isEnabled(), "closing host refreshes Dock button state");
+    }
+    {
+        QWidget page;
         auto layout = new QStackedLayout(&page);
         auto content = new QWidget(&page);
         layout->addWidget(content); page.show(); settle();
@@ -119,7 +184,39 @@ int main(int argc, char **argv)
         settle();
         check(layout->itemAt(0)->widget() == content && content->parentWidget() == &page, "session destruction restores content");
     }
+    {
+        Unbound::ControlService service(&app);
+        PanelControls *controls = nullptr;
+        for (auto window : QApplication::topLevelWidgets())
+            if (window->objectName() == QLatin1String("unboundPanelTest")) controls = static_cast<PanelControls *>(window);
+        check(controls != nullptr, "resident service creates controls");
+        for (int i = 0; i < 2 && controls; ++i) {
+            controls->hide();
+            QSaveFile request(logs.path() + QStringLiteral("/show-controls.request"));
+            check(request.open(QIODevice::WriteOnly), "launch request opened");
+            request.write(QByteArray::number(i));
+            check(request.commit(), "launch request committed");
+            QElapsedTimer timer; timer.start();
+            while (!controls->isVisible() && timer.elapsed() < 2500) { settle(); QThread::msleep(10); }
+            check(controls->isVisible(), "relaunch request restores hidden controls");
+            int count = 0;
+            for (auto window : QApplication::topLevelWidgets())
+                if (window->objectName() == QLatin1String("unboundPanelTest")) ++count;
+            check(count == 1, "relaunch reuses controls without duplicate sessions");
+        }
+    }
     settle();
-    if (!failures) std::puts("PASS: 30 docking cycles, box/grid/splitter restoration, close, visibility, independent panels, rejection and lifetime");
+    QFile events(logs.path() + QStringLiteral("/events.jsonl"));
+    check(events.open(QIODevice::ReadOnly), "diagnostic log created");
+    int buttonEvents = 0, arrangementEvents = 0, verifiedDocks = 0;
+    while (!events.atEnd()) {
+        const auto record = QJsonDocument::fromJson(events.readLine()).object();
+        check(record.contains("time") && record.contains("pid") && record.contains("build"), "diagnostic event identity");
+        if (record["event"] == "button.click") ++buttonEvents;
+        if (record["event"] == "window.move" || record["event"] == "window.resize") ++arrangementEvents;
+        if (record["event"] == "panel.dock.verify" && record["passed"].toBool()) ++verifiedDocks;
+    }
+    check(buttonEvents >= 3 && arrangementEvents > 0 && verifiedDocks > 0, "button, arrangement and verified-dock events logged");
+    if (!failures) std::puts("PASS: docking cycles, layout restoration, independent viewers, stack selection, panel buttons, close, visibility and diagnostic events");
     return failures ? 1 : 0;
 }

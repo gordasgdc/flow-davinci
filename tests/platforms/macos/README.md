@@ -1,7 +1,7 @@
 # macOS native tests
 
-Reserved for the loading probe, Cocoa window tests and the adapter for shared pane
-fixtures. A native backend and validated loading mechanism are prerequisites.
+Native loading probes and Qt panel/window regression tests live here. The full
+shared-core Mac backend and adapter remain unfinished.
 See [platform status](../../../doc/platforms/macos.md).
 
 Build and self-test the startup helper without Resolve:
@@ -54,7 +54,8 @@ cd ../../..
 bash infrastructure/macos/build-widget-probe.sh
 ```
 
-Reinstall the complete OpenFX probe bundle with Resolve closed. The optional
+Build the native IO helper after the widget probe and install that bundle with Resolve closed;
+see the platform status document. The OpenFX bundle is retained for diagnostics. The optional
 widget inspector loads only in the Qt host on the main queue and links to the
 installed Resolve Qt libraries. It requires runtime Qt 5.15.2. Three snapshots,
 after 2, 10 and 30 seconds, record widget names, classes, parent names, visibility
@@ -77,4 +78,6 @@ bash infrastructure/macos/test-panel-sessions.sh
 These create temporary Qt test windows using the installed runtime. They verify
 layout slots, stretch/alignment, grid spans, splitter order/sizes, 30 repeated
 cycles, close-to-dock, page visibility, independent three-panel operation,
-unsupported/hidden target rejection and restoration on session destruction.
+unsupported/hidden target rejection, source-only stack detachment, source selection
+changes, panel-specific Dock button state, restoration on session destruction,
+structured diagnostic records and repeated control-window relaunch requests.

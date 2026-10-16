@@ -14,7 +14,10 @@ cp "$qt/src/corelib/global/qconfig.h" "$generated/QtCore/"
 cp "$qt/src/corelib/qtcore-config.h" "$generated/QtCore/"
 cp "$qt/src/gui/qtgui-config.h" "$generated/QtGui/"
 cp "$qt/src/widgets/qtwidgets-config.h" "$generated/QtWidgets/"
+revision="$(git -C "$root" rev-parse --short HEAD)"
+if [[ -n "$(git -C "$root" status --porcelain)" ]]; then revision="$revision-dirty"; fi
 xcrun clang++ -std=c++17 -Wall -Wextra -Werror -dynamiclib -fvisibility=hidden \
+    -DUNBOUND_BUILD_ID="\"$revision\"" \
     -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
     -I "$root/src/platforms/macos" \
     "$root/tests/platforms/macos/qt-widget-probe.cpp" \

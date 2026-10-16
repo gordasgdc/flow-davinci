@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <time.h>
+#include <stdint.h>
 #include <unistd.h>
 
 static void record_state(const char *phase, int inspect_windows)
@@ -24,8 +26,8 @@ static void record_state(const char *phase, int inspect_windows)
         snprintf(executable, sizeof(executable), "path exceeds buffer");
     /* Read the exported singleton pointer without linking another Qt runtime. */
     void **application = (void **)dlsym(RTLD_DEFAULT, "_ZN16QCoreApplication4selfE");
-    fprintf(log, "phase=%s pid=%d main_thread=%d executable=%s qt_symbol=%s qt_application=%s",
-            phase, getpid(), pthread_main_np(), executable,
+    fprintf(log, "time=%lld phase=%s pid=%d main_thread=%d executable=%s qt_symbol=%s qt_application=%s",
+            (long long)time(NULL), phase, getpid(), pthread_main_np(), executable,
             application ? "found" : "absent",
             application && *application ? "present" : "absent");
     if (inspect_windows && pthread_main_np() && application && *application) {
@@ -38,7 +40,17 @@ static void record_state(const char *phase, int inspect_windows)
 
 static void inspect_on_main(void *context)
 {
-    (void)context;
+    void **application = (void **)dlsym(RTLD_DEFAULT, "_ZN16QCoreApplication4selfE");
+    if (!application || !*application) {
+        uintptr_t attempt = (uintptr_t)context;
+        if (attempt < 120) {
+            dispatch_after_f(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC / 2),
+                dispatch_get_main_queue(), (void *)(attempt + 1), inspect_on_main);
+        } else {
+            record_state("qt-startup-timeout", 0);
+        }
+        return;
+    }
     record_state("main-queue", 1);
     Dl_info info;
     if (!dladdr((const void *)&inspect_on_main, &info)) return;

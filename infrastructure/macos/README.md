@@ -1,7 +1,7 @@
 # macOS infrastructure
 
-Reserved for native build, icon generation, dependency auditing, signing and
-notarization workflows. No macOS release command is implemented yet.
+Experimental build and test scripts live here. No macOS release command,
+notarization workflow or distribution package is implemented yet.
 Use `build/macos/` for development output and `release/mac/` for future immutable
 releases. See [platform status](../../doc/platforms/macos.md).
 
@@ -15,3 +15,17 @@ bash infrastructure/macos/inspect-resolve.sh
 This reports architectures, linked libraries, signing flags, entitlements and
 signature verification. It neither launches nor modifies Resolve. Failed
 entitlement decoding does not establish whether helper loading is allowed.
+
+Build the development helper and launchers after preparing the Qt headers:
+
+```sh
+bash infrastructure/macos/build-ofx-probe.sh
+bash infrastructure/macos/build-widget-probe.sh
+bash infrastructure/macos/build-io-helper.sh
+bash infrastructure/macos/build-launcher.sh
+bash infrastructure/macos/test-panel-sessions.sh
+```
+
+The native startup bundle is `build/macos/io-helper/Unbound.dvcp.bundle` and the
+launcher is `build/macos/Unbound.app`. Installation and current limitations are
+in the platform status document. Resolve must be closed before replacing helpers.

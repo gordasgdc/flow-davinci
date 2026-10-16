@@ -1,75 +1,83 @@
 # macOS development status
 
-The macOS port is not implemented. Its source belongs in `src/platforms/macos/`,
-build and packaging infrastructure in `infrastructure/macos/`, and native tests in
-`tests/platforms/macos/`. Root CMake configuration on macOS currently fails with an
-explicit status message, before looking for Windows tools or Qt development files.
+The Mac branch has an experimental Apple Silicon helper, launcher and panel
+controls. It is not a release backend: root CMake still rejects Mac application
+configuration, and Windows release builds remain independent.
 
-## Inspected development machine
+## Current experiment
 
-Read-only inspection on 2026-10-12 found macOS 27.0.1 (26A434), arm64, Resolve
-21.1.1 / bundle build 21.1.10010, Xcode with Apple Clang 21 and CMake. Resolve's
-QtCore dylib and executable contain arm64 and x86_64 slices; Qt libraries report
-5.15.2. No Qt development installation was found in the locations inspected.
+Resolve 21.1.1 / Qt 5.15.2 on arm64 exposed its Qt application and panel widgets
+through a native OpenFX discovery probe. Startup environment insertion did not
+load the probe. The original `codesign --entitlements :-` command gave misleading
+warnings; `--entitlements - --arch arm64` decodes the entitlements correctly.
+The app declares disabled library validation, but not DYLD environment access.
 
-Resolve enables hardened runtime. `codesign` reported an invalid entitlements blob,
-so effective third-party loading permissions remain unresolved. No loading method
-has been validated, and the application was not modified or injected during that
-inspection.
+OpenFX caches discovery, so the zero-effect diagnostic was not a reliable startup
+hook. The next development installation uses the installed native IO plugin SDK
+for startup, advertises no codecs or containers, and queues initialization on the
+main thread. Its API handshake and lifecycle pass a host fixture. Repeated normal
+Resolve launches still need live validation. Resolve itself is not modified or
+re-signed.
 
-## First implementation milestone
+The helper links to Resolve's existing Qt libraries using configured Qt 5.15.2
+headers. It offers separate controls for Inspector, Timeline, Source Monitor and
+Program Monitor. The first experiment detached the entire source/offline stack;
+the revised target is only `widgetEditSourcePlayer`. It preserves stack position
+and the other viewer pages. Show Source Monitor in dual-viewer mode before
+undocking it.
 
-### Startup probe on 2026-10-16
+Dock buttons are named and enabled per panel. Restoration checks the original
+parent and logs a deferred verification. Native Resolve docking and rendering
+still need live validation; synthetic tests cannot establish that they work.
+Magnetic snapping, drag-to-dock, saved arrangements and full platform integration
+are not implemented.
 
-The standalone loading helper builds and writes its marker when inserted into
-the test host. Resolve launched with the same request, but its marker stayed
-empty after startup; helper loading was not demonstrated.
+## Installation and relaunch
 
-Using `codesign -d --entitlements - --arch arm64` decodes the installed app's
-entitlements successfully. The earlier `:-` invocation produced misleading
-invalid-blob warnings. Both slices declare `disable-library-validation`, but
-neither declares `allow-dyld-environment-variables`. This makes startup environment
-filtering a likely explanation, pending further validation. No app modification
-or re-signing was performed.
+Development artifacts are built by the scripts under `infrastructure/macos/`:
 
-The OpenFX discovery probe loaded during a normal Resolve launch. Its log records
-both `OFXLoader` (no Qt singleton) and the actual `Contents/MacOS/Resolve` process
-(Qt singleton present). Resolve's callback ran on a worker thread. This proves
-native loading and Qt visibility in the unmodified installed application, but
-does not establish support for manipulating internal panels through OpenFX.
+- `build-ofx-probe.sh`, then `build-widget-probe.sh`: shared bootstrap and Qt helper.
+- `build-io-helper.sh`: native startup bundle and API tests.
+- `build-launcher.sh`: Unbound.app plus launcher/Workflow request tests.
+- `test-panel-sessions.sh`: native Qt window regression tests.
 
-The second probe successfully queued a read-only active-window check on the main
-dispatch queue inside Resolve. Its log confirms `main_thread=1` and a present Qt
-application. No active Qt window was reported at that early startup point.
-It retains its own library handle so the queued callback survives host unloading.
-The bundle advertises zero effects and does not initialize the shared controller.
-Panel enumeration succeeded with Qt 5.15.2 on the main thread. The inventory
-contains Edit Inspector, separate source/timeline players and the timeline
-container. An experimental Qt window session and control window now target
-Inspector, Timeline, Source Monitor and Program Monitor individually. Source
-Monitor must be visible in dual-viewer mode before detaching its stack.
+Prepare matching headers using `tests/platforms/macos/README.md`. With Resolve
+closed, install `build/macos/io-helper/Unbound.dvcp.bundle` into
+`/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/`.
+Place `src/platforms/macos/Unbound.py` in the adjacent `Workflow Integration Plugins`
+directory and Unbound.app in `~/Applications/`. Retire the old
+`/Library/OFX/Plugins/UnboundLoadingProbe.ofx.bundle` before testing this route.
 
-Native fixture tests pass for 30 detach/restore cycles, box stretch/alignment,
-grid spans, splitter order/sizes, independent panels, page visibility, close,
-unsupported/hidden targets and session lifetime. These tests caught and resolved
-premature placeholder insertion into QSplitter. Actual Resolve playback, viewer
-rendering after reparenting and docking behavior still require live validation.
-The build refreshes the OFX binary timestamp when the companion changes so the
-scanner invalidates its cache. Reliable loading across unchanged cached launches
-is still pending; this is a diagnostic development installation, not a release.
+Open Resolve normally. Workspace > Workflow Integrations > Unbound requests the
+resident controls. Unbound.app sends the same request and starts Resolve if it
+is closed. Repeated requests reuse the control window and existing panel sessions.
+The shortcut cannot attach a helper to a Resolve process that never loaded it.
 
-### Remaining milestones
+## Diagnostics and tests
 
-1. Establish compatible arm64 Qt development headers/configuration and link to
-   Resolve's existing Qt libraries without introducing another Qt runtime.
-2. Prove a loading mechanism in an unmodified Resolve installation, then locate its
-   existing QApplication and enumerate widgets on its GUI thread.
-3. Implement the window integration and placement contracts, and a test adapter.
-4. Demonstrate reversible docking of one pane in a fresh Resolve session.
-5. Add Cocoa snapping, dark captions, responsive resizing, Option bypass, Retina
-   geometry and Spaces/fullscreen handling, then validate playback and persistence.
-6. Define independent Mac packaging, dependency auditing, signing and notarization.
+Local logs are in `~/Library/Logs/Unbound/`:
 
-Do not treat an empty native implementation or a successful compile as macOS
-support. The existing Windows release path must remain independently buildable.
-For common boundaries see [architecture](../architecture.md).
+- `events.jsonl`: helper start/stop, control requests, button actions/results,
+  docking checks and window moves, resizes, visibility, activation and state.
+  Includes UTC time, process ID and helper build. Rotates at 8 MiB, retaining one
+  previous file.
+- `launches.jsonl`: app and Workflow Integration launch requests and app actions.
+- `ofx-loading-probe.log`: native bootstrap phase, process identity and Qt presence
+  (the filename is retained from the original discovery experiment).
+- `widgets-1.json` through `widgets-3.json`: bounded startup inventories.
+
+Tests cover 30 docking cycles, box stretch/alignment, grid spans, splitter sizes
+and order, source-only stack detachment, native stack selection changes,
+independent panels, panel-specific button state, close-to-dock, page visibility,
+unsupported/hidden target rejection, lifetime, diagnostic records and repeated
+control requests without duplicate windows. Tests previously caught a splitter
+placeholder insertion bug. Live playback, GPU viewer rendering, native menu
+changes, project closure and repeated launches remain required checks.
+
+## Remaining work
+
+Validate the startup route and native redocking first. Then implement the shared
+window integration and placement contracts, snapping, drag-to-dock, responsive
+resizing, Retina and Spaces/fullscreen behavior, persistence and playback checks.
+Define release packaging, dependency auditing, signing and notarization after
+runtime behavior is established. See [architecture](../architecture.md).

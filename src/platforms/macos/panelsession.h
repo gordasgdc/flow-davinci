@@ -6,7 +6,11 @@
 #include <QLabel>
 #include <QPointer>
 #include <QSplitter>
+#include <QStackedWidget>
+#include <QTimer>
 #include <QWidget>
+#include <functional>
+#include "diagnostics.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
@@ -14,19 +18,22 @@ class MacPanelSession : public QObject
 {
 public:
     explicit MacPanelSession(QObject *owner = nullptr) : QObject(owner) {}
-    ~MacPanelSession() override { dock(); }
+    ~MacPanelSession() override { changed = {}; dock(); }
     bool active() const { return !host.isNull(); }
     QWidget *window() const { return host; }
+    std::function<void()> changed;
 
     QString undock(QWidget *widget, QWidget *page, const QString &title)
     {
+        logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
         if (!widget || !page || !page->isAncestorOf(widget) || !widget->isVisible() || widget->isWindow())
             return QStringLiteral("Show this panel on the Edit page first.");
         QWidget *parent = widget->parentWidget();
         auto splitter = qobject_cast<QSplitter *>(parent);
+        auto stack = qobject_cast<QStackedWidget *>(parent);
         QLayout *layout = parent->layout();
-        if (splitter) layout = nullptr;
+        if (splitter || stack) layout = nullptr;
         if (layout && !qobject_cast<QBoxLayout *>(layout) && !qobject_cast<QGridLayout *>(layout))
             return QStringLiteral("This panel's layout is not supported yet.");
         if ((layout && layout->indexOf(widget) < 0) || (splitter && splitter->indexOf(widget) < 0))
@@ -36,19 +43,26 @@ public:
         originalParent = parent;
         originalLayout = layout;
         originalSplitter = splitter;
+        originalStack = stack;
+        if (stack) stackIndex = stack->indexOf(widget);
         originalPage = page;
         geometry = widget->geometry();
         flags = widget->windowFlags();
         hidden = widget->isHidden();
         if (splitter) splitterSizes = splitter->sizes();
         // QSplitter automatically inserts new children; replaceWidget needs an outsider.
-        auto marker = new QLabel(title + QStringLiteral(" is floating."), splitter ? nullptr : parent);
+        auto marker = new QLabel(title + QStringLiteral(" is floating."), (splitter || stack) ? nullptr : parent);
         marker->setAlignment(Qt::AlignCenter);
         marker->setSizePolicy(widget->sizePolicy());
         marker->setMinimumSize(widget->minimumSize());
         marker->setMaximumSize(widget->maximumSize());
         placeholder = marker;
-        if (layout) {
+        if (stack) {
+            const bool selected = stack->currentWidget() == widget;
+            stack->removeWidget(widget);
+            stack->insertWidget(stackIndex, marker);
+            if (selected) stack->setCurrentWidget(marker);
+        } else if (layout) {
             auto item = layout->replaceWidget(widget, marker, Qt::FindDirectChildrenOnly);
             if (!item) { delete marker; clear(); return QStringLiteral("Could not preserve the panel slot."); }
             delete item;
@@ -80,15 +94,28 @@ public:
             clear();
         });
         host->show();
+        logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
+            {"original_parent", originalParent->objectName()},
+            {"layout", originalLayout ? originalLayout->metaObject()->className() : "none"}});
+        if (changed) changed();
         return {};
     }
 
     QString dock()
     {
-        if (!active()) return {};
+        logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
+            {"active", active()}, {"original_parent", originalParent ? originalParent->objectName() : QString()}});
+        if (!active()) return QStringLiteral("This panel is already docked.");
         if (!content || !originalParent || !placeholder || content->parentWidget() != host)
             return QStringLiteral("Resolve changed the panel hierarchy; restoration was stopped.");
-        if (originalSplitter) {
+        if (originalStack) {
+            if (originalStack->indexOf(placeholder) < 0)
+                return QStringLiteral("The original viewer slot changed.");
+            const bool selected = originalStack->currentWidget() == placeholder;
+            originalStack->removeWidget(placeholder);
+            originalStack->insertWidget(qMin(stackIndex, originalStack->count()), content);
+            if (selected) originalStack->setCurrentWidget(content);
+        } else if (originalSplitter) {
             const int index = originalSplitter->indexOf(placeholder);
             if (index < 0 || originalSplitter->replaceWidget(index, content) != placeholder)
                 return QStringLiteral("The original splitter slot changed.");
@@ -99,30 +126,41 @@ public:
             auto item = originalLayout->replaceWidget(placeholder, content, Qt::FindDirectChildrenOnly);
             if (!item) return QStringLiteral("Could not restore the panel slot.");
             delete item;
-            content->setParent(originalParent);
+            content->setParent(originalParent, flags);
         } else {
             if (originalParent->layout()) return QStringLiteral("Resolve added a layout to this panel slot.");
-            content->setParent(originalParent);
+            content->setParent(originalParent, flags);
         }
-        content->setWindowFlags(flags);
+        if (content->parentWidget() != originalParent || content->isWindow())
+            return QStringLiteral("Resolve did not retain the restored panel in its original parent.");
         content->setGeometry(geometry);
-        content->setVisible(!hidden);
+        content->setVisible(!hidden && (!originalStack || originalStack->currentWidget() == content));
         if (originalLayout) originalLayout->activate();
         disconnect(parentDestroyed);
         if (originalPage) originalPage->removeEventFilter(this);
         auto oldHost = host.data();
         oldHost->removeEventFilter(this);
         delete placeholder.data();
+        const auto restored = content;
+        const auto destination = originalParent;
+        logEvent(QStringLiteral("panel.dock.complete"), {{"widget", widgetState(content)}});
         clear();
         oldHost->hide();
         oldHost->deleteLater();
+        QTimer::singleShot(0, this, [restored, destination] {
+            logEvent(QStringLiteral("panel.dock.verify"), {{"widget", widgetState(restored)},
+                {"passed", restored && destination && restored->parentWidget() == destination && !restored->isWindow()}});
+        });
+        if (changed) changed();
         return {};
     }
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (object == host && event->type() == QEvent::Close) {
-            static_cast<QCloseEvent *>(event)->setAccepted(dock().isEmpty());
+            const QString error = dock();
+            logEvent(QStringLiteral("panel.close.result"), {{"success", error.isEmpty()}, {"error", error}});
+            static_cast<QCloseEvent *>(event)->setAccepted(error.isEmpty());
             return true;
         }
         if (object == originalPage && host) {
@@ -137,11 +175,14 @@ private:
         host = nullptr; content = nullptr; placeholder = nullptr;
         originalParent = nullptr; originalLayout = nullptr;
         originalSplitter = nullptr; originalPage = nullptr;
+        originalStack = nullptr;
         splitterSizes.clear();
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
     QPointer<QLayout> originalLayout;
     QPointer<QSplitter> originalSplitter;
+    QPointer<QStackedWidget> originalStack;
+    int stackIndex = -1;
     QMetaObject::Connection parentDestroyed;
     QList<int> splitterSizes;
     QRect geometry;

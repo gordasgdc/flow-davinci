@@ -66,7 +66,8 @@ folder, ready to attach to GitHub release `v0.1.0`.
 - `src/platform/`: contracts used by shared code.
 - `src/platforms/windows/`: the Windows launcher, bootstrap, native window backend
   and resources.
-- `src/platforms/macos/`: reserved for the macOS backend; not implemented yet.
+- `src/platforms/macos/`: experimental Mac helper, panel sessions and launcher;
+  the full release backend is unfinished.
 - `infrastructure/<platform>/`: platform build, audit and packaging workflows.
 - `tests/core/`: shared fixtures; `tests/platforms/<platform>/`: native adapters,
   launcher tests and diagnostic tools.
