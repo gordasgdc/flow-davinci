@@ -61,12 +61,19 @@ public:
     void beginPointerDrag(const QPoint &global, bool continuing = false)
     {
         snapPosition = {}; attachmentTarget = nullptr;
-        dragging = true; movedEnough = continuing; start = global; startGeometry = geometry(); grabMouse();
+        if (dragging) finishPointerDrag(true, true, "restarted");
+        dragging = true; movedEnough = continuing; start = global; startGeometry = geometry();
         delete releaseWatch.data();
         releaseWatch = watchNativePointerRelease(this, [this](bool option) {
             if (dragging) { movePointerDrag(QCursor::pos(), option); finishPointerDrag(option, false, "native-mouse-up"); }
         });
         logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}});
+        // Cocoa can deactivate the window synchronously while capture is acquired.
+        grabMouse();
+        if (!dragging && QWidget::mouseGrabber() == this) {
+            releaseMouse();
+            logEvent(QStringLiteral("drag.capture.recovered"), {{"window", objectName()}, {"reason", "cancelled-during-grab"}});
+        }
     }
 protected:
     void hideEvent(QHideEvent *event) override
@@ -86,6 +93,12 @@ protected:
     }
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        if (!dragging && QWidget::mouseGrabber() == this &&
+            (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonRelease ||
+             event->type() == QEvent::MouseMove || event->type() == QEvent::KeyPress)) {
+            releaseMouse();
+            logEvent(QStringLiteral("drag.capture.recovered"), {{"window", objectName()}, {"reason", "orphaned-capture"}});
+        }
         if (dragging && (event->type() == QEvent::ApplicationDeactivate || event->type() == QEvent::WindowDeactivate)) {
             if (event->type() == QEvent::ApplicationDeactivate || object == this) finishPointerDrag(true, true, "deactivated");
         }
@@ -193,7 +206,7 @@ private:
                 const auto frame = slot->isWindow() ? slot->frameGeometry() : QRect(slot->parentWidget()->mapToGlobal(QPoint()), slot->parentWidget()->size());
                 const auto zone = localDockZone(frame, dragPointer);
                 if (!zone.target.isValid()) continue;
-                const int distance = (zone.target.center() - dragPointer).manhattanLength() +
+                const int distance = (zone.active ? -10000 : 0) + (zone.target.center() - dragPointer).manhattanLength() +
                     (frame.contains(dragPointer) ? 0 : 1000) + (slot == candidate && surfaces.size() > 1 ? 50 : 0);
                 if (distance >= closest) continue;
                 closest = distance; chosen = zone;

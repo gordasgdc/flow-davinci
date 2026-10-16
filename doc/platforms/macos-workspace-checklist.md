@@ -291,3 +291,20 @@ Archived binary and symbols under build/macos/checkpoints/126798d/.
 Session suite and diagnostic reliability suite pass; reliability's first GUI run
 had transient focus failures, two subsequent runs passed. Bootstrap fixture passes.
 Live Resolve docking/Relay/multicam/Ripple Delete verification remains pending.
+
+### Input regression follow-up (2026-10-16, after 126798d install)
+
+User reports blocked Stabilize, Timeline audio/video divider and sometimes Dock
+All after arrangement changes. Live log at 17:18:27Z shows Source Monitor drag.end
+(deactivated) before drag.begin, followed by repeated clicks received by that
+floating host and no Stabilize activation. This supports reentrant native mouse
+capture escaping drag cancellation; exact Resolve reproduction remains pending.
+Candidate installs release monitoring before acquiring capture, checks for
+cancellation during acquisition, and releases capture with no active drag on
+input. Orphaned-capture Escape and content-click fixtures pass. Docking markers
+are narrowed from 28 to 18 logical pixels, approach range from 40 to 18; actual
+hit targets take precedence over nearby inactive group candidates.
+The combined session run failed an old assertion expecting a 28-pixel marker;
+that assertion is updated, rerun pending. GUI tests can visibly activate test
+windows: do not run them during the user's editing session. User reports screen
+flashing during tests. No new helper is installed yet.

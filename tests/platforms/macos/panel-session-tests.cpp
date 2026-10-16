@@ -75,8 +75,12 @@ int main(int argc, char **argv)
             "virtual edge guides align separated windows without closing the gap");
         check(!Unbound::localDockZone(peer, peer.center()).target.isValid(), "docking targets do not appear in panel centers");
         auto local = Unbound::localDockZone(peer, QPoint(peer.right(), peer.center().y()));
-        check(local.active && local.target.size() == QSize(28, 28) && local.edge == Qt::RightEdge && local.preview.width() == peer.width() / 2,
+        check(local.active && local.target.size() == QSize(18, 18) && local.edge == Qt::RightEdge && local.preview.width() == peer.width() / 2,
             "local target previews only the intended half split");
+        check(!Unbound::localDockZone(peer, QPoint(peer.right() + 25, peer.center().y())).target.isValid(),
+            "docking indicators stay within a narrow edge approach");
+        const auto nearZone = Unbound::localDockZone(peer, QPoint(peer.right() + 12, peer.center().y()));
+        check(nearZone.target.isValid() && !nearZone.active, "approaching an edge does not activate the visible target");
         Unbound::MacFloatingHost target, moving;
         target.setObjectName("unboundFloating_snapTarget"); moving.setObjectName("unboundFloating_snapMoving");
         target.setGeometry(150, 260, 240, 180); moving.setGeometry(600, 260, 240, 180);
@@ -127,6 +131,15 @@ int main(int argc, char **argv)
         begin(); QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
         QApplication::sendEvent(&unrelated, &escape);
         check(QWidget::mouseGrabber() != &moving, "Escape cancels capture from any receiver");
+        // Reproduce a native grab surviving cancellation during Cocoa activation.
+        moving.grabMouse();
+        QApplication::sendEvent(&unrelated, &escape);
+        check(QWidget::mouseGrabber() != &moving, "orphaned native capture is released even after drag state was cleared");
+        auto orphanPoint = moving.mapToGlobal(QPoint(100, 70));
+        moving.grabMouse();
+        QMouseEvent orphanClick(QEvent::MouseButtonPress, QPointF(100, 70), QPointF(orphanPoint), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(&moving, &orphanClick);
+        check(QWidget::mouseGrabber() != &moving, "content click cannot preserve an orphaned mouse grab");
     }
     {
         QWidget page;
@@ -355,7 +368,7 @@ int main(int argc, char **argv)
         QApplication::sendEvent(draggedSource, &move);
         auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
-        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(28, 28),
+        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(18, 18),
             "panel attachment shows one small local target and proposed split");
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &up); settle(); settle();

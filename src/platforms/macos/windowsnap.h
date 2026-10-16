@@ -10,14 +10,14 @@ struct DockZone { QRect target, preview; Qt::Edge edge = Qt::LeftEdge; bool acti
 inline DockZone localDockZone(const QRect &frame, QPoint pointer)
 {
     DockZone result;
-    if (!frame.adjusted(-40, -40, 40, 40).contains(pointer)) return result;
+    if (!frame.adjusted(-18, -18, 18, 18).contains(pointer)) return result;
     const int distances[] = {std::abs(pointer.x() - frame.left()), std::abs(pointer.x() - frame.right()),
         std::abs(pointer.y() - frame.top()), std::abs(pointer.y() - frame.bottom())};
     int closest = 0; for (int i = 1; i < 4; ++i) if (distances[i] < distances[closest]) closest = i;
-    if (distances[closest] > 40) return result;
-    const QPoint center(closest == 0 ? frame.left() : closest == 1 ? frame.right() : qBound(frame.left() + 14, pointer.x(), qMax(frame.left() + 14, frame.right() - 14)),
-        closest == 2 ? frame.top() : closest == 3 ? frame.bottom() : qBound(frame.top() + 14, pointer.y(), qMax(frame.top() + 14, frame.bottom() - 14)));
-    result.target = QRect(center - QPoint(14, 14), QSize(28, 28));
+    if (distances[closest] > 18) return result;
+    const QPoint center(closest == 0 ? frame.left() : closest == 1 ? frame.right() : qBound(frame.left() + 9, pointer.x(), qMax(frame.left() + 9, frame.right() - 9)),
+        closest == 2 ? frame.top() : closest == 3 ? frame.bottom() : qBound(frame.top() + 9, pointer.y(), qMax(frame.top() + 9, frame.bottom() - 9)));
+    result.target = QRect(center - QPoint(9, 9), QSize(18, 18));
     result.edge = closest == 0 ? Qt::LeftEdge : closest == 1 ? Qt::RightEdge : closest == 2 ? Qt::TopEdge : Qt::BottomEdge;
     result.preview = frame;
     if (closest < 2) { result.preview.setWidth(frame.width() / 2); if (closest == 1) result.preview.moveRight(frame.right()); }
