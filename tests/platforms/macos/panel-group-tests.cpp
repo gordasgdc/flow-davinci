@@ -188,6 +188,83 @@ int main(int argc, char **argv)
             for (auto label : content) check(label->window() == &main, "Dock All restores a mixed nested workspace");
         }
     }
+    {
+        QWidget main; main.setObjectName("UiMainWindow");
+        auto page = new QWidget(&main); auto ownerLayout = new QVBoxLayout(&main); ownerLayout->addWidget(page);
+        auto layout = new QHBoxLayout(page);
+        auto inspector = new QWidget(page), media = new QWidget(page), source = new QWidget(page);
+        inspector->setObjectName("Inspector"); media->setObjectName("MediaPool"); source->setObjectName("Source");
+        for (auto widget : {inspector, media, source}) { layout->addWidget(widget); auto inner = new QVBoxLayout(widget); inner->addWidget(new QPushButton("Native control", widget)); }
+        main.show(); settle();
+        Unbound::MacPanelSession i, m, s;
+        check(i.undock(inspector, page, "Inspector").isEmpty() && m.undock(media, page, "Media Pool").isEmpty() && s.undock(source, page, "Source").isEmpty(), "tab fixture setup");
+        Unbound::PanelGroup group(nullptr);
+        check(group.join(&i, &m, Qt::Orientation(0)).isEmpty(), "center placement creates real native Qt tabs"); settle();
+        auto tabs = group.window()->findChild<QTabWidget *>("unboundPanelTabs");
+        check(tabs && tabs->count() == 2, "tab stack contains both real panel surfaces");
+        tabs->setCurrentIndex(1); group.syncVisibility(&i); settle();
+        check(group.selected(&i) && !group.selected(&m), "revealing a covered panel selects its tab");
+        i.setHiddenByUser(true); group.syncVisibility(); settle();
+        check(!tabs->isTabVisible(0) && tabs->isTabVisible(1) && group.selected(&m), "hiding a tab leaves its neighbor usable");
+        i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+        check(tabs->isTabVisible(0) && group.selected(&i), "door restores and selects the panel's remembered tab");
+        auto host = static_cast<Unbound::MacFloatingHost *>(group.window());
+        host->setPinned(true); check(group.snapshot()["pinned"].toBool(), "group pin is persisted on its shared native host");
+        const auto before = group.snapshot();
+        auto surface = i.window(); auto nativeLayout = surface->layout();
+        check(i.beginGroupedExpansion() && i.expandedWindow() && !surface->layout(), "temporary maximize borrows layout without releasing group slot");
+        i.expandedWindow()->setGeometry(20, 20, 800, 600); settle();
+        i.endGroupedExpansion(); settle();
+        check(i.grouped() && i.window() == surface && surface->layout() == nativeLayout && !i.expandedWindow(), "maximize restore returns native content to the exact same tab slot");
+        check(group.snapshot()["tree"] == before["tree"], "temporary maximize preserves tab selection and group structure");
+        check(group.add(&s, Qt::Vertical, false).isEmpty(), "source can span beneath a tab stack"); settle();
+        group.dissolve(); settle();
+        auto top = Unbound::splitGroupTree({{"panel", "MediaPool"}}, {{"panel", "Inspector"}}, Qt::Horizontal);
+        auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);
+        check(group.initialize({&i, &m, &s}, puzzle, QRect(50, 50, 900, 700)).isEmpty(), "screenshot arrangement has a side-by-side top row and spanning source below"); settle();
+        auto beforeHide = group.snapshot(); i.setHiddenByUser(true); group.syncVisibility(); settle();
+        check(!i.window()->parentWidget()->isVisible() && m.window()->isVisible(), "split door collapses the wrapper rather than leaving empty content space");
+        i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+        check(i.window()->isVisible() && group.snapshot()["panels"].toArray().size() == 3, "split door keeps every panel identity through hide/show");
+        check(group.snapshot()["tree"].toObject()["orientation"] == beforeHide["tree"].toObject()["orientation"],
+            "split visibility never converts a side-by-side arrangement into a vertical stack");
+        group.window()->close(); settle();
+    }
+    {
+        qputenv("UNBOUND_WORKSPACE_FILE", (temporary.path() + "/native-door-workspace.json").toUtf8());
+        QWidget main; main.setObjectName("UiMainWindow");
+        auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform");
+        auto ownerLayout = new QVBoxLayout(&main); ownerLayout->addWidget(page);
+        auto layout = new QVBoxLayout(page);
+        auto toggle = new QPushButton("Inspector", page); toggle->setObjectName("btnEditToggleInspectorInSSM");
+        toggle->setCheckable(true); toggle->setChecked(true); layout->addWidget(toggle);
+        auto inspector = new QWidget(page); inspector->setObjectName("widgetEditInspector"); layout->addWidget(inspector);
+        auto media = new QWidget(page); media->setObjectName("frameEditPageMediaPool"); layout->addWidget(media);
+        auto inner = new QVBoxLayout(media); inner->addWidget(new QLabel("Native Media Pool", media));
+        main.show(); settle();
+        {
+            PanelControls controls; controls.show(); settle();
+            controls.findChild<QPushButton *>("undock_widgetEditInspector")->click(); settle(100);
+            toggle->click(); settle(120);
+            check(!inspector->window()->isVisible() && !toggle->isChecked(), "native click hides floating Inspector once despite toggled and clicked signals");
+            toggle->setChecked(true); settle(120);
+            check(inspector->window()->isVisible() && toggle->isChecked(), "shortcut-style native check change recalls Inspector");
+            controls.findChild<QComboBox *>("groupFirst")->setCurrentIndex(0);
+            controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(4);
+            controls.findChild<QPushButton *>("group_3")->click(); settle(240);
+            auto tabs = inspector->window()->findChild<QTabWidget *>("unboundPanelTabs");
+            check(tabs && tabs->count() == 2, "controls provide explicit tab arrangement entry point");
+            if (tabs) {
+                tabs->setCurrentIndex(1); toggle->click(); settle(120);
+                check(tabs->currentIndex() == 0 && toggle->isChecked(), "native Inspector toggle first selects a covered tab instead of closing it");
+                toggle->click(); settle(120);
+                check(!tabs->isTabVisible(0) && tabs->isTabVisible(1), "next native toggle closes only Inspector's door");
+                toggle->click(); settle(120);
+                check(tabs->isTabVisible(0) && tabs->currentIndex() == 0, "native toggle returns Inspector to its existing tab");
+            }
+            controls.findChild<QPushButton *>("bulk_1")->click(); settle();
+        }
+    }
     if (!failures) std::puts("PASS: nested single-host groups, group merge, leaf insertion/removal, persisted control reload, drag release and original-slot docking");
     return failures ? 1 : 0;
 }

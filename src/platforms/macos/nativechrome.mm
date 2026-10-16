@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #import <AppKit/AppKit.h>
 #include <QWidget>
+#include <QCursor>
 #include <QPointer>
 #include <QTimer>
 #include <QVariant>
@@ -9,13 +10,14 @@ namespace Unbound {
 class PointerReleaseWatch : public QObject
 {
 public:
-    PointerReleaseWatch(QObject *owner, std::function<void(bool)> callback) : QObject(owner)
+    PointerReleaseWatch(QObject *owner, std::function<void(QPoint, bool)> callback) : QObject(owner)
     {
         QPointer<PointerReleaseWatch> alive(this);
         monitor = [[NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskLeftMouseUp handler:^NSEvent *(NSEvent *event) {
             if (alive) {
                 const bool option = event.modifierFlags & NSEventModifierFlagOption;
-                QTimer::singleShot(0, alive, [alive, callback, option] { if (alive) callback(option); });
+                const QPoint position = QCursor::pos();
+                QTimer::singleShot(0, alive, [alive, callback, option, position] { if (alive) callback(position, option); });
             }
             return event;
         }] retain];
@@ -24,7 +26,7 @@ public:
 private:
     id monitor = nil;
 };
-QObject *watchNativePointerRelease(QObject *owner, std::function<void(bool)> released)
+QObject *watchNativePointerRelease(QObject *owner, std::function<void(QPoint, bool)> released)
 { return new PointerReleaseWatch(owner, std::move(released)); }
 #ifdef UNBOUND_NATIVE_TESTS
 void postNativePointerReleaseForTest(QWidget *widget)

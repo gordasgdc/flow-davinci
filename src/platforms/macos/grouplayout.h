@@ -14,17 +14,27 @@ inline bool groupTreeNames(const QJsonObject &node, QStringList &names, int dept
         names.append(name); return true;
     }
     const auto children = node["children"].toArray();
-    if ((node["orientation"] != "horizontal" && node["orientation"] != "vertical") || children.size() < 2 || children.size() > 32) return false;
+    if ((node["orientation"] != "horizontal" && node["orientation"] != "vertical" && node["orientation"] != "tabs") || children.size() < 2 || children.size() > 32) return false;
     for (auto child : children) if (!groupTreeNames(child.toObject(), names, depth + 1)) return false;
     return true;
 }
 inline QJsonObject splitGroupTree(const QJsonObject &a, const QJsonObject &b, Qt::Orientation orientation, bool before = false)
 {
-    return {{"orientation", orientation == Qt::Horizontal ? "horizontal" : "vertical"},
+    return {{"orientation", orientation == Qt::Horizontal ? "horizontal" : orientation == Qt::Vertical ? "vertical" : "tabs"},
         {"children", before ? QJsonArray{b, a} : QJsonArray{a, b}}, {"sizes", QJsonArray{1, 1}}};
 }
 inline QJsonObject insertGroupTree(QJsonObject node, const QJsonObject &addition, const QString &target, Qt::Orientation orientation, bool before)
 {
+    if (orientation == Qt::Orientation(0) && node.value("orientation") == "tabs") {
+        auto children = node["children"].toArray();
+        bool matches = target.isEmpty();
+        for (auto child : children) matches |= child.toObject().value("panel") == target;
+        if (matches) {
+            const int selected = before ? 0 : children.size();
+            if (before) children.prepend(addition); else children.append(addition);
+            node["children"] = children; node["selected"] = selected; return node;
+        }
+    }
     if (target.isEmpty() || node.value("panel") == target) return splitGroupTree(node, addition, orientation, before);
     if (node.contains("panel")) return node;
     auto children = node["children"].toArray();

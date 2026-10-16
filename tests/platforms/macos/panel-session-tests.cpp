@@ -73,7 +73,18 @@ int main(int argc, char **argv)
         const auto aligned = Unbound::alignWindowEdges(QRect(106, 1000, 200, 200), {peer}, guides);
         check(aligned.x() == 100 && aligned.y() == 1000 && !guides.isEmpty() && std::abs(guides.first().dy()) > 1000,
             "virtual edge guides align separated windows without closing the gap");
-        check(!Unbound::localDockZone(peer, peer.center()).target.isValid(), "docking targets do not appear in panel centers");
+        check(Unbound::localDockZone(peer, peer.center()).edge == Qt::Edge(0) && Unbound::localDockZone(peer, peer.center()).active,
+            "only a deliberate center target proposes a tab");
+        check(!Unbound::localDockZone(peer, QPoint(peer.left() + 35, peer.top() + 35)).target.isValid(),
+            "ordinary panel content is not a docking surface");
+        check(!Unbound::localDockZone(peer, QPoint(peer.right(), peer.top() + 25)).target.isValid(),
+            "edge targets do not chase the pointer along an entire window");
+        const QRect partiallyOutside(-400, 200, 600, 500), display(0, 0, 1920, 1080);
+        check(Unbound::keepGripReachable(partiallyOutside, {display}) == partiallyOutside,
+            "partly off-screen windows keep their intentional position and size");
+        auto rescued = Unbound::keepGripReachable(QRect(-2000, -2000, 600, 500), {display});
+        check(rescued.size() == QSize(600, 500) && rescued.top() >= 0 && rescued.right() >= 95,
+            "fully lost windows regain a reachable grip without shrinking");
         auto local = Unbound::localDockZone(peer, QPoint(peer.right(), peer.center().y()));
         check(local.active && local.target.size() == QSize(18, 18) && local.edge == Qt::RightEdge && local.preview.width() == peer.width() / 2,
             "local target previews only the intended half split");
@@ -87,7 +98,7 @@ int main(int argc, char **argv)
         moving.setChrome(Unbound::WindowChrome::Standard);
         target.show(); moving.show(); settle();
         int nativeReleases = 0;
-        auto watch = Unbound::watchNativePointerRelease(&moving, [&](bool option) { check(!option, "native release preserves Option state"); ++nativeReleases; });
+        auto watch = Unbound::watchNativePointerRelease(&moving, [&](QPoint position, bool option) { check(!option, "native release preserves Option state"); Q_UNUSED(position); ++nativeReleases; });
         Unbound::postNativePointerReleaseForTest(&moving); settleFor(80);
         check(nativeReleases == 1, "native Cocoa mouse-up reaches the GUI-thread release fallback");
         delete watch;
@@ -102,13 +113,12 @@ int main(int argc, char **argv)
             QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, modifiers);
             QApplication::sendEvent(&moving, &move);
             auto preview = moving.findChild<QWidget *>("unboundSnapPreview");
-            check(modifiers.testFlag(Qt::AltModifier) ? (!preview || !preview->isVisible()) : (preview && preview->isVisible()),
-                "drag previews alignment and Option bypass hides preview");
+            check(!preview || !preview->isVisible(), "free movement never paints a docking rectangle");
             QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, modifiers);
             QApplication::sendEvent(&moving, &up); settle();
         };
         drag(Qt::NoModifier);
-        check(moving.frameGeometry().left() == target.frameGeometry().right() + 1, "release attaches window edges without frame overlap");
+        check(moving.frameGeometry().left() == target.frameGeometry().right() + 6, "free release does not force attachment to a nearby edge");
         drag(Qt::AltModifier);
         check(moving.frameGeometry().left() == target.frameGeometry().right() + 6, "Option release preserves unsnapped placement");
         QWidget unrelated;
@@ -354,7 +364,24 @@ int main(int argc, char **argv)
         controls.findChild<QPushButton *>("group_0")->click(); settleFor(350);
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
             "controls join Source and Program into a single host");
-        check(!expandSource->isEnabled(), "group members cannot corrupt slots through individual expansion");
+        check(expandSource->isEnabled(), "group members allow reversible individual expansion");
+        auto groupedHost = source->window(); const auto groupedGeometry = groupedHost->geometry();
+        expandSource->click(); settleFor(160);
+        check(source->window() != groupedHost && expandSource->text() == "Restore Size", "grouped source borrows a temporary native host");
+        expandSource->click(); settleFor(200);
+        check(source->window() == groupedHost && groupedHost->geometry() == groupedGeometry, "grouped source expansion returns to its original group geometry");
+        const auto priorPointer = QCursor::pos();
+        QCursor::setPos(source->mapToGlobal(QPoint(source->width() / 2, source->height() / 2)));
+        QKeyEvent maximizeOverride(QEvent::ShortcutOverride, Qt::Key_QuoteLeft, Qt::NoModifier);
+        QApplication::sendEvent(source, &maximizeOverride);
+        check(maximizeOverride.isAccepted(), "hovered panel reserves backtick before competing native shortcuts");
+        QKeyEvent maximizeKey(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::NoModifier);
+        QApplication::sendEvent(source, &maximizeKey); settleFor(160);
+        check(expandSource->text() == "Restore Size", "backtick expands hovered grouped panel");
+        QCursor::setPos(controls.mapToGlobal(QPoint(10, 10)));
+        QApplication::sendEvent(&controls, &maximizeKey); settleFor(180);
+        check(source->window() == groupedHost && expandSource->text() == "Expand", "second backtick restores same panel even after pointer leaves");
+        QCursor::setPos(priorPointer);
         controls.findChild<QPushButton *>("group_2")->click(); settle();
         auto draggedSource = source->window();
         auto targetProgram = program->window();

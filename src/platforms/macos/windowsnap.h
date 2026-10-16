@@ -10,19 +10,34 @@ struct DockZone { QRect target, preview; Qt::Edge edge = Qt::LeftEdge; bool acti
 inline DockZone localDockZone(const QRect &frame, QPoint pointer)
 {
     DockZone result;
-    if (!frame.adjusted(-18, -18, 18, 18).contains(pointer)) return result;
-    const int distances[] = {std::abs(pointer.x() - frame.left()), std::abs(pointer.x() - frame.right()),
-        std::abs(pointer.y() - frame.top()), std::abs(pointer.y() - frame.bottom())};
-    int closest = 0; for (int i = 1; i < 4; ++i) if (distances[i] < distances[closest]) closest = i;
-    if (distances[closest] > 18) return result;
-    const QPoint center(closest == 0 ? frame.left() : closest == 1 ? frame.right() : qBound(frame.left() + 9, pointer.x(), qMax(frame.left() + 9, frame.right() - 9)),
-        closest == 2 ? frame.top() : closest == 3 ? frame.bottom() : qBound(frame.top() + 9, pointer.y(), qMax(frame.top() + 9, frame.bottom() - 9)));
-    result.target = QRect(center - QPoint(9, 9), QSize(18, 18));
-    result.edge = closest == 0 ? Qt::LeftEdge : closest == 1 ? Qt::RightEdge : closest == 2 ? Qt::TopEdge : Qt::BottomEdge;
+    if (!frame.isValid() || !frame.adjusted(-12, -12, 12, 12).contains(pointer)) return result;
+    // Targets are fixed anchors, not a ribbon following every pointer position.
+    const QPoint anchors[] = {QPoint(frame.left(), frame.center().y()), QPoint(frame.right(), frame.center().y()),
+        QPoint(frame.center().x(), frame.top()), QPoint(frame.center().x(), frame.bottom()), frame.center()};
+    int closest = -1, distance = 27;
+    for (int i = 0; i < 5; ++i) {
+        const int d = (pointer - anchors[i]).manhattanLength();
+        if (d < distance) { distance = d; closest = i; }
+    }
+    if (closest < 0) return result;
+    result.target = QRect(anchors[closest] - QPoint(9, 9), QSize(18, 18));
+    result.edge = closest == 0 ? Qt::LeftEdge : closest == 1 ? Qt::RightEdge : closest == 2 ? Qt::TopEdge : closest == 3 ? Qt::BottomEdge : Qt::Edge(0);
     result.preview = frame;
     if (closest < 2) { result.preview.setWidth(frame.width() / 2); if (closest == 1) result.preview.moveRight(frame.right()); }
-    else { result.preview.setHeight(frame.height() / 2); if (closest == 3) result.preview.moveBottom(frame.bottom()); }
+    else if (closest < 4) { result.preview.setHeight(frame.height() / 2); if (closest == 3) result.preview.moveBottom(frame.bottom()); }
     result.active = result.target.contains(pointer); return result;
+}
+inline DockZone outerDockZone(const QRect &frame, QPoint pointer)
+{
+    auto zone = localDockZone(frame.adjusted(-24, -24, 24, 24), pointer);
+    if (!zone.target.isValid() || zone.edge == Qt::Edge(0)) return {};
+    zone.preview = frame;
+    if (zone.edge == Qt::LeftEdge || zone.edge == Qt::RightEdge) {
+        zone.preview.setWidth(frame.width() / 2); if (zone.edge == Qt::RightEdge) zone.preview.moveRight(frame.right());
+    } else {
+        zone.preview.setHeight(frame.height() / 2); if (zone.edge == Qt::BottomEdge) zone.preview.moveBottom(frame.bottom());
+    }
+    return zone;
 }
 inline QRect alignWindowEdges(QRect frame, const QList<QRect> &panels, QList<QLine> &guides, int threshold = 6)
 {

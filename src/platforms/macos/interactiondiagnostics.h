@@ -159,7 +159,8 @@ private:
                 const QString text = action->text().toLower();
                 if (text.contains("full screen") || text.contains("fullscreen") || text.contains("cinema viewer"))
                     viewerActions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()},
-                        {"enabled", action->isEnabled()}, {"shortcut", action->shortcut().toString()}});
+                        {"enabled", action->isEnabled()}, {"checkable", action->isCheckable()}, {"checked", action->isChecked()},
+                        {"context", int(action->shortcutContext())}, {"shortcut", action->shortcut().toString()}});
             }
         if (!viewerActions.isEmpty()) logEvent(QStringLiteral("input.viewer-actions"), {{"actions", viewerActions}});
         for (auto window : QApplication::topLevelWidgets()) if (related(window))

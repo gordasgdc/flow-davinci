@@ -52,12 +52,13 @@ These additions have fixture coverage but await live Resolve verification.
 Work after that checkpoint adds Dock/Undock commands to positively identified
 native options menus. They call the same sessions as the controls and reflect
 their current state. Unsupported menu ownership is logged rather than guessed;
-Timeline does not yet have its own header docking control. Each control row also
-offers Expand / Restore Size. Expansion temporarily detaches a docked panel, or
-enlarges a floating panel, and then restores the slot or geometry. Temporary
-geometry is excluded from saved arrangements. Backtick routing is pending because
-Resolve already reports a native shortcut for that key; explicit buttons do not
-establish that Resolve's own fullscreen viewer command works.
+Timeline does not yet have its own header docking control. On the
+`macos-docking-tabs-and-maximize` candidate branch, Expand / Restore Size and
+backtick/tilde target the hovered panel, restoring the same panel on the second
+press even if the pointer moved. Grouped panels borrow a temporary native host;
+their group snapshot is retained for restoration and persistence. Text editors,
+dialogs and popup menus retain their keys. Native Resolve fullscreen viewing is a
+separate command and remains pending diagnosis; panel expansion does not satisfy it.
 
 Edge snapping is an initial grip-based implementation: drag the small dotted
 grip below a standard title bar, the compact header background, or the hidden
@@ -209,3 +210,30 @@ header controls, interface scaling feasibility, Retina/Spaces/fullscreen behavio
 and full shared platform contracts.
 Define release packaging, dependency auditing, signing and notarization after
 runtime behavior is established. See [architecture](../architecture.md).
+
+
+### Docking/tab candidate after f64c401 (not installed)
+
+The continuation branch preserves `macos-docking-layouts-v2` and the installed
+f64c401 checkpoint. Normal free dragging no longer snaps to display/panel edges
+on release; hold Shift for alignment, Option to bypass. A destination offers fixed
+small center/tab or edge/split anchors only when approached deliberately. Nested
+groups offer separate anchors outside their frame to split the whole group.
+Only the frontmost eligible destination participates. No rectangle previews free
+movement; the highlighted drop result appears only over an active target.
+
+The layout model now supports tab stacks beside/above/below split groups. Native
+panel-toggle buttons feed shared visibility for floating panels, with collapsed
+split wrappers and hidden/restored tabs. Shortcut routes that bypass those buttons
+still require live verification. Per-host diamond pin controls keep a window or
+whole group above the workspace through the normal native ordering, preserving
+menu/dialog and keyboard focus rules. Pins are saved in arrangements.
+
+The automatic viewport guard keeps a 96 by 24 logical-pixel grip reachable rather
+than forcing the full frame into a screen. Partial off-screen parking is allowed
+and large windows retain their size. Explicit Recover Windows and Center recall
+panels; display changes preserve hidden choices while rescuing reachable grips.
+
+These are candidate implementations. GUI regression results and live acceptance
+are tracked in `macos-workspace-checklist.md`; none of these additions should be
+reported as installed or runtime-verified until that ledger records evidence.

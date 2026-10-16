@@ -2,6 +2,7 @@
 #pragma once
 #include <QHash>
 #include <QPushButton>
+#include <QTabWidget>
 #include "grouplayout.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
@@ -105,6 +106,7 @@ public:
     {
         if (!host) return {};
         auto value = WorkspaceSettings::rectangle(host->geometry()); const auto tree = treeSnapshot(root);
+        value["pinned"] = host->pinned();
         value["tree"] = tree; value["panels"] = QJsonArray::fromStringList(names());
         value["orientation"] = tree["orientation"]; value["sizes"] = tree["sizes"]; return value;
     }
@@ -122,7 +124,41 @@ public:
         if (!groupTreeNames(tree, expected)) return false;
         auto current = names(); current.sort(); expected.sort(); if (current != expected) return false;
         const auto position = WorkspaceSettings::rectangle(value); if (position.isValid()) host->setGeometry(position);
+        host->setPinned(value["pinned"].toBool());
         rebuild(tree); refresh(); keepOnDisplay(host); return true;
+    }
+    bool selected(MacPanelSession *member) const
+    {
+        auto wrapper = leaves.value(member);
+        if (!wrapper || member->hiddenByUser()) return false;
+        for (auto parent = wrapper->parentWidget(); parent && parent != host; parent = parent->parentWidget())
+            if (auto tabs = qobject_cast<QTabWidget *>(parent))
+                if (!tabs->currentWidget() || (tabs->currentWidget() != wrapper && !tabs->currentWidget()->isAncestorOf(wrapper))) return false;
+        return true;
+    }
+    void syncVisibility(MacPanelSession *select = nullptr)
+    {
+        if (!host || rebuilding || releasing || syncingVisibility) return;
+        QScopedValueRollback<bool> guard(syncingVisibility, true);
+        auto splitters = host->findChildren<QSplitter *>();
+        for (auto splitter : splitters) {
+            const auto sizes = splitter->sizes();
+            if (!sizes.contains(0)) splitter->setProperty("unboundVisibleSizes", QVariant::fromValue(sizes));
+        }
+        for (auto member : members) if (member) {
+            auto wrapper = leaves.value(member); if (!wrapper) continue;
+            const bool visible = !member->hiddenByUser();
+            for (auto tabs : host->findChildren<QTabWidget *>()) for (int i = 0; i < tabs->count(); ++i)
+                if (tabs->widget(i) == wrapper) { tabs->setTabVisible(i, visible); if (visible && select == member) tabs->setCurrentIndex(i); }
+            if (!wrapper->parentWidget() || !qobject_cast<QStackedWidget *>(wrapper->parentWidget())) wrapper->setVisible(visible);
+            member->window()->setVisible(visible);
+        }
+        for (auto splitter : splitters) {
+            const auto saved = splitter->property("unboundVisibleSizes").value<QList<int>>();
+            if (saved.size() == splitter->count()) splitter->setSizes(saved);
+        }
+        if (host->layout()) host->layout()->activate();
+        refresh();
     }
     void detachMember(MacPanelSession *member)
     {
@@ -207,10 +243,18 @@ private:
     QJsonObject treeSnapshot(QWidget *widget) const
     {
         if (!widget) return {};
+        if (auto tabs = qobject_cast<QTabWidget *>(widget)) {
+            QJsonArray children;
+            for (int i = 0; i < tabs->count(); ++i) children.append(treeSnapshot(tabs->widget(i)));
+            return {{"orientation", "tabs"}, {"children", children}, {"selected", tabs->currentIndex()}};
+        }
         auto splitter = qobject_cast<QSplitter *>(widget); if (!splitter) return {{"panel", widget->property("groupPanel").toString()}};
         QJsonArray children, sizes;
         for (int i = 0; i < splitter->count(); ++i) children.append(treeSnapshot(splitter->widget(i)));
-        for (int size : splitter->sizes()) sizes.append(size);
+        auto measured = splitter->sizes();
+        const auto remembered = splitter->property("unboundVisibleSizes").value<QList<int>>();
+        if (measured.contains(0) && remembered.size() == measured.size()) measured = remembered;
+        for (int size : measured) sizes.append(size);
         return {{"orientation", splitter->orientation() == Qt::Horizontal ? "horizontal" : "vertical"}, {"children", children}, {"sizes", sizes}};
     }
     QWidget *buildTree(const QJsonObject &node)
@@ -218,6 +262,18 @@ private:
         if (node.contains("panel")) {
             for (auto member : members) if (member && panelName(member) == node["panel"].toString()) return leaves.value(member);
             return nullptr;
+        }
+        if (node["orientation"] == "tabs") {
+            auto tabs = new QTabWidget(host); tabs->setObjectName("unboundPanelTabs");
+            tabs->setDocumentMode(true); tabs->setMovable(false);
+            for (auto child : node["children"].toArray()) if (auto widget = buildTree(child.toObject())) {
+                QString title = child.toObject().value("panel").toString();
+                for (auto member : members) if (member && panelName(member) == title) title = member->window()->windowTitle();
+                tabs->addTab(widget, title.isEmpty() ? QStringLiteral("Panel group") : title);
+            }
+            tabs->setCurrentIndex(qBound(0, node["selected"].toInt(), tabs->count() - 1));
+            connect(tabs, &QTabWidget::currentChanged, this, [this] { if (!rebuilding) timer.start(); });
+            return tabs;
         }
         auto splitter = new QSplitter(node["orientation"] == "vertical" ? Qt::Vertical : Qt::Horizontal, host); splitter->setChildrenCollapsible(false);
         for (auto child : node["children"].toArray()) if (auto widget = buildTree(child.toObject())) splitter->addWidget(widget);
@@ -244,6 +300,7 @@ private:
         }
         QStringList titles; for (auto member : members) if (member && member->window()) titles.append(member->window()->windowTitle());
         host->setWindowTitle(titles.join(QStringLiteral(" + ")));
+        QTimer::singleShot(0, this, [this] { syncVisibility(); });
     }
     void retireHost()
     {
@@ -271,7 +328,7 @@ private:
     QList<QPointer<MacPanelSession>> members;
     QHash<MacPanelSession *, QPointer<QWidget>> leaves;
     QTimer timer;
-    bool releasing = false, rebuilding = false, headerPressed = false;
+    bool releasing = false, rebuilding = false, headerPressed = false, syncingVisibility = false;
     QPoint press, headerOffset;
 };
 }

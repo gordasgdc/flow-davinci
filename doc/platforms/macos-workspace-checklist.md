@@ -1,6 +1,47 @@
 # Mac workspace checklist
 
-Working branch: `macos-docking-layouts-v2`.
+Working branch: `macos-docking-tabs-and-maximize`.
+Preserved previous branch: `macos-docking-layouts-v2` at `4a3f13f`.
+Installed checkpoint: `f64c401`; archived binaries and dSYM in
+`build/macos/checkpoints/f64c401/`. Do not overwrite that checkpoint.
+
+## Next-pass acceptance contract
+
+Track implementation, fixture result and live acceptance separately. In particular,
+input accessibility is a regression gate, not docking polish.
+
+- [ ] T1: No screen-wide docking suggestion. Only the eligible destination under
+  the pointer offers compact, fixed-position targets after deliberate approach.
+  Free movement over ordinary content or empty desktop shows no docking overlay.
+  A marker does not chase the pointer along every edge. Covered windows and
+  hidden sibling group cells cannot compete. Option clears all targets.
+- [ ] T2: Distinct center/tab, inner edge/panel split and outer edge/group split
+  targets; one stable preview predicts the exact committed result. Release away
+  from actual targets floats freely. Preserve native window drag responsiveness.
+- [ ] T3: Group-to-group and panel-to-group placement in either orientation,
+  nested split plus tab stacks, header tear-off and outer-title group movement.
+- [ ] T4: Backtick/tilde maximizes the hovered panel on its current display's
+  usable area, regardless of docked/floating/split/tab placement. Second press
+  restores that same panel's exact location, visibility, tab selection, split
+  proportions and geometry even if pointer moved. Yield to typing and dialogs.
+- [ ] T5: Resolve native fullscreen viewer command and assigned shortcut work
+  for detached/grouped/tabbed Source and Program. This is image fullscreen, not
+  Unbound panel maximize. Preserve native command semantics and restore layout.
+- [ ] T6: Native visibility toggles/shortcuts (including user's Q Inspector
+  mapping) share state with Unbound in standalone, split and tab placements.
+  Hide collapses space but remembers slot/proportions; show restores; a covered
+  tab is selected first. Apply to every recognized panel, not Inspector alone.
+- [ ] T7: Optional visible pin control for the floating host/group; no keyboard
+  focus theft, dialogs and menus remain reachable. No permanent global top tier.
+- [ ] T8: Arrangements persist split/tab/hidden/pin relationships and survive
+  restore/restart; old presets migrate without overwriting named originals.
+- [ ] T9: Buttons (Stabilize, Dock All), Timeline audio/video divider, editing
+  shortcuts, page changes and Workflow Integrations remain accessible after
+  repeated moves/merges/tear-offs/maximize. New diagnostics identify targets,
+  committed drops, visibility and maximize/restore outcomes.
+- [ ] T10: GUI regression tests only while Resolve is closed and after warning
+  about brief test windows; installed-build handoff lists concrete live checks.
+
 Preserved first-pass branch: `macos-arrangements-and-docking` at 1c7d9a4;
 installed executable build d3ed034. Do not overwrite that checkpoint.
 Preserved reliability branch: `macos-workspace-reliability` at `c5cf2e4`.
@@ -320,3 +361,53 @@ Live acceptance remains OPEN: after floating/grouping/moving panels, repeatedly
 use Stabilize, Timeline audio/video divider and Dock All. Inspect drag.begin/end
 and drag.capture.recovered events alongside actual button activations. A fixture
 pass is not confirmation that the reported Resolve input regression is fixed.
+
+## Tab/maximize branch evidence (candidate, not installed)
+
+Rollback remains `macos-docking-layouts-v2` at 4a3f13f, installed f64c401.
+The retained live log records the successful screenshot layout at
+2026-10-16T21:50:19.906Z: vertical root, horizontal Media Pool/Inspector top row,
+Source below. Earlier failed-drop events were no longer retained. Do not invent
+an exact failed-drop diagnosis from that successful record.
+
+| Item | Implementation | Fixtures | Resolve acceptance |
+| --- | --- | --- | --- |
+| T1/T2 | Fixed isolated anchors, separate outer-group anchors, frontmost target, free release without automatic edge snapping; Shift alignment, Option bypass | No-GUI layout-plan suite PASS; GUI compilation PASS | Pending |
+| T3 | Native Qt tab stacks mixed with splits; explicit Tabs button and center-drop path; existing group merge/tear-off | Tree plans PASS; tab/group/door GUI fixtures compile | Pending |
+| T4 | Backtick/tilde routing with typing/dialog guards; temporary group layout loan and retained full group snapshot | Hover/second-press and grouped restore fixtures compile | Pending |
+| T5 | Native fullscreen action metadata expanded; panel maximize remains separate | No fullscreen fix claimed | Exact command/shortcut and runtime trace pending |
+| T6 | Native toggle clicked/check-change signals coalesced; split wrapper collapse, hidden tabs and tab reveal | Native button/shortcut-style check/tab fixtures compile | Actual Q mapping and other panel commands pending |
+| T7/T8 | Per-host diamond pin and persisted pin/tab/split fields; old missing pin fields normalize to false | Group/pin and save/restore fixtures compile | Pending |
+| T9 | Existing capture recovery retained; native mouse-up position captured before deferred dispatch; stale deferred drops rejected when a new drag starts | Prior capture suite passed on f64c401; updated suites compile | Pending |
+| Viewport | Reachable grip instead of full-frame clamping; explicit recovery centers panels; display changes do not reveal hidden panels | No-GUI geometry checks PASS | Pending |
+
+No-GUI check: `bash infrastructure/macos/test-layout-plans.sh`.
+Compile-only checks: `UNBOUND_TEST_COMPILE_ONLY=1 bash infrastructure/macos/test-panel-sessions.sh`,
+`test-panel-groups.sh`, and `test-reliability.sh`. These compile without opening
+windows. Do not label a compile-only invocation a GUI test pass.
+
+Candidate diagnostics include selected target, target kind, committed edge and
+receiver, maximize/restore, visibility and pin state. Native release captures the
+position immediately instead of reading the cursor after queue latency. Event
+rotation retains five previous 8 MiB files so reproductions survive longer.
+
+### Live checks before accepting this candidate
+
+1. Move standalone windows through desktop and ordinary content: no rectangle or
+   forced screen-edge docking. Release near an edge away from its fixed marker:
+   preserve free position. Shift aligns; Option suppresses all target behavior.
+2. Reproduce both screenshots: Media Pool beside Inspector, Source below both;
+   create repeatedly by intentional panel-edge drops. Preview must match commit.
+   Then put Inspector and Media Pool in tabs above Source. Repeat group-to-group.
+3. Backtick over each panel in native, floating, split and tab placements; move
+   pointer away; press again. Verify original slot, ratios, selected tab and frame.
+4. Q/native Inspector toggle: covered tab reveals, next press hides, next restores.
+   Repeat native toggles for Media Pool/Effects/Index in split and standalone hosts.
+5. Verify native fullscreen command independently once the exact command is known.
+6. Repeat Stabilize, Dock All, audio/video divider and Timeline shortcuts after
+   every arrangement change. No stuck mouse grab or unreachable control allowed.
+7. Partially park windows offscreen; retain position and size with a reachable
+   grip. Explicit Center/Recover recalls. Test screen removal and hidden panels.
+8. Save a new named arrangement; restore and restart. Original named presets stay
+   unchanged unless Update is explicitly chosen. Verify pin behavior with menus,
+   dialogs, Relay and other apps without focus theft.

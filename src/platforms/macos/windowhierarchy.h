@@ -46,8 +46,8 @@ public:
         const bool pinned = controls && controls->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
         if (controls && !pinned) floating.append(controls);
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
-            const int left = a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : floatingTier(a->objectName());
-            const int right = b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : floatingTier(b->objectName());
+            const int left = a->property("unboundPinned").toBool() ? 4 : a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : floatingTier(a->objectName());
+            const int right = b->property("unboundPinned").toBool() ? 4 : b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : floatingTier(b->objectName());
             return left != right ? left < right : activation.value(a) < activation.value(b);
         });
         QList<QWidget *> windows;
@@ -80,6 +80,7 @@ protected:
             if (!activation.contains(widget)) connect(widget, &QObject::destroyed, this, [this, widget] { activation.remove(widget); });
             activation[widget] = ++serial;
             timer.start(0); break;
+        case QEvent::DynamicPropertyChange:
         case QEvent::Show:
         case QEvent::Hide:
         case QEvent::WindowStateChange:

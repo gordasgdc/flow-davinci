@@ -21,6 +21,7 @@
 #include "arrangementstore.h"
 #include "panelmenus.h"
 #include "panelgroup.h"
+#include "interactiondiagnostics.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -70,7 +71,7 @@ public:
         pin = new QCheckBox(QStringLiteral("Keep controls on top"), this);
         pin->setObjectName(QStringLiteral("pinControls"));
         pin->setChecked(settings.data["pin_controls"].toBool());
-        constrain = new QCheckBox(QStringLiteral("Keep windows on screen"), this);
+        constrain = new QCheckBox(QStringLiteral("Keep a window grip reachable"), this);
         constrain->setChecked(settings.data["keep_on_screen"].toBool(true));
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
         snap = new QCheckBox(QStringLiteral("Snap window edges (Option bypasses)"), this);
@@ -181,10 +182,10 @@ public:
         for (const auto &panel : panels) { firstPanel->addItem(panel.label); secondPanel->addItem(panel.label); }
         firstPanel->setCurrentIndex(2); secondPanel->setCurrentIndex(3);
         groupLayout->addWidget(firstPanel, 0, 0); groupLayout->addWidget(secondPanel, 0, 1);
-        for (int i = 0; i < 3; ++i) {
-            auto button = new QPushButton(i == 0 ? QStringLiteral("Side by Side") : i == 1 ? QStringLiteral("Stack") : QStringLiteral("Release Groups"), groupBox);
+        for (int i = 0; i < 4; ++i) {
+            auto button = new QPushButton(i == 0 ? QStringLiteral("Side by Side") : i == 1 ? QStringLiteral("Stack") : i == 2 ? QStringLiteral("Release Groups") : QStringLiteral("Tabs"), groupBox);
             button->setObjectName(QStringLiteral("group_%1").arg(i));
-            groupLayout->addWidget(button, i == 2 ? 2 : 1, i == 2 ? 0 : i);
+            groupLayout->addWidget(button, i >= 2 ? 2 : 1, i >= 2 ? i - 2 : i);
             connect(button, &QPushButton::clicked, this, [this, firstPanel, secondPanel, i] {
                 action(QStringLiteral("group-%1").arg(i));
                 if (i == 2) { releaseGroups(); save(); return; }
@@ -195,7 +196,7 @@ public:
                 const unsigned request = ++groupVersion;
                 QTimer::singleShot(100, this, [this, a, b, i, request] {
                     if (request != groupVersion) return;
-                    const auto error = combinePanels(a, b, i == 0 ? Qt::Horizontal : Qt::Vertical);
+                    const auto error = combinePanels(a, b, i == 3 ? Qt::Orientation(0) : i == 0 ? Qt::Horizontal : Qt::Vertical);
                     status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag the group grip; resize the shared divider.") : error);
                     save();
                 });
@@ -238,12 +239,15 @@ public:
             panel.session->changed = [this, i] {
                 if (expanded == i && !panels[i].session->active()) expanded = -1;
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
+                if (auto group = groupFor(i)) group->syncVisibility();
+                syncNativeToggle(i);
                 updateRow(i); if (!quitting) saveTimer.start();
             };
+            panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
             connect(panel.undock, &QPushButton::clicked, this, [this, i] { action("undock", panels[i].label); requestUndock(i); });
             connect(panel.dock, &QPushButton::clicked, this, [this, i] { action("dock", panels[i].label); dockOne(i); });
-            connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); panels[i].session->setHiddenByUser(false); });
+            connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); panels[i].session->setHiddenByUser(false); if (auto group = groupFor(i)) group->syncVisibility(panels[i].session); });
             connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); panels[i].session->setHiddenByUser(true); });
             connect(panel.expand, &QPushButton::clicked, this, [this, i] { toggleExpanded(i); });
             connect(panel.center, &QPushButton::clicked, this, [this, i] { action("center", panels[i].label); panels[i].session->centerOnCurrentDisplay(); });
@@ -258,15 +262,16 @@ public:
         qApp->installEventFilter(this);
         installEventFilter(this);
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { shutdown(); });
-        connect(qApp, &QGuiApplication::screenRemoved, this, [this] { rescue(); });
+        connect(qApp, &QGuiApplication::screenRemoved, this, [this] { keepGripsReachable(); });
         auto watchScreen = [this](QScreen *screen) {
-            connect(screen, &QScreen::availableGeometryChanged, this, [this] { if (constrain->isChecked()) rescue(); });
+            connect(screen, &QScreen::availableGeometryChanged, this, [this] { if (constrain->isChecked()) keepGripsReachable(); });
         };
         for (auto screen : QGuiApplication::screens()) watchScreen(screen);
-        connect(qApp, &QGuiApplication::screenAdded, this, [this, watchScreen](QScreen *screen) { watchScreen(screen); rescue(); });
+        connect(qApp, &QGuiApplication::screenAdded, this, [this, watchScreen](QScreen *screen) { watchScreen(screen); keepGripsReachable(); });
         const QRect position = Unbound::WorkspaceSettings::rectangle(settings.data["controls"].toObject());
         if (position.isValid()) setGeometry(position);
         restoreTimer.start();
+        wireNativeToggles();
     }
     ~PanelControls() override
     {
@@ -274,7 +279,7 @@ public:
         qDeleteAll(groups); groups.clear();
         delete nativeMenus;
         qApp->removeEventFilter(this);
-        for (auto &panel : panels) { panel.session->changed = {}; panel.session->arrangementChanged = {}; panel.session->attachRequested = {}; }
+        for (auto &panel : panels) { panel.session->expandedClosed = {}; panel.session->changed = {}; panel.session->arrangementChanged = {}; panel.session->attachRequested = {}; }
     }
 protected:
     void closeEvent(QCloseEvent *event) override
@@ -284,8 +289,32 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (quitting) return false;
+        if ((event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) &&
+            !QApplication::activeModalWidget() && !QApplication::activePopupWidget() &&
+            !Unbound::textEditor(QApplication::focusWidget())) {
+            auto key = static_cast<QKeyEvent *>(event);
+            if ((key->key() == Qt::Key_QuoteLeft || key->key() == Qt::Key_AsciiTilde) &&
+                !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+                int target = expanded;
+                auto hovered = QApplication::widgetAt(QCursor::pos());
+                if (target < 0) for (int i = 0; i < panels.size(); ++i) {
+                    QWidget *surface = panels[i].session->active() ? panels[i].session->window() : page() ? page()->findChild<QWidget *>(panels[i].name) : nullptr;
+                    bool headerMatch = false;
+                    for (auto ancestor = hovered; ancestor; ancestor = ancestor->parentWidget())
+                        headerMatch |= ancestor->property("groupPanel").toString() == panels[i].name;
+                    if (surface && surface->isVisible() && hovered && (surface == hovered || surface->isAncestorOf(hovered) || headerMatch)) { target = i; break; }
+                }
+                if (target >= 0) {
+                    event->accept();
+                    if (event->type() == QEvent::KeyPress && !key->isAutoRepeat()) toggleExpanded(target);
+                    return true;
+                }
+            }
+        }
+        if (expanded >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) saveTimer.start();
         if (event->type() == QEvent::Show) {
+            QTimer::singleShot(0, this, [this] { wireNativeToggles(); });
             auto widget = qobject_cast<QWidget *>(object);
             if (widget && (widget->objectName() == QLatin1String("UiMainWindow") ||
                 widget->objectName() == QLatin1String("WStackPage_Conform"))) restoreTimer.start();
@@ -296,6 +325,50 @@ protected:
         return false;
     }
 private:
+    void togglePanelDoor(int i)
+    {
+        auto session = panels[i].session;
+        if (!session->active() || !page() || !page()->isVisible()) return;
+        if (expanded >= 0) restoreExpanded();
+        auto group = groupFor(i);
+        const bool reveal = session->hiddenByUser() || (group && !group->selected(session));
+        session->setHiddenByUser(!reveal);
+        if (group) group->syncVisibility(reveal ? session : nullptr);
+        syncNativeToggle(i);
+        Unbound::logEvent(QStringLiteral("panel.visibility.native-toggle"), {{"panel", panels[i].name}, {"visible", reveal}});
+    }
+    void syncNativeToggle(int i)
+    {
+        if (!panels[i].session->active()) return;
+        const QString base = QStringLiteral("btnEditToggle") + panels[i].toggle;
+        if (panels[i].toggle.isEmpty() || !page()) return;
+        for (auto button : page()->findChildren<QAbstractButton *>()) if (button->objectName().startsWith(base + "In")) {
+            QSignalBlocker block(button); button->setChecked(!panels[i].session->hiddenByUser());
+        }
+    }
+    void wireNativeToggles()
+    {
+        auto root = page(); if (!root || quitting) return;
+        for (int i = 0; i < panels.size(); ++i) {
+            if (panels[i].toggle.isEmpty()) continue;
+            const QString base = QStringLiteral("btnEditToggle") + panels[i].toggle;
+            for (auto button : root->findChildren<QAbstractButton *>()) {
+                if (!button->objectName().startsWith(base + "In") || observedToggles.contains(button)) continue;
+                observedToggles.insert(button);
+                connect(button, &QObject::destroyed, this, [this, button] { observedToggles.remove(button); });
+                const auto request = [this, i] {
+                    if (!panels[i].session->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
+                    pendingNativeDoors.insert(i);
+                    // Clicks and native shortcut-driven check changes share one queued transition.
+                    QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
+                };
+                connect(button, &QAbstractButton::clicked, this, request);
+                connect(button, &QAbstractButton::toggled, this, [this, i, request](bool checked) {
+                    if (checked != !panels[i].session->hiddenByUser()) request();
+                });
+            }
+        }
+    }
     QJsonObject arrangement() const
     {
         auto result = settings.data;
@@ -311,10 +384,16 @@ private:
         for (auto saved : value.value("groups").toArray()) {
             auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
             QStringList names; Unbound::groupTreeNames(tree, names);
+            group["pinned"] = group.value("pinned").toBool();
             group["tree"] = tree; group["panels"] = QJsonArray::fromStringList(names);
             group.remove("orientation"); group.remove("sizes"); layouts.append(group);
         }
-        value["groups"] = layouts; return value;
+        value["groups"] = layouts;
+        auto savedPanels = value["panels"].toObject();
+        for (auto entry = savedPanels.begin(); entry != savedPanels.end(); ++entry) {
+            auto panel = entry.value().toObject(); panel["pinned"] = panel.value("pinned").toBool(); entry.value() = panel;
+        }
+        value["panels"] = savedPanels; return value;
     }
     void reloadPresets(const QString &selected = {})
     {
@@ -412,12 +491,11 @@ private:
         p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
         p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
         p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
-        p.expand->setEnabled(!p.session->grouped());
+        p.expand->setEnabled(true);
         p.center->setEnabled(active);
     }
     void toggleExpanded(int i)
     {
-        if (panels[i].session->grouped()) { status->setText(QStringLiteral("Release the group before expanding an individual panel.")); return; }
         action(QStringLiteral("expand-toggle"), panels[i].label);
         if (expanded == i) { restoreExpanded(); return; }
         restoreExpanded();
@@ -428,12 +506,16 @@ private:
         auto &panel = panels[i];
         beforeExpanded = panel.saved;
         expandedWasFloating = panel.session->active();
+        expandedWasGrouped = panel.session->grouped();
+        expandedGroup = groupFor(i);
+        beforeExpandedGroup = expandedGroup ? expandedGroup->snapshot() : QJsonObject();
+        if (expandedWasGrouped && !panel.session->beginGroupedExpansion()) return;
         expanded = i;
         const unsigned request = ++expandVersion;
         if (!expandedWasFloating) requestUndock(i, true);
         QTimer::singleShot(100, this, [this, i, request] {
             if (expanded != i || request != expandVersion) return;
-            auto host = panels[i].session->window();
+            auto host = expandedWasGrouped ? panels[i].session->expandedWindow() : panels[i].session->window();
             if (!host) { expanded = -1; updateRow(i); save(); return; }
             auto screen = host->screen();
             if (!screen) screen = QApplication::primaryScreen();
@@ -454,6 +536,11 @@ private:
         auto &panel = panels[i];
         ++panel.requestVersion; panel.pending = false;
         QString error;
+        if (expandedWasGrouped) {
+            panel.session->endGroupedExpansion();
+            if (expandedGroup && expandedGroup->active()) expandedGroup->restore(beforeExpandedGroup);
+        }
+        expandedGroup = nullptr;
         if (panel.session->active()) {
             panel.session->setFloatingGeometry(Unbound::WorkspaceSettings::rectangle(beforeExpanded));
             panel.session->setHiddenByUser(beforeExpanded["hidden"].toBool());
@@ -510,6 +597,7 @@ private:
             p.desired = true;
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
+            p.session->setPinned(p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
         }
         outcome("undock", i, error); updateRow(i); save();
@@ -576,7 +664,7 @@ private:
             (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
             if (groupFor(source) && groupFor(source) == groupFor(j)) return;
             const auto frame = target->window()->frameGeometry();
-            const auto error = combinePanels(source, j, edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
+            const auto error = combinePanels(source, j, edge == Qt::Edge(0) ? Qt::Orientation(0) : edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
                 edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name);
             if (error.isEmpty()) if (auto group = groupFor(source)) group->fitFrame(frame);
             status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
@@ -634,10 +722,15 @@ private:
         if (!pendingGroups.isEmpty()) QTimer::singleShot(120, this, [this] { restoreGroups(); });
         if (background->isChecked()) QTimer::singleShot(200, this, [this] { if (!quitting && background->isChecked()) applyBackgroundVisibility(true); });
     }
+    void keepGripsReachable()
+    {
+        Unbound::keepOnDisplay(this);
+        for (auto &p : panels) if (p.session->active()) p.session->bringOnScreen();
+    }
     void rescue()
     {
         Unbound::logEvent(QStringLiteral("workspace.recover")); Unbound::keepOnDisplay(this);
-        for (auto &p : panels) if (p.session->active()) p.session->bringOnScreen();
+        for (auto &p : panels) if (p.session->active()) p.session->centerOnCurrentDisplay();
     }
     void save()
     {
@@ -649,13 +742,13 @@ private:
             value["floating"] = p.desired;
             if (p.session->active()) {
                 value = Unbound::WorkspaceSettings::rectangle(p.session->floatingGeometry());
-                value["floating"] = p.desired; value["hidden"] = p.session->hiddenByUser();
+                value["floating"] = p.desired; value["hidden"] = p.session->hiddenByUser(); value["pinned"] = p.session->pinned();
             }
             if (expanded == i) value = beforeExpanded;
             p.saved = value; saved[p.name] = value;
         }
         QJsonArray savedGroups = pendingGroups;
-        for (auto group : groups) if (group->active()) savedGroups.append(group->snapshot());
+        for (auto group : groups) if (group->active()) savedGroups.append(expanded >= 0 && group == expandedGroup ? beforeExpandedGroup : group->snapshot());
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
             {"hide_background", background->isChecked()},
             {"selected_arrangement", presets->currentData().toString()},
@@ -671,7 +764,7 @@ private:
     void shutdown()
     {
         if (quitting) return;
-        save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
+        restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
@@ -684,6 +777,8 @@ private:
     Unbound::WindowHierarchy *hierarchy = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
+    QSet<QAbstractButton *> observedToggles;
+    QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
     Unbound::ArrangementStore arrangements;
     QComboBox *presets = nullptr;
@@ -693,8 +788,9 @@ private:
     unsigned bulkVersion = 0;
     unsigned expandVersion = 0;
     int expanded = -1;
-    bool expandedWasFloating = false;
-    QJsonObject beforeExpanded;
+    bool expandedWasFloating = false, expandedWasGrouped = false;
+    QJsonObject beforeExpanded, beforeExpandedGroup;
+    QPointer<Unbound::PanelGroup> expandedGroup;
     QList<Unbound::PanelGroup *> groups;
     QJsonArray pendingGroups;
     unsigned groupVersion = 0;

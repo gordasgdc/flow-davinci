@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QToolButton>
 #include <QPainter>
 #include "nativechrome.h"
 #include "windowsnap.h"
@@ -41,7 +42,16 @@ public:
         qApp->installEventFilter(this);
         setMouseTracking(true);
         setAutoFillBackground(true);
+        pinButton = new QToolButton(this); pinButton->setObjectName("unboundPinWindow");
+        pinButton->setText(QString::fromUtf8("◇")); pinButton->setCheckable(true); pinButton->setAutoRaise(true);
+        pinButton->setFocusPolicy(Qt::NoFocus); pinButton->setToolTip("Keep this window above the Resolve workspace");
+        connect(pinButton, &QToolButton::toggled, this, [this](bool pinned) {
+            setProperty("unboundPinned", pinned); pinButton->setText(pinned ? QString::fromUtf8("◆") : QString::fromUtf8("◇"));
+            logEvent(QStringLiteral("window.pin"), {{"window", objectName()}, {"pinned", pinned}});
+        });
     }
+    void setPinned(bool pinned) { pinButton->setChecked(pinned); }
+    bool pinned() const { return pinButton->isChecked(); }
     ~MacFloatingHost() override { delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
     void setChrome(WindowChrome value)
     {
@@ -49,12 +59,13 @@ public:
         const QRect position = geometry();
         chrome = value;
         setWindowFlag(Qt::FramelessWindowHint, value == WindowChrome::Hidden);
-        const int top = value == WindowChrome::Compact ? 28 : 12;
+        const int top = value == WindowChrome::Compact ? 28 : 24;
         setContentsMargins(0, top, 0, 0);
         if (visible) show();
         applyNativeChrome(this, value == WindowChrome::Compact);
         if (position.isValid()) setGeometry(position);
-        update();
+        pinButton->setGeometry(value == WindowChrome::Compact ? 84 : qMax(0, width() - 25), 0, 24, top);
+        pinButton->raise(); update();
     }
     void setSnapping(bool enabled) { snapping = enabled; if (!enabled) { attachmentTarget = nullptr; snapPosition = {}; hidePreviews(); } }
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
@@ -62,10 +73,11 @@ public:
     {
         snapPosition = {}; attachmentTarget = nullptr;
         if (dragging) finishPointerDrag(true, true, "restarted");
+        ++dragGeneration;
         dragging = true; movedEnough = continuing; start = global; startGeometry = geometry();
         delete releaseWatch.data();
-        releaseWatch = watchNativePointerRelease(this, [this](bool option) {
-            if (dragging) { movePointerDrag(QCursor::pos(), option); finishPointerDrag(option, false, "native-mouse-up"); }
+        releaseWatch = watchNativePointerRelease(this, [this](QPoint position, bool option) {
+            if (dragging) { movePointerDrag(position, option); finishPointerDrag(option, false, "native-mouse-up"); }
         });
         logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}});
         // Cocoa can deactivate the window synchronously while capture is acquired.
@@ -76,6 +88,11 @@ public:
         }
     }
 protected:
+    void resizeEvent(QResizeEvent *event) override
+    {
+        QWidget::resizeEvent(event);
+        if (pinButton) { pinButton->setGeometry(chrome == WindowChrome::Compact ? 84 : qMax(0, width() - 25), 0, 24, contentsMargins().top()); pinButton->raise(); }
+    }
     void hideEvent(QHideEvent *event) override
     {
         if (dragging) finishPointerDrag(true, true, "hidden");
@@ -87,7 +104,7 @@ protected:
         QPainter painter(this);
         painter.setPen(palette().color(QPalette::WindowText));
         if (chrome == WindowChrome::Compact)
-            painter.drawText(QRect(84, 0, qMax(0, width() - 92), 28), Qt::AlignVCenter | Qt::AlignLeft, windowTitle());
+            painter.drawText(QRect(110, 0, qMax(0, width() - 118), 28), Qt::AlignVCenter | Qt::AlignLeft, windowTitle());
         if (chrome != WindowChrome::Compact)
             painter.drawText(QRect(0, 0, width(), 12), Qt::AlignCenter, QStringLiteral("···"));
     }
@@ -160,8 +177,11 @@ private:
         delete releaseWatch.data(); releaseWatch = nullptr;
         hidePreviews();
         if (QWidget::mouseGrabber() == this) releaseMouse();
-        logEvent(QStringLiteral("drag.end"), {{"window", objectName()}, {"reason", reason}, {"cancelled", cancelled}, {"attach", attach}});
-        if (attach) QTimer::singleShot(0, this, [this, target, edge] { if (target && attachRequested) attachRequested(target, edge); });
+        logEvent(QStringLiteral("drag.end"), {{"window", objectName()}, {"reason", reason}, {"cancelled", cancelled}, {"attach", attach}, {"target", target ? target->objectName() : QString()}, {"edge", int(edge)}});
+        const auto generation = dragGeneration;
+        if (attach) QTimer::singleShot(0, this, [this, target, edge, generation] {
+            if (generation == dragGeneration && !dragging && target && target->isVisible() && attachRequested) attachRequested(target, edge);
+        });
     }
     void previewSnap(const QRect &desired, bool bypass)
     {
@@ -179,7 +199,8 @@ private:
                 targets.append(window->frameGeometry());
         for (auto screen : QGuiApplication::screens()) displays.append(screen->availableGeometry());
         QList<QLine> alignment;
-        const QRect snapped = alignWindowEdges(snapWindowFrame(proposed, targets, displays), targets, alignment);
+        const bool align = QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier);
+        const QRect snapped = align ? alignWindowEdges(snapWindowFrame(proposed, targets, displays), targets, alignment) : proposed;
         for (int i = 0; i < 2; ++i) {
             if (i >= alignment.size()) { if (guideWidgets[i]) guideWidgets[i]->hide(); continue; }
             if (!guideWidgets[i]) {
@@ -192,26 +213,43 @@ private:
             guideWidgets[i]->setGeometry(QRect(line.p1(), line.p2()).normalized().adjusted(0, 0, 1, 1));
             guideWidgets[i]->show(); guideWidgets[i]->raise();
         }
-        snapPosition = QRect(snapped.topLeft() - offset, desired.size());
+        snapPosition = align ? QRect(snapped.topLeft() - offset, desired.size()) : QRect();
         QRect outline = snapped;
         DockZone chosen;
         int closest = 100000;
+        // Only the frontmost eligible destination can offer docking controls.
+        QWidget *destination = nullptr;
+        const auto ordered = nativeOrderedWindowNumbers();
+        for (auto number : ordered) {
+            for (auto candidate : QApplication::topLevelWidgets())
+                if (candidate != this && candidate->isVisible() && !candidate->isMinimized() &&
+                    candidate->objectName().startsWith("unboundFloating_") && nativeWindowNumber(candidate) == number &&
+                    candidate->frameGeometry().adjusted(-36, -36, 36, 36).contains(dragPointer)) { destination = candidate; break; }
+            if (destination) break;
+        }
         if (attachRequested) for (auto candidate : QApplication::topLevelWidgets()) {
-            if (candidate == this || !candidate->isVisible() || candidate->isMinimized() ||
-                !candidate->objectName().startsWith("unboundFloating_")) continue;
+            if (candidate != destination) continue;
             QList<QWidget *> surfaces{candidate};
             for (auto child : candidate->findChildren<QWidget *>())
                 if (child->objectName().startsWith("unboundGroupCell_") && child->isVisible()) surfaces.append(child);
             for (auto slot : surfaces) {
                 const auto frame = slot->isWindow() ? slot->frameGeometry() : QRect(slot->parentWidget()->mapToGlobal(QPoint()), slot->parentWidget()->size());
-                const auto zone = localDockZone(frame, dragPointer);
-                if (!zone.target.isValid()) continue;
+                const auto zone = slot == candidate && surfaces.size() > 1 ? outerDockZone(frame, dragPointer) : localDockZone(frame, dragPointer);
+                if (!zone.target.isValid() || (slot == candidate && surfaces.size() > 1 && zone.edge == Qt::Edge(0))) continue;
                 const int distance = (zone.active ? -10000 : 0) + (zone.target.center() - dragPointer).manhattanLength() +
                     (frame.contains(dragPointer) ? 0 : 1000) + (slot == candidate && surfaces.size() > 1 ? 50 : 0);
                 if (distance >= closest) continue;
                 closest = distance; chosen = zone;
                 attachmentTarget = zone.active ? slot : nullptr;
             }
+        }
+        const QString selection = attachmentTarget ? attachmentTarget->objectName() + QString::number(int(chosen.edge)) : QString();
+        if (selection != lastDockSelection) {
+            lastDockSelection = selection;
+            logEvent(QStringLiteral("dock.target.selection"), {{"source", objectName()},
+                {"target", attachmentTarget ? attachmentTarget->objectName() : QString()}, {"active", bool(attachmentTarget)},
+                {"kind", chosen.edge == Qt::Edge(0) ? "tab" : attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? "group-split" : "panel-split"},
+                {"edge", int(chosen.edge)}});
         }
         if (chosen.target.isValid()) {
             if (!dropMarker) {
@@ -221,12 +259,14 @@ private:
                 label->setStyleSheet(QStringLiteral("background:#34475b; color:white; border:1px solid #80a5c9; border-radius:4px;"));
                 dropMarker = label;
             }
-            static_cast<QLabel *>(dropMarker)->setText(chosen.edge == Qt::LeftEdge ? QString::fromUtf8("←") : chosen.edge == Qt::RightEdge ? QString::fromUtf8("→") : chosen.edge == Qt::TopEdge ? QString::fromUtf8("↑") : QString::fromUtf8("↓"));
+            dropMarker->setToolTip(chosen.edge == Qt::Edge(0) ? QStringLiteral("Add as tab") :
+                attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? QStringLiteral("Split group") : QStringLiteral("Split panel"));
+            static_cast<QLabel *>(dropMarker)->setText(chosen.edge == Qt::Edge(0) ? QString::fromUtf8("▣") : chosen.edge == Qt::LeftEdge ? QString::fromUtf8("←") : chosen.edge == Qt::RightEdge ? QString::fromUtf8("→") : chosen.edge == Qt::TopEdge ? QString::fromUtf8("↑") : QString::fromUtf8("↓"));
             dropMarker->setGeometry(chosen.target); dropMarker->show(); dropMarker->raise();
             attachmentEdge = chosen.edge;
             if (chosen.active) outline = chosen.preview;
         } else if (dropMarker) dropMarker->hide();
-        if (snapped == proposed && !attachmentTarget) { if (preview) preview->hide(); return; }
+        if (!attachmentTarget) { if (preview) preview->hide(); return; }
         if (!preview) {
             preview = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
             preview->setObjectName(QStringLiteral("unboundSnapPreview"));
@@ -237,16 +277,20 @@ private:
         preview->setGeometry(outline); preview->show(); preview->raise();
         if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
     }
+    static bool surfacesAreGrouped(QWidget *widget) { return widget && widget->objectName().startsWith("unboundFloating_group_"); }
     void hidePreviews() { if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
+    QToolButton *pinButton = nullptr;
     WindowChrome chrome = WindowChrome::Standard;
     bool snapping = true;
     QWidget *preview = nullptr;
     QWidget *dropMarker = nullptr;
     QWidget *guideWidgets[2] = {nullptr, nullptr};
+    QString lastDockSelection;
     QPoint dragPointer;
     QRect snapPosition;
     QPointer<QWidget> attachmentTarget;
     Qt::Edge attachmentEdge = Qt::LeftEdge;
+    unsigned dragGeneration = 0;
     bool dragging = false;
     bool movedEnough = false;
     Qt::Edges dragEdges;

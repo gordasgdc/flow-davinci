@@ -26,13 +26,30 @@ inline QRect fitToDisplays(QRect desired, const QList<QRect> &displays)
     return desired;
 }
 
+// Keep a useful title/grip segment reachable; partial off-screen placement is intentional.
+inline QRect keepGripReachable(QRect desired, const QList<QRect> &displays)
+{
+    if (displays.isEmpty() || !desired.isValid()) return desired;
+    const int gripWidth = qMin(96, desired.width()), gripHeight = qMin(24, desired.height());
+    QRect best = desired; qint64 distance = std::numeric_limits<qint64>::max();
+    for (const auto &display : displays) {
+        QRect candidate = desired;
+        candidate.moveLeft(qBound(display.left() + gripWidth - desired.width(), desired.left(), display.right() - gripWidth + 1));
+        candidate.moveTop(qBound(display.top(), desired.top(), display.bottom() - gripHeight + 1));
+        const QPoint delta = candidate.topLeft() - desired.topLeft();
+        const qint64 d = qint64(delta.x()) * delta.x() + qint64(delta.y()) * delta.y();
+        if (d < distance) { best = candidate; distance = d; }
+    }
+    return best;
+}
+
 inline void keepOnDisplay(QWidget *window)
 {
     if (!window) return;
     QList<QRect> areas;
     for (auto screen : QGuiApplication::screens()) areas.append(screen->availableGeometry());
     const QRect frame = window->frameGeometry();
-    const QRect fitted = fitToDisplays(frame, areas);
+    const QRect fitted = keepGripReachable(frame, areas);
     if (frame == fitted) return;
     const QSize decoration = frame.size() - window->size();
     window->resize((fitted.size() - decoration).expandedTo(QSize(1, 1)));

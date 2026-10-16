@@ -20,7 +20,9 @@ inline void logEvent(const QString &event, QJsonObject details = {})
     if (!QDir().mkpath(directory)) return;
     const QString path = directory + QStringLiteral("/events.jsonl");
     if (QFile(path).size() > 8 * 1024 * 1024) {
-        QFile::remove(path + QStringLiteral(".1"));
+        QFile::remove(path + QStringLiteral(".5"));
+        for (int index = 4; index >= 1; --index)
+            QFile::rename(path + QStringLiteral(".%1").arg(index), path + QStringLiteral(".%1").arg(index + 1));
         QFile::rename(path, path + QStringLiteral(".1"));
     }
     QFile file(path);

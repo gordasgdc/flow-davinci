@@ -34,6 +34,7 @@ public:
     bool dockPending() const { return pendingDock; }
     QWidget *window() const { return grouped() ? groupContainer.data() : host.data(); }
     std::function<void()> changed;
+    std::function<void()> expandedClosed;
     std::function<void()> arrangementChanged;
     std::function<void()> releaseGroup;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
@@ -57,6 +58,7 @@ public:
     }
     void detachFromGroup()
     {
+        endGroupedExpansion();
         if (!grouped()) return;
         if (!host) return;
         QScopedValueRollback<bool> moving(recovering, true);
@@ -67,7 +69,30 @@ public:
         setFloatingGeometry(detachedGeometry);
         host->setVisible(!userHidden && originalPage && originalPage->isVisible());
     }
+    QWidget *expandedWindow() const { return expandedHost; }
+    bool beginGroupedExpansion()
+    {
+        if (!grouped() || expandedHost || !groupContainer->layout()) return false;
+        QScopedValueRollback<bool> moving(recovering, true);
+        expandedHost = new MacFloatingHost(originalMain);
+        expandedHost->setObjectName(QStringLiteral("unboundFloating_expanded_") + groupContainer->objectName());
+        expandedHost->setWindowTitle(groupContainer->windowTitle());
+        expandedHost->setAttribute(Qt::WA_QuitOnClose, false);
+        expandedHost->setLayout(groupContainer->layout());
+        static_cast<MacFloatingHost *>(expandedHost.data())->setChrome(chrome);
+        expandedHost->setGeometry(QRect(groupContainer->mapToGlobal(QPoint()), groupContainer->size()));
+        expandedHost->installEventFilter(this); expandedHost->show(); return true;
+    }
+    void endGroupedExpansion()
+    {
+        if (!expandedHost) return;
+        QScopedValueRollback<bool> moving(recovering, true);
+        if (groupContainer && expandedHost->layout()) groupContainer->setLayout(expandedHost->layout());
+        expandedHost->removeEventFilter(this); expandedHost->hide(); expandedHost->deleteLater(); expandedHost = nullptr;
+    }
     void setChrome(WindowChrome value) { chrome = value; if (host && !grouped()) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
+    bool pinned() const { return host && host->property("unboundPinned").toBool(); }
+    void setPinned(bool value) { if (host) static_cast<MacFloatingHost *>(host.data())->setPinned(value); }
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     bool hiddenByUser() const { return userHidden; }
     void setConstrained(bool enabled) { constrain = enabled; if (enabled && window()) keepOnDisplay(window()->window()); }
@@ -234,6 +259,7 @@ public:
 
     QString dock()
     {
+        endGroupedExpansion();
         if (releaseGroup) { auto release = releaseGroup; release(); }
         logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
             {"active", active()}, {"original_parent", originalParent ? originalParent->objectName() : QString()}});
@@ -323,6 +349,9 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        if (object == expandedHost && event->type() == QEvent::Close) {
+            if (expandedClosed) expandedClosed(); else endGroupedExpansion(); return true;
+        }
         if (object == host && event->type() == QEvent::Close) {
             const QString error = dock();
             logEvent(QStringLiteral("panel.close.result"), {{"success", error.isEmpty()}, {"error", error}});
@@ -356,7 +385,7 @@ private:
     }
     void queueRecovery()
     {
-        if (recoveryQueued || docking || !host) return;
+        if (recoveryQueued || docking || !host || expandedHost) return;
         recoveryQueued = true;
         const unsigned token = generation;
         QTimer::singleShot(0, this, [this, token] {
@@ -415,7 +444,7 @@ private:
     bool userHidden = false;
     bool constrain = true;
     bool snapping = true;
-    QPointer<QWidget> groupContainer;
+    QPointer<QWidget> groupContainer, expandedHost;
     QRect detachedGeometry;
     QTimer arrangeTimer;
     WindowChrome chrome = WindowChrome::Standard;
