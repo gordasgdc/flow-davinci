@@ -1,9 +1,11 @@
 # Mac workspace checklist
 
-Working branch: `macos-workspace-reliability`.
+Working branch: `macos-arrangements-and-docking`.
+Preserved reliability branch: `macos-workspace-reliability` at `c5cf2e4`.
 Preserved baseline: `macos-panels-workspaces` at `9ba3fb7`.
 Reliability changes are implemented and pass automated fixtures. Fresh-process
-Resolve acceptance checks remain pending; the installed baseline is still 9ba3fb7.
+Resolve acceptance checks remain pending; installed helper is c5cf2e4.
+User reports some improvement, but Ripple Delete still fails in floating Timeline.
 
 ## Completion rule
 
@@ -67,6 +69,17 @@ separately. Do not commit project media or private diagnostic captures.
 
 ## Size and scale
 
+- [ ] E1: Add Dock/Undock to positively identified native panel ellipsis menus,
+  using the same operations and shared state as Unbound controls. No duplicate
+  actions after reopening menus or switching pages. Timeline gets an accessible
+  header control where there is no suitable ellipsis. Verify native menu actions
+  and shortcuts remain intact; do not insert into unrelated menus.
+- [ ] E2: Prototype independent interface scaling on an ordinary panel and a
+  viewer. If viable, expose the same per-panel Interface Scale slider/reset in
+  native menus and Unbound. Persist values in arrangements. Verify text sharpness,
+  GPU surfaces, menus, input coordinates, Retina and playback; do not substitute
+  window resizing or image zoom for UI scaling.
+
 - [ ] S1: Identify Timeline's minimum-size constraints and relax only verified
   unnecessary limits. Narrow/short layouts retain usable tools, hit targets,
   scrolling and playback. Redocking restores original constraints.
@@ -109,6 +122,23 @@ regressions and live acceptance checks pass.
 | R1–R4 | Working reliability changes | `bash infrastructure/macos/test-reliability.sh`: PASS. Reproduced 17 failures before changes; now covers ten native page moves, deferred docking, replaced layouts, unrelated ownership rejection, viewer visibility and native shortcut scope/text entry. | Pending fresh-process checks, including actual B/Ripple Delete and both viewer images | Implemented; live verification pending |
 | C1–C2 | Working reliability changes | `bash infrastructure/macos/test-panel-sessions.sh`: PASS for eleven panels, persistence, bulk cancellation, visibility, viewport recovery, styles, hierarchy/focus, Quick Export and relaunch. Added event-driven focus, shortcut, native action and page recovery diagnostics; text entry excludes key values. | Pending | Automated regression pass |
 | M1–C2 | — | — | — | Planned |
+| R2 | Installed c5cf2e4 | Owned-window shortcut fixture passes, but does not reproduce actual Ripple Delete failure | User confirms Ripple Delete still fails with Timeline undocked | Open; requires native command/focus diagnosis |
+| R2 diagnostic | c5cf2e4, pid 46314 | — | 2026-10-16T13:58:23.710Z: B reaches floating Timeline with m_TiTimelineView (UiTiSequenceView) focused; no corresponding shortcut/action observed. Ctrl+Z subsequently produces input.shortcut. Focus alone does not explain failure. | Native command routing investigation |
+| U1 | Continuation branch | Scroll area added for options and eleven-panel list; status and bulk recovery buttons remain outside it. Regression suite passed before adding explicit compact-size assertions. | Pending | In progress |
+| P1–P2 | Continuation branch | Named preset creation, duplicate-name rejection, rename, independent duplicate/update, deletion, reload and invalid-file preservation pass. Control restore fixture restores Source only with saved size; current changes do not update saved presets. | Pending; groups and UI scale remain unimplemented | Implemented for current panel/options model |
+
+## Install handoff
+
+Every install must report build identity, changes actually included, exact user
+test steps, and known unfinished behavior. Never present fixtures as live proof.
+Do not ask the user to test features absent from that build.
+
+Latest install: c5cf2e4; matching bootstrap and Qt-helper SHA-256 verified.
+Test: click Timeline and invoke the user's B/Ripple Delete mapping; compare docked
+and floating. Switch Edit to Color/Fairlight and back; check Timeline returns.
+Alternate Source and Program; check both image and controls. Try Dock All after
+page changes. Magnetic docking, presets, maximize and independent UI scale are
+not included. Ripple Delete is already reported failing and remains open.
 
 ## Current work order
 

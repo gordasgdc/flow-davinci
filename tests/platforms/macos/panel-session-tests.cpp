@@ -29,6 +29,28 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
     qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
+    const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
+    qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
+    {
+        Unbound::ArrangementStore store;
+        QString first, copy;
+        const QJsonObject workspace{{"panels", QJsonObject{{"Timeline", QJsonObject{{"floating", true}, {"x", -1200}}}}}};
+        check(store.create("Editing", workspace, first).isEmpty(), "create named arrangement");
+        check(!store.create(" editing ", workspace, copy).isEmpty(), "reject duplicate names without changing data");
+        check(store.create("Editing copy", store.find(first)["workspace"].toObject(), copy).isEmpty(), "duplicate arrangement with independent identity");
+        check(store.rename(first, "Review").isEmpty(), "rename keeps arrangement identity");
+        check(store.update(first, QJsonObject{{"panels", QJsonObject()}}).isEmpty(), "explicit update");
+        Unbound::ArrangementStore reloaded;
+        check(reloaded.find(first)["name"] == "Review" && reloaded.find(copy)["workspace"].toObject() == workspace,
+            "arrangements persist and duplicate remains independent");
+        check(store.remove(first).isEmpty() && store.remove(copy).isEmpty(), "delete presets without current workspace mutation");
+        qputenv("UNBOUND_ARRANGEMENTS_FILE", (logs.path() + "/Invalid.json").toUtf8());
+        QFile invalid(logs.path() + "/Invalid.json"); invalid.open(QIODevice::WriteOnly); invalid.write("broken"); invalid.close();
+        Unbound::ArrangementStore damaged;
+        check(!damaged.error().isEmpty() && !damaged.create("New", workspace, first).isEmpty(), "invalid files cannot be silently overwritten");
+        invalid.open(QIODevice::ReadOnly); check(invalid.readAll() == "broken", "invalid preset data preserved for recovery");
+        qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
+    }
     Unbound::WindowDiagnostics windowLogs(&app);
     app.installEventFilter(&windowLogs);
     app.setQuitOnLastWindowClosed(false);
@@ -151,8 +173,17 @@ int main(int argc, char **argv)
         auto program = new QWidget(page);
         program->setObjectName(QStringLiteral("widgetEditTimelinePlayer")); row->addWidget(program);
         main.show(); settle();
+        Unbound::ArrangementStore presetStore;
+        QString presetId;
+        const QJsonObject sourceArrangement{{"panels", QJsonObject{{"widgetEditSourcePlayer", QJsonObject{
+            {"floating", true}, {"hidden", false}, {"x", 80}, {"y", 90}, {"width", 480}, {"height", 320}}}}}};
+        check(presetStore.create("Source layout", sourceArrangement, presetId).isEmpty(), "prepare restore fixture");
         PanelControls controls;
         controls.show(); settle();
+        controls.resize(300, 240); settle();
+        auto optionsScroll = controls.findChild<QScrollArea *>(QStringLiteral("panelOptionsScroll"));
+        check(optionsScroll && controls.height() == 240 && controls.width() == 300, "controls can shrink around a scrollable panel list");
+        check(controls.findChild<QPushButton *>("bulk_1")->isVisibleTo(&controls), "Dock All remains outside scrolling content");
         auto sourceUndock = controls.findChild<QPushButton *>(QStringLiteral("undock_widgetEditSourcePlayer"));
         auto sourceDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditSourcePlayer"));
         auto programDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditTimelinePlayer"));
@@ -167,6 +198,16 @@ int main(int argc, char **argv)
         sourceUndock->click(); settle();
         check(source->window()->close(), "source close-to-dock"); settle();
         check(source->parentWidget() == stack && !sourceDock->isEnabled(), "closing host refreshes Dock button state");
+        auto presetSelector = controls.findChild<QComboBox *>("arrangements");
+        presetSelector->setCurrentIndex(presetSelector->findData(presetId));
+        controls.findChild<QPushButton *>("restoreArrangement")->click(); settle();
+        check(source->window() != &main && sourceDock->isEnabled() && !programDock->isEnabled(), "preset restores only requested panel");
+        check(source->window()->size() == QSize(480, 320), "preset restores independent window dimensions");
+        sourceDock->click(); settle();
+        check(controls.findChild<QLabel *>("arrangementState")->text().startsWith("Modified"), "workspace changes show unsaved preset state");
+        Unbound::ArrangementStore unchanged;
+        check(unchanged.find(presetId)["workspace"].toObject() == sourceArrangement, "workspace autosave never overwrites named preset");
+        check(presetStore.remove(presetId).isEmpty(), "fixture cleans saved preset");
     }
     {
         QWidget page;

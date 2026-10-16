@@ -12,6 +12,7 @@
 #include <QPlainTextEdit>
 #include <QSet>
 #include <QShortcutEvent>
+#include <QShortcut>
 #include <QTextEdit>
 #include <QTimer>
 #include "diagnostics.h"
@@ -55,6 +56,7 @@ protected:
             auto shortcut = static_cast<QShortcutEvent *>(event);
             logEvent(QStringLiteral("input.shortcut"), {{"receiver", object->objectName()},
                 {"class", object->metaObject()->className()}, {"key", shortcut->key().toString()},
+                {"owner", object->parent() ? object->parent()->objectName() : QString()},
                 {"ambiguous", shortcut->isAmbiguous()}, {"focus", widgetState(QApplication::focusWidget())}});
         }
         if (!related(widget)) return false;
@@ -75,6 +77,8 @@ protected:
             // Do not record text or key values while the user is editing text.
             if (!typing) { state["key"] = key->key(); state["modifiers"] = int(key->modifiers()); state["repeat"] = key->isAutoRepeat(); }
             logEvent(QStringLiteral("input.key.observed"), state);
+            if (!typing && event->type() == QEvent::KeyPress && widget == QApplication::focusWidget())
+                commandContext(QKeySequence(int(key->modifiers()) | key->key()));
         }
         if (widget->isWindow() && event->type() == QEvent::WindowActivate) {
             QTimer::singleShot(0, this, [this] { activationState(); scanActions(); });
@@ -83,6 +87,29 @@ protected:
         return false;
     }
 private:
+    void commandContext(const QKeySequence &key)
+    {
+        QJsonArray shortcuts, actions;
+        for (auto window : QApplication::topLevelWidgets()) {
+            if (!related(window)) continue;
+            for (auto shortcut : window->findChildren<QShortcut *>()) {
+                if (shortcut->key() != key) continue;
+                auto owner = qobject_cast<QWidget *>(shortcut->parent());
+                shortcuts.append(QJsonObject{{"key", key.toString()}, {"enabled", shortcut->isEnabled()},
+                    {"context", int(shortcut->context())}, {"owner", widgetState(owner)}});
+            }
+            for (auto action : window->findChildren<QAction *>()) {
+                if (!action->shortcuts().contains(key) && !action->text().contains(QStringLiteral("ripple delete"), Qt::CaseInsensitive)) continue;
+                QJsonArray owners;
+                for (auto owner : action->associatedWidgets()) owners.append(widgetState(owner));
+                actions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()},
+                    {"enabled", action->isEnabled()}, {"visible", action->isVisible()},
+                    {"context", int(action->shortcutContext())}, {"owners", owners}});
+            }
+        }
+        logEvent(QStringLiteral("input.command-context"), {{"key", key.toString()},
+            {"shortcuts", shortcuts}, {"actions", actions}, {"focus", widgetState(QApplication::focusWidget())}});
+    }
     static bool related(QWidget *widget)
     {
         if (!widget) return false;

@@ -8,11 +8,16 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QInputDialog>
+#include <QMenu>
+#include <QMessageBox>
 #include <QTimer>
 #include <QVBoxLayout>
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "windowhierarchy.h"
+#include "arrangementstore.h"
 
 class PanelControls : public QWidget
 {
@@ -34,19 +39,42 @@ public:
         auto layout = new QVBoxLayout(this);
         status = new QLabel(QStringLiteral("Open the Edit page. Enable dual viewers for Source Monitor."), this);
         status->setWordWrap(true); layout->addWidget(status);
-        auto options = new QHBoxLayout;
+        auto presetRow = new QHBoxLayout;
+        presets = new QComboBox(this); presets->setObjectName(QStringLiteral("arrangements"));
+        presets->setMinimumWidth(0); presets->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        presetRow->addWidget(presets, 1);
+        auto restorePreset = new QPushButton(QStringLiteral("Restore"), this);
+        restorePreset->setObjectName(QStringLiteral("restoreArrangement"));
+        presetRow->addWidget(restorePreset);
+        auto manage = new QPushButton(QStringLiteral("Manage"), this);
+        auto menu = new QMenu(manage); manage->setMenu(menu); presetRow->addWidget(manage);
+        for (const auto &operation : {"Save As…", "Update", "Rename…", "Duplicate…", "Delete"}) {
+            auto command = menu->addAction(QString::fromUtf8(operation));
+            connect(command, &QAction::triggered, this, [this, operation] { manageArrangement(QString::fromUtf8(operation)); });
+        }
+        layout->addLayout(presetRow);
+        presetState = new QLabel(this); presetState->setObjectName(QStringLiteral("arrangementState")); layout->addWidget(presetState);
+        reloadPresets();
+        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { updatePresetState(); });
+        connect(restorePreset, &QPushButton::clicked, this, [this] { restoreArrangement(); });
+        auto scroll = new QScrollArea(this);
+        scroll->setObjectName(QStringLiteral("panelOptionsScroll"));
+        scroll->setWidgetResizable(true);
+        auto body = new QWidget(scroll);
+        auto bodyLayout = new QVBoxLayout(body);
+        auto options = new QVBoxLayout;
         pin = new QCheckBox(QStringLiteral("Keep controls on top"), this);
         pin->setObjectName(QStringLiteral("pinControls"));
         pin->setChecked(settings.data["pin_controls"].toBool());
         constrain = new QCheckBox(QStringLiteral("Keep windows on screen"), this);
         constrain->setChecked(settings.data["keep_on_screen"].toBool(true));
-        options->addWidget(pin); options->addWidget(constrain); layout->addLayout(options);
+        options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
         hierarchy = new Unbound::WindowHierarchy(this);
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
         hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
         hierarchy->setEnabled(hierarchyOption->isChecked());
-        layout->addWidget(hierarchyOption);
+        bodyLayout->addWidget(hierarchyOption);
         connect(hierarchyOption, &QCheckBox::toggled, this, [this](bool enabled) {
             action("panel-hierarchy"); hierarchy->setEnabled(enabled); save();
         });
@@ -55,7 +83,7 @@ public:
         style = new QComboBox(this); style->setObjectName(QStringLiteral("windowChrome"));
         style->addItems({"Standard", "Compact traffic lights", "Hidden — drag grip and resize edges"});
         style->setCurrentIndex(qBound(0, settings.data["window_chrome"].toInt(), 2));
-        styleRow->addWidget(style); layout->addLayout(styleRow);
+        styleRow->addWidget(style); bodyLayout->addLayout(styleRow);
         connect(style, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int value) {
             action(QStringLiteral("window-style-%1").arg(value));
             for (auto &panel : panels) panel.session->setChrome(static_cast<Unbound::WindowChrome>(value));
@@ -74,11 +102,11 @@ public:
             save();
         });
         auto bulk = new QGridLayout;
-        const QStringList actions = {"Undock All", "Dock All", "Show All", "Hide All", "Bring All On Screen", QString::fromUtf8("Quick Export…")};
+        const QStringList actions = {"Undock All", "Dock All", "Show All", "Hide All", "Recover Windows", QString::fromUtf8("Quick Export…")};
         for (int i = 0; i < actions.size(); ++i) {
             auto button = new QPushButton(actions[i], this);
             button->setObjectName(QStringLiteral("bulk_%1").arg(i));
-            bulk->addWidget(button, i / 3, i % 3);
+            bulk->addWidget(button, i / 2, i % 2);
             connect(button, &QPushButton::clicked, this, [this, i] {
                 action(QStringLiteral("bulk-%1").arg(i));
                 const unsigned command = ++bulkVersion;
@@ -121,7 +149,9 @@ public:
             {"Keyframes", "frameEditPageKeyframeEditor", "KeyframeEditor", true}
         };
         const QJsonObject savedPanels = settings.data["panels"].toObject();
-        auto grid = new QGridLayout; layout->addLayout(grid);
+        layout->addWidget(scroll, 1);
+        scroll->setWidget(body);
+        auto grid = new QGridLayout; bodyLayout->addLayout(grid);
         for (int i = 0; i < panels.size(); ++i) {
             auto &panel = panels[i];
             panel.saved = savedPanels[panel.name].toObject();
@@ -151,6 +181,8 @@ public:
             connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); panels[i].session->setHiddenByUser(true); });
             updateRow(i);
         }
+        bodyLayout->addStretch();
+        setMinimumSize(280, 200);
         saveTimer.setSingleShot(true); saveTimer.setInterval(250);
         connect(&saveTimer, &QTimer::timeout, this, [this] { save(); });
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
@@ -194,6 +226,86 @@ protected:
         return false;
     }
 private:
+    QJsonObject arrangement() const
+    {
+        auto result = settings.data;
+        result.remove(QStringLiteral("controls"));
+        return result;
+    }
+    void reloadPresets(const QString &selected = {})
+    {
+        const QSignalBlocker blocker(presets);
+        presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
+        for (const auto &value : arrangements.list()) {
+            const auto entry = value.toObject();
+            presets->addItem(entry["name"].toString(), entry["id"].toString());
+        }
+        presets->setCurrentIndex(qMax(0, presets->findData(selected)));
+    }
+    void updatePresetState()
+    {
+        if (!presetState) return;
+        const auto saved = arrangements.find(presets->currentData().toString());
+        presetState->setText(!arrangements.error().isEmpty() ? arrangements.error() : saved.isEmpty() ?
+            QStringLiteral("Current layout is not saved as a preset.") :
+            saved["workspace"].toObject() == arrangement() ? QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
+        presetState->setWordWrap(true);
+    }
+    void manageArrangement(const QString &operation)
+    {
+        action(QStringLiteral("arrangement-") + operation);
+        save();
+        QString id = presets->currentData().toString(), error;
+        const auto entry = arrangements.find(id);
+        if (operation != QString::fromUtf8("Save As…") && entry.isEmpty()) {
+            status->setText(QStringLiteral("Select a saved arrangement first.")); return;
+        }
+        if (operation == "Update") error = arrangements.update(id, arrangement());
+        else if (operation == "Delete") {
+            if (QMessageBox::question(this, QStringLiteral("Delete arrangement"),
+                QStringLiteral("Delete “%1”? Your current windows will stay in place.").arg(entry["name"].toString())) != QMessageBox::Yes) return;
+            error = arrangements.remove(id); if (error.isEmpty()) id.clear();
+        } else {
+            bool accepted = false;
+            QString initial = entry["name"].toString();
+            if (operation == QString::fromUtf8("Duplicate…")) initial += QStringLiteral(" copy");
+            const auto name = QInputDialog::getText(this, operation, QStringLiteral("Arrangement name"), QLineEdit::Normal, initial, &accepted);
+            if (!accepted) return;
+            if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
+            else error = arrangements.create(name, operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : arrangement(), id);
+        }
+        reloadPresets(id); updatePresetState();
+        status->setText(error.isEmpty() ? QStringLiteral("Arrangement saved.") : error);
+        Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", id}, {"success", error.isEmpty()}, {"error", error}});
+    }
+    void restoreArrangement()
+    {
+        action(QStringLiteral("arrangement-restore"));
+        const auto entry = arrangements.find(presets->currentData().toString());
+        if (entry.isEmpty()) { status->setText(QStringLiteral("Select a saved arrangement first.")); return; }
+        if (!page() || !page()->isVisible()) { status->setText(QStringLiteral("Open the Edit page to restore an arrangement.")); return; }
+        ++bulkVersion;
+        dockAll();
+        for (const auto &panel : panels) if (panel.session->active()) {
+            status->setText(QStringLiteral("Could not restore: a panel could not be docked safely."));
+            Unbound::logEvent(QStringLiteral("arrangement.restore.failed"), {{"panel", panel.name}}); return;
+        }
+        const auto value = entry["workspace"].toObject();
+        pin->setChecked(value["pin_controls"].toBool());
+        constrain->setChecked(value["keep_on_screen"].toBool(true));
+        hierarchyOption->setChecked(value["panel_hierarchy"].toBool(true));
+        style->setCurrentIndex(qBound(0, value["window_chrome"].toInt(), 2));
+        const auto saved = value["panels"].toObject();
+        for (auto &panel : panels) {
+            panel.saved = saved[panel.name].toObject();
+            panel.desired = panel.saved["floating"].toBool();
+        }
+        restore(); save();
+        QStringList missing;
+        for (const auto &panel : panels) if (panel.desired && !panel.session->active() && !panel.pending) missing.append(panel.label);
+        status->setText(missing.isEmpty() ? QStringLiteral("Arrangement restored.") : QStringLiteral("Unavailable: ") + missing.join(", "));
+        Unbound::logEvent(QStringLiteral("arrangement.restore"), {{"id", entry["id"]}, {"unavailable", missing.join(", ")}});
+    }
     static void action(const QString &name, const QString &panel = {})
     { Unbound::logEvent(QStringLiteral("button.click"), {{"action", name}, {"panel", panel}}); }
     QWidget *page() const
@@ -317,6 +429,7 @@ private:
         const bool success = settings.save();
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
         Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success}});
+        updatePresetState();
     }
     void shutdown()
     {
@@ -331,6 +444,9 @@ private:
     Unbound::WindowHierarchy *hierarchy = nullptr;
     QList<Panel> panels;
     Unbound::WorkspaceSettings settings;
+    Unbound::ArrangementStore arrangements;
+    QComboBox *presets = nullptr;
+    QLabel *presetState = nullptr;
     QTimer saveTimer, restoreTimer;
     bool quitting = false;
     unsigned bulkVersion = 0;

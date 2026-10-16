@@ -34,6 +34,21 @@ Index, Effects, Metadata, Mixer, Sound Library and Keyframes. These sidebars tra
 keeping the native outer slot in place. Undock All initializes hidden sidebars
 through their native toolbar toggles. Source still requires dual-viewer mode.
 
+The continuation branch `macos-arrangements-and-docking` adds a named arrangement
+selector and Restore button. Manage offers Save As, Update, Rename, Duplicate and
+Delete. Selecting a preset does not move windows until Restore is pressed. Update
+explicitly replaces that preset with the current workspace; window movements only
+autosave the current workspace. Duplicate copies the saved preset. A Modified
+indicator distinguishes current changes. Restore requires the Edit page and
+reports unavailable panels. Named presets live in
+`~/Library/Application Support/Unbound/Arrangements.json`; invalid/unsupported
+files are preserved and writes refused. `UNBOUND_ARRANGEMENTS_FILE` overrides this
+path for isolated tests. Presets include existing panel geometry, docking,
+visibility, chrome, hierarchy, pinning and viewport options. Group docking and
+independent UI scaling are not implemented. Options and panel controls scroll;
+preset and bulk recovery controls remain accessible outside the scroll area.
+These additions have fixture coverage but await live Resolve verification.
+
 The last arrangement is saved atomically in
 `~/Library/Application Support/Unbound/Workspace.json`. Floating state, user-hidden
 state, geometry, title style and control pinning persist. Desired floating panels
