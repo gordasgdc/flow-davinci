@@ -411,3 +411,8 @@ rotation retains five previous 8 MiB files so reproductions survive longer.
 8. Save a new named arrangement; restore and restart. Original named presets stay
    unchanged unless Update is explicitly chosen. Verify pin behavior with menus,
    dialogs, Relay and other apps without focus theft.
+
+Trace follow-up: destination selection now stops at a covering non-dockable Qt
+window instead of looking through it for an eligible group. A covering-window
+regression fixture is added (GUI execution pending). This is separate from native
+macOS tiling and does not change any global macOS or third-party app setting.

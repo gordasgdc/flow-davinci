@@ -397,6 +397,12 @@ int main(int argc, char **argv)
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
         check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(18, 18),
             "panel attachment shows one small local target and proposed split");
+        QWidget covering;
+        covering.setObjectName("diagnosticCoveringWindow"); covering.setAttribute(Qt::WA_ShowWithoutActivating);
+        covering.setGeometry(QRect(dockPointer - QPoint(30, 30), QSize(60, 60))); covering.show(); covering.raise(); settle();
+        QApplication::sendEvent(draggedSource, &move);
+        check(!dockTarget->isVisible() && !attachmentPreview->isVisible(), "covering non-dockable window blocks targets on panels behind it");
+        covering.hide(); QApplication::sendEvent(draggedSource, &move);
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &up); settle(); settle();
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),

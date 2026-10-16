@@ -221,11 +221,19 @@ private:
         QWidget *destination = nullptr;
         const auto ordered = nativeOrderedWindowNumbers();
         for (auto number : ordered) {
-            for (auto candidate : QApplication::topLevelWidgets())
-                if (candidate != this && candidate->isVisible() && !candidate->isMinimized() &&
-                    candidate->objectName().startsWith("unboundFloating_") && nativeWindowNumber(candidate) == number &&
-                    candidate->frameGeometry().adjusted(-36, -36, 36, 36).contains(dragPointer)) { destination = candidate; break; }
-            if (destination) break;
+            QWidget *hit = nullptr;
+            for (auto candidate : QApplication::topLevelWidgets()) {
+                if (candidate == this || candidate == preview || candidate == dropMarker ||
+                    candidate == guideWidgets[0] || candidate == guideWidgets[1] ||
+                    !candidate->isVisible() || candidate->isMinimized() || nativeWindowNumber(candidate) != number) continue;
+                const bool eligible = candidate->objectName().startsWith("unboundFloating_");
+                const auto area = eligible ? candidate->frameGeometry().adjusted(-36, -36, 36, 36) : candidate->frameGeometry();
+                if (area.contains(dragPointer)) { hit = candidate; break; }
+            }
+            if (hit) {
+                if (hit->objectName().startsWith("unboundFloating_")) destination = hit;
+                break;
+            }
         }
         if (attachRequested) for (auto candidate : QApplication::topLevelWidgets()) {
             if (candidate != destination) continue;
