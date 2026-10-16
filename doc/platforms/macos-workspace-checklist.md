@@ -4,7 +4,7 @@ Working branch: `macos-arrangements-and-docking`.
 Preserved reliability branch: `macos-workspace-reliability` at `c5cf2e4`.
 Preserved baseline: `macos-panels-workspaces` at `9ba3fb7`.
 Reliability changes are implemented and pass automated fixtures. Fresh-process
-Resolve acceptance checks remain pending; installed helper is c5cf2e4.
+Resolve acceptance checks remain pending; installed helper is d3ed034.
 User reports some improvement, but Ripple Delete still fails in floating Timeline.
 
 ## Completion rule
@@ -145,7 +145,10 @@ Every install must report build identity, changes actually included, exact user
 test steps, and known unfinished behavior. Never present fixtures as live proof.
 Do not ask the user to test features absent from that build.
 
-Latest install: c5cf2e4; matching bootstrap and Qt-helper SHA-256 verified.
+Latest install: d3ed034; installed after confirming Resolve was closed. Bootstrap
+and Qt-helper SHA-256 match the built artifacts. Fresh-process live checks remain
+pending. The following paragraph describes the earlier c5cf2e4 test scope; use
+the Next candidate checks below for d3ed034.
 Test: click Timeline and invoke the user's B/Ripple Delete mapping; compare docked
 and floating. Switch Edit to Color/Fairlight and back; check Timeline returns.
 Alternate Source and Program; check both image and controls. Try Dock All after
