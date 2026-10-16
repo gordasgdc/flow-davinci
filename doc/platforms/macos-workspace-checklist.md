@@ -281,3 +281,13 @@ not proof that Unbound caused a crash. No process-wide signal/exception handlers
 replace Resolve's crash reporting. Helper builds retain a matching local dSYM for
 symbolicating the named UnboundWidgetProbe.dylib frames in macOS crash reports.
 Logs: ~/Library/Logs/Unbound/events.jsonl (and rotated .1).
+
+Installed 2026-10-16: build **126798d**, after confirming Resolve was closed.
+Both installed binaries match their built SHA-256 hashes:
+- Bootstrap: 212e391b9642e07893abcd9956b0f4fb4712b3b8c36b24ed224cb61053491f00
+- Qt helper: 755f51fd33f244d05064c7489e0ffc2e2d4a47023422a555514e913314c21af3
+- Matching helper/dSYM UUID: C8F9184E-BDE8-3046-857F-09076D7523A0.
+Archived binary and symbols under build/macos/checkpoints/126798d/.
+Session suite and diagnostic reliability suite pass; reliability's first GUI run
+had transient focus failures, two subsequent runs passed. Bootstrap fixture passes.
+Live Resolve docking/Relay/multicam/Ripple Delete verification remains pending.
