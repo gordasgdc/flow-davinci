@@ -22,6 +22,7 @@
 #include "panelmenus.h"
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
+#include "controlscroll.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -62,7 +63,7 @@ public:
         reloadPresets(settings.data["selected_arrangement"].toString());
         connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { save(); });
         connect(restorePreset, &QPushButton::clicked, this, [this] { restoreArrangement(); });
-        auto scroll = new QScrollArea(this);
+        auto scroll = new Unbound::ControlScroll(this); optionsScroll = scroll;
         scroll->setObjectName(QStringLiteral("panelOptionsScroll"));
         scroll->setWidgetResizable(true);
         auto body = new QWidget(scroll);
@@ -312,6 +313,10 @@ protected:
             }
         }
         if (expanded >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
+        if (object == this && event->type() == QEvent::Show) QTimer::singleShot(0, this, [this] {
+            QPointer<PanelControls> alive(this);
+            Unbound::setNativePin(this, pin->isChecked(), [alive](bool value) { if (alive) alive->pin->setChecked(value); });
+        });
         if (object == this && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) saveTimer.start();
         if (event->type() == QEvent::Show) {
             QTimer::singleShot(0, this, [this] { wireNativeToggles(); });
@@ -486,13 +491,15 @@ private:
     void updateRow(int i)
     {
         auto &p = panels[i]; const bool active = p.session->active();
-        p.undock->setEnabled(!active && !p.pending);
-        p.dock->setEnabled(active && !p.session->dockPending());
-        p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
-        p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
-        p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
-        p.expand->setEnabled(true);
-        p.center->setEnabled(active);
+        optionsScroll->preservePosition([&] {
+            p.undock->setEnabled(!active && !p.pending);
+            p.dock->setEnabled(active && !p.session->dockPending());
+            p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
+            p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
+            p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
+            p.expand->setEnabled(true);
+            p.center->setEnabled(active);
+        });
     }
     void toggleExpanded(int i)
     {
@@ -768,6 +775,7 @@ private:
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
+    Unbound::ControlScroll *optionsScroll = nullptr;
     QLabel *status = nullptr;
     QCheckBox *pin = nullptr, *constrain = nullptr;
     QCheckBox *snap = nullptr;

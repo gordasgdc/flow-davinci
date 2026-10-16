@@ -23,6 +23,12 @@ int main(int argc, char **argv)
     }
     auto tab = Unbound::localDockZone(frame, frame.center());
     check(tab.active && tab.edge == Qt::Edge(0) && tab.preview == frame, "tab preview is distinct from a half split");
+    auto compass = Unbound::dockCompassZones(frame);
+    check(compass.size() == 5, "hover compass offers four split directions and one tab");
+    for (int i = 0; i < compass.size(); ++i) {
+        check(frame.contains(compass[i].target) && compass[i].target.size() == QSize(24, 24), "compass targets stay compact inside their destination");
+        for (int j = i + 1; j < compass.size(); ++j) check(!compass[i].target.intersects(compass[j].target), "tab and split hit targets never overlap");
+    }
     auto tree = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "MediaPool"}}, Qt::Orientation(0));
     tree = Unbound::insertGroupTree(tree, {{"panel", "Effects"}}, "Inspector", Qt::Orientation(0), false);
     QStringList names;

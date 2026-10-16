@@ -97,6 +97,14 @@ int main(int argc, char **argv)
         target.setGeometry(150, 260, 240, 180); moving.setGeometry(600, 260, 240, 180);
         moving.setChrome(Unbound::WindowChrome::Standard);
         target.show(); moving.show(); settle();
+        const auto lights = Unbound::nativeTrafficFramesForTest(&moving);
+        check(lights.size() == 4 && lights[3].size() == lights[2].size() && lights[3].y() == lights[2].y() &&
+            lights[3].x() - lights[2].x() == lights[2].x() - lights[1].x(), "native pin matches traffic-light size, alignment and spacing");
+        Unbound::clickNativePinForTest(&moving); check(moving.pinned(), "native pin light controls shared pin state");
+        Unbound::clickNativePinForTest(&moving); check(!moving.pinned(), "native pin light unpins without replacing window");
+        moving.setChrome(Unbound::WindowChrome::Hidden);
+        check(moving.findChild<QToolButton *>("unboundPinWindow")->isVisible(), "hidden titlebar retains a reachable circular pin fallback");
+        moving.setChrome(Unbound::WindowChrome::Standard);
         int nativeReleases = 0;
         auto watch = Unbound::watchNativePointerRelease(&moving, [&](QPoint position, bool option) { check(!option, "native release preserves Option state"); Q_UNUSED(position); ++nativeReleases; });
         Unbound::postNativePointerReleaseForTest(&moving); settleFor(80);
@@ -292,7 +300,12 @@ int main(int argc, char **argv)
         auto programDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditTimelinePlayer"));
         check(sourceUndock && sourceDock && programDock, "controls have distinct panel identities");
         check(!sourceDock->isEnabled() && !programDock->isEnabled(), "inactive Dock buttons are disabled");
+        optionsScroll->ensureWidgetVisible(sourceUndock);
+        sourceUndock->setFocus(); settle();
+        const QPoint scrollBefore(optionsScroll->horizontalScrollBar()->value(), optionsScroll->verticalScrollBar()->value());
         sourceUndock->click(); settle();
+        check(QPoint(optionsScroll->horizontalScrollBar()->value(), optionsScroll->verticalScrollBar()->value()) == scrollBefore,
+            "Undock row updates preserve the controls scroll position in a small window");
         check(sourceDock->isEnabled() && !sourceUndock->isEnabled() && !programDock->isEnabled(), "only detached panel enables Dock");
         check(!(Unbound::nativeVisibilityFlags(source->window()) & 2), "native tool panels do not auto-hide on application deactivation");
         auto hideBackground = controls.findChild<QCheckBox *>("hideResolveBackground");
@@ -399,6 +412,12 @@ int main(int argc, char **argv)
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
         check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(18, 18),
             "panel attachment shows one small local target and proposed split");
+        const QPoint hover = targetProgram->frameGeometry().center() + QPoint(-65, -45);
+        QMouseEvent hoverMove(QEvent::MouseMove, QPointF(), QPointF(hover), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(draggedSource, &hoverMove); settleFor(230);
+        auto compass = draggedSource->findChild<QWidget *>("unboundDockCompass");
+        check(compass && compass->isVisible(), "deliberate hover reveals one reachable split/tab compass");
+        QApplication::sendEvent(draggedSource, &move);
         QWidget covering;
         covering.setWindowFlag(Qt::WindowStaysOnTopHint, true);
         covering.setObjectName("diagnosticCoveringWindow"); covering.setAttribute(Qt::WA_ShowWithoutActivating);

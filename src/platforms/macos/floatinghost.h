@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QApplication>
+#include <QElapsedTimer>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QLabel>
@@ -34,6 +35,53 @@ inline QRect resizeFromEdge(const QRect &original, QPoint delta, Qt::Edges edges
     return result;
 }
 
+class PinLight : public QToolButton
+{
+public:
+    explicit PinLight(QWidget *owner) : QToolButton(owner) { setCheckable(true); setFocusPolicy(Qt::NoFocus); }
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter p(this); p.setRenderHint(QPainter::Antialiasing);
+        p.setBrush(isChecked() ? QColor("#59a6c7") : QColor("#929292")); p.setPen(Qt::NoPen); p.drawEllipse(rect().adjusted(1,1,-1,-1));
+        p.setPen(QPen(Qt::black, 1)); const QPoint c = rect().center();
+        p.drawLine(c + QPoint(-3,-3), c + QPoint(3,-3)); p.drawLine(c + QPoint(-2,-3), c + QPoint(-2,0));
+        p.drawLine(c + QPoint(2,-3), c + QPoint(2,0)); p.drawLine(c + QPoint(-4,1), c + QPoint(4,1)); p.drawLine(c, c + QPoint(0,5));
+    }
+};
+
+class DockCompass : public QWidget
+{
+public:
+    explicit DockCompass(QWidget *owner) : QWidget(owner, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus)
+    {
+        setObjectName("unboundDockCompass"); setAttribute(Qt::WA_ShowWithoutActivating);
+        setAttribute(Qt::WA_TransparentForMouseEvents); setAttribute(Qt::WA_TranslucentBackground);
+    }
+    void display(const QList<DockZone> &value, QPoint pointer)
+    {
+        zones = value; hover = pointer;
+        QRect bounds; for (const auto &zone : zones) bounds = bounds.united(zone.target);
+        setGeometry(bounds.adjusted(-2, -2, 2, 2)); show(); raise(); update();
+    }
+protected:
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this); painter.setRenderHint(QPainter::Antialiasing);
+        for (const auto &zone : zones) {
+            const QRect box = zone.target.translated(-geometry().topLeft());
+            painter.setPen(QColor("#80a5c9")); painter.setBrush(zone.target.contains(hover) ? QColor("#527da5") : QColor("#273849"));
+            painter.drawRoundedRect(box, 4, 4); painter.setPen(Qt::white);
+            const QString label = zone.edge == Qt::Edge(0) ? QString::fromUtf8("▣") : zone.edge == Qt::LeftEdge ? QString::fromUtf8("←") :
+                zone.edge == Qt::RightEdge ? QString::fromUtf8("→") : zone.edge == Qt::TopEdge ? QString::fromUtf8("↑") : QString::fromUtf8("↓");
+            painter.drawText(box, Qt::AlignCenter, label);
+        }
+    }
+private:
+    QList<DockZone> zones;
+    QPoint hover;
+};
+
 class MacFloatingHost : public QWidget
 {
 public:
@@ -42,17 +90,17 @@ public:
         qApp->installEventFilter(this);
         setMouseTracking(true);
         setAutoFillBackground(true);
-        pinButton = new QToolButton(this); pinButton->setObjectName("unboundPinWindow");
-        pinButton->setText(QString::fromUtf8("◇")); pinButton->setCheckable(true); pinButton->setAutoRaise(true);
+        pinButton = new PinLight(this); pinButton->setObjectName("unboundPinWindow");
+        pinButton->setCheckable(true); pinButton->setAutoRaise(true);
         pinButton->setFocusPolicy(Qt::NoFocus); pinButton->setToolTip("Keep this window above the Resolve workspace");
         connect(pinButton, &QToolButton::toggled, this, [this](bool pinned) {
-            setProperty("unboundPinned", pinned); pinButton->setText(pinned ? QString::fromUtf8("◆") : QString::fromUtf8("◇"));
+            setProperty("unboundPinned", pinned); pinButton->update(); updatePin();
             logEvent(QStringLiteral("window.pin"), {{"window", objectName()}, {"pinned", pinned}});
         });
     }
     void setPinned(bool pinned) { pinButton->setChecked(pinned); }
     bool pinned() const { return pinButton->isChecked(); }
-    ~MacFloatingHost() override { delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
+    ~MacFloatingHost() override { delete nativeMoveWatch.data(); delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
     void setChrome(WindowChrome value)
     {
         const bool visible = isVisible();
@@ -64,8 +112,21 @@ public:
         if (visible) show();
         applyNativeChrome(this, value == WindowChrome::Compact);
         if (position.isValid()) setGeometry(position);
-        pinButton->setGeometry(value == WindowChrome::Compact ? 84 : qMax(0, width() - 25), 0, 24, top);
-        pinButton->raise(); update();
+        updatePin(); update();
+        delete nativeMoveWatch.data();
+        nativeMoveWatch = watchNativeWindowMove(this, [this] {
+            if (dragging) return;
+            ++dragGeneration; nativeDragging = dragging = movedEnough = true; startGeometry = geometry();
+            delete releaseWatch.data();
+            releaseWatch = watchNativePointerRelease(this, [this](QPoint position, bool bypass) {
+                if (nativeDragging) { dragPointer = position; previewSnap(geometry(), bypass); finishPointerDrag(bypass, false, "native-titlebar-mouse-up"); }
+            });
+            logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}, {"native_titlebar", true}});
+        }, [this](QPoint position) {
+            if (nativeDragging) { dragPointer = position; previewSnap(geometry(), QApplication::keyboardModifiers().testFlag(Qt::AltModifier)); }
+        }, [this](QPoint position, bool bypass) {
+            if (nativeDragging) { dragPointer = position; previewSnap(geometry(), bypass); finishPointerDrag(bypass, false, "native-titlebar-release"); }
+        });
     }
     void setSnapping(bool enabled) { snapping = enabled; if (!enabled) { attachmentTarget = nullptr; snapPosition = {}; hidePreviews(); } }
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
@@ -91,7 +152,7 @@ protected:
     void resizeEvent(QResizeEvent *event) override
     {
         QWidget::resizeEvent(event);
-        if (pinButton) { pinButton->setGeometry(chrome == WindowChrome::Compact ? 84 : qMax(0, width() - 25), 0, 24, contentsMargins().top()); pinButton->raise(); }
+        if (pinButton) updatePin();
     }
     void hideEvent(QHideEvent *event) override
     {
@@ -125,9 +186,11 @@ protected:
         if (dragging && event->type() == QEvent::MouseButtonRelease && static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
             auto mouse = static_cast<QMouseEvent *>(event);
             const bool option = mouse->modifiers().testFlag(Qt::AltModifier);
-            movePointerDrag(mouse->globalPos(), option); finishPointerDrag(option, false, "qt-mouse-up"); return true;
+            if (nativeDragging) { dragPointer = mouse->globalPos(); previewSnap(geometry(), option); }
+            else movePointerDrag(mouse->globalPos(), option);
+            finishPointerDrag(option, false, "qt-mouse-up"); return true;
         }
-        if (dragging && event->type() == QEvent::MouseMove) {
+        if (dragging && !nativeDragging && event->type() == QEvent::MouseMove) {
             auto mouse = static_cast<QMouseEvent *>(event);
             if (!mouse->buttons().testFlag(Qt::LeftButton)) { finishPointerDrag(mouse->modifiers().testFlag(Qt::AltModifier), false, "button-no-longer-down"); return false; }
             movePointerDrag(mouse->globalPos(), mouse->modifiers().testFlag(Qt::AltModifier));
@@ -153,6 +216,16 @@ protected:
         return false;
     }
 private:
+    void updatePin()
+    {
+        if (!pinButton) return;
+        QPointer<MacFloatingHost> alive(this);
+        const bool native = chrome != WindowChrome::Hidden && setNativePin(this, pinned(), [alive](bool value) {
+            if (alive) { logEvent(QStringLiteral("input.button.clicked"), {{"label", "Pin window"}, {"window", alive->objectName()}, {"checked", value}, {"native", true}}); alive->setPinned(value); }
+        });
+        pinButton->setVisible(!native);
+        if (!native) { pinButton->setGeometry(8, 4, 16, 16); pinButton->raise(); }
+    }
     void movePointerDrag(const QPoint &global, bool bypass)
     {
         dragPointer = global;
@@ -173,7 +246,7 @@ private:
         const auto edge = attachmentEdge;
         const bool attach = !cancelled && movedEnough && !dragEdges && target && attachRequested && snapping && !bypass;
         if (!cancelled && !dragEdges && snapping && !bypass && snapPosition.isValid()) setGeometry(snapPosition);
-        dragging = false; dragEdges = {}; snapPosition = {}; attachmentTarget = nullptr;
+        nativeDragging = dragging = false; dragEdges = {}; snapPosition = {}; attachmentTarget = nullptr;
         delete releaseWatch.data(); releaseWatch = nullptr;
         hidePreviews();
         if (QWidget::mouseGrabber() == this) releaseMouse();
@@ -224,7 +297,7 @@ private:
             QWidget *hit = nullptr;
             for (auto candidate : QApplication::topLevelWidgets()) {
                 if (candidate == this || candidate == preview || candidate == dropMarker ||
-                    candidate == guideWidgets[0] || candidate == guideWidgets[1] ||
+                    candidate == compass || candidate == guideWidgets[0] || candidate == guideWidgets[1] ||
                     !candidate->isVisible() || candidate->isMinimized() || nativeWindowNumber(candidate) != number) continue;
                 const bool eligible = candidate->objectName().startsWith("unboundFloating_");
                 const auto area = eligible ? candidate->frameGeometry().adjusted(-36, -36, 36, 36) : candidate->frameGeometry();
@@ -235,6 +308,16 @@ private:
                 break;
             }
         }
+        if (destination != hoverDestination) {
+            hoverDestination = destination; hoverAnchor = dragPointer; hoverDwell.restart();
+            if (destination) QTimer::singleShot(200, this, [this] {
+                if (dragging && !dragEdges && hoverDestination) previewSnap(geometry(), QApplication::keyboardModifiers().testFlag(Qt::AltModifier));
+            });
+        } else if (hoverDwell.isValid() && hoverDwell.elapsed() < 180 && (dragPointer - hoverAnchor).manhattanLength() > 24) {
+            hoverAnchor = dragPointer; hoverDwell.restart();
+            QTimer::singleShot(200, this, [this] { if (dragging && !dragEdges && hoverDestination) previewSnap(geometry(), QApplication::keyboardModifiers().testFlag(Qt::AltModifier)); });
+        }
+        QList<DockZone> compassZones;
         if (attachRequested) for (auto candidate : QApplication::topLevelWidgets()) {
             if (candidate != destination) continue;
             QList<QWidget *> surfaces{candidate};
@@ -242,7 +325,11 @@ private:
                 if (child->objectName().startsWith("unboundGroupCell_") && child->isVisible()) surfaces.append(child);
             for (auto slot : surfaces) {
                 const auto frame = slot->isWindow() ? slot->frameGeometry() : QRect(slot->parentWidget()->mapToGlobal(QPoint()), slot->parentWidget()->size());
-                const auto zone = slot == candidate && surfaces.size() > 1 ? outerDockZone(frame, dragPointer) : localDockZone(frame, dragPointer);
+                auto zone = slot == candidate && surfaces.size() > 1 ? outerDockZone(frame, dragPointer) : localDockZone(frame, dragPointer);
+                if (!(slot == candidate && surfaces.size() > 1) && frame.contains(dragPointer) && hoverDwell.isValid() && hoverDwell.elapsed() >= 180) {
+                    compassZones = dockCompassZones(frame);
+                    for (auto button : compassZones) if (button.target.contains(dragPointer)) { button.active = true; zone = button; break; }
+                }
                 if (!zone.target.isValid() || (slot == candidate && surfaces.size() > 1 && zone.edge == Qt::Edge(0))) continue;
                 const int distance = (zone.active ? -10000 : 0) + (zone.target.center() - dragPointer).manhattanLength() +
                     (frame.contains(dragPointer) ? 0 : 1000) + (slot == candidate && surfaces.size() > 1 ? 50 : 0);
@@ -251,6 +338,10 @@ private:
                 attachmentTarget = zone.active ? slot : nullptr;
             }
         }
+        if (!compassZones.isEmpty()) {
+            if (!compass) compass = new DockCompass(this);
+            compass->display(compassZones, dragPointer);
+        } else if (compass) compass->hide();
         const QString selection = attachmentTarget ? attachmentTarget->objectName() + QString::number(int(chosen.edge)) : QString();
         if (selection != lastDockSelection) {
             lastDockSelection = selection;
@@ -286,10 +377,14 @@ private:
         if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
     }
     static bool surfacesAreGrouped(QWidget *widget) { return widget && widget->objectName().startsWith("unboundFloating_group_"); }
-    void hidePreviews() { if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
+    void hidePreviews() { if (compass) compass->hide(); hoverDestination = nullptr; hoverDwell.invalidate(); if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
     QToolButton *pinButton = nullptr;
     WindowChrome chrome = WindowChrome::Standard;
     bool snapping = true;
+    DockCompass *compass = nullptr;
+    QPointer<QWidget> hoverDestination;
+    QPoint hoverAnchor;
+    QElapsedTimer hoverDwell;
     QWidget *preview = nullptr;
     QWidget *dropMarker = nullptr;
     QWidget *guideWidgets[2] = {nullptr, nullptr};
@@ -299,11 +394,11 @@ private:
     QPointer<QWidget> attachmentTarget;
     Qt::Edge attachmentEdge = Qt::LeftEdge;
     unsigned dragGeneration = 0;
-    bool dragging = false;
+    bool dragging = false, nativeDragging = false;
     bool movedEnough = false;
     Qt::Edges dragEdges;
     QPoint start;
     QRect startGeometry;
-    QPointer<QObject> releaseWatch;
+    QPointer<QObject> releaseWatch, nativeMoveWatch;
 };
 }

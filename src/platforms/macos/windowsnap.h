@@ -27,6 +27,19 @@ inline DockZone localDockZone(const QRect &frame, QPoint pointer)
     else if (closest < 4) { result.preview.setHeight(frame.height() / 2); if (closest == 3) result.preview.moveBottom(frame.bottom()); }
     result.active = result.target.contains(pointer); return result;
 }
+inline QList<DockZone> dockCompassZones(const QRect &frame)
+{
+    QList<DockZone> zones;
+    const QPoint offsets[] = {QPoint(-30, 0), QPoint(30, 0), QPoint(0, -30), QPoint(0, 30), QPoint()};
+    const Qt::Edge edges[] = {Qt::LeftEdge, Qt::RightEdge, Qt::TopEdge, Qt::BottomEdge, Qt::Edge(0)};
+    for (int i = 0; i < 5; ++i) {
+        DockZone zone; zone.edge = edges[i]; zone.target = QRect(frame.center() + offsets[i] - QPoint(12, 12), QSize(24, 24)); zone.preview = frame;
+        if (i < 2) { zone.preview.setWidth(frame.width() / 2); if (i == 1) zone.preview.moveRight(frame.right()); }
+        else if (i < 4) { zone.preview.setHeight(frame.height() / 2); if (i == 3) zone.preview.moveBottom(frame.bottom()); }
+        zones.append(zone);
+    }
+    return zones;
+}
 inline DockZone outerDockZone(const QRect &frame, QPoint pointer)
 {
     auto zone = localDockZone(frame.adjusted(-24, -24, 24, 24), pointer);
