@@ -2,6 +2,10 @@
 
 ## Product
 
+For the Mac workspace reliability branch, track requirements and verification in
+`doc/platforms/macos-workspace-checklist.md`. Keep its evidence ledger current;
+fixture passes alone do not close reported Resolve runtime bugs.
+
 Unbound makes DaVinci Resolve panes independent, movable, resizable windows on
 Windows x64. Edit supports Media Pool, Effects, Sound Library, Keyframe Editor,
 Edit Index, Inspector, Metadata and Mixer; Color supports Nodes, Gallery, LUTs
