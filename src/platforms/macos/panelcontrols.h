@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QApplication>
+#include <QAction>
 #include <QAbstractButton>
 #include <QCheckBox>
 #include <QComboBox>
@@ -11,6 +12,7 @@
 #include <QVBoxLayout>
 #include "panelsession.h"
 #include "workspacesettings.h"
+#include "windowhierarchy.h"
 
 class PanelControls : public QWidget
 {
@@ -39,6 +41,15 @@ public:
         constrain = new QCheckBox(QStringLiteral("Keep windows on screen"), this);
         constrain->setChecked(settings.data["keep_on_screen"].toBool(true));
         options->addWidget(pin); options->addWidget(constrain); layout->addLayout(options);
+        hierarchy = new Unbound::WindowHierarchy(this);
+        hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
+        hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
+        hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
+        hierarchy->setEnabled(hierarchyOption->isChecked());
+        layout->addWidget(hierarchyOption);
+        connect(hierarchyOption, &QCheckBox::toggled, this, [this](bool enabled) {
+            action("panel-hierarchy"); hierarchy->setEnabled(enabled); save();
+        });
         auto styleRow = new QHBoxLayout;
         styleRow->addWidget(new QLabel(QStringLiteral("Panel title bars"), this));
         style = new QComboBox(this); style->setObjectName(QStringLiteral("windowChrome"));
@@ -63,7 +74,7 @@ public:
             save();
         });
         auto bulk = new QGridLayout;
-        const QStringList actions = {"Undock All", "Dock All", "Show All", "Hide All", "Bring All On Screen"};
+        const QStringList actions = {"Undock All", "Dock All", "Show All", "Hide All", "Bring All On Screen", QString::fromUtf8("Quick Export…")};
         for (int i = 0; i < actions.size(); ++i) {
             auto button = new QPushButton(actions[i], this);
             button->setObjectName(QStringLiteral("bulk_%1").arg(i));
@@ -87,6 +98,7 @@ public:
                             {"unavailable", missing.join(", ")}});
                     });
                 } else if (i == 1) dockAll();
+                else if (i == 5) quickExport();
                 else for (auto &panel : panels) if (panel.session->active()) {
                     if (i == 2 || i == 3) panel.session->setHiddenByUser(i == 3);
                     else panel.session->bringOnScreen();
@@ -104,7 +116,9 @@ public:
             {"Index", "frameEditPageEditIndex", "EditIndex", true},
             {"Effects", "frameEditPageEffectsLibrary", "EffectsLibrary", true},
             {"Metadata", "frameEditPageMetadata", "Metadata", true},
-            {"Mixer", "frameEditAudioMeter", "Mixer", true}
+            {"Mixer", "frameEditAudioMeter", "Mixer", true},
+            {"Sound Library", "frameEditPageSoundLibrary", "SoundLibrary", true},
+            {"Keyframes", "frameEditPageKeyframeEditor", "KeyframeEditor", true}
         };
         const QJsonObject savedPanels = settings.data["panels"].toObject();
         auto grid = new QGridLayout; layout->addLayout(grid);
@@ -205,6 +219,7 @@ private:
     void requestUndock(int i, bool restoring = false)
     {
         if (quitting) return;
+        if (QApplication::activeModalWidget()) return;
         auto &p = panels[i];
         if (p.pending || p.session->active()) return;
         if (!restoring) p.saved["hidden"] = false;
@@ -251,6 +266,22 @@ private:
         outcome("dock", i, error); updateRow(i); save();
     }
     void dockAll() { for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
+    void quickExport()
+    {
+        auto root = page();
+        if (root) for (auto item : root->window()->findChildren<QAction *>()) {
+            QString text = item->text();
+            text.remove('&'); text.remove(QChar(0x2026)); text.remove(QStringLiteral("..."));
+            if ((text.trimmed().compare(QStringLiteral("Quick Export"), Qt::CaseInsensitive) == 0 ||
+                item->objectName().compare(QStringLiteral("actionQuickExport"), Qt::CaseInsensitive) == 0) && item->isEnabled()) {
+                Unbound::logEvent(QStringLiteral("quick-export.open.request"), {{"action", item->objectName()}});
+                status->setText(QStringLiteral("Opening Resolve's Quick Export window."));
+                item->trigger(); return;
+            }
+        }
+        status->setText(QStringLiteral("Quick Export is not available. Open a timeline first."));
+        Unbound::logEvent(QStringLiteral("quick-export.unavailable"));
+    }
     void restore()
     {
         QWidget *root = page();
@@ -278,6 +309,7 @@ private:
         }
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()},
             {"window_chrome", style->currentIndex()},
+            {"panel_hierarchy", hierarchyOption->isChecked()},
             {"keep_on_screen", constrain->isChecked()}, {"controls", Unbound::WorkspaceSettings::rectangle(geometry())}, {"panels", saved}};
         const bool success = settings.save();
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
@@ -292,6 +324,8 @@ private:
     QLabel *status = nullptr;
     QCheckBox *pin = nullptr, *constrain = nullptr;
     QComboBox *style = nullptr;
+    QCheckBox *hierarchyOption = nullptr;
+    Unbound::WindowHierarchy *hierarchy = nullptr;
     QList<Panel> panels;
     Unbound::WorkspaceSettings settings;
     QTimer saveTimer, restoreTimer;

@@ -5,6 +5,7 @@
 #include <QSaveFile>
 #include <QElapsedTimer>
 #include <QThread>
+#include <QDialog>
 #include <cstdio>
 #include "panelsession.h"
 #include "panelcontrols.h"
@@ -273,7 +274,7 @@ int main(int argc, char **argv)
         auto mainLayout = new QVBoxLayout(&main);
         auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); mainLayout->addWidget(page);
         auto grid = new QGridLayout(page);
-        const QStringList contentsNames = {"frameEditPageMediaPool", "frameEditPageEditIndex", "frameEditPageEffectsLibrary", "frameEditPageMetadata", "frameEditAudioMeter"};
+        const QStringList contentsNames = {"frameEditPageMediaPool", "frameEditPageEditIndex", "frameEditPageEffectsLibrary", "frameEditPageMetadata", "frameEditAudioMeter", "frameEditPageSoundLibrary", "frameEditPageKeyframeEditor"};
         QList<QWidget *> paneSlots; QList<QLayout *> originalLayouts;
         for (int i = 0; i < contentsNames.size(); ++i) {
             auto slot = new QWidget(page); slot->setObjectName(contentsNames[i]);
@@ -282,16 +283,20 @@ int main(int argc, char **argv)
         }
         const QStringList widgetNames = {"widgetEditInspector", "frameConformTimelines", "widgetEditTimelinePlayer"};
         for (int i = 0; i < widgetNames.size(); ++i) {
-            auto widget = new QWidget(page); widget->setObjectName(widgetNames[i]); grid->addWidget(widget, 2, i);
+            auto widget = new QWidget(page); widget->setObjectName(widgetNames[i]); grid->addWidget(widget, 3, i);
         }
         auto stack = new QStackedWidget(page); auto source = new QWidget;
-        source->setObjectName("widgetEditSourcePlayer"); stack->addWidget(source); grid->addWidget(stack, 3, 0);
+        source->setObjectName("widgetEditSourcePlayer"); stack->addWidget(source); grid->addWidget(stack, 4, 0);
         auto mediaToggle = new QPushButton("Media Pool", page);
         mediaToggle->setObjectName("btnEditToggleMediaPoolInSSM"); mediaToggle->setCheckable(true);
-        grid->addWidget(mediaToggle, 3, 1); paneSlots[0]->hide();
+        grid->addWidget(mediaToggle, 4, 1); paneSlots[0]->hide();
         int toggleActivations = 0;
         QObject::connect(mediaToggle, &QPushButton::clicked, [&] { ++toggleActivations; paneSlots[0]->show(); });
         main.resize(900, 650); main.show(); settle();
+        int exportRequests = 0;
+        auto exportAction = new QAction(QString::fromUtf8("Quick Export…"), &main);
+        exportAction->setObjectName("actionQuickExport");
+        QObject::connect(exportAction, &QAction::triggered, [&] { ++exportRequests; });
         auto waitFor = [](const std::function<bool()> &done) {
             QElapsedTimer timer; timer.start();
             while (!done() && timer.elapsed() < 3000) { settle(); QThread::msleep(10); }
@@ -305,8 +310,13 @@ int main(int argc, char **argv)
         };
         {
             PanelControls controls; controls.show(); settle();
+            controls.findChild<QPushButton *>("bulk_5")->click();
+            check(exportRequests == 1, "Quick Export opens the native action without directly rendering");
+            exportAction->setEnabled(false);
+            controls.findChild<QPushButton *>("bulk_5")->click();
+            check(exportRequests == 1, "unavailable Quick Export does not dispatch");
             controls.findChild<QPushButton *>("bulk_0")->click();
-            check(waitFor([&] { return hostCount() == 9; }), "Undock All detaches nine independent panels");
+            check(waitFor([&] { return hostCount() == 11; }), "Undock All detaches eleven independent panels");
             check(toggleActivations == 1, "Undock All initializes a hidden native panel through its toggle");
             for (auto widget : QApplication::topLevelWidgets())
                 if (widget->objectName() == "unboundFloating_widgetEditTimelinePlayer") widget->setGeometry(100, 120, 420, 280);
@@ -314,14 +324,14 @@ int main(int argc, char **argv)
             controls.findChild<QCheckBox *>("pinControls")->setChecked(true);
             check(controls.windowFlags().testFlag(Qt::WindowStaysOnTopHint), "controls can win z-order");
             controls.close(); settle();
-            check(hostCount() == 9 && !controls.isVisible(), "closing controls leaves floating workspace intact");
+            check(hostCount() == 11 && !controls.isVisible(), "closing controls leaves floating workspace intact");
         }
         settle();
         check(hostCount() == 0, "shutdown docks live panels after saving desired state");
         for (int i = 0; i < paneSlots.size(); ++i) check(paneSlots[i]->layout() == originalLayouts[i], "bulk sidebars restore original layouts");
         {
             PanelControls controls; controls.show();
-            check(waitFor([&] { return hostCount() == 9; }), "saved workspace restores nine panels");
+            check(waitFor([&] { return hostCount() == 11; }), "saved workspace restores eleven panels");
             check(controls.findChild<QCheckBox *>("pinControls")->isChecked(), "pin option persists");
             QWidget *sourceHost = nullptr, *programHost = nullptr;
             for (auto widget : QApplication::topLevelWidgets()) {
@@ -347,6 +357,57 @@ int main(int argc, char **argv)
         }
         qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
     }
+    {
+        Unbound::WindowHierarchy hierarchy(&app);
+        QWidget main; main.setObjectName("UiMainWindow");
+        Unbound::MacFloatingHost timeline, pool, sound, source, program;
+        timeline.setObjectName("unboundFloating_frameConformTimelines");
+        pool.setObjectName("unboundFloating_frameEditPageMediaPool");
+        sound.setObjectName("unboundFloating_frameEditPageSoundLibrary");
+        source.setObjectName("unboundFloating_widgetEditSourcePlayer");
+        program.setObjectName("unboundFloating_widgetEditTimelinePlayer");
+        for (auto widget : QList<QWidget *>{&main, &timeline, &pool, &sound, &program, &source}) { widget->resize(300, 200); widget->show(); }
+        settle();
+        auto activate = [&](QWidget *widget) {
+            widget->raise(); widget->activateWindow();
+            QElapsedTimer timer; timer.start();
+            while (Unbound::nativeKeyWindowNumber() != Unbound::nativeWindowNumber(widget) && timer.elapsed() < 1500) { settle(); QThread::msleep(10); }
+            QEvent activation(QEvent::WindowActivate); QApplication::sendEvent(widget, &activation);
+        };
+        auto ahead = [](QWidget *front, QWidget *back) {
+            const auto windows = Unbound::nativeOrderedWindowNumbers();
+            const int a = windows.indexOf(Unbound::nativeWindowNumber(front));
+            const int b = windows.indexOf(Unbound::nativeWindowNumber(back));
+            return a >= 0 && b >= 0 && a < b;
+        };
+        activate(&source);
+        qint64 key = Unbound::nativeKeyWindowNumber(); hierarchy.apply();
+        check(key != 0 && key == Unbound::nativeWindowNumber(&source), "source has native keyboard focus before ordering");
+        check(ahead(&source, &program) && ahead(&program, &pool) && ahead(&pool, &timeline) &&
+              ahead(&sound, &timeline), "native hierarchy: active source above program, sidebars and timeline");
+        check(Unbound::nativeKeyWindowNumber() == key, "native ordering preserves source keyboard focus");
+        activate(&program); key = Unbound::nativeKeyWindowNumber(); hierarchy.apply();
+        check(ahead(&program, &source) && ahead(&source, &pool) && Unbound::nativeKeyWindowNumber() == key,
+            "active program wins viewer order without focus changes");
+        activate(&timeline); key = Unbound::nativeKeyWindowNumber(); hierarchy.apply();
+        check(key != 0 && key == Unbound::nativeWindowNumber(&timeline), "timeline has native keyboard focus before ordering");
+        check(ahead(&source, &timeline) && ahead(&program, &timeline) && ahead(&pool, &timeline) &&
+              Unbound::nativeKeyWindowNumber() == key, "timeline remains behind every panel while keeping keyboard focus");
+        pool.hide(); hierarchy.apply();
+        check(!pool.isVisible(), "hierarchy does not revive hidden panels");
+        QWidget controls; controls.setObjectName("unboundPanelTest");
+        controls.setWindowFlag(Qt::WindowStaysOnTopHint, true); controls.show(); settle(); hierarchy.apply();
+        check(ahead(&controls, &source) && ahead(&controls, &program), "pinned controls stay above viewers");
+        hierarchy.setEnabled(false);
+        const auto natural = Unbound::nativeOrderedWindowNumbers(); hierarchy.apply();
+        check(Unbound::nativeOrderedWindowNumbers() == natural, "disabled hierarchy does not reorder windows");
+        hierarchy.setEnabled(true);
+        QDialog dialog; dialog.setModal(true); dialog.show(); settle();
+        const auto modalOrder = Unbound::nativeOrderedWindowNumbers(); hierarchy.apply();
+        check(Unbound::nativeOrderedWindowNumbers() == modalOrder, "modal export/dialog order is respected");
+        dialog.hide();
+    }
+    settle();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "diagnostic log created");
     int buttonEvents = 0, arrangementEvents = 0, verifiedDocks = 0;
@@ -358,6 +419,6 @@ int main(int argc, char **argv)
         if (record["event"] == "panel.dock.verify" && record["passed"].toBool()) ++verifiedDocks;
     }
     check(buttonEvents >= 3 && arrangementEvents > 0 && verifiedDocks > 0, "button, arrangement and verified-dock events logged");
-    if (!failures) std::puts("PASS: docking, nine-panel workspaces, persistence, bulk cancellation, hide/show, viewport recovery, pinning, title styles, edge resizing, relaunch and logs");
+    if (!failures) std::puts("PASS: docking, eleven-panel workspaces, persistence, bulk cancellation, hide/show, viewport recovery, pinning, title styles, edge resizing, native z-order/focus, Quick Export, relaunch and logs");
     return failures ? 1 : 0;
 }

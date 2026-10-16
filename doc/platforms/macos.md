@@ -30,7 +30,7 @@ Dock buttons are named and enabled per panel. Restoration checks the original
 parent and logs a deferred verification. Native Resolve docking and rendering
 still need live validation; synthetic tests cannot establish that they work.
 The `macos-panels-workspaces` branch extends this checkpoint with Media Pool,
-Index, Effects, Metadata and Mixer. These sidebars transfer their content layout,
+Index, Effects, Metadata, Mixer, Sound Library and Keyframes. These sidebars transfer their content layout,
 keeping the native outer slot in place. Undock All initializes hidden sidebars
 through their native toolbar toggles. Source still requires dual-viewer mode.
 
@@ -40,6 +40,15 @@ state, geometry, title style and control pinning persist. Desired floating panel
 restore when the Edit page and lazily created targets become available. Shutdown
 saves desired state before restoring Resolve's original widget ownership.
 Closing the controls hides them and leaves the floating workspace intact.
+
+The optional floating hierarchy orders Timeline behind every panel, other panels
+(including Media Pool) in the middle, and Source/Program above them. The most
+recently active viewer wins within that tier. Native ordering preserves the key
+window, excludes hidden/minimized hosts, respects modal dialogs and runs on window
+events rather than polling. Pinned Unbound controls remain above the group.
+Every reorder logs the bottom-to-top names and native key window before/after.
+Quick Export opens Resolve's existing menu action without directly starting a
+render; it remains a native dialog rather than a reparented panel.
 
 Per-panel Show/Hide and bulk Show All/Hide All retain hosts. Bring All On Screen
 and automatic display-work-area bounds recover off-screen windows; native minimum
@@ -89,11 +98,15 @@ Tests cover 30 docking cycles, box stretch/alignment, grid spans, splitter sizes
 and order, source-only stack detachment, native stack selection changes,
 independent panels, panel-specific button state, close-to-dock, page visibility,
 unsupported/hidden target rejection, lifetime, diagnostic records and repeated
-control requests without duplicate windows. Extended fixtures cover nine-panel
+control requests without duplicate windows. Extended fixtures cover eleven-panel
 bulk operations and cancellation, initialization through native toggles, exact
 multi-part layout restoration, saved workspace reload, hidden-state restoration,
 pin persistence, display recovery with negative coordinates, native title styles
-and mouse-driven resizing with hidden title bars. Tests previously caught a splitter
+and mouse-driven resizing with hidden title bars. Native window-order tests check
+both active viewers, activation of a background Timeline, real key-window focus
+preservation, hidden hosts, pinned controls, disabled hierarchy and modal dialogs.
+Quick Export tests check action dispatch and disabled-action rejection.
+Tests previously caught a splitter
 placeholder insertion bug. Live playback, GPU viewer rendering, native menu
 changes, project closure and repeated launches remain required checks.
 

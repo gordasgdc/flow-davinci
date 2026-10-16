@@ -82,10 +82,15 @@ unsupported/hidden target rejection, source-only stack detachment, source select
 changes, panel-specific Dock button state, restoration on session destruction,
 structured diagnostic records and repeated control-window relaunch requests.
 
-The workspace branch also tests five multi-part sidebars (Media Pool, Index,
-Effects, Metadata and Mixer), all nine targets together, cancelled bulk commands,
+The workspace branch also tests seven multi-part sidebars (Media Pool, Index,
+Effects, Metadata, Mixer, Sound Library and Keyframes), all eleven targets together, cancelled bulk commands,
 native toggle initialization, atomic saved-state reload, hidden-panel recall,
 control pinning, disconnected/negative-coordinate display recovery, native
 standard/compact/hidden title styles, and mouse-event resizing without a title bar.
 Tests keep settings and logs in temporary directories and do not edit the user's
 saved workspace.
+
+Hierarchy fixtures verify the actual native front-to-back order and key-window
+identity while alternating Source/Program activation and activating Timeline.
+They also cover hidden panels, pinned controls, disabling hierarchy and modal
+dialogs. Quick Export fixtures verify native action dispatch without rendering.
