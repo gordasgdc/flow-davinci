@@ -43,8 +43,20 @@ dispatch queue inside Resolve. Its log confirms `main_thread=1` and a present Qt
 application. No active Qt window was reported at that early startup point.
 It retains its own library handle so the queued callback survives host unloading.
 The bundle advertises zero effects and does not initialize the shared controller.
-Panel enumeration and reliable loading across cached subsequent launches remain
-pending.
+Panel enumeration succeeded with Qt 5.15.2 on the main thread. The inventory
+contains Edit Inspector, separate source/timeline players and the timeline
+container. An experimental Qt window session and control window now target
+Inspector, Timeline, Source Monitor and Program Monitor individually. Source
+Monitor must be visible in dual-viewer mode before detaching its stack.
+
+Native fixture tests pass for 30 detach/restore cycles, box stretch/alignment,
+grid spans, splitter order/sizes, independent panels, page visibility, close,
+unsupported/hidden targets and session lifetime. These tests caught and resolved
+premature placeholder insertion into QSplitter. Actual Resolve playback, viewer
+rendering after reparenting and docking behavior still require live validation.
+The build refreshes the OFX binary timestamp when the companion changes so the
+scanner invalidates its cache. Reliable loading across unchanged cached launches
+is still pending; this is a diagnostic development installation, not a release.
 
 ### Remaining milestones
 

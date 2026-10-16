@@ -60,4 +60,21 @@ installed Resolve Qt libraries. It requires runtime Qt 5.15.2. Three snapshots,
 after 2, 10 and 30 seconds, record widget names, classes, parent names, visibility
 and geometry under `~/Library/Logs/Unbound/widgets-{1,2,3}.json`. Open a project
 during this interval to include its panels. These are local diagnostic files;
-review them before sharing. The inspector does not detach or modify widgets.
+review them before sharing. Snapshot capture does not modify widgets.
+
+The experimental control window also offers separate Undock/Dock buttons for
+Inspector, Timeline, Source Monitor and Program Monitor. Open the Edit page and
+enable dual viewers before detaching Source Monitor. Panels move only when the
+corresponding button is clicked; closing a host docks its panel. Playback and
+native viewer rendering still need validation in Resolve.
+
+Run native session fixtures after preparing the headers above:
+
+```sh
+bash infrastructure/macos/test-panel-sessions.sh
+```
+
+These create temporary Qt test windows using the installed runtime. They verify
+layout slots, stretch/alignment, grid spans, splitter order/sizes, 30 repeated
+cycles, close-to-dock, page visibility, independent three-panel operation,
+unsupported/hidden target rejection and restoration on session destruction.

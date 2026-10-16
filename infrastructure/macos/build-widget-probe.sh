@@ -16,8 +16,11 @@ cp "$qt/src/gui/qtgui-config.h" "$generated/QtGui/"
 cp "$qt/src/widgets/qtwidgets-config.h" "$generated/QtWidgets/"
 xcrun clang++ -std=c++17 -Wall -Wextra -Werror -dynamiclib -fvisibility=hidden \
     -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
+    -I "$root/src/platforms/macos" \
     "$root/tests/platforms/macos/qt-widget-probe.cpp" \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
     -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/UnboundWidgetProbe.dylib"
 /usr/bin/codesign --force --sign - "$out/UnboundWidgetProbe.dylib"
+# Resolve's scan cache tracks the OFX binary rather than its companion library.
+touch "$out/UnboundLoadingProbe.ofx"
 echo 'Built the read-only widget probe against Resolve’s Qt libraries.'
