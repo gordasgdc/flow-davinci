@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QFileSystemWatcher>
+#include <QSaveFile>
 #include "panelcontrols.h"
 #include "interactiondiagnostics.h"
 #include "activationbridge.h"
@@ -27,8 +28,28 @@ public:
             logEvent(QStringLiteral("controls.launch.request"), {{"request", QString::fromUtf8(token)}});
             showControls();
         });
-        logEvent(QStringLiteral("helper.start"));
-        connect(qApp, &QCoreApplication::aboutToQuit, this, [] { logEvent(QStringLiteral("helper.stop")); });
+        const QString logDirectory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
+            QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
+        QDir().mkpath(logDirectory);
+        const QString markerPath = logDirectory + QStringLiteral("/active-session.json");
+        QFile previous(markerPath);
+        if (previous.open(QIODevice::ReadOnly)) {
+            const auto session = QJsonDocument::fromJson(previous.readAll()).object();
+            logEvent(QStringLiteral("helper.previous-session.unclean"), {{"previous", session},
+                {"meaning", "No clean shutdown was recorded; this does not establish crash cause."}});
+            previous.close();
+        }
+        QSaveFile marker(markerPath);
+        if (marker.open(QIODevice::WriteOnly)) {
+            marker.write(QJsonDocument(QJsonObject{{"component", "Unbound"}, {"build", UNBOUND_BUILD_ID},
+                {"pid", QCoreApplication::applicationPid()},
+                {"started", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}}).toJson());
+            marker.commit();
+        }
+        logEvent(QStringLiteral("helper.start"), {{"executable", QCoreApplication::applicationFilePath()}});
+        connect(qApp, &QCoreApplication::aboutToQuit, this, [markerPath] {
+            logEvent(QStringLiteral("helper.stop")); QFile::remove(markerPath);
+        });
         showControls();
     }
     ~ControlService() override { delete controls.data(); }

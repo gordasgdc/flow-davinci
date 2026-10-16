@@ -25,6 +25,8 @@ inline void logEvent(const QString &event, QJsonObject details = {})
     }
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Append)) return;
+    details.insert(QStringLiteral("component"), QStringLiteral("Unbound"));
+    details.insert(QStringLiteral("module"), QStringLiteral("UnboundWidgetProbe.dylib"));
     details.insert(QStringLiteral("event"), event);
     details.insert(QStringLiteral("time"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
     details.insert(QStringLiteral("pid"), QCoreApplication::applicationPid());

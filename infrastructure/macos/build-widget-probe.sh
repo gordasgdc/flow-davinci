@@ -16,7 +16,7 @@ cp "$qt/src/gui/qtgui-config.h" "$generated/QtGui/"
 cp "$qt/src/widgets/qtwidgets-config.h" "$generated/QtWidgets/"
 revision="$(git -C "$root" rev-parse --short HEAD)"
 if [[ -n "$(git -C "$root" status --porcelain)" ]]; then revision="$revision-dirty"; fi
-xcrun clang++ -std=c++17 -Wall -Wextra -Werror -dynamiclib -fvisibility=hidden \
+xcrun clang++ -std=c++17 -Wall -Wextra -Werror -g -dynamiclib -fvisibility=hidden \
     -DUNBOUND_BUILD_ID="\"$revision\"" \
     -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
     -I "$root/src/platforms/macos" \
@@ -24,6 +24,7 @@ xcrun clang++ -std=c++17 -Wall -Wextra -Werror -dynamiclib -fvisibility=hidden \
     "$root/src/platforms/macos/nativechrome.mm" -framework AppKit \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
     -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/UnboundWidgetProbe.dylib"
+xcrun dsymutil "$out/UnboundWidgetProbe.dylib" -o "$out/UnboundWidgetProbe.dylib.dSYM"
 /usr/bin/codesign --force --sign - "$out/UnboundWidgetProbe.dylib"
 # Resolve's scan cache tracks the OFX binary rather than its companion library.
 touch "$out/UnboundLoadingProbe.ofx"

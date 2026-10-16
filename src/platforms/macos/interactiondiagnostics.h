@@ -60,6 +60,9 @@ protected:
                 {"owner", object->parent() ? object->parent()->objectName() : QString()},
                 {"ambiguous", shortcut->isAmbiguous()}, {"focus", widgetState(QApplication::focusWidget())}});
         }
+        if (related(widget) && (event->type() == QEvent::Show || event->type() == QEvent::Polish ||
+            event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress))
+            observeButton(qobject_cast<QAbstractButton *>(widget));
         if (!related(widget)) return false;
         if (event->type() == QEvent::MouseButtonPress) {
             QPointer<QWidget> receiver = widget;
@@ -115,13 +118,31 @@ private:
     }
     static bool related(QWidget *widget)
     {
-        if (!widget) return false;
-        const QString name = widget->window()->objectName();
-        return name == QLatin1String("UiMainWindow") || name.startsWith(QLatin1String("unboundFloating_"));
+        for (auto ancestor = widget; ancestor; ancestor = ancestor->parentWidget()) {
+            const QString name = ancestor->objectName();
+            if (name == QLatin1String("UiMainWindow") || name == QLatin1String("unboundPanelTest") ||
+                name.startsWith(QLatin1String("unboundFloating_"))) return true;
+        }
+        return false;
+    }
+
+    void observeButton(QAbstractButton *button)
+    {
+        if (!button || buttons.contains(button)) return;
+        buttons.insert(button);
+        connect(button, &QObject::destroyed, this, [this, button] { buttons.remove(button); });
+        auto record = [button](const QString &event) {
+            logEvent(event, {{"button", widgetState(button)}, {"label", button->text()},
+                {"checked", button->isChecked()}, {"tooltip", button->toolTip()},
+                {"focus", widgetState(QApplication::focusWidget())}});
+        };
+        // Press precedes the action; clicked also covers keyboard and programmatic activation.
+        connect(button, &QAbstractButton::pressed, this, [record] { record(QStringLiteral("input.button.pressed")); });
+        connect(button, &QAbstractButton::clicked, this, [record] { record(QStringLiteral("input.button.clicked")); });
     }
     void observe(QAction *action)
     {
-        if (!action || tracked.contains(action) || action->shortcuts().isEmpty()) return;
+        if (!action || tracked.contains(action)) return;
         tracked.insert(action);
         connect(action, &QObject::destroyed, this, [this, action] { tracked.remove(action); });
         connect(action, &QAction::triggered, this, [action] {
@@ -173,5 +194,6 @@ private:
             {"active_window", widgetState(QApplication::activeWindow())}, {"native_key", nativeKeyWindowNumber()}});
     }
     QSet<QAction *> tracked;
+    QSet<QAbstractButton *> buttons;
 };
 }

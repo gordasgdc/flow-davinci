@@ -267,3 +267,17 @@ These remain open even when the new automated suites pass.
    control buttons. Expand/Restore works on independent panels; individual Expand
    is disabled while grouped. Backtick, native fullscreen fixes, UI scaling,
    Timeline header buttons and nested groups are not delivered by this candidate.
+
+### Diagnostic identity and activation coverage (2026-10-16)
+
+Every Qt diagnostic event identifies Unbound, its helper module, build and PID.
+Controls and detached panes observe button pressed/clicked signals (including
+keyboard activation); menu actions without shortcuts are observed too. Existing
+mouse-press evidence records input before action dispatch. Native AppKit chrome
+continues to report resulting window state rather than Qt button signals.
+An atomic active-session marker survives abnormal termination; the next launch
+reports an unclean previous session. This is evidence of missing clean shutdown,
+not proof that Unbound caused a crash. No process-wide signal/exception handlers
+replace Resolve's crash reporting. Helper builds retain a matching local dSYM for
+symbolicating the named UnboundWidgetProbe.dylib frames in macOS crash reports.
+Logs: ~/Library/Logs/Unbound/events.jsonl (and rotated .1).

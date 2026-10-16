@@ -1,4 +1,6 @@
 #include <QApplication>
+#include <QPushButton>
+
 #include <QElapsedTimer>
 #include <QLineEdit>
 #include <QShortcut>
@@ -206,12 +208,23 @@ int main(int argc, char **argv)
         check(app.notifications == before, "scope bridge skips inactive Edit page");
         app.watched = nullptr;
     }
+    {
+        QWidget controls; controls.setObjectName("unboundPanelTest");
+        QPushButton button("Diagnostic activation", &controls);
+        button.setObjectName("diagnosticActivation"); controls.show(); button.show(); settle();
+        button.click();
+        QAction action("Diagnostic menu action", &controls);
+        action.setObjectName("diagnosticMenuAction"); controls.addAction(&action); action.trigger();
+    }
     settle();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "interaction evidence log exists");
-    bool shortcutObserved = false, textObserved = false, pageMoveObserved = false;
+    bool shortcutObserved = false, textObserved = false, pageMoveObserved = false, buttonObserved = false, actionObserved = false;
     while (!events.atEnd()) {
         const auto record = QJsonDocument::fromJson(events.readLine()).object();
+        if (record["event"] == "input.button.clicked" && record["button"].toObject()["name"] == "diagnosticActivation") buttonObserved = true;
+        if (record["event"] == "input.action.triggered" && record["action"] == "diagnosticMenuAction") actionObserved = true;
+        check(record["component"] == "Unbound" && record["module"] == "UnboundWidgetProbe.dylib", "logs identify Unbound module");
         if (record["event"] == "input.shortcut") shortcutObserved = true;
         if (record["event"] == "panel.native-change") pageMoveObserved = true;
         if (record["event"] == "input.key.observed" && record["text_editing"].toBool()) {
@@ -219,6 +232,7 @@ int main(int argc, char **argv)
             check(!record.contains("key") && !record.contains("text"), "typed text and key values are excluded from diagnostics");
         }
     }
+    check(buttonObserved && actionObserved, "control button activation and shortcut-free menu actions logged");
     check(shortcutObserved && textObserved && pageMoveObserved, "logs distinguish shortcut delivery, text input and native page movement");
     if (!failures) std::puts("PASS: native page moves, viewer visibility, docking recovery and owned-window shortcut scope");
     return failures ? 1 : 0;
