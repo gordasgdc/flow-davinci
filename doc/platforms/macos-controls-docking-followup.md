@@ -49,3 +49,13 @@ hosts and Unbound controls; hover via native titlebar and member header; create
 side-by-side Media Pool/Inspector with Source below, then a tabbed alternative.
 Verify previews, release outside targets, Option bypass, buttons, dividers and
 backtick restore. Cinema Viewer remains a separate unverified item.
+
+## Built checkpoint
+
+Candidate **7e91be0**, not installed. Helper and bootstrap builds PASS; native
+bootstrap handshake fixture PASS. Matching binary/dSYM UUID:
+19C47796-0BB9-347B-ACD4-FEB4929E0CE2. Archive:
+`build/macos/candidates/7e91be0/`.
+All three full GUI suites compile in compile-only mode; no displayed GUI suite
+was run during the user's open Resolve session. Hidden background fixture and
+no-GUI geometry suite passed. Installed helper remains 21466f2.
