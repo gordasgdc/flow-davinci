@@ -416,3 +416,12 @@ Trace follow-up: destination selection now stops at a covering non-dockable Qt
 window instead of looking through it for an eligible group. A covering-window
 regression fixture is added (GUI execution pending). This is separate from native
 macOS tiling and does not change any global macOS or third-party app setting.
+
+Built candidate **256c848** (not installed). Helper and bootstrap build PASS;
+bootstrap SDK handshake fixture PASS. All three updated GUI test executables
+compile in compile-only mode; they have NOT been executed for this branch because
+Resolve is open. No-GUI layout plans PASS. Archived candidate plus matching dSYM:
+`build/macos/candidates/256c848/`, UUID
+4F01ABD5-F231-3F7A-90D9-B320D30FC21D. Working source is committed; installed
+f64c401 and its preserved branch/archive remain unchanged. Fullscreen viewer is
+explicitly unfinished, awaiting the exact native command/shortcut and live trace.
