@@ -25,7 +25,7 @@ for source in "$root/tests/platforms/macos/qt-widget-probe.cpp" "$root/src/platf
         -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
         -I "$root/src/platforms/macos" -c "$source" -o "$object"
 done
-xcrun clang++ -dynamiclib "$objects/qt-widget-probe.cpp.o" "$objects/nativechrome.mm.o" -framework AppKit \
+xcrun clang++ -dynamiclib "$objects/qt-widget-probe.cpp.o" "$objects/nativechrome.mm.o" -framework AppKit -framework CoreGraphics \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
     -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/UnboundWidgetProbe.dylib"
 xcrun dsymutil "$out/UnboundWidgetProbe.dylib" -o "$out/UnboundWidgetProbe.dylib.dSYM"

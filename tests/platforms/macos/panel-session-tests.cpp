@@ -385,7 +385,9 @@ int main(int argc, char **argv)
         controls.findChild<QPushButton *>("group_2")->click(); settle();
         auto draggedSource = source->window();
         auto targetProgram = program->window();
-        draggedSource->setGeometry(40, 300, 320, 240); targetProgram->setGeometry(420, 300, 320, 240); settle();
+        controls.move(1100, 700);
+        draggedSource->setGeometry(40, 300, 320, 240); targetProgram->setGeometry(420, 300, 320, 240);
+        targetProgram->raise(); draggedSource->raise(); settle();
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;
@@ -398,10 +400,11 @@ int main(int argc, char **argv)
         check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(18, 18),
             "panel attachment shows one small local target and proposed split");
         QWidget covering;
+        covering.setWindowFlag(Qt::WindowStaysOnTopHint, true);
         covering.setObjectName("diagnosticCoveringWindow"); covering.setAttribute(Qt::WA_ShowWithoutActivating);
         covering.setGeometry(QRect(dockPointer - QPoint(30, 30), QSize(60, 60))); covering.show(); covering.raise(); settle();
         QApplication::sendEvent(draggedSource, &move);
-        check(!dockTarget->isVisible() && !attachmentPreview->isVisible(), "covering non-dockable window blocks targets on panels behind it");
+        check((!dockTarget || !dockTarget->isVisible()) && (!attachmentPreview || !attachmentPreview->isVisible()), "covering non-dockable window blocks targets on panels behind it");
         covering.hide(); QApplication::sendEvent(draggedSource, &move);
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &up); settle(); settle();
@@ -644,10 +647,15 @@ int main(int argc, char **argv)
             QEvent activation(QEvent::WindowActivate); QApplication::sendEvent(widget, &activation);
         };
         auto ahead = [](QWidget *front, QWidget *back) {
-            const auto windows = Unbound::nativeOrderedWindowNumbers();
-            const int a = windows.indexOf(Unbound::nativeWindowNumber(front));
-            const int b = windows.indexOf(Unbound::nativeWindowNumber(back));
-            return a >= 0 && b >= 0 && a < b;
+            QElapsedTimer committed; committed.start();
+            do {
+                const auto windows = Unbound::nativeOrderedWindowNumbers();
+                const int a = windows.indexOf(Unbound::nativeWindowNumber(front));
+                const int b = windows.indexOf(Unbound::nativeWindowNumber(back));
+                if (a >= 0 && b >= 0 && a < b) return true;
+                settle(); QThread::msleep(2);
+            } while (committed.elapsed() < 250);
+            return false;
         };
         activate(&source);
         qint64 key = Unbound::nativeKeyWindowNumber(); hierarchy.apply();

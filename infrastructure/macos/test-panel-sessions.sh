@@ -10,7 +10,7 @@ xcrun clang++ -std=c++17 -Wall -Wextra -Werror -DUNBOUND_NATIVE_TESTS \
     -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
     -I "$root/src/platforms/macos" "$source_file" "$root/src/platforms/macos/nativechrome.mm" \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
-    -framework AppKit -Wl,-rpath,"$app/Contents/Frameworks" -o "$out"
+    -framework AppKit -framework CoreGraphics -Wl,-rpath,"$app/Contents/Frameworks" -o "$out"
 if [[ "${UNBOUND_TEST_COMPILE_ONLY:-0}" != 1 ]]; then
     QT_PLUGIN_PATH="$app/Contents/PlugIns" "$out"
 fi

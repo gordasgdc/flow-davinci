@@ -437,3 +437,28 @@ Private native methods are never invoked. Mac runtime metadata decides whether a
 signal is connected; old Windows binary names are not assumed to exist on Mac.
 This instrumentation is not a Cinema Viewer fix. Live command testing remains
 pending after the user closes Resolve for GUI checks and a new helper install.
+
+### GUI validation before installation (2026-10-16)
+
+The first session fixture exposed a real target-picker limitation: AppKit's
+NSApp.orderedWindows omitted owned Qt player tool windows. Target selection now
+uses the actual CoreGraphics on-screen stack filtered to this process, including
+child windows, without capturing images or reading other apps' window contents.
+The fixture additionally guards missing markers, keeps Unbound controls away from
+its intended target, and tests blocking with an explicitly foreground test window.
+WindowServer commits ordering asynchronously; ordering assertions allow up to
+250 ms to observe the requested stack rather than sampling immediately.
+
+After those corrections, all three actual GUI runs PASS:
+- `bash infrastructure/macos/test-panel-sessions.sh`: including grouped backtick
+  expand/restore, no forced free-drop alignment, covering-window exclusion, input
+  capture recovery, viewport/persistence and native order/focus scenarios.
+- `bash infrastructure/macos/test-panel-groups.sh`: including split/tab mixtures,
+  native Inspector click/check-change coalescing, covered-tab reveal, hide/restore,
+  group merge/tear-off and temporary grouped layout loan/return.
+- `bash infrastructure/macos/test-reliability.sh`: focus, shortcut scope, text input
+  protection and distinct Cinema Viewer diagnostic dispatch.
+
+These passes do not close Resolve runtime acceptance. Cinema Viewer has passive
+trace coverage, not a verified fix. The next live check is its actual command in
+a detached/grouped arrangement, compared with native docking.

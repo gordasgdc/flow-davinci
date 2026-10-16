@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #import <AppKit/AppKit.h>
+#import <CoreGraphics/CoreGraphics.h>
 #include <QWidget>
 #include <QCursor>
 #include <QPointer>
@@ -111,7 +112,14 @@ qint64 nativeWindowNumber(QWidget *widget)
 QList<qint64> nativeOrderedWindowNumbers()
 {
     QList<qint64> result;
-    for (NSWindow *window in NSApp.orderedWindows) result.append(window.windowNumber);
+    // NSApp.orderedWindows can omit owned Qt tool windows. Use the actual
+    // on-screen stack, including child windows, without capturing window content.
+    CFArrayRef info = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+    for (NSDictionary *entry in (NSArray *)info) {
+        if ([entry[(id)kCGWindowOwnerPID] intValue] == NSProcessInfo.processInfo.processIdentifier)
+            result.append([entry[(id)kCGWindowNumber] longLongValue]);
+    }
+    if (info) CFRelease(info);
     return result;
 }
 }
