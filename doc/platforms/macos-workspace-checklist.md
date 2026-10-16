@@ -206,6 +206,15 @@ not included. Ripple Delete is already reported failing and remains open.
 
 ## V2 candidate handoff
 
+Built candidate: **1f22db1**, branch macos-docking-layouts-v2. Panel-session,
+panel-group and reliability suites pass, including posted native mouse-up,
+background visibility and Workflow focus checks. Widget/helper builds and native
+bootstrap tests pass. Qt-helper SHA-256:
+dc9035152f2d390410180344857eda97cc1f2b83709f1d1ee3d8ccd1172a2a43.
+Native bootstrap SHA-256:
+64188f8b617a46aaae851cfd0a08645e843dba0c3a2e85a072e580009418ca6a.
+Not installed at this receipt: Resolve pid 51419 is still running d3ed034.
+
 Preserve the first-pass Git branch and executable checkpoint. A separate ignored
 copy of Workspace.json and Arrangements.json is saved before any new installation.
 The named “Jordan Arrangmement” preset remains unchanged by development tests.
