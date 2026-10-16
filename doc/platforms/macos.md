@@ -19,6 +19,35 @@ inspection.
 
 ## First implementation milestone
 
+### Startup probe on 2026-10-16
+
+The standalone loading helper builds and writes its marker when inserted into
+the test host. Resolve launched with the same request, but its marker stayed
+empty after startup; helper loading was not demonstrated.
+
+Using `codesign -d --entitlements - --arch arm64` decodes the installed app's
+entitlements successfully. The earlier `:-` invocation produced misleading
+invalid-blob warnings. Both slices declare `disable-library-validation`, but
+neither declares `allow-dyld-environment-variables`. This makes startup environment
+filtering a likely explanation, pending further validation. No app modification
+or re-signing was performed.
+
+The OpenFX discovery probe loaded during a normal Resolve launch. Its log records
+both `OFXLoader` (no Qt singleton) and the actual `Contents/MacOS/Resolve` process
+(Qt singleton present). Resolve's callback ran on a worker thread. This proves
+native loading and Qt visibility in the unmodified installed application, but
+does not establish support for manipulating internal panels through OpenFX.
+
+The second probe successfully queued a read-only active-window check on the main
+dispatch queue inside Resolve. Its log confirms `main_thread=1` and a present Qt
+application. No active Qt window was reported at that early startup point.
+It retains its own library handle so the queued callback survives host unloading.
+The bundle advertises zero effects and does not initialize the shared controller.
+Panel enumeration and reliable loading across cached subsequent launches remain
+pending.
+
+### Remaining milestones
+
 1. Establish compatible arm64 Qt development headers/configuration and link to
    Resolve's existing Qt libraries without introducing another Qt runtime.
 2. Prove a loading mechanism in an unmodified Resolve installation, then locate its
