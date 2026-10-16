@@ -25,8 +25,7 @@ See [settings documentation](<doc/Unbound settings.md>).
 ## Compatibility
 
 Unbound is unofficial and depends on Resolve's internal widget hierarchy and layouts.
-The oldest tested configuration is Resolve 21.1.0.14 on Windows x64 (10 and 11);
-other tested versions include 21.1.1.10. Save work before testing a new configuration.
+Tested configurations from Resolve 20.3.3 to 21.1.1.10 on Windows x64 10 and 11.
 
 Windows may nag about the Unbound helper when running it. That's a good thing - OS
 should notice and say something when DLLs attach to applications. That said: Unbound is
