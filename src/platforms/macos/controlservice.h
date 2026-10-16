@@ -32,6 +32,7 @@ public:
     {
         if (!controls) controls = new PanelControls;
         controls->showNormal();
+        keepOnDisplay(controls);
         controls->raise();
         controls->activateWindow();
         logEvent(QStringLiteral("controls.show"));

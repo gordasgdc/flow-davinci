@@ -81,3 +81,11 @@ cycles, close-to-dock, page visibility, independent three-panel operation,
 unsupported/hidden target rejection, source-only stack detachment, source selection
 changes, panel-specific Dock button state, restoration on session destruction,
 structured diagnostic records and repeated control-window relaunch requests.
+
+The workspace branch also tests five multi-part sidebars (Media Pool, Index,
+Effects, Metadata and Mixer), all nine targets together, cancelled bulk commands,
+native toggle initialization, atomic saved-state reload, hidden-panel recall,
+control pinning, disconnected/negative-coordinate display recovery, native
+standard/compact/hidden title styles, and mouse-event resizing without a title bar.
+Tests keep settings and logs in temporary directories and do not edit the user's
+saved workspace.

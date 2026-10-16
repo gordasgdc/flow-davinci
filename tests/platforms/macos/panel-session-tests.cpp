@@ -27,6 +27,7 @@ int main(int argc, char **argv)
     QTemporaryDir logs;
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
+    qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
     Unbound::WindowDiagnostics windowLogs(&app);
     app.installEventFilter(&windowLogs);
     app.setQuitOnLastWindowClosed(false);
@@ -206,6 +207,146 @@ int main(int argc, char **argv)
         }
     }
     settle();
+    {
+        using Unbound::fitToDisplays;
+        const QList<QRect> displays = {QRect(0, 24, 1440, 850), QRect(-1280, 0, 1280, 800)};
+        check(displays[0].contains(fitToDisplays(QRect(4000, 3000, 600, 400), displays)), "disconnected display window rescued");
+        check(displays[1].contains(fitToDisplays(QRect(-1200, 40, 600, 400), displays)), "negative display coordinates retained");
+        check(fitToDisplays(QRect(0, 0, 5000, 5000), {displays[0]}) == displays[0], "oversized frame bounded to work area");
+        check(fitToDisplays(QRect(50, -300, 400, 300), {displays[0]}).top() == 24, "title stays below menu bar");
+        const QRect initial(50, 70, 400, 300);
+        const QRect resized = Unbound::resizeFromEdge(initial, QPoint(1000, 1000), Qt::LeftEdge | Qt::TopEdge,
+            QSize(160, 100), QSize(900, 700));
+        check(resized.size() == QSize(160, 100) && resized.bottomRight() == initial.bottomRight(), "frameless resizing preserves opposite edge and minimum");
+        check(Unbound::resizeFromEdge(initial, QPoint(2000, 2000), Qt::RightEdge | Qt::BottomEdge,
+            QSize(160, 100), QSize(900, 700)).size() == QSize(900, 700), "frameless resizing respects maximum");
+    }
+    {
+        QWidget page;
+        auto pageLayout = new QVBoxLayout(&page);
+        auto slot = new QWidget(&page);
+        auto originalLayout = new QVBoxLayout(slot);
+        auto header = new QLabel("Index tabs", slot);
+        auto content = new QPushButton("Index row", slot);
+        originalLayout->addWidget(header, 1); originalLayout->addWidget(content, 3);
+        originalLayout->setContentsMargins(3, 4, 5, 6);
+        pageLayout->addWidget(slot); page.show(); settle();
+        int clicks = 0;
+        QObject::connect(content, &QPushButton::clicked, [&clicks] { ++clicks; });
+        Unbound::MacPanelSession session;
+        for (auto chrome : {Unbound::WindowChrome::Standard, Unbound::WindowChrome::Compact, Unbound::WindowChrome::Hidden}) {
+            session.setChrome(chrome);
+            check(session.undockContents(slot, &page, "Index").isEmpty(), "multipart sidebar detaches");
+            auto host = session.window(); settle();
+            check(slot->parentWidget() == &page && header->parentWidget() == host && content->parentWidget() == host,
+                "native slot stays while all panel parts move together");
+            const int flags = Unbound::nativeChromeFlags(host);
+            check(chrome == Unbound::WindowChrome::Hidden ? !(flags & 1) : bool(flags & 1), "native title style matches option");
+            check(chrome != Unbound::WindowChrome::Compact || (flags & 4), "compact style uses full-size title bar");
+            if (chrome == Unbound::WindowChrome::Hidden) {
+                const QSize before = host->size();
+                const QPoint edge(host->width() - 2, host->height() - 2);
+                const QPoint global = host->mapToGlobal(edge);
+                QMouseEvent press(QEvent::MouseButtonPress, edge, global, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                QApplication::sendEvent(host, &press);
+                QMouseEvent move(QEvent::MouseMove, edge + QPoint(80, 60), global + QPoint(80, 60), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+                QApplication::sendEvent(host, &move);
+                QMouseEvent release(QEvent::MouseButtonRelease, edge + QPoint(80, 60), global + QPoint(80, 60), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+                QApplication::sendEvent(host, &release);
+                check(host->size() == before + QSize(80, 60), "hidden-title host resizes from edge mouse events");
+            }
+            content->click();
+            session.setHiddenByUser(true); page.hide(); page.show(); settle();
+            check(!host->isVisible() && session.hiddenByUser(), "user-hidden panel stays hidden across page return");
+            session.setHiddenByUser(false); settle();
+            check(host->isVisible(), "hidden panel can be recalled");
+            check(session.dock().isEmpty() && slot->layout() == originalLayout && content->parentWidget() == slot &&
+                originalLayout->stretch(1) == 3 && originalLayout->contentsMargins() == QMargins(3, 4, 5, 6),
+                "sidebar restores exact layout and native ownership in every chrome mode");
+            settle();
+        }
+        check(clicks == 3, "native content signals survive layout transfers");
+    }
+    {
+        qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/bulk-workspace.json")).toUtf8());
+        QWidget main; main.setObjectName("UiMainWindow");
+        auto mainLayout = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); mainLayout->addWidget(page);
+        auto grid = new QGridLayout(page);
+        const QStringList contentsNames = {"frameEditPageMediaPool", "frameEditPageEditIndex", "frameEditPageEffectsLibrary", "frameEditPageMetadata", "frameEditAudioMeter"};
+        QList<QWidget *> paneSlots; QList<QLayout *> originalLayouts;
+        for (int i = 0; i < contentsNames.size(); ++i) {
+            auto slot = new QWidget(page); slot->setObjectName(contentsNames[i]);
+            auto box = new QVBoxLayout(slot); box->addWidget(new QLabel("Panel body", slot));
+            grid->addWidget(slot, i / 3, i % 3); paneSlots.append(slot); originalLayouts.append(box);
+        }
+        const QStringList widgetNames = {"widgetEditInspector", "frameConformTimelines", "widgetEditTimelinePlayer"};
+        for (int i = 0; i < widgetNames.size(); ++i) {
+            auto widget = new QWidget(page); widget->setObjectName(widgetNames[i]); grid->addWidget(widget, 2, i);
+        }
+        auto stack = new QStackedWidget(page); auto source = new QWidget;
+        source->setObjectName("widgetEditSourcePlayer"); stack->addWidget(source); grid->addWidget(stack, 3, 0);
+        auto mediaToggle = new QPushButton("Media Pool", page);
+        mediaToggle->setObjectName("btnEditToggleMediaPoolInSSM"); mediaToggle->setCheckable(true);
+        grid->addWidget(mediaToggle, 3, 1); paneSlots[0]->hide();
+        int toggleActivations = 0;
+        QObject::connect(mediaToggle, &QPushButton::clicked, [&] { ++toggleActivations; paneSlots[0]->show(); });
+        main.resize(900, 650); main.show(); settle();
+        auto waitFor = [](const std::function<bool()> &done) {
+            QElapsedTimer timer; timer.start();
+            while (!done() && timer.elapsed() < 3000) { settle(); QThread::msleep(10); }
+            return done();
+        };
+        auto hostCount = [] {
+            int count = 0;
+            for (auto widget : QApplication::topLevelWidgets())
+                if (widget->objectName().startsWith("unboundFloating_")) ++count;
+            return count;
+        };
+        {
+            PanelControls controls; controls.show(); settle();
+            controls.findChild<QPushButton *>("bulk_0")->click();
+            check(waitFor([&] { return hostCount() == 9; }), "Undock All detaches nine independent panels");
+            check(toggleActivations == 1, "Undock All initializes a hidden native panel through its toggle");
+            for (auto widget : QApplication::topLevelWidgets())
+                if (widget->objectName() == "unboundFloating_widgetEditTimelinePlayer") widget->setGeometry(100, 120, 420, 280);
+            controls.findChild<QPushButton *>("hide_widgetEditSourcePlayer")->click();
+            controls.findChild<QCheckBox *>("pinControls")->setChecked(true);
+            check(controls.windowFlags().testFlag(Qt::WindowStaysOnTopHint), "controls can win z-order");
+            controls.close(); settle();
+            check(hostCount() == 9 && !controls.isVisible(), "closing controls leaves floating workspace intact");
+        }
+        settle();
+        check(hostCount() == 0, "shutdown docks live panels after saving desired state");
+        for (int i = 0; i < paneSlots.size(); ++i) check(paneSlots[i]->layout() == originalLayouts[i], "bulk sidebars restore original layouts");
+        {
+            PanelControls controls; controls.show();
+            check(waitFor([&] { return hostCount() == 9; }), "saved workspace restores nine panels");
+            check(controls.findChild<QCheckBox *>("pinControls")->isChecked(), "pin option persists");
+            QWidget *sourceHost = nullptr, *programHost = nullptr;
+            for (auto widget : QApplication::topLevelWidgets()) {
+                if (widget->objectName() == "unboundFloating_widgetEditSourcePlayer") sourceHost = widget;
+                if (widget->objectName() == "unboundFloating_widgetEditTimelinePlayer") programHost = widget;
+            }
+            check(sourceHost && !sourceHost->isVisible(), "hidden source state persists across workspace reload");
+            check(programHost && programHost->size() == QSize(420, 280), "floating geometry persists across workspace reload");
+            controls.findChild<QPushButton *>("bulk_2")->click(); settle();
+            check(sourceHost && sourceHost->isVisible(), "Show All recalls hidden panels");
+            controls.findChild<QPushButton *>("bulk_3")->click(); settle();
+            bool allHidden = true;
+            for (auto widget : QApplication::topLevelWidgets())
+                if (widget->objectName().startsWith("unboundFloating_")) allHidden &= !widget->isVisible();
+            check(allHidden, "Hide All retains but hides panels");
+            controls.findChild<QPushButton *>("bulk_1")->click(); settle();
+            check(hostCount() == 0 && source->parentWidget() == stack, "Dock All restores all panels including source slot");
+            controls.findChild<QPushButton *>("bulk_0")->click();
+            controls.findChild<QPushButton *>("bulk_1")->click();
+            QElapsedTimer cancellation; cancellation.start();
+            while (cancellation.elapsed() < 1100) { settle(); QThread::msleep(10); }
+            check(hostCount() == 0, "Dock All cancels pending Undock All callbacks");
+        }
+        qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
+    }
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "diagnostic log created");
     int buttonEvents = 0, arrangementEvents = 0, verifiedDocks = 0;
@@ -217,6 +358,6 @@ int main(int argc, char **argv)
         if (record["event"] == "panel.dock.verify" && record["passed"].toBool()) ++verifiedDocks;
     }
     check(buttonEvents >= 3 && arrangementEvents > 0 && verifiedDocks > 0, "button, arrangement and verified-dock events logged");
-    if (!failures) std::puts("PASS: docking cycles, layout restoration, independent viewers, stack selection, panel buttons, close, visibility and diagnostic events");
+    if (!failures) std::puts("PASS: docking, nine-panel workspaces, persistence, bulk cancellation, hide/show, viewport recovery, pinning, title styles, edge resizing, relaunch and logs");
     return failures ? 1 : 0;
 }

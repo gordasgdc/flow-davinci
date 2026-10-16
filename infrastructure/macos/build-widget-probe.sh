@@ -21,6 +21,7 @@ xcrun clang++ -std=c++17 -Wall -Wextra -Werror -dynamiclib -fvisibility=hidden \
     -I "$generated" -I "$qt/include" -I "$qt/include/QtCore" -I "$qt/include/QtGui" -I "$qt/include/QtWidgets" \
     -I "$root/src/platforms/macos" \
     "$root/tests/platforms/macos/qt-widget-probe.cpp" \
+    "$root/src/platforms/macos/nativechrome.mm" -framework AppKit \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
     -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/UnboundWidgetProbe.dylib"
 /usr/bin/codesign --force --sign - "$out/UnboundWidgetProbe.dylib"

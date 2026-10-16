@@ -11,17 +11,83 @@
 #include <QWidget>
 #include <functional>
 #include "diagnostics.h"
+#include "viewport.h"
+#include "floatinghost.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
 class MacPanelSession : public QObject
 {
 public:
-    explicit MacPanelSession(QObject *owner = nullptr) : QObject(owner) {}
-    ~MacPanelSession() override { changed = {}; dock(); }
+    explicit MacPanelSession(QObject *owner = nullptr) : QObject(owner)
+    {
+        arrangeTimer.setSingleShot(true);
+        arrangeTimer.setInterval(180);
+        connect(&arrangeTimer, &QTimer::timeout, this, [this] {
+            if (constrain) keepOnDisplay(host);
+            if (arrangementChanged) arrangementChanged();
+        });
+    }
+    ~MacPanelSession() override { changed = {}; arrangementChanged = {}; dock(); }
     bool active() const { return !host.isNull(); }
     QWidget *window() const { return host; }
     std::function<void()> changed;
+    std::function<void()> arrangementChanged;
+    void setChrome(WindowChrome value) { chrome = value; if (host) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
+    bool hiddenByUser() const { return userHidden; }
+    void setConstrained(bool enabled) { constrain = enabled; if (enabled) keepOnDisplay(host); }
+    void bringOnScreen() { keepOnDisplay(host); if (arrangementChanged) arrangementChanged(); }
+    void setFloatingGeometry(const QRect &r) { if (host && r.isValid()) { host->setGeometry(r); if (constrain) keepOnDisplay(host); } }
+    void setHiddenByUser(bool hide)
+    {
+        userHidden = hide;
+        if (host) {
+            if (hide) host->hide();
+            else if (originalPage && originalPage->isVisible()) { host->showNormal(); keepOnDisplay(host); host->raise(); host->activateWindow(); }
+        }
+        logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}});
+        if (changed) changed();
+        if (arrangementChanged) arrangementChanged();
+    }
+
+    QString undockContents(QWidget *slot, QWidget *page, const QString &title)
+    {
+        if (active()) return QStringLiteral("This panel is already floating.");
+        if (!slot || !page || !page->isAncestorOf(slot) || !slot->isVisible() || !slot->layout())
+            return QStringLiteral("Show this panel on the Edit page first.");
+        originalParent = slot;
+        originalPage = page;
+        originalLayout = slot->layout();
+        host = new MacFloatingHost;
+        host->setAttribute(Qt::WA_QuitOnClose, false);
+        host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
+        host->setWindowTitle(title);
+        host->resize(slot->size().expandedTo(QSize(320, 240)));
+        host->setLayout(originalLayout);
+        if (slot->layout() || host->layout() != originalLayout) {
+            if (!slot->layout() && host->layout() == originalLayout) slot->setLayout(originalLayout);
+            delete host.data(); clear(); return QStringLiteral("Could not transfer this panel's content layout.");
+        }
+        transferredLayout = true;
+        placeholderLayout = new QVBoxLayout(slot);
+        auto marker = new QLabel(title + QStringLiteral(" is floating."), slot);
+        marker->setAlignment(Qt::AlignCenter);
+        placeholder = marker;
+        placeholderLayout->addWidget(marker);
+        host->installEventFilter(this);
+        page->installEventFilter(this);
+        parentDestroyed = connect(slot, &QObject::destroyed, this, [this] {
+            if (originalPage) originalPage->removeEventFilter(this);
+            if (host) host->deleteLater();
+            clear();
+        });
+        host->show();
+        static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
+        if (constrain) keepOnDisplay(host);
+        logEvent(QStringLiteral("panel.contents.undock"), {{"panel", title}, {"slot", widgetState(slot)}});
+        if (changed) changed();
+        return {};
+    }
 
     QString undock(QWidget *widget, QWidget *page, const QString &title)
     {
@@ -75,7 +141,7 @@ public:
         } else {
             marker->setGeometry(geometry);
         }
-        host = new QWidget(nullptr, Qt::Window);
+        host = new MacFloatingHost;
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setWindowTitle(title);
         host->setObjectName(QStringLiteral("unboundFloating_") + widget->objectName());
@@ -94,6 +160,8 @@ public:
             clear();
         });
         host->show();
+        static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
+        if (constrain) keepOnDisplay(host);
         logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
             {"original_parent", originalParent->objectName()},
             {"layout", originalLayout ? originalLayout->metaObject()->className() : "none"}});
@@ -106,6 +174,25 @@ public:
         logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
             {"active", active()}, {"original_parent", originalParent ? originalParent->objectName() : QString()}});
         if (!active()) return QStringLiteral("This panel is already docked.");
+        if (transferredLayout) {
+            if (!originalParent || !originalLayout || !placeholderLayout ||
+                originalParent->layout() != placeholderLayout || host->layout() != originalLayout)
+                return QStringLiteral("Resolve changed this panel's content layout.");
+            delete placeholderLayout.data();
+            delete placeholder.data();
+            originalParent->setLayout(originalLayout);
+            if (originalParent->layout() != originalLayout)
+                return QStringLiteral("Could not restore this panel's content layout.");
+            originalLayout->activate();
+            disconnect(parentDestroyed);
+            if (originalPage) originalPage->removeEventFilter(this);
+            auto oldHost = host.data();
+            oldHost->removeEventFilter(this);
+            logEvent(QStringLiteral("panel.contents.dock"), {{"slot", widgetState(originalParent)}});
+            clear(); oldHost->hide(); oldHost->deleteLater();
+            if (changed) changed();
+            return {};
+        }
         if (!content || !originalParent || !placeholder || content->parentWidget() != host)
             return QStringLiteral("Resolve changed the panel hierarchy; restoration was stopped.");
         if (originalStack) {
@@ -163,9 +250,10 @@ protected:
             static_cast<QCloseEvent *>(event)->setAccepted(error.isEmpty());
             return true;
         }
+        if (object == host && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) arrangeTimer.start();
         if (object == originalPage && host) {
             if (event->type() == QEvent::Hide) host->hide();
-            if (event->type() == QEvent::Show) host->show();
+            if (event->type() == QEvent::Show && !userHidden) host->show();
         }
         return false;
     }
@@ -177,11 +265,21 @@ private:
         originalSplitter = nullptr; originalPage = nullptr;
         originalStack = nullptr;
         splitterSizes.clear();
+        transferredLayout = false;
+        placeholderLayout = nullptr;
+        userHidden = false;
+        arrangeTimer.stop();
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
     QPointer<QLayout> originalLayout;
     QPointer<QSplitter> originalSplitter;
     QPointer<QStackedWidget> originalStack;
+    QPointer<QLayout> placeholderLayout;
+    bool transferredLayout = false;
+    bool userHidden = false;
+    bool constrain = true;
+    QTimer arrangeTimer;
+    WindowChrome chrome = WindowChrome::Standard;
     int stackIndex = -1;
     QMetaObject::Connection parentDestroyed;
     QList<int> splitterSizes;
