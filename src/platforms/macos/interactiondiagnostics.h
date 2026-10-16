@@ -18,6 +18,7 @@
 #include <QTimer>
 #include "diagnostics.h"
 #include "nativechrome.h"
+#include "viewerdiagnostics.h"
 
 namespace Unbound {
 inline bool textEditor(QWidget *widget)
@@ -37,6 +38,7 @@ class InteractionDiagnostics : public QObject
 public:
     explicit InteractionDiagnostics(QObject *parent) : QObject(parent)
     {
+        viewerDiagnostics = new ViewerDiagnostics(this);
         qApp->installEventFilter(this);
         connect(qApp, &QApplication::focusChanged, this, [](QWidget *before, QWidget *after) {
             if (!related(before) && !related(after)) return;
@@ -145,13 +147,20 @@ private:
         if (!action || tracked.contains(action)) return;
         tracked.insert(action);
         connect(action, &QObject::destroyed, this, [this, action] { tracked.remove(action); });
-        connect(action, &QAction::triggered, this, [action] {
+        connect(action, &QAction::triggered, this, [this, action] {
             logEvent(QStringLiteral("input.action.triggered"), {{"action", action->objectName()},
                 {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget())}});
+            if (action->objectName() == "workspaceViewerModeCinemaViewer" || action->text().contains("Cinema Viewer", Qt::CaseInsensitive)) {
+                viewerDiagnostics->capture("command-triggered", action->objectName());
+                const QString name = action->objectName();
+                QTimer::singleShot(0, this, [this, name] { viewerDiagnostics->capture("command-dispatched", name); });
+                QTimer::singleShot(600, this, [this, name] { viewerDiagnostics->capture("command-settled", name); });
+            }
         });
     }
     void scanActions()
     {
+        viewerDiagnostics->scan();
         QJsonArray viewerActions;
         for (auto window : QApplication::topLevelWidgets()) if (window->objectName() == QLatin1String("UiMainWindow"))
             for (auto action : window->findChildren<QAction *>()) {
@@ -194,6 +203,7 @@ private:
         logEvent(QStringLiteral("activation.state"), {{"panels", panels}, {"focus", widgetState(QApplication::focusWidget())},
             {"active_window", widgetState(QApplication::activeWindow())}, {"native_key", nativeKeyWindowNumber()}});
     }
+    ViewerDiagnostics *viewerDiagnostics = nullptr;
     QSet<QAction *> tracked;
     QSet<QAbstractButton *> buttons;
 };

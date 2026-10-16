@@ -425,3 +425,15 @@ Resolve is open. No-GUI layout plans PASS. Archived candidate plus matching dSYM
 4F01ABD5-F231-3F7A-90D9-B320D30FC21D. Working source is committed; installed
 f64c401 and its preserved branch/archive remain unchanged. Fullscreen viewer is
 explicitly unfinished, awaiting the exact native command/shortcut and live trace.
+
+Cinema clarification: the user means Resolve's **Cinema Viewer**, not Enhanced
+Viewer, Full Page Viewer or Full Screen Window. Read-only accessibility inspection
+of the running Workspace > Viewer Mode menu confirms Cinema Viewer enabled and
+Enhanced/Full Page disabled. Shortcut attributes are absent from the accessibility
+menu, so absence there does not mean the user has no native binding.
+Added passive Cinema Viewer diagnostics: QAction dispatch and settled-window
+snapshots, plus runtime-confirmed non-cloned cinema/active/focus player signals.
+Private native methods are never invoked. Mac runtime metadata decides whether a
+signal is connected; old Windows binary names are not assumed to exist on Mac.
+This instrumentation is not a Cinema Viewer fix. Live command testing remains
+pending after the user closes Resolve for GUI checks and a new helper install.
