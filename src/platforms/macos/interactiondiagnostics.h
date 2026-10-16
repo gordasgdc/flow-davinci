@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QAbstractSpinBox>
+#include <QAbstractButton>
 #include <QAction>
 #include <QActionEvent>
 #include <QApplication>
@@ -67,6 +68,8 @@ protected:
                 logEvent(QStringLiteral("input.click.focus-result"), {{"receiver", widgetState(receiver)},
                     {"focus", widgetState(QApplication::focusWidget())}, {"active_window", widgetState(QApplication::activeWindow())}});
             });
+            auto button = qobject_cast<QAbstractButton *>(widget);
+            if (button && (button->text().trimmed() == "Stabilize" || button->text().trimmed() == "Stabilization")) stabilizationContext(button);
         }
         if (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) {
             auto key = static_cast<QKeyEvent *>(event);
@@ -138,6 +141,20 @@ private:
                         {"enabled", action->isEnabled()}, {"shortcut", action->shortcut().toString()}});
             }
         if (!viewerActions.isEmpty()) logEvent(QStringLiteral("input.viewer-actions"), {{"actions", viewerActions}});
+        for (auto window : QApplication::topLevelWidgets()) if (related(window))
+            for (auto button : window->findChildren<QAbstractButton *>())
+                if (button->isVisible() && (button->text().trimmed() == "Stabilize" || button->text().trimmed() == "Stabilization")) stabilizationContext(button);
+    }
+    static void stabilizationContext(QAbstractButton *button)
+    {
+        QJsonArray ancestors;
+        for (auto parent = button->parentWidget(); parent && ancestors.size() < 8; parent = parent->parentWidget()) ancestors.append(widgetState(parent));
+        QJsonArray actions;
+        for (auto window : QApplication::topLevelWidgets()) if (related(window))
+            for (auto action : window->findChildren<QAction *>()) if (action->text().contains("stabil", Qt::CaseInsensitive))
+                actions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()}, {"enabled", action->isEnabled()},
+                    {"shortcut", action->shortcut().toString()}, {"context", int(action->shortcutContext())}});
+        logEvent(QStringLiteral("inspector.stabilization.candidate"), {{"button", widgetState(button)}, {"ancestors", ancestors}, {"actions", actions}});
     }
     void activationState()
     {

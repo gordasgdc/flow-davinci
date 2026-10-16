@@ -69,11 +69,26 @@ int main(int argc, char **argv)
             "snapping supports display edges with negative coordinates");
         check(Unbound::snapWindowFrame(QRect(313, 100, 200, 200), {peer}, {}).x() == 313,
             "snapping does not pull windows outside the threshold");
+        QList<QLine> guides;
+        const auto aligned = Unbound::alignWindowEdges(QRect(106, 1000, 200, 200), {peer}, guides);
+        check(aligned.x() == 100 && aligned.y() == 1000 && !guides.isEmpty() && std::abs(guides.first().dy()) > 1000,
+            "virtual edge guides align separated windows without closing the gap");
+        check(!Unbound::localDockZone(peer, peer.center()).target.isValid(), "docking targets do not appear in panel centers");
+        auto local = Unbound::localDockZone(peer, QPoint(peer.right(), peer.center().y()));
+        check(local.active && local.target.size() == QSize(28, 28) && local.edge == Qt::RightEdge && local.preview.width() == peer.width() / 2,
+            "local target previews only the intended half split");
         Unbound::MacFloatingHost target, moving;
         target.setObjectName("unboundFloating_snapTarget"); moving.setObjectName("unboundFloating_snapMoving");
         target.setGeometry(150, 260, 240, 180); moving.setGeometry(600, 260, 240, 180);
         moving.setChrome(Unbound::WindowChrome::Standard);
         target.show(); moving.show(); settle();
+        int nativeReleases = 0;
+        auto watch = Unbound::watchNativePointerRelease(&moving, [&](bool option) { check(!option, "native release preserves Option state"); ++nativeReleases; });
+        Unbound::postNativePointerReleaseForTest(&moving); settleFor(80);
+        check(nativeReleases == 1, "native Cocoa mouse-up reaches the GUI-thread release fallback");
+        delete watch;
+        Unbound::postNativePointerReleaseForTest(&moving); settleFor(50);
+        check(nativeReleases == 1, "completed drag removes its native event observer");
         const auto drag = [&](Qt::KeyboardModifiers modifiers) {
             const QPoint press = moving.mapToGlobal(QPoint(100, 7));
             const QPoint desiredFrame(target.frameGeometry().right() + 6, target.frameGeometry().top());
@@ -92,6 +107,26 @@ int main(int argc, char **argv)
         check(moving.frameGeometry().left() == target.frameGeometry().right() + 1, "release attaches window edges without frame overlap");
         drag(Qt::AltModifier);
         check(moving.frameGeometry().left() == target.frameGeometry().right() + 6, "Option release preserves unsnapped placement");
+        QWidget unrelated;
+        const auto begin = [&] {
+            const auto point = moving.mapToGlobal(QPoint(100, 7));
+            QMouseEvent press(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(point), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(&moving, &press); return point;
+        };
+        auto point = begin();
+        QMouseEvent otherRelease(QEvent::MouseButtonRelease, QPointF(), QPointF(point + QPoint(30, 15)), Qt::LeftButton, Qt::NoButton, Qt::AltModifier);
+        QApplication::sendEvent(&unrelated, &otherRelease);
+        const auto releasedGeometry = moving.geometry();
+        QMouseEvent staleMove(QEvent::MouseMove, QPointF(), QPointF(point + QPoint(80, 50)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(&moving, &staleMove);
+        check(QWidget::mouseGrabber() != &moving && moving.geometry() == releasedGeometry, "left release through another window ends drag without a right click");
+        point = begin();
+        QMouseEvent missedRelease(QEvent::MouseMove, QPointF(), QPointF(point), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(&unrelated, &missedRelease);
+        check(QWidget::mouseGrabber() != &moving, "missing mouse-up is recovered when left button is no longer held");
+        begin(); QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(&unrelated, &escape);
+        check(QWidget::mouseGrabber() != &moving, "Escape cancels capture from any receiver");
     }
     {
         QWidget page;
@@ -236,6 +271,20 @@ int main(int argc, char **argv)
         check(!sourceDock->isEnabled() && !programDock->isEnabled(), "inactive Dock buttons are disabled");
         sourceUndock->click(); settle();
         check(sourceDock->isEnabled() && !sourceUndock->isEnabled() && !programDock->isEnabled(), "only detached panel enables Dock");
+        check(!(Unbound::nativeVisibilityFlags(source->window()) & 2), "native tool panels do not auto-hide on application deactivation");
+        auto hideBackground = controls.findChild<QCheckBox *>("hideResolveBackground");
+        controls.activateWindow(); settle(); const auto backgroundKey = Unbound::nativeKeyWindowNumber();
+        hideBackground->setChecked(true); settle();
+        check(!(Unbound::nativeVisibilityFlags(&main) & 1) && (Unbound::nativeVisibilityFlags(source->window()) & 1) && main.isVisible(),
+            "background hides natively while detached panel and Qt page ownership remain alive");
+        check(Unbound::nativeKeyWindowNumber() == backgroundKey, "background hiding preserves the active controls key window");
+        hideBackground->setChecked(false); settle(); check(Unbound::nativeVisibilityFlags(&main) & 1, "background can be explicitly recalled");
+        source->window()->move(20000, -20000);
+        controls.findChild<QPushButton *>("hide_widgetEditSourcePlayer")->click();
+        controls.findChild<QPushButton *>("center_widgetEditSourcePlayer")->click(); settle();
+        auto rescueScreen = QGuiApplication::screenAt(QCursor::pos()); if (!rescueScreen) rescueScreen = QGuiApplication::primaryScreen();
+        check(source->window()->isVisible() && rescueScreen->availableGeometry().contains(source->window()->frameGeometry()),
+            "Center recalls a hidden off-screen panel into the current viewport");
         programDock->click();
         check(source->parentWidget() != stack, "unrelated Dock cannot claim or change source state");
         sourceDock->click(); settle();
@@ -298,15 +347,16 @@ int main(int argc, char **argv)
         auto targetProgram = program->window();
         draggedSource->setGeometry(40, 300, 320, 240); targetProgram->setGeometry(420, 300, 320, 240); settle();
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
-        const QPoint desiredFrame(targetProgram->frameGeometry().right() + 6, targetProgram->frameGeometry().top());
-        const QPoint delta = desiredFrame - draggedSource->frameGeometry().topLeft();
+        const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
+        const QPoint delta = dockPointer - press;
         QMouseEvent down(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(press), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &down);
         QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &move);
         auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
-        check(attachmentPreview && attachmentPreview->isVisible() && attachmentPreview->width() > draggedSource->width(),
-            "panel attachment preview covers the proposed shared group");
+        auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
+        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(28, 28),
+            "panel attachment shows one small local target and proposed split");
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &up); settle(); settle();
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
@@ -579,6 +629,18 @@ int main(int argc, char **argv)
         const auto modalOrder = Unbound::nativeOrderedWindowNumbers(); hierarchy.apply();
         check(Unbound::nativeOrderedWindowNumbers() == modalOrder, "modal export/dialog order is respected");
         dialog.hide();
+        QWidget relay; relay.setObjectName("relayWorkflowIntegration");
+        auto field = new QLineEdit(&relay); auto relayLayout = new QVBoxLayout(&relay); relayLayout->addWidget(field);
+        relay.show(); activate(&relay); field->setFocus(); settle(); key = Unbound::nativeKeyWindowNumber();
+        hierarchy.apply();
+        check(ahead(&relay, &source) && ahead(&relay, &timeline) && key == Unbound::nativeKeyWindowNumber() && QApplication::focusWidget() == field,
+            "unmanaged Workflow window remains above workspace without losing text focus");
+        QKeyEvent type(QEvent::KeyPress, Qt::Key_Q, Qt::NoModifier, "q"); QApplication::sendEvent(field, &type);
+        check(field->text() == "q", "Workflow window retains text input after workspace ordering");
+        QWidget group; group.setObjectName("unboundFloating_group_media_viewer"); group.show(); settle();
+        pool.show(); activate(&pool); hierarchy.apply();
+        check(ahead(&pool, &group), "inactive mixed group does not permanently dominate another sidebar");
+        activate(&group); hierarchy.apply(); check(ahead(&group, &pool), "active group follows normal activation within its tier");
     }
     settle();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));

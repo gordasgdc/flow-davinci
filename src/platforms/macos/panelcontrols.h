@@ -30,7 +30,7 @@ class PanelControls : public QWidget
         bool contents = false, desired = false, pending = false;
         unsigned requestVersion = 0;
         Unbound::MacPanelSession *session = nullptr;
-        QPushButton *undock = nullptr, *dock = nullptr, *show = nullptr, *hide = nullptr, *expand = nullptr;
+        QPushButton *undock = nullptr, *dock = nullptr, *show = nullptr, *hide = nullptr, *expand = nullptr, *center = nullptr;
         QJsonObject saved = {};
     };
 public:
@@ -77,6 +77,14 @@ public:
         snap->setObjectName(QStringLiteral("snapWindows"));
         snap->setChecked(settings.data["snap_windows"].toBool(true));
         options->addWidget(snap);
+        background = new QCheckBox(QStringLiteral("Hide empty Resolve background"), this);
+        background->setObjectName(QStringLiteral("hideResolveBackground"));
+        background->setChecked(settings.data["hide_background"].toBool()); options->addWidget(background);
+        connect(background, &QCheckBox::toggled, this, [this](bool hidden) {
+            action(QStringLiteral("background-visibility"));
+            if (!applyBackgroundVisibility(hidden)) { const QSignalBlocker blocker(background); background->setChecked(!hidden); }
+            save();
+        });
         connect(snap, &QCheckBox::toggled, this, [this](bool enabled) {
             action(QStringLiteral("snap-windows"));
             for (auto &panel : panels) panel.session->setSnapping(enabled);
@@ -144,7 +152,7 @@ public:
                 else if (i == 5) quickExport();
                 else for (auto &panel : panels) if (panel.session->active()) {
                     if (i == 2 || i == 3) panel.session->setHiddenByUser(i == 3);
-                    else panel.session->bringOnScreen();
+                    else panel.session->centerOnCurrentDisplay();
                 }
                 save();
             });
@@ -166,7 +174,7 @@ public:
         const QJsonObject savedPanels = settings.data["panels"].toObject();
         pendingGroups = settings.data["groups"].toArray();
         nativeMenus = new Unbound::PanelMenus(this);
-        auto groupBox = new QGroupBox(QStringLiteral("Join two panels"), body);
+        auto groupBox = new QGroupBox(QStringLiteral("Join panels or their groups"), body);
         auto groupLayout = new QGridLayout(groupBox);
         auto firstPanel = new QComboBox(groupBox), secondPanel = new QComboBox(groupBox);
         firstPanel->setObjectName(QStringLiteral("groupFirst")); secondPanel->setObjectName(QStringLiteral("groupSecond"));
@@ -183,14 +191,11 @@ public:
                 const int a = firstPanel->currentIndex(), b = secondPanel->currentIndex();
                 if (a == b) { status->setText(QStringLiteral("Choose two different panels.")); return; }
                 restoreExpanded();
-                if (panels[a].session->grouped() || panels[b].session->grouped()) {
-                    status->setText(QStringLiteral("Release their existing groups first.")); return;
-                }
                 requestUndock(a, true); requestUndock(b, true);
                 const unsigned request = ++groupVersion;
                 QTimer::singleShot(100, this, [this, a, b, i, request] {
                     if (request != groupVersion) return;
-                    const auto error = createGroup(a, b, i == 0 ? Qt::Horizontal : Qt::Vertical);
+                    const auto error = combinePanels(a, b, i == 0 ? Qt::Horizontal : Qt::Vertical);
                     status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag the group grip; resize the shared divider.") : error);
                     save();
                 });
@@ -206,18 +211,7 @@ public:
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
             panel.session->attachRequested = [this, i](QWidget *target, Qt::Edge edge) {
-                if (quitting || QApplication::activeModalWidget() || expanded >= 0 || !panels[i].session->active()) return;
-                for (int j = 0; j < panels.size(); ++j) if (j != i && panels[j].session->window() == target) {
-                    if (panels[i].session->grouped() || panels[j].session->grouped()) return;
-                    const QRect frame = panels[i].session->window()->frameGeometry().united(target->frameGeometry());
-                    const bool before = edge == Qt::LeftEdge || edge == Qt::TopEdge;
-                    const auto error = createGroup(before ? i : j, before ? j : i,
-                        edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical);
-                    if (error.isEmpty()) groups.last()->fitFrame(frame);
-                    status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
-                    Unbound::logEvent(QStringLiteral("group.drop.result"), {{"success", error.isEmpty()}, {"error", error}});
-                    save(); return;
-                }
+                attachDrop(i, target, edge);
             };
             nativeMenus->add({panel.name, [this, i] { return panels[i].session->active(); },
                 [this, i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); }});
@@ -230,6 +224,8 @@ public:
             panel.show = new QPushButton(QStringLiteral("Show"), this);
             panel.hide = new QPushButton(QStringLiteral("Hide"), this);
             panel.expand = new QPushButton(QStringLiteral("Expand"), this);
+            panel.center = new QPushButton(QStringLiteral("Center"), this);
+            panel.center->setObjectName(QStringLiteral("center_") + panel.name);
             panel.expand->setObjectName(QStringLiteral("expand_") + panel.name);
             panel.undock->setObjectName(QStringLiteral("undock_") + panel.name);
             panel.dock->setObjectName(QStringLiteral("dock_") + panel.name);
@@ -238,6 +234,7 @@ public:
             grid->addWidget(panel.undock, i, 1); grid->addWidget(panel.dock, i, 2);
             grid->addWidget(panel.show, i, 3); grid->addWidget(panel.hide, i, 4);
             grid->addWidget(panel.expand, i, 5);
+            grid->addWidget(panel.center, i, 6);
             panel.session->changed = [this, i] {
                 if (expanded == i && !panels[i].session->active()) expanded = -1;
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
@@ -249,6 +246,7 @@ public:
             connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); panels[i].session->setHiddenByUser(false); });
             connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); panels[i].session->setHiddenByUser(true); });
             connect(panel.expand, &QPushButton::clicked, this, [this, i] { toggleExpanded(i); });
+            connect(panel.center, &QPushButton::clicked, this, [this, i] { action("center", panels[i].label); panels[i].session->centerOnCurrentDisplay(); });
             updateRow(i);
         }
         bodyLayout->addStretch();
@@ -305,6 +303,19 @@ private:
         result.remove(QStringLiteral("selected_arrangement"));
         return result;
     }
+    static QJsonObject normalizedArrangement(QJsonObject value)
+    {
+        value["hide_background"] = value.value("hide_background").toBool();
+        value["snap_windows"] = value.value("snap_windows").toBool(true);
+        QJsonArray layouts;
+        for (auto saved : value.value("groups").toArray()) {
+            auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
+            QStringList names; Unbound::groupTreeNames(tree, names);
+            group["tree"] = tree; group["panels"] = QJsonArray::fromStringList(names);
+            group.remove("orientation"); group.remove("sizes"); layouts.append(group);
+        }
+        value["groups"] = layouts; return value;
+    }
     void reloadPresets(const QString &selected = {})
     {
         const QSignalBlocker blocker(presets);
@@ -321,7 +332,7 @@ private:
         const auto saved = arrangements.find(presets->currentData().toString());
         presetState->setText(!arrangements.error().isEmpty() ? arrangements.error() : saved.isEmpty() ?
             QStringLiteral("Current layout is not saved as a preset.") :
-            saved["workspace"].toObject() == arrangement() ? QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
+            normalizedArrangement(saved["workspace"].toObject()) == normalizedArrangement(arrangement()) ? QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
         presetState->setWordWrap(true);
     }
     void manageArrangement(const QString &operation)
@@ -366,6 +377,7 @@ private:
             Unbound::logEvent(QStringLiteral("arrangement.restore.failed"), {{"panel", panel.name}}); return;
         }
         const auto value = entry["workspace"].toObject();
+        { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
         pendingGroups = value["groups"].toArray();
         pin->setChecked(value["pin_controls"].toBool());
         constrain->setChecked(value["keep_on_screen"].toBool(true));
@@ -401,6 +413,7 @@ private:
         p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
         p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
         p.expand->setEnabled(!p.session->grouped());
+        p.center->setEnabled(active);
     }
     void toggleExpanded(int i)
     {
@@ -510,22 +523,66 @@ private:
         if (error.isEmpty()) p.desired = false;
         outcome("dock", i, error); updateRow(i); save();
     }
-    void dockAll() { ++groupVersion; pendingGroups = {}; for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
+    void dockAll() { background->setChecked(false); ++groupVersion; pendingGroups = {}; for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
+    bool applyBackgroundVisibility(bool hidden)
+    {
+        auto root = page(); if (!root) return !hidden;
+        QList<QWidget *> floating;
+        for (auto widget : QApplication::topLevelWidgets()) if (widget->isVisible() && widget->objectName().startsWith("unboundFloating_")) floating.append(widget);
+        if (hidden && floating.isEmpty()) { status->setText(QStringLiteral("Undock a panel before hiding the background.")); return false; }
+        const bool success = Unbound::setNativeBackgroundHidden(root->window(), floating, hidden);
+        Unbound::logEvent(QStringLiteral("background.visibility"), {{"hidden", hidden}, {"success", success}});
+        if (!success) status->setText(QStringLiteral("Could not hide the background independently; it remains visible."));
+        return success;
+    }
     QString createGroup(int a, int b, Qt::Orientation orientation, const QJsonObject &saved = {})
     {
         auto group = new Unbound::PanelGroup(this);
         const auto error = group->join(panels[a].session, panels[b].session, orientation);
         if (!error.isEmpty()) { delete group; return error; }
+        configureGroup(group);
+        if (!saved.isEmpty()) group->restore(saved);
+        return {};
+    }
+    void configureGroup(Unbound::PanelGroup *group)
+    {
         groups.append(group);
         group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
         group->setSnapping(snap->isChecked());
-        if (!saved.isEmpty()) group->restore(saved);
+        group->attachRequested = [this, group](QWidget *target, Qt::Edge edge) {
+            for (int i = 0; i < panels.size(); ++i) if (group->contains(panels[i].session)) { attachDrop(i, target, edge); return; }
+        };
         group->changed = [this] {
             for (int i = 0; i < panels.size(); ++i) updateRow(i);
             if (!quitting) saveTimer.start();
         };
         for (int i = 0; i < panels.size(); ++i) updateRow(i);
-        return {};
+    }
+    Unbound::PanelGroup *groupFor(int panel) const
+    { for (auto group : groups) if (group->contains(panels[panel].session)) return group; return nullptr; }
+    QString combinePanels(int a, int b, Qt::Orientation orientation, bool before = true, const QString &targetLeaf = {})
+    {
+        auto left = groupFor(a), right = groupFor(b);
+        if (left && left == right) return QStringLiteral("Those panels already share a group.");
+        if (right && left) return right->merge(left, orientation, before, targetLeaf);
+        if (right) return right->add(panels[a].session, orientation, before, targetLeaf);
+        if (left) return left->add(panels[b].session, orientation, !before);
+        return before ? createGroup(a, b, orientation) : createGroup(b, a, orientation);
+    }
+    void attachDrop(int source, QWidget *target, Qt::Edge edge)
+    {
+        if (quitting || QApplication::activeModalWidget() || expanded >= 0 || !panels[source].session->active()) return;
+        for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
+            (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
+            if (groupFor(source) && groupFor(source) == groupFor(j)) return;
+            const auto frame = target->window()->frameGeometry();
+            const auto error = combinePanels(source, j, edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
+                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name);
+            if (error.isEmpty()) if (auto group = groupFor(source)) group->fitFrame(frame);
+            status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
+            Unbound::logEvent(QStringLiteral("group.drop.result"), {{"success", error.isEmpty()}, {"error", error}});
+            save(); return;
+        }
     }
     void releaseGroups()
     {
@@ -538,18 +595,16 @@ private:
         const bool requested = !pendingGroups.isEmpty();
         for (int index = pendingGroups.size() - 1; index >= 0; --index) {
             const auto saved = pendingGroups[index].toObject();
-            const auto members = saved["panels"].toArray();
-            if (members.size() != 2) { pendingGroups.removeAt(index); continue; }
-            int a = -1, b = -1;
-            for (int i = 0; i < panels.size(); ++i) {
-                if (panels[i].name == members[0].toString()) a = i;
-                if (panels[i].name == members[1].toString()) b = i;
-            }
-            if (a < 0 || b < 0 || a == b) continue;
-            if (!panels[a].session->active() || !panels[b].session->active()) continue;
-            const auto error = createGroup(a, b, saved["orientation"] == "vertical" ? Qt::Vertical : Qt::Horizontal, saved);
-            if (error.isEmpty()) pendingGroups.removeAt(index);
-            else Unbound::logEvent(QStringLiteral("group.restore.pending"), {{"error", error}});
+            const auto tree = Unbound::PanelGroup::savedTree(saved); QStringList names;
+            if (!Unbound::groupTreeNames(tree, names)) { status->setText(QStringLiteral("Invalid saved group layout; left unchanged.")); continue; }
+            QList<Unbound::MacPanelSession *> available;
+            for (const auto &name : names) for (const auto &panel : panels)
+                if (panel.name == name && panel.session->active() && !panel.session->grouped()) available.append(panel.session);
+            if (available.size() != names.size()) continue;
+            auto group = new Unbound::PanelGroup(this);
+            const auto error = group->initialize(available, tree, Unbound::WorkspaceSettings::rectangle(saved));
+            if (error.isEmpty()) { configureGroup(group); group->restore(saved); pendingGroups.removeAt(index); }
+            else { delete group; Unbound::logEvent(QStringLiteral("group.restore.pending"), {{"error", error}}); }
         }
         if (requested) status->setText(pendingGroups.isEmpty() ? QStringLiteral("Panel groups restored.") : QStringLiteral("Some groups are waiting for unavailable panels."));
         save();
@@ -577,6 +632,7 @@ private:
         for (int i = 0; i < panels.size(); ++i)
             if (panels[i].desired && !panels[i].session->active()) requestUndock(i, true);
         if (!pendingGroups.isEmpty()) QTimer::singleShot(120, this, [this] { restoreGroups(); });
+        if (background->isChecked()) QTimer::singleShot(200, this, [this] { if (!quitting && background->isChecked()) applyBackgroundVisibility(true); });
     }
     void rescue()
     {
@@ -601,6 +657,7 @@ private:
         QJsonArray savedGroups = pendingGroups;
         for (auto group : groups) if (group->active()) savedGroups.append(group->snapshot());
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
+            {"hide_background", background->isChecked()},
             {"selected_arrangement", presets->currentData().toString()},
             {"window_chrome", style->currentIndex()},
             {"panel_hierarchy", hierarchyOption->isChecked()},
@@ -615,11 +672,13 @@ private:
     {
         if (quitting) return;
         save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
+        if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
     QLabel *status = nullptr;
     QCheckBox *pin = nullptr, *constrain = nullptr;
     QCheckBox *snap = nullptr;
+    QCheckBox *background = nullptr;
     QComboBox *style = nullptr;
     QCheckBox *hierarchyOption = nullptr;
     Unbound::WindowHierarchy *hierarchy = nullptr;

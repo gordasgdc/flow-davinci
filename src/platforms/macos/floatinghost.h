@@ -2,6 +2,8 @@
 #pragma once
 #include <QApplication>
 #include <QMouseEvent>
+#include <QKeyEvent>
+#include <QLabel>
 #include <QPainter>
 #include "nativechrome.h"
 #include "windowsnap.h"
@@ -9,6 +11,7 @@
 #include <QScreen>
 #include <QPointer>
 #include <QTimer>
+#include <QCursor>
 #include <functional>
 
 namespace Unbound {
@@ -39,7 +42,7 @@ public:
         setMouseTracking(true);
         setAutoFillBackground(true);
     }
-    ~MacFloatingHost() override { if (qApp) qApp->removeEventFilter(this); }
+    ~MacFloatingHost() override { delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
     void setChrome(WindowChrome value)
     {
         const bool visible = isVisible();
@@ -53,15 +56,22 @@ public:
         if (position.isValid()) setGeometry(position);
         update();
     }
-    void setSnapping(bool enabled) { snapping = enabled; if (!enabled) { attachmentTarget = nullptr; snapPosition = {}; if (preview) preview->hide(); } }
+    void setSnapping(bool enabled) { snapping = enabled; if (!enabled) { attachmentTarget = nullptr; snapPosition = {}; hidePreviews(); } }
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
+    void beginPointerDrag(const QPoint &global, bool continuing = false)
+    {
+        snapPosition = {}; attachmentTarget = nullptr;
+        dragging = true; movedEnough = continuing; start = global; startGeometry = geometry(); grabMouse();
+        delete releaseWatch.data();
+        releaseWatch = watchNativePointerRelease(this, [this](bool option) {
+            if (dragging) { movePointerDrag(QCursor::pos(), option); finishPointerDrag(option, false, "native-mouse-up"); }
+        });
+        logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}});
+    }
 protected:
     void hideEvent(QHideEvent *event) override
     {
-        if (preview) preview->hide();
-        snapPosition = {};
-        attachmentTarget = nullptr;
-        if (dragging) { dragging = false; releaseMouse(); }
+        if (dragging) finishPointerDrag(true, true, "hidden");
         QWidget::hideEvent(event);
     }
     void paintEvent(QPaintEvent *event) override
@@ -76,6 +86,23 @@ protected:
     }
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        if (dragging && (event->type() == QEvent::ApplicationDeactivate || event->type() == QEvent::WindowDeactivate)) {
+            if (event->type() == QEvent::ApplicationDeactivate || object == this) finishPointerDrag(true, true, "deactivated");
+        }
+        if (dragging && event->type() == QEvent::KeyPress && static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {
+            setGeometry(startGeometry); finishPointerDrag(true, true, "escape"); return true;
+        }
+        if (dragging && event->type() == QEvent::MouseButtonRelease && static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
+            auto mouse = static_cast<QMouseEvent *>(event);
+            const bool option = mouse->modifiers().testFlag(Qt::AltModifier);
+            movePointerDrag(mouse->globalPos(), option); finishPointerDrag(option, false, "qt-mouse-up"); return true;
+        }
+        if (dragging && event->type() == QEvent::MouseMove) {
+            auto mouse = static_cast<QMouseEvent *>(event);
+            if (!mouse->buttons().testFlag(Qt::LeftButton)) { finishPointerDrag(mouse->modifiers().testFlag(Qt::AltModifier), false, "button-no-longer-down"); return false; }
+            movePointerDrag(mouse->globalPos(), mouse->modifiers().testFlag(Qt::AltModifier));
+            return true;
+        }
         auto widget = qobject_cast<QWidget *>(object);
         if (!widget || widget->window() != this) return false;
         if (event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseButtonRelease && event->type() != QEvent::MouseMove)
@@ -91,41 +118,43 @@ protected:
         }
         const bool grip = widget == this && point.y() >= 4 && point.y() < contentsMargins().top();
         if (event->type() == QEvent::MouseButtonPress && mouse->button() == Qt::LeftButton && (edges || grip)) {
-            snapPosition = {}; attachmentTarget = nullptr;
-            dragging = true; dragEdges = edges; start = mouse->globalPos(); startGeometry = geometry(); grabMouse(); return true;
-        }
-        if (dragging && event->type() == QEvent::MouseMove) {
-            const QPoint delta = mouse->globalPos() - start;
-            if (dragEdges) setGeometry(resizeFromEdge(startGeometry, delta, dragEdges,
-                minimumSize().expandedTo(minimumSizeHint()).expandedTo(QSize(80, 40)), maximumSize()));
-            else {
-                const QRect desired(startGeometry.topLeft() + delta, size());
-                setGeometry(desired);
-                previewSnap(desired, mouse->modifiers().testFlag(Qt::AltModifier));
-            }
-            return true;
-        }
-        if (dragging && event->type() == QEvent::MouseButtonRelease) {
-            const auto target = attachmentTarget;
-            const auto edge = attachmentEdge;
-            const bool attach = target && attachRequested && snapping && !mouse->modifiers().testFlag(Qt::AltModifier);
-            if (!dragEdges && snapping && !mouse->modifiers().testFlag(Qt::AltModifier) && snapPosition.isValid()) {
-                setGeometry(snapPosition);
-                logEvent(QStringLiteral("window.snap"), {{"window", objectName()}, {"x", x()}, {"y", y()}});
-            }
-            if (preview) preview->hide();
-            snapPosition = {}; attachmentTarget = nullptr; dragging = false; releaseMouse();
-            if (attach) QTimer::singleShot(0, this, [this, target, edge] { if (target && attachRequested) attachRequested(target, edge); });
-            return true;
+            dragEdges = edges; beginPointerDrag(mouse->globalPos()); return true;
         }
         return false;
     }
 private:
+    void movePointerDrag(const QPoint &global, bool bypass)
+    {
+        dragPointer = global;
+        const QPoint delta = global - start;
+        movedEnough |= delta.manhattanLength() >= QApplication::startDragDistance();
+        if (dragEdges) setGeometry(resizeFromEdge(startGeometry, delta, dragEdges,
+            minimumSize().expandedTo(minimumSizeHint()).expandedTo(QSize(80, 40)), maximumSize()));
+        else {
+            const QRect desired(startGeometry.topLeft() + delta, size());
+            setGeometry(desired);
+            if (movedEnough) previewSnap(desired, bypass);
+            else { snapPosition = {}; attachmentTarget = nullptr; hidePreviews(); }
+        }
+    }
+    void finishPointerDrag(bool bypass, bool cancelled, const QString &reason)
+    {
+        const auto target = attachmentTarget;
+        const auto edge = attachmentEdge;
+        const bool attach = !cancelled && movedEnough && !dragEdges && target && attachRequested && snapping && !bypass;
+        if (!cancelled && !dragEdges && snapping && !bypass && snapPosition.isValid()) setGeometry(snapPosition);
+        dragging = false; dragEdges = {}; snapPosition = {}; attachmentTarget = nullptr;
+        delete releaseWatch.data(); releaseWatch = nullptr;
+        hidePreviews();
+        if (QWidget::mouseGrabber() == this) releaseMouse();
+        logEvent(QStringLiteral("drag.end"), {{"window", objectName()}, {"reason", reason}, {"cancelled", cancelled}, {"attach", attach}});
+        if (attach) QTimer::singleShot(0, this, [this, target, edge] { if (target && attachRequested) attachRequested(target, edge); });
+    }
     void previewSnap(const QRect &desired, bool bypass)
     {
         snapPosition = {};
         attachmentTarget = nullptr;
-        if (!snapping || bypass) { if (preview) preview->hide(); return; }
+        if (!snapping || bypass) { hidePreviews(); return; }
         const QRect currentFrame = frameGeometry();
         const QPoint offset = currentFrame.topLeft() - geometry().topLeft();
         const QSize decoration = currentFrame.size() - size();
@@ -136,24 +165,54 @@ private:
                 (window->objectName().startsWith("unboundFloating_") || window->objectName() == "UiMainWindow"))
                 targets.append(window->frameGeometry());
         for (auto screen : QGuiApplication::screens()) displays.append(screen->availableGeometry());
-        const QRect snapped = snapWindowFrame(proposed, targets, displays);
+        QList<QLine> alignment;
+        const QRect snapped = alignWindowEdges(snapWindowFrame(proposed, targets, displays), targets, alignment);
+        for (int i = 0; i < 2; ++i) {
+            if (i >= alignment.size()) { if (guideWidgets[i]) guideWidgets[i]->hide(); continue; }
+            if (!guideWidgets[i]) {
+                guideWidgets[i] = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
+                guideWidgets[i]->setObjectName(QStringLiteral("unboundAlignmentGuide"));
+                guideWidgets[i]->setAttribute(Qt::WA_ShowWithoutActivating); guideWidgets[i]->setAttribute(Qt::WA_TransparentForMouseEvents);
+                guideWidgets[i]->setStyleSheet(QStringLiteral("background:#6582a0;"));
+            }
+            const auto line = alignment[i];
+            guideWidgets[i]->setGeometry(QRect(line.p1(), line.p2()).normalized().adjusted(0, 0, 1, 1));
+            guideWidgets[i]->show(); guideWidgets[i]->raise();
+        }
         snapPosition = QRect(snapped.topLeft() - offset, desired.size());
         QRect outline = snapped;
+        DockZone chosen;
+        int closest = 100000;
         if (attachRequested) for (auto candidate : QApplication::topLevelWidgets()) {
             if (candidate == this || !candidate->isVisible() || candidate->isMinimized() ||
-                !candidate->objectName().startsWith("unboundFloating_") || candidate->objectName().startsWith("unboundFloating_group_")) continue;
-            const auto frame = candidate->frameGeometry();
-            const int overlapY = qMin(frame.bottom(), snapped.bottom()) - qMax(frame.top(), snapped.top()) + 1;
-            const int overlapX = qMin(frame.right(), snapped.right()) - qMax(frame.left(), snapped.left()) + 1;
-            if (overlapY > qMin(frame.height(), snapped.height()) / 2 &&
-                (snapped.right() + 1 == frame.left() || snapped.left() == frame.right() + 1)) {
-                attachmentEdge = snapped.right() + 1 == frame.left() ? Qt::LeftEdge : Qt::RightEdge;
-            } else if (overlapX > qMin(frame.width(), snapped.width()) / 2 &&
-                (snapped.bottom() + 1 == frame.top() || snapped.top() == frame.bottom() + 1)) {
-                attachmentEdge = snapped.bottom() + 1 == frame.top() ? Qt::TopEdge : Qt::BottomEdge;
-            } else continue;
-            attachmentTarget = candidate; outline = snapped.united(frame); break;
+                !candidate->objectName().startsWith("unboundFloating_")) continue;
+            QList<QWidget *> surfaces{candidate};
+            for (auto child : candidate->findChildren<QWidget *>())
+                if (child->objectName().startsWith("unboundGroupCell_") && child->isVisible()) surfaces.append(child);
+            for (auto slot : surfaces) {
+                const auto frame = slot->isWindow() ? slot->frameGeometry() : QRect(slot->parentWidget()->mapToGlobal(QPoint()), slot->parentWidget()->size());
+                const auto zone = localDockZone(frame, dragPointer);
+                if (!zone.target.isValid()) continue;
+                const int distance = (zone.target.center() - dragPointer).manhattanLength() +
+                    (frame.contains(dragPointer) ? 0 : 1000) + (slot == candidate && surfaces.size() > 1 ? 50 : 0);
+                if (distance >= closest) continue;
+                closest = distance; chosen = zone;
+                attachmentTarget = zone.active ? slot : nullptr;
+            }
         }
+        if (chosen.target.isValid()) {
+            if (!dropMarker) {
+                auto label = new QLabel(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
+                label->setObjectName(QStringLiteral("unboundDockTarget")); label->setAlignment(Qt::AlignCenter);
+                label->setAttribute(Qt::WA_ShowWithoutActivating); label->setAttribute(Qt::WA_TransparentForMouseEvents);
+                label->setStyleSheet(QStringLiteral("background:#34475b; color:white; border:1px solid #80a5c9; border-radius:4px;"));
+                dropMarker = label;
+            }
+            static_cast<QLabel *>(dropMarker)->setText(chosen.edge == Qt::LeftEdge ? QString::fromUtf8("←") : chosen.edge == Qt::RightEdge ? QString::fromUtf8("→") : chosen.edge == Qt::TopEdge ? QString::fromUtf8("↑") : QString::fromUtf8("↓"));
+            dropMarker->setGeometry(chosen.target); dropMarker->show(); dropMarker->raise();
+            attachmentEdge = chosen.edge;
+            if (chosen.active) outline = chosen.preview;
+        } else if (dropMarker) dropMarker->hide();
         if (snapped == proposed && !attachmentTarget) { if (preview) preview->hide(); return; }
         if (!preview) {
             preview = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
@@ -163,16 +222,23 @@ private:
             preview->setStyleSheet(QStringLiteral("background: rgba(80,140,210,45); border: 2px solid #5099df;"));
         }
         preview->setGeometry(outline); preview->show(); preview->raise();
+        if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
     }
+    void hidePreviews() { if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
     WindowChrome chrome = WindowChrome::Standard;
     bool snapping = true;
     QWidget *preview = nullptr;
+    QWidget *dropMarker = nullptr;
+    QWidget *guideWidgets[2] = {nullptr, nullptr};
+    QPoint dragPointer;
     QRect snapPosition;
     QPointer<QWidget> attachmentTarget;
     Qt::Edge attachmentEdge = Qt::LeftEdge;
     bool dragging = false;
+    bool movedEnough = false;
     Qt::Edges dragEdges;
     QPoint start;
     QRect startGeometry;
+    QPointer<QObject> releaseWatch;
 };
 }

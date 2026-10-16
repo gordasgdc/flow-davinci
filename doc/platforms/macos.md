@@ -34,7 +34,7 @@ Index, Effects, Metadata, Mixer, Sound Library and Keyframes. These sidebars tra
 keeping the native outer slot in place. Undock All initializes hidden sidebars
 through their native toolbar toggles. Source still requires dual-viewer mode.
 
-The continuation branch `macos-arrangements-and-docking` adds a named arrangement
+The preserved branch `macos-arrangements-and-docking` adds a named arrangement
 selector and Restore button. Manage offers Save As, Update, Rename, Duplicate and
 Delete. Selecting a preset does not move windows until Restore is pressed. Update
 explicitly replaces that preset with the current workspace; window movements only
@@ -70,7 +70,8 @@ both panels to preview joining them. Release to create one native group window
 with a horizontal or vertical splitter. Move the group by its title/grip and
 resize the shared divider. Join two panels in the scrolling controls also offers
 Side by Side and Stack, defaulting to Source/Program. Any two available panels
-can form a pair; nested groups and adding a third member are not implemented.
+can form a pair in that checkpoint. The continuation branch
+`macos-docking-layouts-v2` replaces the pair limit with nested split trees.
 Each member has a draggable title and Detach button. A tear-off keeps the pointer
 anchored to the panel, then follows it directly until release. Release Groups
 restores standalone positions; member detachment places the released panels near
@@ -79,8 +80,44 @@ the last workspace and named presets. Group close docks both members; docking
 one member first releases the pair and leaves the other floating. Groups follow
 Edit-page visibility and the highest member's hierarchy tier. Individual Expand
 is disabled while grouped; temporary group-aware maximization remains pending.
-Attachment after a tear-off currently needs a new grip drag. Real viewer GPU
-rendering, playback responsiveness and native shortcuts still need live checks.
+The v2 branch keeps tear-off in the same drag handler, including attachment and
+Option bypass after detachment. Real viewer GPU rendering, multicam playback,
+physical drag feel and native shortcuts still need live checks.
+
+In v2, a single 28-pixel docking target appears near the hovered edge. Enter it to
+preview the proposed half split; release to attach. Inside a group, the target
+belongs to the individual panel under the pointer. A group's outer edge targets
+the whole group. Dragging one group onto another merges their split trees into
+one native host. Controls can also join the groups containing the selected panels.
+Removing one member collapses its empty split while keeping the remaining group.
+Saved trees preserve nested orientations and divider sizes; original pair presets
+load without conversion of the named preset file. Only explicit Update rewrites a
+named preset. Distant edge guides help align windows across gaps without joining
+them. Option bypasses guides, snapping and attachment. Native title-bar motion
+still moves a whole group without attachment targets; use the Unbound grip to dock.
+
+Drag release is handled regardless of which Qt window receives mouse-up. A native
+Cocoa mouse-up observer supplies a GUI-thread fallback; Escape, lost left-button
+state and deactivation clear capture and previews. Diagnostics record drag.begin
+and drag.end with the completion/cancellation reason. Native monitor tests post
+an application-local mouse-up, rather than system mouse input.
+
+Hide empty Resolve background orders out only the native main window, retaining
+Qt page ownership and the detached panels. Uncheck it to recover the background;
+Dock All also reveals it. The option persists in workspaces/presets. If controls
+are hidden, relaunch them through Unbound.app. This is independent background
+hiding, not macOS application minimization. Floating tool panels no longer hide
+on application deactivation and retain normal native window level. Mixed groups
+use normal group activation ordering rather than inheriting the viewer's highest
+tier. Unmanaged active Workflow windows remain above workspace ordering, with
+text focus preserved. Actual Relay switching needs live verification.
+
+Center on each panel recalls it onto the display under the pointer. A grouped
+panel centers the shared host. Recover Windows centers and recalls all active
+panels, including previously hidden panels. Automatic display recovery still
+keeps windows within available work areas without changing user-hidden choices.
+Stabilization remains an investigation: inspector.stabilization.candidate logs
+visible native button ancestry and matching actions without invoking them.
 
 The last arrangement is saved atomically in
 `~/Library/Application Support/Unbound/Workspace.json`. Floating state, user-hidden
@@ -166,8 +203,8 @@ changes, project closure and repeated launches remain required checks.
 ## Remaining work
 
 Validate the current candidate in a fresh Resolve process: viewer rendering,
-page scope/shortcuts, shared groups and recovery. Remaining work includes nested
-groups, group-aware maximize, native title-bar attachment previews, Timeline
+page scope/shortcuts, nested groups, Relay ordering and background/window recovery.
+Remaining work includes group-aware maximize, native title-bar attachment previews, Timeline
 header controls, interface scaling feasibility, Retina/Spaces/fullscreen behavior,
 and full shared platform contracts.
 Define release packaging, dependency auditing, signing and notarization after

@@ -1,11 +1,16 @@
 # Mac workspace checklist
 
-Working branch: `macos-arrangements-and-docking`.
+Working branch: `macos-docking-layouts-v2`.
+Preserved first-pass branch: `macos-arrangements-and-docking` at 1c7d9a4;
+installed executable build d3ed034. Do not overwrite that checkpoint.
 Preserved reliability branch: `macos-workspace-reliability` at `c5cf2e4`.
 Preserved baseline: `macos-panels-workspaces` at `9ba3fb7`.
 Reliability changes are implemented and pass automated fixtures. Fresh-process
 Resolve acceptance checks remain pending; installed helper is d3ed034.
-User reports some improvement, but Ripple Delete still fails in floating Timeline.
+Last confirmed Ripple Delete failure was in c5cf2e4; the d3ed034 page-scope
+candidate still needs explicit live confirmation. First-pass groups move together,
+but user reports stuck drag release, pair-only limits, background/Z issues and
+multicam behavior differences.
 
 ## Completion rule
 
@@ -108,6 +113,33 @@ separately. Do not commit project media or private diagnostic captures.
 
 ## Cross-cutting verification
 
+- [ ] N1: Left release completes every move, resize, attachment and tear-off.
+  Cancellation, application deactivation, Escape and lost capture clear previews
+  and grabs. Right-click must never be needed to release a drag. Capture physical
+  event ordering in diagnostics; synthetic left-release alone missed this report.
+- [ ] N2: Use a persistent split tree for arbitrary panels and group-to-group
+  merging. Detach one leaf while preserving the other leaves, order and ratios;
+  collapse empty/unary splitters. Restore existing two-panel saved arrangements.
+- [ ] N3: Separate distant edge-alignment guides, contact snapping and intentional
+  docking. Small local drop targets appear only near the current eligible target;
+  show its exact proposed split. Pull away to leave guides; Option bypasses.
+- [ ] N4: Workflow Integration/Relay activation cannot raise the empty original
+  Resolve window over the detached arrangement. Preserve Relay text focus, native
+  modal dialogs and intentional page navigation. Groups must not permanently win
+  z-order just because they include a viewer. Check actual app switching.
+- [ ] N5: Offer hiding/minimizing only the empty main background independently of
+  floating panels, plus explicit recovery of that background. Verify native owned
+  window behavior first; do not minimize the whole workspace inadvertently.
+- [ ] N6: Center individual panels/groups on the current display, plus bulk rescue.
+  Test disconnected displays, negative coordinates and minimized/hidden windows.
+- [ ] N7: Multicam playback/angle selection/switching works docked, floating and
+  grouped, with correct source/timeline focus and program output. Screenshots and
+  user reports establish a regression; generic fixtures cannot close it.
+- [ ] N8: Investigate detaching the native Stabilization Inspector section as a
+  toggleable quick-access panel. Preserve clip selection, settings and reversible
+  ownership. Identify native Stabilize dispatch and whether Resolve exposes it to
+  Keyboard Customization; do not claim shortcut registration from reparenting.
+
 - [ ] C1: Log launches, actions/results, window arrangements, focus/shortcut
   routing, page transitions, restoration phases, presets and docking operations
   with build/process/time identity. Verify diagnostics explain failures without
@@ -138,6 +170,13 @@ regressions and live acceptance checks pass.
 | R2 candidate | Working activation bridge | Reliability fixture passes existing Windows audition bridge pattern: application receives one page activation notification; synthetic event is consumed before Qt widget delivery. Native key window, Qt active host and text focus stay unchanged; inactive Edit is skipped. | Actual Ripple Delete still requires new build and live confirmation | Candidate only; not claimed fixed |
 | E2/S2 | Investigation | Bundled Qt 5.15.2 source, qgraphicsproxywidget.cpp lines 582–584 excludes WA_PaintOnScreen/OpenGL widgets from embedding; its class documentation cautions against high-performance use. A transformed proxy is therefore not a proven universal panel-scale solution. | Need native/GPU surface inspection and actual-panel prototype | Open; no scale slider shipped |
 | Candidate build | d3ed034 | test-panel-sessions.sh, test-panel-groups.sh, test-reliability.sh: PASS. build-widget-probe.sh and build-io-helper.sh: PASS, including native bootstrap fixture. Qt-helper SHA-256: 897ebca8b060d0dd75224c7f178e413f82366773594c12e531cfa4c3f99b24e5. | Not installed: Resolve pid 46314 still running. Installed helper SHA-256 remains 20d1592b8dce740b931e32263427e44cf909b587ec05b241e1f06a46c149bfc6 (c5cf2e4). | Built; waiting for closed Resolve and live checks |
+| N1 | v2 working changes | Receiver-independent release, missing-button state, Escape and native Cocoa mouse-up monitor/removal fixtures pass. Tear-off reuses the same capture/release handler. | Right-click workaround reported in d3ed034; physical release must be retested | Candidate fix |
+| N2 | v2 working changes | Merge pairs into four members; insert fifth beside a leaf; detach a transferred member via its header; dock one while preserving the other four; nested tree restore and old pair reload pass. Controls fixture covers group-to-group drag, off-screen group centering, saved reload and Dock All. Test caught a mutating JSON lookup creating a null leaf; corrected before delivery. | Pending | Implemented; live validation pending |
+| N3 | v2 working changes | Local 28-pixel target, half-split preview, no center target, distant alignment guides and Option bypass fixtures pass. Native title-bar attachment remains absent. | Pending physical discoverability and target accuracy | Implemented for grip dragging |
+| N4–N5 | v2 working changes | Native tool hide-on-deactivate disabled at normal level. Independent background hide/reveal keeps Qt ownership and native floating visibility. Workflow-window fixture retains Z above workspace, native key window and text entry. Mixed groups follow activation within ordinary group tier. | Actual Relay/external Electron switching pending | Candidate fix |
+| N6 | v2 working changes | Per-panel Center recalls hidden off-screen panels; group Center retains the nested layout and fits the current viewport. | Pending mixed-display/disconnect checks | Implemented |
+| N7–N8 | Investigation | Multicam needs actual media/native playback evidence. Startup inventory does not identify the lazy Inspector Stabilization section reliably. Added read-only visible-control ancestry/action diagnostics; no native Stabilize dispatch/shortcut invented. | Pending | Open |
+| Saved user preset | Read-only inspection during v2 work | Arrangements.json contains “Jordan Arrangmement” with two groups. Workspace.json currently has zero groups. Tests use isolated temporary files and do not modify either user file. | Restart/preset restoration still needs live confirmation | Saved data present |
 
 ## Install handoff
 
@@ -164,6 +203,39 @@ not included. Ripple Delete is already reported failing and remains open.
    group reload with real Resolve widget/GPU content.
 4. Continue group-aware maximize/backtick conflict resolution, native title-bar
    attachment, Timeline header controls, size/scale feasibility and nested groups.
+
+## V2 candidate handoff
+
+Preserve the first-pass Git branch and executable checkpoint. A separate ignored
+copy of Workspace.json and Arrangements.json is saved before any new installation.
+The named “Jordan Arrangmement” preset remains unchanged by development tests.
+
+Implemented: nested group trees; group-to-group merge and leaf insertion/removal;
+old pair restoration; local 28-pixel targets and separate distant edge guides;
+receiver-independent/native fallback drag completion; independent native background
+hide/reveal; ordinary group Z tier; unmanaged Workflow focus protection; Center
+and bulk recovery. Regression suites for panels, groups and reliability pass.
+
+Live checks after installation:
+1. Restore the existing named preset before changing it. Merge its left and right
+   groups. Add a fifth panel, detach one, and confirm the remainder stays grouped.
+2. Finish each drag with left release only. Try a short movement, Escape, Option,
+   crossing another window and tearing out then docking elsewhere in the same drag.
+   Small docking targets should appear only near eligible edges. Far guides align
+   windows across a gap without attaching them.
+3. Hide empty Resolve background. Use Relay and Terminal, then return to Resolve.
+   Keep floating panels visible, Relay text focus intact, and background behind.
+   Uncheck the option or Dock All to reveal the original window.
+4. Center a hidden/off-screen panel and a whole group. Save As a new arrangement,
+   restart, restore, and inspect nested orientations, dividers and visibility.
+5. Compare Source multicam angle selection/switching and playback while native,
+   floating and grouped. Check Program image, B/Ripple Delete and page switching.
+6. With Inspector Stabilization visible, interact with it normally. The new log
+   records native ancestry/action candidates without invoking Stabilize itself.
+
+Not delivered: an independent Stabilization panel/shortcut, verified multicam fix,
+independent UI scale, group-aware Expand/backtick, or native title-bar drop targets.
+These remain open even when the new automated suites pass.
 
 ## Next candidate: exact live checks
 

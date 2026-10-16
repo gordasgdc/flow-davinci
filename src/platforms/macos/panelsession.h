@@ -72,6 +72,21 @@ public:
     bool hiddenByUser() const { return userHidden; }
     void setConstrained(bool enabled) { constrain = enabled; if (enabled && window()) keepOnDisplay(window()->window()); }
     void bringOnScreen() { if (window()) keepOnDisplay(window()->window()); if (arrangementChanged) arrangementChanged(); }
+    void centerOnCurrentDisplay()
+    {
+        if (!window()) return;
+        setHiddenByUser(false);
+        auto top = window()->window(); top->showNormal();
+        auto screen = QGuiApplication::screenAt(QCursor::pos()); if (!screen) screen = QGuiApplication::primaryScreen();
+        if (!screen) return;
+        QRect frame(QPoint(), top->frameGeometry().size().boundedTo(screen->availableGeometry().size()));
+        frame.moveCenter(screen->availableGeometry().center());
+        const auto decoration = top->frameGeometry().size() - top->size();
+        top->resize(frame.size() - decoration); top->move(frame.topLeft()); keepOnDisplay(top);
+        top->raise(); top->activateWindow();
+        logEvent(QStringLiteral("panel.center"), {{"host", widgetState(top)}});
+        if (arrangementChanged) arrangementChanged();
+    }
     void setFloatingGeometry(const QRect &r) { if (grouped()) { if (r.isValid()) detachedGeometry = r; } else if (host && r.isValid()) { host->setGeometry(r); if (constrain) keepOnDisplay(host); } }
     void setHiddenByUser(bool hide)
     {

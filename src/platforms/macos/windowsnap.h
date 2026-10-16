@@ -2,9 +2,50 @@
 #pragma once
 #include <QRect>
 #include <QList>
+#include <QLine>
 #include <cstdlib>
 
 namespace Unbound {
+struct DockZone { QRect target, preview; Qt::Edge edge = Qt::LeftEdge; bool active = false; };
+inline DockZone localDockZone(const QRect &frame, QPoint pointer)
+{
+    DockZone result;
+    if (!frame.adjusted(-40, -40, 40, 40).contains(pointer)) return result;
+    const int distances[] = {std::abs(pointer.x() - frame.left()), std::abs(pointer.x() - frame.right()),
+        std::abs(pointer.y() - frame.top()), std::abs(pointer.y() - frame.bottom())};
+    int closest = 0; for (int i = 1; i < 4; ++i) if (distances[i] < distances[closest]) closest = i;
+    if (distances[closest] > 40) return result;
+    const QPoint center(closest == 0 ? frame.left() : closest == 1 ? frame.right() : qBound(frame.left() + 14, pointer.x(), qMax(frame.left() + 14, frame.right() - 14)),
+        closest == 2 ? frame.top() : closest == 3 ? frame.bottom() : qBound(frame.top() + 14, pointer.y(), qMax(frame.top() + 14, frame.bottom() - 14)));
+    result.target = QRect(center - QPoint(14, 14), QSize(28, 28));
+    result.edge = closest == 0 ? Qt::LeftEdge : closest == 1 ? Qt::RightEdge : closest == 2 ? Qt::TopEdge : Qt::BottomEdge;
+    result.preview = frame;
+    if (closest < 2) { result.preview.setWidth(frame.width() / 2); if (closest == 1) result.preview.moveRight(frame.right()); }
+    else { result.preview.setHeight(frame.height() / 2); if (closest == 3) result.preview.moveBottom(frame.bottom()); }
+    result.active = result.target.contains(pointer); return result;
+}
+inline QRect alignWindowEdges(QRect frame, const QList<QRect> &panels, QList<QLine> &guides, int threshold = 6)
+{
+    int bestX = threshold + 1, bestY = threshold + 1, dx = 0, dy = 0;
+    QLine vertical, horizontal;
+    for (const auto &target : panels) {
+        for (int source : {frame.left(), frame.right()}) for (int edge : {target.left(), target.right()}) {
+            if ((source == frame.left()) != (edge == target.left()) && frame.bottom() >= target.top() && frame.top() <= target.bottom()) continue;
+            const int distance = std::abs(edge - source);
+            if (distance < bestX) { bestX = distance; dx = edge - source;
+                vertical = QLine(edge, qMin(frame.top(), target.top()), edge, qMax(frame.bottom(), target.bottom())); }
+        }
+        for (int source : {frame.top(), frame.bottom()}) for (int edge : {target.top(), target.bottom()}) {
+            if ((source == frame.top()) != (edge == target.top()) && frame.right() >= target.left() && frame.left() <= target.right()) continue;
+            const int distance = std::abs(edge - source);
+            if (distance < bestY) { bestY = distance; dy = edge - source;
+                horizontal = QLine(qMin(frame.left(), target.left()), edge, qMax(frame.right(), target.right()), edge); }
+        }
+    }
+    if (bestX <= threshold) guides.append(vertical);
+    if (bestY <= threshold) guides.append(horizontal);
+    return frame.translated(dx, dy);
+}
 inline QRect snapWindowFrame(QRect frame, const QList<QRect> &panels, const QList<QRect> &displays, int threshold = 12)
 {
     int dx = 0, dy = 0, bestX = threshold + 1, bestY = threshold + 1;

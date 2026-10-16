@@ -32,7 +32,7 @@ public:
     void setEnabled(bool value) { enabled = value; if (value) timer.start(0); }
     void apply()
     {
-        if (!enabled || ordering || QApplication::activeModalWidget()) return;
+        if (!enabled || ordering || QApplication::activeModalWidget() || QApplication::activePopupWidget()) return;
         QList<QWidget *> floating;
         QWidget *main = nullptr, *controls = nullptr;
         for (auto widget : QApplication::topLevelWidgets()) {
@@ -42,15 +42,19 @@ public:
             if (widget->objectName() == QLatin1String("unboundPanelTest")) controls = widget;
         }
         if (floating.isEmpty()) return;
+        for (auto widget : floating) normalizeNativePanel(widget);
+        const bool pinned = controls && controls->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
+        if (controls && !pinned) floating.append(controls);
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
-            const int left = a->property("unboundGroupTier").isValid() ? a->property("unboundGroupTier").toInt() : floatingTier(a->objectName());
-            const int right = b->property("unboundGroupTier").isValid() ? b->property("unboundGroupTier").toInt() : floatingTier(b->objectName());
+            const int left = a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : floatingTier(a->objectName());
+            const int right = b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : floatingTier(b->objectName());
             return left != right ? left < right : activation.value(a) < activation.value(b);
         });
         QList<QWidget *> windows;
-        if (main) windows.append(main);
+        if (main && main->property("unboundBackgroundHidden").toBool()) setNativeBackgroundHidden(main, floating, true);
+        else if (main) windows.append(main);
         windows.append(floating);
-        if (controls) windows.append(controls);
+        if (controls && pinned) windows.append(controls);
         const qint64 key = nativeKeyWindowNumber();
         ordering = true; orderNativeWindows(windows); ordering = false;
         QJsonArray names;
@@ -62,11 +66,15 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (!enabled || ordering) return false;
+        if (event->type() == QEvent::ApplicationStateChange) { timer.start(0); return false; }
         auto widget = qobject_cast<QWidget *>(object);
         if (!widget || !widget->isWindow()) return false;
         const QString name = widget->objectName();
         if (!name.startsWith(QLatin1String("unboundFloating_")) && name != QLatin1String("UiMainWindow") &&
-            name != QLatin1String("unboundPanelTest")) return false;
+            name != QLatin1String("unboundPanelTest")) {
+            if (event->type() == QEvent::WindowActivate) timer.start(0);
+            return false;
+        }
         switch (event->type()) {
         case QEvent::WindowActivate:
             if (!activation.contains(widget)) connect(widget, &QObject::destroyed, this, [this, widget] { activation.remove(widget); });
