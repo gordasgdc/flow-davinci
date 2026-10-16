@@ -462,3 +462,21 @@ After those corrections, all three actual GUI runs PASS:
 These passes do not close Resolve runtime acceptance. Cinema Viewer has passive
 trace coverage, not a verified fix. The next live check is its actual command in
 a detached/grouped arrangement, compared with native docking.
+
+### Installed 21466f2
+
+Installed after confirming Resolve closed, 2026-10-16. Build and native bootstrap
+fixture PASS, three GUI suites PASS, no-GUI layout-plan suite PASS. Installed and
+built hashes match:
+- Bootstrap: cc7ee209d0bd46ef4943043e014fe100dfcb339883ffeeb2d73dd69dad0bd43d
+- Qt helper: 815c08effce455109f89f2696eea25ea91ffeb0617943628f858bc355c5ae256
+Matching crash-symbol UUID: 28D2F0A3-2299-3EF1-B1B3-89D66E8A3B62.
+Archive: build/macos/checkpoints/21466f2/. Previous f64c401 branch/binaries retained.
+
+Live user handoff: drag grips/member headers; center marker creates tabs, inner
+edge markers split one panel, outside-group markers split the group. Release
+away from markers floats freely; Shift requests edge alignment; Option bypasses.
+Test native Q Inspector toggle in split/tab arrangements, backtick/tilde expand
+and second-press restoration, partial offscreen placement, and Stabilize/dividers/
+Dock All after moves. Exercise Cinema Viewer separately and collect its trace;
+this installation adds Cinema Viewer diagnostics, not a confirmed cinema fix.
