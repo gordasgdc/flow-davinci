@@ -308,3 +308,15 @@ The combined session run failed an old assertion expecting a 28-pixel marker;
 that assertion is updated, rerun pending. GUI tests can visibly activate test
 windows: do not run them during the user's editing session. User reports screen
 flashing during tests. No new helper is installed yet.
+
+Installed input-fix candidate **f64c401** on 2026-10-16 after the user quit Resolve.
+Session, nested-group and reliability GUI suites all pass, including the updated
+18-pixel target assertion. Native bootstrap fixture passed at build time.
+Installed bootstrap SHA-256: 6c95cf80c0e44f8f5b0b3c0e3c1a82c18de4ab552bd494ff7b8d27502dc86b25.
+Installed Qt helper SHA-256: 87bbf73583910f5feb15618eceb86017180940d6a2ce44c76f9460227adbcf87.
+Both match built files. Archived matching binary/dSYM under
+build/macos/checkpoints/f64c401/; UUID 2DAA8FAC-AC79-39C9-B8E0-841FE4014F31.
+Live acceptance remains OPEN: after floating/grouping/moving panels, repeatedly
+use Stabilize, Timeline audio/video divider and Dock All. Inspect drag.begin/end
+and drag.capture.recovered events alongside actual button activations. A fixture
+pass is not confirmation that the reported Resolve input regression is fixed.
