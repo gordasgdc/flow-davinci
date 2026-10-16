@@ -49,6 +49,23 @@ independent UI scaling are not implemented. Options and panel controls scroll;
 preset and bulk recovery controls remain accessible outside the scroll area.
 These additions have fixture coverage but await live Resolve verification.
 
+Work after that checkpoint adds Dock/Undock commands to positively identified
+native options menus. They call the same sessions as the controls and reflect
+their current state. Unsupported menu ownership is logged rather than guessed;
+Timeline does not yet have its own header docking control. Each control row also
+offers Expand / Restore Size. Expansion temporarily detaches a docked panel, or
+enlarges a floating panel, and then restores the slot or geometry. Temporary
+geometry is excluded from saved arrangements. Backtick routing is pending because
+Resolve already reports a native shortcut for that key; explicit buttons do not
+establish that Resolve's own fullscreen viewer command works.
+
+Edge snapping is an initial grip-based implementation: drag the small dotted
+grip below a standard title bar, the compact header background, or the hidden
+style's grip. A blue outline previews nearby panel/display edges; release to
+align. Hold Option to bypass, or disable Snap window edges in Unbound. Native
+macOS title-bar dragging still moves freely. Snapping aligns frames; it does not
+join windows into groups or provide shared resizing. Those remain separate work.
+
 The last arrangement is saved atomically in
 `~/Library/Application Support/Unbound/Workspace.json`. Floating state, user-hidden
 state, geometry, title style and control pinning persist. Desired floating panels

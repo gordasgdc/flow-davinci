@@ -21,6 +21,11 @@ static void settle()
     QCoreApplication::processEvents();
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 }
+static void settleFor(int milliseconds)
+{
+    QElapsedTimer timer; timer.start();
+    while (timer.elapsed() < milliseconds) { settle(); QThread::msleep(2); }
+}
 
 int main(int argc, char **argv)
 {
@@ -54,6 +59,40 @@ int main(int argc, char **argv)
     Unbound::WindowDiagnostics windowLogs(&app);
     app.installEventFilter(&windowLogs);
     app.setQuitOnLastWindowClosed(false);
+    {
+        const QRect peer(100, 100, 200, 200);
+        check(Unbound::snapWindowFrame(QRect(305, 105, 200, 200), {peer}, {}) == QRect(300, 100, 200, 200),
+            "snapping aligns adjacent frames and equal top edges");
+        check(Unbound::snapWindowFrame(QRect(305, 1000, 200, 200), {peer}, {}) == QRect(305, 1000, 200, 200),
+            "snapping ignores panels far away on the other axis");
+        check(Unbound::snapWindowFrame(QRect(-1914, 8, 400, 300), {}, {QRect(-1920, 0, 1920, 1080)}) == QRect(-1920, 0, 400, 300),
+            "snapping supports display edges with negative coordinates");
+        check(Unbound::snapWindowFrame(QRect(313, 100, 200, 200), {peer}, {}).x() == 313,
+            "snapping does not pull windows outside the threshold");
+        Unbound::MacFloatingHost target, moving;
+        target.setObjectName("unboundFloating_snapTarget"); moving.setObjectName("unboundFloating_snapMoving");
+        target.setGeometry(150, 260, 240, 180); moving.setGeometry(600, 260, 240, 180);
+        moving.setChrome(Unbound::WindowChrome::Standard);
+        target.show(); moving.show(); settle();
+        const auto drag = [&](Qt::KeyboardModifiers modifiers) {
+            const QPoint press = moving.mapToGlobal(QPoint(100, 7));
+            const QPoint desiredFrame(target.frameGeometry().right() + 6, target.frameGeometry().top());
+            const QPoint delta = desiredFrame - moving.frameGeometry().topLeft();
+            QMouseEvent down(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(press), Qt::LeftButton, Qt::LeftButton, modifiers);
+            QApplication::sendEvent(&moving, &down);
+            QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, modifiers);
+            QApplication::sendEvent(&moving, &move);
+            auto preview = moving.findChild<QWidget *>("unboundSnapPreview");
+            check(modifiers.testFlag(Qt::AltModifier) ? (!preview || !preview->isVisible()) : (preview && preview->isVisible()),
+                "drag previews alignment and Option bypass hides preview");
+            QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, modifiers);
+            QApplication::sendEvent(&moving, &up); settle();
+        };
+        drag(Qt::NoModifier);
+        check(moving.frameGeometry().left() == target.frameGeometry().right() + 1, "release attaches window edges without frame overlap");
+        drag(Qt::AltModifier);
+        check(moving.frameGeometry().left() == target.frameGeometry().right() + 6, "Option release preserves unsnapped placement");
+    }
     {
         QWidget page;
         auto layout = new QHBoxLayout(&page);
@@ -169,6 +208,11 @@ int main(int argc, char **argv)
         auto stack = new QStackedWidget(page);
         auto source = new QWidget;
         source->setObjectName(QStringLiteral("widgetEditSourcePlayer"));
+        auto sourceOptions = new QToolButton(source);
+        sourceOptions->setObjectName(QStringLiteral("tbtnPlayerOptions"));
+        auto sourceMenu = new QMenu(sourceOptions);
+        sourceOptions->setMenu(sourceMenu);
+        auto nativeOption = sourceMenu->addAction(QStringLiteral("Native viewer setting"));
         stack->addWidget(source); row->addWidget(stack);
         auto program = new QWidget(page);
         program->setObjectName(QStringLiteral("widgetEditTimelinePlayer")); row->addWidget(program);
@@ -208,6 +252,36 @@ int main(int argc, char **argv)
         Unbound::ArrangementStore unchanged;
         check(unchanged.find(presetId)["workspace"].toObject() == sourceArrangement, "workspace autosave never overwrites named preset");
         check(presetStore.remove(presetId).isEmpty(), "fixture cleans saved preset");
+        sourceMenu->show(); settle();
+        auto dockCommand = sourceMenu->findChild<QAction *>("unboundDockPanel");
+        check(dockCommand && dockCommand->text() == "Undock Panel", "native menu reflects docked panel state");
+        check(sourceMenu->actions().contains(nativeOption), "native viewer menu items preserved");
+        sourceMenu->hide(); dockCommand->trigger(); settle(); settle();
+        check(sourceDock->isEnabled() && !sourceUndock->isEnabled(), "native menu uses the same undock operation and controls state");
+        sourceMenu->show(); settle();
+        check(dockCommand->text() == "Dock Panel" && sourceMenu->findChildren<QAction *>("unboundDockPanel").size() == 1,
+            "native menu refreshes shared state without duplicate commands");
+        sourceMenu->hide(); dockCommand->trigger(); settle(); settle();
+        check(source->parentWidget() == stack && !sourceDock->isEnabled(), "native menu redocks original panel and updates controls");
+        auto expandSource = controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");
+        expandSource->click(); settleFor(160);
+        check(sourceDock->isEnabled() && expandSource->text() == "Restore Size", "expand temporarily detaches docked panel");
+        Unbound::WorkspaceSettings duringExpanded;
+        check(!duringExpanded.data["panels"].toObject()["widgetEditSourcePlayer"].toObject()["floating"].toBool(), "temporary expansion does not persist as undocked");
+        expandSource->click(); settle();
+        check(source->parentWidget() == stack && !sourceDock->isEnabled(), "restore expansion returns docked panel to original slot");
+        sourceUndock->click(); settle();
+        const QRect beforeExpand = source->window()->geometry();
+        expandSource->click(); settleFor(160);
+        expandSource->click(); settle();
+        check(source->window()->geometry() == beforeExpand && sourceDock->isEnabled(), "floating expansion restores exact original geometry");
+        sourceDock->click(); settle();
+        expandSource->click(); settleFor(160);
+        source->window()->close(); settle();
+        check(source->parentWidget() == stack && expandSource->text() == "Expand", "closing expanded panel clears temporary state and restores docking");
+        QMenu unrelated(&main); unrelated.addAction("Unrelated"); unrelated.show(); settle();
+        check(!unrelated.findChild<QAction *>("unboundDockPanel"), "unrelated menus are not modified");
+        unrelated.hide();
     }
     {
         QWidget page;

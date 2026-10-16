@@ -36,6 +36,7 @@ public:
     std::function<void()> changed;
     std::function<void()> arrangementChanged;
     void setChrome(WindowChrome value) { chrome = value; if (host) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
+    void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     bool hiddenByUser() const { return userHidden; }
     void setConstrained(bool enabled) { constrain = enabled; if (enabled) keepOnDisplay(host); }
     void bringOnScreen() { keepOnDisplay(host); if (arrangementChanged) arrangementChanged(); }
@@ -63,6 +64,7 @@ public:
         originalLayout = slot->layout();
         ++generation;
         host = new MacFloatingHost(originalMain);
+        static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
         host->setWindowTitle(title);
@@ -148,6 +150,7 @@ public:
         }
         ++generation;
         host = new MacFloatingHost(originalMain);
+        static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setWindowTitle(title);
         host->setObjectName(QStringLiteral("unboundFloating_") + widget->objectName());
@@ -353,6 +356,7 @@ private:
     bool transferredLayout = false;
     bool userHidden = false;
     bool constrain = true;
+    bool snapping = true;
     QTimer arrangeTimer;
     WindowChrome chrome = WindowChrome::Standard;
     int stackIndex = -1;

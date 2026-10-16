@@ -99,6 +99,12 @@ separately. Do not commit project media or private diagnostic captures.
   relationships. Test hide/show, viewport recovery, display removal, page changes,
   temporary maximize, dissolution and Dock All. Detached-window hierarchy remains
   correct; group ordering must preserve focus and native dialogs.
+- [ ] D4: Premiere-like group interaction: attached panels move as one unit with
+  no visible trailing or delayed follower windows. Prefer one native host with
+  split layouts, subject to actual Resolve rendering/focus validation. Preview
+  attachment and detachment, preserve pointer-to-panel position when tearing off,
+  and resize shared edges in one layout transaction. Verify interactive dragging
+  during playback on Retina/mixed displays. Edge alignment alone does not pass.
 
 ## Cross-cutting verification
 
@@ -126,6 +132,10 @@ regressions and live acceptance checks pass.
 | R2 diagnostic | c5cf2e4, pid 46314 | — | 2026-10-16T13:58:23.710Z: B reaches floating Timeline with m_TiTimelineView (UiTiSequenceView) focused; no corresponding shortcut/action observed. Ctrl+Z subsequently produces input.shortcut. Focus alone does not explain failure. | Native command routing investigation |
 | U1 | Continuation branch | Scroll area added for options and eleven-panel list; status and bulk recovery buttons remain outside it. Regression suite passed before adding explicit compact-size assertions. | Pending | In progress |
 | P1–P2 | Continuation branch | Named preset creation, duplicate-name rejection, rename, independent duplicate/update, deletion, reload and invalid-file preservation pass. Control restore fixture restores Source only with saved size; current changes do not update saved presets. | Pending; groups and UI scale remain unimplemented | Implemented for current panel/options model |
+| E1 | Working changes after f85a49b | Native menu fixture passes shared Dock/Undock state, original item preservation, repeated-open deduplication and unrelated menu exclusion. Only positively attached options menus are modified. | Pending real menu ownership verification; Timeline header control not implemented | Partial |
+| M1–M2 | Working changes after f85a49b | Explicit Expand/Restore fixtures pass original docked slot, floating geometry, close-to-dock and exclusion of temporary geometry from persistence. | Pending; backtick already produces a native shortcut event in c5cf2e4 logs and needs conflict investigation before interception | Partial; keyboard mapping not implemented |
+| D1 | Working changes after f85a49b | Frame alignment, negative display coordinates, threshold rejection, preview/release and Option bypass fixtures pass. Uses the Unbound grip, including a new grip beneath standard title bars. Snap preference persists in settings/presets. | Pending | Partial: native macOS title-bar drag not integrated; no groups/shared resizing |
+| E2/S2 | Investigation | Bundled Qt 5.15.2 source, qgraphicsproxywidget.cpp lines 582–584 excludes WA_PaintOnScreen/OpenGL widgets from embedding; its class documentation cautions against high-performance use. A transformed proxy is therefore not a proven universal panel-scale solution. | Need native/GPU surface inspection and actual-panel prototype | Open; no scale slider shipped |
 
 ## Install handoff
 

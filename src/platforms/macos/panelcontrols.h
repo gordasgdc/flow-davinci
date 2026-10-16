@@ -14,10 +14,12 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QWindow>
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
+#include "panelmenus.h"
 
 class PanelControls : public QWidget
 {
@@ -26,7 +28,7 @@ class PanelControls : public QWidget
         bool contents = false, desired = false, pending = false;
         unsigned requestVersion = 0;
         Unbound::MacPanelSession *session = nullptr;
-        QPushButton *undock = nullptr, *dock = nullptr, *show = nullptr, *hide = nullptr;
+        QPushButton *undock = nullptr, *dock = nullptr, *show = nullptr, *hide = nullptr, *expand = nullptr;
         QJsonObject saved = {};
     };
 public:
@@ -54,8 +56,8 @@ public:
         }
         layout->addLayout(presetRow);
         presetState = new QLabel(this); presetState->setObjectName(QStringLiteral("arrangementState")); layout->addWidget(presetState);
-        reloadPresets();
-        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { updatePresetState(); });
+        reloadPresets(settings.data["selected_arrangement"].toString());
+        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { save(); });
         connect(restorePreset, &QPushButton::clicked, this, [this] { restoreArrangement(); });
         auto scroll = new QScrollArea(this);
         scroll->setObjectName(QStringLiteral("panelOptionsScroll"));
@@ -69,6 +71,15 @@ public:
         constrain = new QCheckBox(QStringLiteral("Keep windows on screen"), this);
         constrain->setChecked(settings.data["keep_on_screen"].toBool(true));
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
+        snap = new QCheckBox(QStringLiteral("Snap window edges (Option bypasses)"), this);
+        snap->setObjectName(QStringLiteral("snapWindows"));
+        snap->setChecked(settings.data["snap_windows"].toBool(true));
+        options->addWidget(snap);
+        connect(snap, &QCheckBox::toggled, this, [this](bool enabled) {
+            action(QStringLiteral("snap-windows"));
+            for (auto &panel : panels) panel.session->setSnapping(enabled);
+            save();
+        });
         hierarchy = new Unbound::WindowHierarchy(this);
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
@@ -149,6 +160,7 @@ public:
             {"Keyframes", "frameEditPageKeyframeEditor", "KeyframeEditor", true}
         };
         const QJsonObject savedPanels = settings.data["panels"].toObject();
+        nativeMenus = new Unbound::PanelMenus(this);
         layout->addWidget(scroll, 1);
         scroll->setWidget(body);
         auto grid = new QGridLayout; bodyLayout->addLayout(grid);
@@ -157,20 +169,27 @@ public:
             panel.saved = savedPanels[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
+            nativeMenus->add({panel.name, [this, i] { return panels[i].session->active(); },
+                [this, i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); }});
             panel.session->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
             panel.session->setConstrained(constrain->isChecked());
+            panel.session->setSnapping(snap->isChecked());
             grid->addWidget(new QLabel(panel.label, this), i, 0);
             panel.undock = new QPushButton(QStringLiteral("Undock"), this);
             panel.dock = new QPushButton(QStringLiteral("Dock"), this);
             panel.show = new QPushButton(QStringLiteral("Show"), this);
             panel.hide = new QPushButton(QStringLiteral("Hide"), this);
+            panel.expand = new QPushButton(QStringLiteral("Expand"), this);
+            panel.expand->setObjectName(QStringLiteral("expand_") + panel.name);
             panel.undock->setObjectName(QStringLiteral("undock_") + panel.name);
             panel.dock->setObjectName(QStringLiteral("dock_") + panel.name);
             panel.show->setObjectName(QStringLiteral("show_") + panel.name);
             panel.hide->setObjectName(QStringLiteral("hide_") + panel.name);
             grid->addWidget(panel.undock, i, 1); grid->addWidget(panel.dock, i, 2);
             grid->addWidget(panel.show, i, 3); grid->addWidget(panel.hide, i, 4);
+            grid->addWidget(panel.expand, i, 5);
             panel.session->changed = [this, i] {
+                if (expanded == i && !panels[i].session->active()) expanded = -1;
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 updateRow(i); if (!quitting) saveTimer.start();
             };
@@ -179,6 +198,7 @@ public:
             connect(panel.dock, &QPushButton::clicked, this, [this, i] { action("dock", panels[i].label); dockOne(i); });
             connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); panels[i].session->setHiddenByUser(false); });
             connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); panels[i].session->setHiddenByUser(true); });
+            connect(panel.expand, &QPushButton::clicked, this, [this, i] { toggleExpanded(i); });
             updateRow(i);
         }
         bodyLayout->addStretch();
@@ -203,6 +223,7 @@ public:
     ~PanelControls() override
     {
         shutdown();
+        delete nativeMenus;
         qApp->removeEventFilter(this);
         for (auto &panel : panels) { panel.session->changed = {}; panel.session->arrangementChanged = {}; }
     }
@@ -230,6 +251,7 @@ private:
     {
         auto result = settings.data;
         result.remove(QStringLiteral("controls"));
+        result.remove(QStringLiteral("selected_arrangement"));
         return result;
     }
     void reloadPresets(const QString &selected = {})
@@ -274,7 +296,7 @@ private:
             if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
             else error = arrangements.create(name, operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : arrangement(), id);
         }
-        reloadPresets(id); updatePresetState();
+        reloadPresets(id); save();
         status->setText(error.isEmpty() ? QStringLiteral("Arrangement saved.") : error);
         Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", id}, {"success", error.isEmpty()}, {"error", error}});
     }
@@ -285,6 +307,7 @@ private:
         if (entry.isEmpty()) { status->setText(QStringLiteral("Select a saved arrangement first.")); return; }
         if (!page() || !page()->isVisible()) { status->setText(QStringLiteral("Open the Edit page to restore an arrangement.")); return; }
         ++bulkVersion;
+        restoreExpanded();
         dockAll();
         for (const auto &panel : panels) if (panel.session->active()) {
             status->setText(QStringLiteral("Could not restore: a panel could not be docked safely."));
@@ -293,6 +316,7 @@ private:
         const auto value = entry["workspace"].toObject();
         pin->setChecked(value["pin_controls"].toBool());
         constrain->setChecked(value["keep_on_screen"].toBool(true));
+        snap->setChecked(value["snap_windows"].toBool(true));
         hierarchyOption->setChecked(value["panel_hierarchy"].toBool(true));
         style->setCurrentIndex(qBound(0, value["window_chrome"].toInt(), 2));
         const auto saved = value["panels"].toObject();
@@ -322,6 +346,56 @@ private:
         p.dock->setEnabled(active && !p.session->dockPending());
         p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
         p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
+        p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
+    }
+    void toggleExpanded(int i)
+    {
+        action(QStringLiteral("expand-toggle"), panels[i].label);
+        if (expanded == i) { restoreExpanded(); return; }
+        restoreExpanded();
+        if (!page() || !page()->isVisible() || QApplication::activeModalWidget()) {
+            status->setText(QStringLiteral("Open the Edit page and close dialogs before expanding a panel.")); return;
+        }
+        save();
+        auto &panel = panels[i];
+        beforeExpanded = panel.saved;
+        expandedWasFloating = panel.session->active();
+        expanded = i;
+        const unsigned request = ++expandVersion;
+        if (!expandedWasFloating) requestUndock(i, true);
+        QTimer::singleShot(100, this, [this, i, request] {
+            if (expanded != i || request != expandVersion) return;
+            auto host = panels[i].session->window();
+            if (!host) { expanded = -1; updateRow(i); save(); return; }
+            auto screen = host->screen();
+            if (!screen) screen = QApplication::primaryScreen();
+            const auto margins = host->windowHandle() ? host->windowHandle()->frameMargins() : QMargins();
+            host->setGeometry(screen->availableGeometry().adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom()));
+            panels[i].session->setHiddenByUser(false);
+            updateRow(i);
+            Unbound::logEvent(QStringLiteral("panel.expand"), {{"panel", panels[i].name}, {"originally_floating", expandedWasFloating}});
+        });
+        updateRow(i);
+    }
+    void restoreExpanded()
+    {
+        if (expanded < 0) return;
+        const int i = expanded;
+        ++expandVersion;
+        expanded = -1;
+        auto &panel = panels[i];
+        ++panel.requestVersion; panel.pending = false;
+        QString error;
+        if (panel.session->active()) {
+            panel.session->setFloatingGeometry(Unbound::WorkspaceSettings::rectangle(beforeExpanded));
+            panel.session->setHiddenByUser(beforeExpanded["hidden"].toBool());
+            if (!expandedWasFloating) error = panel.session->dock();
+        }
+        panel.saved = beforeExpanded;
+        panel.desired = panel.session->active() && !panel.session->dockPending();
+        updateRow(i); save();
+        Unbound::logEvent(QStringLiteral("panel.expand.restore"), {{"panel", panel.name}, {"success", error.isEmpty()}, {"error", error}});
+        if (!error.isEmpty()) status->setText(error);
     }
     void outcome(const QString &operation, int i, const QString &error)
     {
@@ -374,6 +448,7 @@ private:
     }
     void dockOne(int i)
     {
+        if (expanded == i) restoreExpanded();
         auto &p = panels[i];
         ++p.requestVersion; p.pending = false;
         const QString error = p.session->active() ? p.session->dock() : QString();
@@ -413,18 +488,22 @@ private:
     {
         if (quitting) return;
         QJsonObject saved;
-        for (auto &p : panels) {
+        for (int i = 0; i < panels.size(); ++i) {
+            auto &p = panels[i];
             QJsonObject value = p.saved;
             value["floating"] = p.desired;
             if (p.session->active()) {
                 value = Unbound::WorkspaceSettings::rectangle(p.session->window()->geometry());
                 value["floating"] = p.desired; value["hidden"] = p.session->hiddenByUser();
             }
+            if (expanded == i) value = beforeExpanded;
             p.saved = value; saved[p.name] = value;
         }
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()},
+            {"selected_arrangement", presets->currentData().toString()},
             {"window_chrome", style->currentIndex()},
             {"panel_hierarchy", hierarchyOption->isChecked()},
+            {"snap_windows", snap->isChecked()},
             {"keep_on_screen", constrain->isChecked()}, {"controls", Unbound::WorkspaceSettings::rectangle(geometry())}, {"panels", saved}};
         const bool success = settings.save();
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
@@ -439,9 +518,11 @@ private:
     }
     QLabel *status = nullptr;
     QCheckBox *pin = nullptr, *constrain = nullptr;
+    QCheckBox *snap = nullptr;
     QComboBox *style = nullptr;
     QCheckBox *hierarchyOption = nullptr;
     Unbound::WindowHierarchy *hierarchy = nullptr;
+    Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
     Unbound::WorkspaceSettings settings;
     Unbound::ArrangementStore arrangements;
@@ -450,4 +531,8 @@ private:
     QTimer saveTimer, restoreTimer;
     bool quitting = false;
     unsigned bulkVersion = 0;
+    unsigned expandVersion = 0;
+    int expanded = -1;
+    bool expandedWasFloating = false;
+    QJsonObject beforeExpanded;
 };
