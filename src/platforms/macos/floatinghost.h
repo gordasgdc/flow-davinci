@@ -27,7 +27,7 @@ inline QRect resizeFromEdge(const QRect &original, QPoint delta, Qt::Edges edges
 class MacFloatingHost : public QWidget
 {
 public:
-    MacFloatingHost() : QWidget(nullptr, Qt::Window)
+    explicit MacFloatingHost(QWidget *owner = nullptr) : QWidget(owner, owner ? Qt::Tool : Qt::Window)
     {
         qApp->installEventFilter(this);
         setMouseTracking(true);

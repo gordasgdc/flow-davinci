@@ -141,7 +141,7 @@ public:
             grid->addWidget(panel.undock, i, 1); grid->addWidget(panel.dock, i, 2);
             grid->addWidget(panel.show, i, 3); grid->addWidget(panel.hide, i, 4);
             panel.session->changed = [this, i] {
-                if (!quitting) panels[i].desired = panels[i].session->active();
+                if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 updateRow(i); if (!quitting) saveTimer.start();
             };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
@@ -207,13 +207,16 @@ private:
     {
         auto &p = panels[i]; const bool active = p.session->active();
         p.undock->setEnabled(!active && !p.pending);
-        p.dock->setEnabled(active); p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
+        p.dock->setEnabled(active && !p.session->dockPending());
+        p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
+        p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
     }
     void outcome(const QString &operation, int i, const QString &error)
     {
         Unbound::logEvent(QStringLiteral("button.result"), {{"action", operation}, {"panel", panels[i].label},
             {"success", error.isEmpty()}, {"error", error}});
-        status->setText(error.isEmpty() ? panels[i].label + (operation == "dock" ? " returned to Resolve." : " is floating.")
+        status->setText(error.isEmpty() ? panels[i].label + (operation == "dock" ?
+            (panels[i].session->dockPending() ? " will dock when Edit returns." : " returned to Resolve.") : " is floating.")
             : panels[i].label + ": " + error);
     }
     void requestUndock(int i, bool restoring = false)
@@ -303,7 +306,7 @@ private:
             value["floating"] = p.desired;
             if (p.session->active()) {
                 value = Unbound::WorkspaceSettings::rectangle(p.session->window()->geometry());
-                value["floating"] = true; value["hidden"] = p.session->hiddenByUser();
+                value["floating"] = p.desired; value["hidden"] = p.session->hiddenByUser();
             }
             p.saved = value; saved[p.name] = value;
         }

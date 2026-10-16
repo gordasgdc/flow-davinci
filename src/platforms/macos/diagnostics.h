@@ -41,6 +41,9 @@ inline QJsonObject widgetState(QWidget *widget)
         {"class", widget->metaObject()->className()},
         {"parent", widget->parentWidget() ? widget->parentWidget()->objectName() : QString()},
         {"window", widget->isWindow()}, {"visible", widget->isVisible()},
+        {"hidden", widget->isHidden()}, {"enabled", widget->isEnabled()},
+        {"focus_policy", int(widget->focusPolicy())}, {"window_type", int(widget->windowType())},
+        {"focus_proxy", widget->focusProxy() ? widget->focusProxy()->objectName() : QString()},
         {"x", r.x()}, {"y", r.y()}, {"width", r.width()}, {"height", r.height()}};
 }
 

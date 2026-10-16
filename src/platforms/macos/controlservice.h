@@ -2,6 +2,7 @@
 #pragma once
 #include <QFileSystemWatcher>
 #include "panelcontrols.h"
+#include "interactiondiagnostics.h"
 
 namespace Unbound {
 class ControlService : public QObject
@@ -10,6 +11,7 @@ public:
     explicit ControlService(QObject *parent) : QObject(parent), watcher(this)
     {
         setObjectName(QStringLiteral("unboundControlService"));
+        new InteractionDiagnostics(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(directory);

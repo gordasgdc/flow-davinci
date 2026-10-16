@@ -2,7 +2,8 @@
 
 Working branch: `macos-workspace-reliability`.
 Preserved baseline: `macos-panels-workspaces` at `9ba3fb7`.
-Application implementation has not started on this branch.
+Reliability changes are implemented and pass automated fixtures. Fresh-process
+Resolve acceptance checks remain pending; the installed baseline is still 9ba3fb7.
 
 ## Completion rule
 
@@ -105,4 +106,16 @@ regressions and live acceptance checks pass.
 | Item | Commit/build | Automated evidence | Live Resolve evidence | Status |
 | --- | --- | --- | --- | --- |
 | R1–R5 | Baseline 9ba3fb7 | Existing fixtures do not reproduce these reports | User reports: blank Program, failed B/Ripple Delete, lost Timeline after page changes, unreliable Dock All, unavailable fullscreen | Open |
+| R1–R4 | Working reliability changes | `bash infrastructure/macos/test-reliability.sh`: PASS. Reproduced 17 failures before changes; now covers ten native page moves, deferred docking, replaced layouts, unrelated ownership rejection, viewer visibility and native shortcut scope/text entry. | Pending fresh-process checks, including actual B/Ripple Delete and both viewer images | Implemented; live verification pending |
+| C1–C2 | Working reliability changes | `bash infrastructure/macos/test-panel-sessions.sh`: PASS for eleven panels, persistence, bulk cancellation, visibility, viewport recovery, styles, hierarchy/focus, Quick Export and relaunch. Added event-driven focus, shortcut, native action and page recovery diagnostics; text entry excludes key values. | Pending | Automated regression pass |
 | M1–C2 | — | — | — | Planned |
+
+## Current work order
+
+1. Build and identify the reliability helper; install when Resolve is closed.
+2. Validate R1–R5 in a fresh Resolve process and retain diagnostic evidence.
+3. Add named presets (including Duplicate), explicit Update and a modified indicator,
+   alongside compact scrolling controls. Named presets must remain separate from
+   automatic last-arrangement saves.
+4. Implement temporary maximize, investigate size/scale limits, then magnetic
+   snapping and horizontal/vertical groups with persistence and regression checks.

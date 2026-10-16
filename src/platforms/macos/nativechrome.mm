@@ -8,6 +8,9 @@ void applyNativeChrome(QWidget *widget, bool compact)
     NSView *view = reinterpret_cast<NSView *>(widget->winId());
     NSWindow *window = view.window;
     if (!window) return;
+    // Qt tool ownership preserves the main window's shortcut scope; native level
+    // stays normal so the explicit hierarchy and optional control pin decide Z.
+    if (widget->windowType() == Qt::Tool) window.level = NSNormalWindowLevel;
     window.titleVisibility = compact ? NSWindowTitleHidden : NSWindowTitleVisible;
     window.titlebarAppearsTransparent = compact;
     if (compact) window.styleMask |= NSWindowStyleMaskFullSizeContentView;
