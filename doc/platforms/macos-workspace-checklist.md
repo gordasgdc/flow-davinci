@@ -127,14 +127,15 @@ regressions and live acceptance checks pass.
 | R1–R5 | Baseline 9ba3fb7 | Existing fixtures do not reproduce these reports | User reports: blank Program, failed B/Ripple Delete, lost Timeline after page changes, unreliable Dock All, unavailable fullscreen | Open |
 | R1–R4 | Working reliability changes | `bash infrastructure/macos/test-reliability.sh`: PASS. Reproduced 17 failures before changes; now covers ten native page moves, deferred docking, replaced layouts, unrelated ownership rejection, viewer visibility and native shortcut scope/text entry. | Pending fresh-process checks, including actual B/Ripple Delete and both viewer images | Implemented; live verification pending |
 | C1–C2 | Working reliability changes | `bash infrastructure/macos/test-panel-sessions.sh`: PASS for eleven panels, persistence, bulk cancellation, visibility, viewport recovery, styles, hierarchy/focus, Quick Export and relaunch. Added event-driven focus, shortcut, native action and page recovery diagnostics; text entry excludes key values. | Pending | Automated regression pass |
-| M1–C2 | — | — | — | Planned |
 | R2 | Installed c5cf2e4 | Owned-window shortcut fixture passes, but does not reproduce actual Ripple Delete failure | User confirms Ripple Delete still fails with Timeline undocked | Open; requires native command/focus diagnosis |
 | R2 diagnostic | c5cf2e4, pid 46314 | — | 2026-10-16T13:58:23.710Z: B reaches floating Timeline with m_TiTimelineView (UiTiSequenceView) focused; no corresponding shortcut/action observed. Ctrl+Z subsequently produces input.shortcut. Focus alone does not explain failure. | Native command routing investigation |
 | U1 | Continuation branch | Scroll area added for options and eleven-panel list; status and bulk recovery buttons remain outside it. Regression suite passed before adding explicit compact-size assertions. | Pending | In progress |
-| P1–P2 | Continuation branch | Named preset creation, duplicate-name rejection, rename, independent duplicate/update, deletion, reload and invalid-file preservation pass. Control restore fixture restores Source only with saved size; current changes do not update saved presets. | Pending; groups and UI scale remain unimplemented | Implemented for current panel/options model |
+| P1–P2 | Continuation branch | Named preset creation, duplicate-name rejection, rename, independent duplicate/update, deletion, reload and invalid-file preservation pass. Control restore fixture restores Source only with saved size; current changes do not update saved presets. Pair-group layout is included in the same workspace/preset data. | Pending; UI scale remains unimplemented | Implemented for current panel/options model |
 | E1 | Working changes after f85a49b | Native menu fixture passes shared Dock/Undock state, original item preservation, repeated-open deduplication and unrelated menu exclusion. Only positively attached options menus are modified. | Pending real menu ownership verification; Timeline header control not implemented | Partial |
 | M1–M2 | Working changes after f85a49b | Explicit Expand/Restore fixtures pass original docked slot, floating geometry, close-to-dock and exclusion of temporary geometry from persistence. | Pending; backtick already produces a native shortcut event in c5cf2e4 logs and needs conflict investigation before interception | Partial; keyboard mapping not implemented |
-| D1 | Working changes after f85a49b | Frame alignment, negative display coordinates, threshold rejection, preview/release and Option bypass fixtures pass. Uses the Unbound grip, including a new grip beneath standard title bars. Snap preference persists in settings/presets. | Pending | Partial: native macOS title-bar drag not integrated; no groups/shared resizing |
+| D1 | Working changes | Frame alignment, negative display coordinates, threshold rejection, preview/release and Option bypass fixtures pass. Uses the Unbound grip, including a new grip beneath standard title bars. Snap preference persists in settings/presets. | Pending | Partial: native title-bar drag does not preview attachments |
+| D2–D4 | Working single-host pair groups | `test-panel-groups.sh` passes both orientations for direct/content-layout panels, synchronous group motion, shared split restoration, page visibility, recall, pointer-anchored tear-off, group close and original-slot docking. Panel-controls suite passes union preview, drop-to-group, saved group reload and Release Groups. Earlier prototype emitted Cocoa KVO warnings; revised layout transfer passes without window recreation. | Pending GPU playback/rendering, keyboard scope, physical drag feel, mixed displays and refresh rates | Partial: two-member groups; no nested groups, add-third, continuous tear-off/reattach or group-aware maximize |
+| R2 candidate | Working activation bridge | Reliability fixture passes existing Windows audition bridge pattern: application receives one page activation notification; synthetic event is consumed before Qt widget delivery. Native key window, Qt active host and text focus stay unchanged; inactive Edit is skipped. | Actual Ripple Delete still requires new build and live confirmation | Candidate only; not claimed fixed |
 | E2/S2 | Investigation | Bundled Qt 5.15.2 source, qgraphicsproxywidget.cpp lines 582–584 excludes WA_PaintOnScreen/OpenGL widgets from embedding; its class documentation cautions against high-performance use. A transformed proxy is therefore not a proven universal panel-scale solution. | Need native/GPU surface inspection and actual-panel prototype | Open; no scale slider shipped |
 
 ## Install handoff
@@ -152,10 +153,32 @@ not included. Ripple Delete is already reported failing and remains open.
 
 ## Current work order
 
-1. Build and identify the reliability helper; install when Resolve is closed.
-2. Validate R1–R5 in a fresh Resolve process and retain diagnostic evidence.
-3. Add named presets (including Duplicate), explicit Update and a modified indicator,
-   alongside compact scrolling controls. Named presets must remain separate from
-   automatic last-arrangement saves.
-4. Implement temporary maximize, investigate size/scale limits, then magnetic
-   snapping and horizontal/vertical groups with persistence and regression checks.
+1. Build the pair-group/activation candidate and install when Resolve is closed.
+2. Validate R1–R5 and D1–D4 in a fresh process; keep test results separate from
+   actual editing/playback evidence. No checklist box is closed by fixtures alone.
+3. Validate named presets, compact controls, shared menus, temporary expansion and
+   group reload with real Resolve widget/GPU content.
+4. Continue group-aware maximize/backtick conflict resolution, native title-bar
+   attachment, Timeline header controls, size/scale feasibility and nested groups.
+
+## Next candidate: exact live checks
+
+1. Click a floating Timeline and use the user's B/Ripple Delete mapping once on
+   an intended selection. Compare docked versus floating. Verify text entry still
+   types normally. Record input.page-scope.restore and input.command-context logs.
+2. Undock Source and Program in dual-viewer mode. Drag a dotted Unbound grip beside
+   the other viewer until a blue outline covers both; release. Move the shared
+   host by its title/grip, resize the divider, and inspect playback and both images.
+   Option bypasses attachment. Test Side by Side and Stack in Join two panels too.
+3. Drag a member title out of its group. Check initial pointer position and motion
+   through release; no jump, trailing or delayed follower is acceptable. Detach and
+   Release Groups are alternative explicit operations. Reattachment currently needs
+   a fresh Unbound-grip drag. Groups currently contain two members only.
+4. Save As a named arrangement; move/resize panels; check Modified. Update, Rename,
+   Duplicate and Restore. Restart and verify groups, visibility, split and geometry.
+5. Switch Edit to Color/Fairlight and back; then test Dock All. Check all content,
+   original slots and B again. Close a group and verify both panels dock safely.
+6. Shrink controls and scroll; test recognized ellipsis Dock/Undock against the
+   control buttons. Expand/Restore works on independent panels; individual Expand
+   is disabled while grouped. Backtick, native fullscreen fixes, UI scaling,
+   Timeline header buttons and nested groups are not delivered by this candidate.

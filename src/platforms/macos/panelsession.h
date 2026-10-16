@@ -25,28 +25,64 @@ public:
         arrangeTimer.setSingleShot(true);
         arrangeTimer.setInterval(180);
         connect(&arrangeTimer, &QTimer::timeout, this, [this] {
-            if (constrain) keepOnDisplay(host);
+            if (constrain && window()) keepOnDisplay(window()->window());
             if (arrangementChanged) arrangementChanged();
         });
     }
     ~MacPanelSession() override { changed = {}; arrangementChanged = {}; dock(); }
     bool active() const { return !host.isNull(); }
     bool dockPending() const { return pendingDock; }
-    QWidget *window() const { return host; }
+    QWidget *window() const { return grouped() ? groupContainer.data() : host.data(); }
     std::function<void()> changed;
     std::function<void()> arrangementChanged;
-    void setChrome(WindowChrome value) { chrome = value; if (host) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
+    std::function<void()> releaseGroup;
+    std::function<void(QWidget *, Qt::Edge)> attachRequested;
+    bool grouped() const { return !groupContainer.isNull(); }
+    QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
+    QWidget *nativeOwnerWindow() const { return originalMain; }
+    QWidget *pageWidget() const { return originalPage; }
+    QString attachToGroup(QWidget *container)
+    {
+        if (!host || !host->layout() || grouped() || !container || container->layout() || container->window()->parentWidget() != originalMain)
+            return QStringLiteral("Panel cannot join this group.");
+        detachedGeometry = host->geometry();
+        QScopedValueRollback<bool> moving(recovering, true);
+        container->setLayout(host->layout());
+        if (host->layout() || !container->layout()) return QStringLiteral("Could not transfer panel layout into group.");
+        groupContainer = container;
+        groupContainer->installEventFilter(this);
+        host->hide();
+        groupContainer->setVisible(!userHidden);
+        return {};
+    }
+    void detachFromGroup()
+    {
+        if (!grouped()) return;
+        if (!host) return;
+        QScopedValueRollback<bool> moving(recovering, true);
+        if (groupContainer->layout()) host->setLayout(groupContainer->layout());
+        groupContainer->removeEventFilter(this);
+        groupContainer = nullptr;
+        static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
+        setFloatingGeometry(detachedGeometry);
+        host->setVisible(!userHidden && originalPage && originalPage->isVisible());
+    }
+    void setChrome(WindowChrome value) { chrome = value; if (host && !grouped()) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     bool hiddenByUser() const { return userHidden; }
-    void setConstrained(bool enabled) { constrain = enabled; if (enabled) keepOnDisplay(host); }
-    void bringOnScreen() { keepOnDisplay(host); if (arrangementChanged) arrangementChanged(); }
-    void setFloatingGeometry(const QRect &r) { if (host && r.isValid()) { host->setGeometry(r); if (constrain) keepOnDisplay(host); } }
+    void setConstrained(bool enabled) { constrain = enabled; if (enabled && window()) keepOnDisplay(window()->window()); }
+    void bringOnScreen() { if (window()) keepOnDisplay(window()->window()); if (arrangementChanged) arrangementChanged(); }
+    void setFloatingGeometry(const QRect &r) { if (grouped()) { if (r.isValid()) detachedGeometry = r; } else if (host && r.isValid()) { host->setGeometry(r); if (constrain) keepOnDisplay(host); } }
     void setHiddenByUser(bool hide)
     {
         userHidden = hide;
         if (host) {
-            if (hide) host->hide();
-            else if (originalPage && originalPage->isVisible()) { host->showNormal(); keepOnDisplay(host); host->raise(); host->activateWindow(); }
+            auto surface = window();
+            if (hide) surface->hide();
+            else if (originalPage && originalPage->isVisible()) {
+                if (grouped()) { surface->window()->showNormal(); surface->show(); } else host->showNormal();
+                keepOnDisplay(surface->window()); surface->window()->raise(); surface->window()->activateWindow();
+            }
         }
         logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}});
         if (changed) changed();
@@ -64,6 +100,7 @@ public:
         originalLayout = slot->layout();
         ++generation;
         host = new MacFloatingHost(originalMain);
+        static_cast<MacFloatingHost *>(host.data())->attachRequested = [this](QWidget *target, Qt::Edge edge) { if (attachRequested) attachRequested(target, edge); };
         static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
@@ -150,6 +187,7 @@ public:
         }
         ++generation;
         host = new MacFloatingHost(originalMain);
+        static_cast<MacFloatingHost *>(host.data())->attachRequested = [this](QWidget *target, Qt::Edge edge) { if (attachRequested) attachRequested(target, edge); };
         static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setWindowTitle(title);
@@ -181,6 +219,7 @@ public:
 
     QString dock()
     {
+        if (releaseGroup) { auto release = releaseGroup; release(); }
         logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
             {"active", active()}, {"original_parent", originalParent ? originalParent->objectName() : QString()}});
         if (!active()) return QStringLiteral("This panel is already docked.");
@@ -275,7 +314,7 @@ protected:
             static_cast<QCloseEvent *>(event)->setAccepted(error.isEmpty());
             return true;
         }
-        if (object == host && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) arrangeTimer.start();
+        if ((object == host || object == groupContainer) && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) arrangeTimer.start();
         if (object == content && !docking && !recovering &&
             (event->type() == QEvent::Hide || event->type() == QEvent::ParentChange)) {
             logEvent(QStringLiteral("panel.native-change"), {{"widget", widgetState(content)},
@@ -286,6 +325,7 @@ protected:
             if (event->type() == QEvent::Hide) {
                 logEvent(QStringLiteral("panel.page.leave"), {{"host", host->objectName()}});
                 host->hide();
+                if (grouped()) groupContainer->hide();
             }
             if (event->type() == QEvent::Show) {
                 logEvent(QStringLiteral("panel.page.return"), {{"host", host->objectName()}});
@@ -314,28 +354,31 @@ private:
                 return;
             }
             QScopedValueRollback<bool> recovery(recovering, true);
+            QWidget *surface = window();
             if (!transferredLayout && content) {
-                if (content->parentWidget() != host) {
+                if (content->parentWidget() != surface) {
                     if (!nativeOwner(content->parentWidget())) {
                         logEvent(QStringLiteral("panel.recover.rejected"), {{"widget", widgetState(content)}}); return;
                     }
-                    host->layout()->addWidget(content);
+                    surface->layout()->addWidget(content);
                 }
                 content->show();
             }
-            if (!userHidden && !host->isVisible()) {
-                const bool previous = host->testAttribute(Qt::WA_ShowWithoutActivating);
-                host->setAttribute(Qt::WA_ShowWithoutActivating, true);
-                host->show(); host->setAttribute(Qt::WA_ShowWithoutActivating, previous);
+            if (!userHidden && !surface->isVisible()) {
+                const bool previous = surface->testAttribute(Qt::WA_ShowWithoutActivating);
+                surface->setAttribute(Qt::WA_ShowWithoutActivating, true);
+                surface->show(); surface->setAttribute(Qt::WA_ShowWithoutActivating, previous);
             }
             logEvent(QStringLiteral("panel.recover.complete"), {{"widget", widgetState(content)}, {"host", widgetState(host)}});
         });
     }
     void clear()
     {
+        if (releaseGroup) { auto release = releaseGroup; release(); }
         ++generation;
         if (content) content->removeEventFilter(this);
         host = nullptr; content = nullptr; placeholder = nullptr;
+        groupContainer = nullptr;
         originalParent = nullptr; originalLayout = nullptr;
         originalSplitter = nullptr; originalPage = nullptr;
         originalStack = nullptr;
@@ -357,6 +400,8 @@ private:
     bool userHidden = false;
     bool constrain = true;
     bool snapping = true;
+    QPointer<QWidget> groupContainer;
+    QRect detachedGeometry;
     QTimer arrangeTimer;
     WindowChrome chrome = WindowChrome::Standard;
     int stackIndex = -1;

@@ -8,6 +8,27 @@
 #include <cstdio>
 #include "panelsession.h"
 #include "interactiondiagnostics.h"
+#include "activationbridge.h"
+
+class TestApplication : public QApplication
+{
+public:
+    using QApplication::QApplication;
+    QPointer<QObject> watched;
+    int notifications = 0;
+    bool notify(QObject *object, QEvent *event) override
+    {
+        if (object == watched && event->type() == QEvent::WindowActivate) ++notifications;
+        return QApplication::notify(object, event);
+    }
+};
+class ActivationRecorder : public QObject
+{
+public:
+    int received = 0;
+    bool eventFilter(QObject *, QEvent *event) override
+    { if (event->type() == QEvent::WindowActivate) ++received; return false; }
+};
 
 static int failures = 0;
 static void check(bool value, const char *description)
@@ -37,7 +58,7 @@ static void pressB(QWidget *widget)
 
 int main(int argc, char **argv)
 {
-    QApplication app(argc, argv); app.setQuitOnLastWindowClosed(false);
+    TestApplication app(argc, argv); app.setQuitOnLastWindowClosed(false);
     QTemporaryDir logs;
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     Unbound::InteractionDiagnostics diagnostics(&app);
@@ -158,6 +179,32 @@ int main(int argc, char **argv)
         pressB(editor); check(rippleDelete == 1, "main-window B shortcut fires exactly once in floating timeline");
         field->setFocus(); pressB(field);
         check(field->text() == "b" && rippleDelete == 1, "text entry keeps B instead of deleting timeline selection");
+    }
+    settle();
+    {
+        QWidget main; main.setObjectName("UiMainWindow");
+        auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform");
+        auto mainLayout = new QVBoxLayout(&main); mainLayout->addWidget(page);
+        auto editor = new QLineEdit(page); auto pageLayout = new QVBoxLayout(page); pageLayout->addWidget(editor);
+        main.show(); settle(); Unbound::MacPanelSession session;
+        check(session.undock(editor, page, "Timeline").isEmpty(), "activation scope setup");
+        activate(session.window()); editor->setFocus(); settle();
+        ActivationRecorder mainEvents, hostEvents;
+        main.installEventFilter(&mainEvents); session.window()->installEventFilter(&hostEvents);
+        Unbound::ResolveActivationBridge bridge(&app);
+        app.watched = &main; app.notifications = 0;
+        const auto focus = QApplication::focusWidget(); const auto key = Unbound::nativeKeyWindowNumber();
+        for (int i = 0; i < 2; ++i) {
+            QEvent activation(QEvent::WindowActivate); QApplication::sendEvent(session.window(), &activation);
+        }
+        check(app.notifications == 2 && mainEvents.received == 0 && hostEvents.received == 2,
+            "page scope notification reaches application once per activation without fake activation reaching main widgets");
+        check(QApplication::focusWidget() == focus && Unbound::nativeKeyWindowNumber() == key && QApplication::activeWindow() == session.window(),
+            "scope bridge preserves real text focus, Qt active host and native key window");
+        page->hide(); settle(); const int before = app.notifications;
+        QEvent offPage(QEvent::WindowActivate); QApplication::sendEvent(session.window(), &offPage);
+        check(app.notifications == before, "scope bridge skips inactive Edit page");
+        app.watched = nullptr;
     }
     settle();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));

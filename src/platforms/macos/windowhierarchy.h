@@ -43,7 +43,8 @@ public:
         }
         if (floating.isEmpty()) return;
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
-            const int left = floatingTier(a->objectName()), right = floatingTier(b->objectName());
+            const int left = a->property("unboundGroupTier").isValid() ? a->property("unboundGroupTier").toInt() : floatingTier(a->objectName());
+            const int right = b->property("unboundGroupTier").isValid() ? b->property("unboundGroupTier").toInt() : floatingTier(b->objectName());
             return left != right ? left < right : activation.value(a) < activation.value(b);
         });
         QList<QWidget *> windows;

@@ -7,6 +7,9 @@
 #include "windowsnap.h"
 #include "diagnostics.h"
 #include <QScreen>
+#include <QPointer>
+#include <QTimer>
+#include <functional>
 
 namespace Unbound {
 enum class WindowChrome { Standard, Compact, Hidden };
@@ -50,12 +53,14 @@ public:
         if (position.isValid()) setGeometry(position);
         update();
     }
-    void setSnapping(bool enabled) { snapping = enabled; if (!enabled && preview) preview->hide(); }
+    void setSnapping(bool enabled) { snapping = enabled; if (!enabled) { attachmentTarget = nullptr; snapPosition = {}; if (preview) preview->hide(); } }
+    std::function<void(QWidget *, Qt::Edge)> attachRequested;
 protected:
     void hideEvent(QHideEvent *event) override
     {
         if (preview) preview->hide();
         snapPosition = {};
+        attachmentTarget = nullptr;
         if (dragging) { dragging = false; releaseMouse(); }
         QWidget::hideEvent(event);
     }
@@ -86,6 +91,7 @@ protected:
         }
         const bool grip = widget == this && point.y() >= 4 && point.y() < contentsMargins().top();
         if (event->type() == QEvent::MouseButtonPress && mouse->button() == Qt::LeftButton && (edges || grip)) {
+            snapPosition = {}; attachmentTarget = nullptr;
             dragging = true; dragEdges = edges; start = mouse->globalPos(); startGeometry = geometry(); grabMouse(); return true;
         }
         if (dragging && event->type() == QEvent::MouseMove) {
@@ -94,18 +100,23 @@ protected:
                 minimumSize().expandedTo(minimumSizeHint()).expandedTo(QSize(80, 40)), maximumSize()));
             else {
                 const QRect desired(startGeometry.topLeft() + delta, size());
-                move(desired.topLeft());
+                setGeometry(desired);
                 previewSnap(desired, mouse->modifiers().testFlag(Qt::AltModifier));
             }
             return true;
         }
         if (dragging && event->type() == QEvent::MouseButtonRelease) {
+            const auto target = attachmentTarget;
+            const auto edge = attachmentEdge;
+            const bool attach = target && attachRequested && snapping && !mouse->modifiers().testFlag(Qt::AltModifier);
             if (!dragEdges && snapping && !mouse->modifiers().testFlag(Qt::AltModifier) && snapPosition.isValid()) {
-                move(snapPosition.topLeft());
+                setGeometry(snapPosition);
                 logEvent(QStringLiteral("window.snap"), {{"window", objectName()}, {"x", x()}, {"y", y()}});
             }
             if (preview) preview->hide();
-            snapPosition = {}; dragging = false; releaseMouse(); return true;
+            snapPosition = {}; attachmentTarget = nullptr; dragging = false; releaseMouse();
+            if (attach) QTimer::singleShot(0, this, [this, target, edge] { if (target && attachRequested) attachRequested(target, edge); });
+            return true;
         }
         return false;
     }
@@ -113,6 +124,7 @@ private:
     void previewSnap(const QRect &desired, bool bypass)
     {
         snapPosition = {};
+        attachmentTarget = nullptr;
         if (!snapping || bypass) { if (preview) preview->hide(); return; }
         const QRect currentFrame = frameGeometry();
         const QPoint offset = currentFrame.topLeft() - geometry().topLeft();
@@ -125,8 +137,24 @@ private:
                 targets.append(window->frameGeometry());
         for (auto screen : QGuiApplication::screens()) displays.append(screen->availableGeometry());
         const QRect snapped = snapWindowFrame(proposed, targets, displays);
-        if (snapped == proposed) { if (preview) preview->hide(); return; }
         snapPosition = QRect(snapped.topLeft() - offset, desired.size());
+        QRect outline = snapped;
+        if (attachRequested) for (auto candidate : QApplication::topLevelWidgets()) {
+            if (candidate == this || !candidate->isVisible() || candidate->isMinimized() ||
+                !candidate->objectName().startsWith("unboundFloating_") || candidate->objectName().startsWith("unboundFloating_group_")) continue;
+            const auto frame = candidate->frameGeometry();
+            const int overlapY = qMin(frame.bottom(), snapped.bottom()) - qMax(frame.top(), snapped.top()) + 1;
+            const int overlapX = qMin(frame.right(), snapped.right()) - qMax(frame.left(), snapped.left()) + 1;
+            if (overlapY > qMin(frame.height(), snapped.height()) / 2 &&
+                (snapped.right() + 1 == frame.left() || snapped.left() == frame.right() + 1)) {
+                attachmentEdge = snapped.right() + 1 == frame.left() ? Qt::LeftEdge : Qt::RightEdge;
+            } else if (overlapX > qMin(frame.width(), snapped.width()) / 2 &&
+                (snapped.bottom() + 1 == frame.top() || snapped.top() == frame.bottom() + 1)) {
+                attachmentEdge = snapped.bottom() + 1 == frame.top() ? Qt::TopEdge : Qt::BottomEdge;
+            } else continue;
+            attachmentTarget = candidate; outline = snapped.united(frame); break;
+        }
+        if (snapped == proposed && !attachmentTarget) { if (preview) preview->hide(); return; }
         if (!preview) {
             preview = new QWidget(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus);
             preview->setObjectName(QStringLiteral("unboundSnapPreview"));
@@ -134,12 +162,14 @@ private:
             preview->setAttribute(Qt::WA_TransparentForMouseEvents);
             preview->setStyleSheet(QStringLiteral("background: rgba(80,140,210,45); border: 2px solid #5099df;"));
         }
-        preview->setGeometry(snapped); preview->show(); preview->raise();
+        preview->setGeometry(outline); preview->show(); preview->raise();
     }
     WindowChrome chrome = WindowChrome::Standard;
     bool snapping = true;
     QWidget *preview = nullptr;
     QRect snapPosition;
+    QPointer<QWidget> attachmentTarget;
+    Qt::Edge attachmentEdge = Qt::LeftEdge;
     bool dragging = false;
     Qt::Edges dragEdges;
     QPoint start;

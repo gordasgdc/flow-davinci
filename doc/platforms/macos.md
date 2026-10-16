@@ -44,8 +44,8 @@ reports unavailable panels. Named presets live in
 `~/Library/Application Support/Unbound/Arrangements.json`; invalid/unsupported
 files are preserved and writes refused. `UNBOUND_ARRANGEMENTS_FILE` overrides this
 path for isolated tests. Presets include existing panel geometry, docking,
-visibility, chrome, hierarchy, pinning and viewport options. Group docking and
-independent UI scaling are not implemented. Options and panel controls scroll;
+visibility, chrome, hierarchy, pinning, viewport options and pair-group layouts.
+Independent UI scaling is not implemented. Options and panel controls scroll;
 preset and bulk recovery controls remain accessible outside the scroll area.
 These additions have fixture coverage but await live Resolve verification.
 
@@ -63,8 +63,24 @@ Edge snapping is an initial grip-based implementation: drag the small dotted
 grip below a standard title bar, the compact header background, or the hidden
 style's grip. A blue outline previews nearby panel/display edges; release to
 align. Hold Option to bypass, or disable Snap window edges in Unbound. Native
-macOS title-bar dragging still moves freely. Snapping aligns frames; it does not
-join windows into groups or provide shared resizing. Those remain separate work.
+macOS title-bar dragging moves freely without attachment previews.
+
+When an individual floating panel is dragged beside another, the outline covers
+both panels to preview joining them. Release to create one native group window
+with a horizontal or vertical splitter. Move the group by its title/grip and
+resize the shared divider. Join two panels in the scrolling controls also offers
+Side by Side and Stack, defaulting to Source/Program. Any two available panels
+can form a pair; nested groups and adding a third member are not implemented.
+Each member has a draggable title and Detach button. A tear-off keeps the pointer
+anchored to the panel, then follows it directly until release. Release Groups
+restores standalone positions; member detachment places the released panels near
+their group locations. Group placement, orientation and split sizes persist in
+the last workspace and named presets. Group close docks both members; docking
+one member first releases the pair and leaves the other floating. Groups follow
+Edit-page visibility and the highest member's hierarchy tier. Individual Expand
+is disabled while grouped; temporary group-aware maximization remains pending.
+Attachment after a tear-off currently needs a new grip drag. Real viewer GPU
+rendering, playback responsiveness and native shortcuts still need live checks.
 
 The last arrangement is saved atomically in
 `~/Library/Application Support/Unbound/Workspace.json`. Floating state, user-hidden
@@ -89,8 +105,8 @@ flag. Title styles are Standard, Compact traffic lights (a full-size native titl
 bar with integrated lights), and Hidden (a drag grip and custom resize edges).
 
 These additions pass native fixtures, including workspace reload and title style
-checks, but still need validation on the actual added Resolve sidebars. Magnetic
-snapping, drag-to-dock and full shared-core platform integration remain unfinished.
+checks, but still need validation on the actual added Resolve sidebars. Full
+shared-core platform integration remains unfinished.
 
 ## Installation and relaunch
 
@@ -138,14 +154,21 @@ and mouse-driven resizing with hidden title bars. Native window-order tests chec
 both active viewers, activation of a background Timeline, real key-window focus
 preservation, hidden hosts, pinned controls, disabled hierarchy and modal dialogs.
 Quick Export tests check action dispatch and disabled-action rejection.
+`bash infrastructure/macos/test-panel-groups.sh` covers horizontal/vertical
+single-host pairs, synchronous movement, shared splitter persistence, direct and
+layout-transfer panels, page lifecycle, hide/show, pointer-anchored tear-off,
+closing a group and reversible native docking. The panel-controls suite covers
+drag attachment, ambiguous native menus and persisted group reload.
 Tests previously caught a splitter
 placeholder insertion bug. Live playback, GPU viewer rendering, native menu
 changes, project closure and repeated launches remain required checks.
 
 ## Remaining work
 
-Validate the startup route and native redocking first. Then implement the shared
-window integration and placement contracts, snapping, drag-to-dock, responsive
-resizing, Retina and Spaces/fullscreen behavior, persistence and playback checks.
+Validate the current candidate in a fresh Resolve process: viewer rendering,
+page scope/shortcuts, shared groups and recovery. Remaining work includes nested
+groups, group-aware maximize, native title-bar attachment previews, Timeline
+header controls, interface scaling feasibility, Retina/Spaces/fullscreen behavior,
+and full shared platform contracts.
 Define release packaging, dependency auditing, signing and notarization after
 runtime behavior is established. See [architecture](../architecture.md).

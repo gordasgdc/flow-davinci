@@ -218,10 +218,11 @@ int main(int argc, char **argv)
         program->setObjectName(QStringLiteral("widgetEditTimelinePlayer")); row->addWidget(program);
         main.show(); settle();
         Unbound::ArrangementStore presetStore;
-        QString presetId;
+        QString presetId, groupedId;
         const QJsonObject sourceArrangement{{"panels", QJsonObject{{"widgetEditSourcePlayer", QJsonObject{
             {"floating", true}, {"hidden", false}, {"x", 80}, {"y", 90}, {"width", 480}, {"height", 320}}}}}};
         check(presetStore.create("Source layout", sourceArrangement, presetId).isEmpty(), "prepare restore fixture");
+        {
         PanelControls controls;
         controls.show(); settle();
         controls.resize(300, 240); settle();
@@ -263,6 +264,12 @@ int main(int argc, char **argv)
             "native menu refreshes shared state without duplicate commands");
         sourceMenu->hide(); dockCommand->trigger(); settle(); settle();
         check(source->parentWidget() == stack && !sourceDock->isEnabled(), "native menu redocks original panel and updates controls");
+        auto sharedOptions = new QToolButton(program);
+        sharedOptions->setObjectName(QStringLiteral("tbtnPlayerOptions")); sharedOptions->setMenu(sourceMenu);
+        sourceMenu->show(); settle();
+        check(!dockCommand->isVisible(), "ambiguous shared native menus cannot target the wrong panel");
+        sourceMenu->hide(); sharedOptions->setMenu(nullptr);
+        sourceMenu->show(); settle(); check(dockCommand->isVisible(), "identified menu restores its command after ambiguity clears"); sourceMenu->hide();
         auto expandSource = controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");
         expandSource->click(); settleFor(160);
         check(sourceDock->isEnabled() && expandSource->text() == "Restore Size", "expand temporarily detaches docked panel");
@@ -282,6 +289,57 @@ int main(int argc, char **argv)
         QMenu unrelated(&main); unrelated.addAction("Unrelated"); unrelated.show(); settle();
         check(!unrelated.findChild<QAction *>("unboundDockPanel"), "unrelated menus are not modified");
         unrelated.hide();
+        controls.findChild<QPushButton *>("group_0")->click(); settleFor(350);
+        check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
+            "controls join Source and Program into a single host");
+        check(!expandSource->isEnabled(), "group members cannot corrupt slots through individual expansion");
+        controls.findChild<QPushButton *>("group_2")->click(); settle();
+        auto draggedSource = source->window();
+        auto targetProgram = program->window();
+        draggedSource->setGeometry(40, 300, 320, 240); targetProgram->setGeometry(420, 300, 320, 240); settle();
+        const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
+        const QPoint desiredFrame(targetProgram->frameGeometry().right() + 6, targetProgram->frameGeometry().top());
+        const QPoint delta = desiredFrame - draggedSource->frameGeometry().topLeft();
+        QMouseEvent down(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(press), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(draggedSource, &down);
+        QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+        QApplication::sendEvent(draggedSource, &move);
+        auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
+        check(attachmentPreview && attachmentPreview->isVisible() && attachmentPreview->width() > draggedSource->width(),
+            "panel attachment preview covers the proposed shared group");
+        QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(draggedSource, &up); settle(); settle();
+        check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
+            "releasing grip beside a panel creates an actual single-host group");
+        Unbound::WorkspaceSettings groupSettings;
+        check(groupSettings.data["groups"].toArray().size() == 1, "group identities and split geometry persist with workspace");
+        }
+        settle();
+        {
+            PanelControls restored; restored.show(); settleFor(600);
+            check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
+                "workspace reload restores single-host group");
+            Unbound::WorkspaceSettings groupedWorkspace;
+            auto groupedValue = groupedWorkspace.data; groupedValue.remove("controls"); groupedValue.remove("selected_arrangement");
+            Unbound::ArrangementStore groupedPresets;
+            check(groupedPresets.create("Grouped viewers", groupedValue, groupedId).isEmpty(), "named preset stores group relationships");
+            restored.findChild<QPushButton *>("group_2")->click(); settle();
+            check(source->window() != program->window() && source->window() != &main && program->window() != &main,
+                "Release Groups returns independent floating panels");
+            restored.findChild<QPushButton *>("bulk_1")->click(); settle();
+            check(source->parentWidget() == stack && program->parentWidget() == page, "Dock All restores original parents after grouping");
+        }
+        {
+            PanelControls restored; restored.show(); settle();
+            auto selector = restored.findChild<QComboBox *>("arrangements");
+            selector->setCurrentIndex(selector->findData(groupedId));
+            restored.findChild<QPushButton *>("restoreArrangement")->click(); settleFor(350);
+            check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
+                "named preset restores group identities, orientation and split geometry after Dock All");
+            restored.findChild<QPushButton *>("bulk_1")->click(); settle();
+            Unbound::ArrangementStore cleanup;
+            check(cleanup.remove(groupedId).isEmpty(), "grouped preset fixture cleanup");
+        }
     }
     {
         QWidget page;
