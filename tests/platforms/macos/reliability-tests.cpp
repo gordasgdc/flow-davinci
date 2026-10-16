@@ -215,15 +215,18 @@ int main(int argc, char **argv)
         button.click();
         QAction action("Diagnostic menu action", &controls);
         action.setObjectName("diagnosticMenuAction"); controls.addAction(&action); action.trigger();
+        QAction cinema("Cinema Viewer", &controls);
+        cinema.setObjectName("workspaceViewerModeCinemaViewer"); controls.addAction(&cinema); cinema.trigger();
     }
     settle();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "interaction evidence log exists");
-    bool shortcutObserved = false, textObserved = false, pageMoveObserved = false, buttonObserved = false, actionObserved = false;
+    bool shortcutObserved = false, textObserved = false, pageMoveObserved = false, buttonObserved = false, actionObserved = false, cinemaObserved = false;
     while (!events.atEnd()) {
         const auto record = QJsonDocument::fromJson(events.readLine()).object();
         if (record["event"] == "input.button.clicked" && record["button"].toObject()["name"] == "diagnosticActivation") buttonObserved = true;
         if (record["event"] == "input.action.triggered" && record["action"] == "diagnosticMenuAction") actionObserved = true;
+        if (record["event"] == "viewer.cinema.context" && record["command"] == "workspaceViewerModeCinemaViewer" && record["phase"] == "command-triggered") cinemaObserved = true;
         check(record["component"] == "Unbound" && record["module"] == "UnboundWidgetProbe.dylib", "logs identify Unbound module");
         if (record["event"] == "input.shortcut") shortcutObserved = true;
         if (record["event"] == "panel.native-change") pageMoveObserved = true;
@@ -232,6 +235,7 @@ int main(int argc, char **argv)
             check(!record.contains("key") && !record.contains("text"), "typed text and key values are excluded from diagnostics");
         }
     }
+    check(cinemaObserved, "native Cinema Viewer dispatch has a separate trace from panel maximize");
     check(buttonObserved && actionObserved, "control button activation and shortcut-free menu actions logged");
     check(shortcutObserved && textObserved && pageMoveObserved, "logs distinguish shortcut delivery, text input and native page movement");
     if (!failures) std::puts("PASS: native page moves, viewer visibility, docking recovery and owned-window shortcut scope");
