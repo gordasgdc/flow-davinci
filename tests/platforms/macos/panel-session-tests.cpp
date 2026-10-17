@@ -294,6 +294,8 @@ int main(int argc, char **argv)
         controls.resize(300, 240); settle();
         auto optionsScroll = controls.findChild<QScrollArea *>(QStringLiteral("panelOptionsScroll"));
         check(optionsScroll && controls.height() == 240 && controls.width() == 300, "controls can shrink around a scrollable panel list");
+        check(controls.close() && !controls.isVisible(), "closing controls hides them without vetoing native application shutdown");
+        controls.show(); settle();
         check(controls.findChild<QPushButton *>("bulk_1")->isVisibleTo(&controls), "Dock All remains outside scrolling content");
         auto sourceUndock = controls.findChild<QPushButton *>(QStringLiteral("undock_widgetEditSourcePlayer"));
         auto sourceDock = controls.findChild<QPushButton *>(QStringLiteral("dock_widgetEditSourcePlayer"));
@@ -724,6 +726,7 @@ int main(int argc, char **argv)
         activate(&group); hierarchy.apply(); check(ahead(&group, &pool), "active group follows normal activation within its tier");
     }
     settle();
+    Unbound::flushDiagnostics();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "diagnostic log created");
     int buttonEvents = 0, arrangementEvents = 0, verifiedDocks = 0;

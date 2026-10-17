@@ -14,6 +14,7 @@
 #include "dockdestination.h"
 #include "dockfeedback.h"
 #include "dragtiming.h"
+#include "uiworktiming.h"
 #include "diagnostics.h"
 #include <QScreen>
 #include <QPointer>
@@ -82,6 +83,9 @@ public:
     ~MacFloatingHost() override { delete nativeMoveWatch.data(); delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
     void setChrome(WindowChrome value)
     {
+        if (chromeInitialized && chrome == value) { updatePin(); return; }
+        UiWorkTiming timing("window.chrome",this);
+        chromeInitialized = true;
         const bool visible = isVisible();
         const QRect position = geometry();
         chrome = value;
@@ -89,9 +93,16 @@ public:
         const int top = value == WindowChrome::Compact ? 28 : 24;
         setContentsMargins(0, top, 0, 0);
         if (visible) show();
-        applyNativeChrome(this, value == WindowChrome::Compact);
+        {
+            UiWorkTiming native("window.chrome.native",this);
+            applyNativeChrome(this, value == WindowChrome::Compact);
+        }
         if (position.isValid()) setGeometry(position);
-        updatePin(); update();
+        {
+            UiWorkTiming pin("window.chrome.pin",this);
+            updatePin();
+        }
+        update();
         delete nativeMoveWatch.data();
         nativeMoveWatch = watchNativeWindowMove(this, [this] {
             if (dragging) return;
@@ -121,7 +132,8 @@ public:
         releaseWatch = watchNativePointerRelease(this, [this](QPoint position, bool option) {
             if (dragging) { movePointerDrag(position, option); finishPointerDrag(option, false, "native-mouse-up"); }
         });
-        logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}});
+        logEvent(QStringLiteral("drag.begin"), {{"window", objectName()}, {"start_x",start.x()}, {"start_y",start.y()},
+            {"geometry_x",startGeometry.x()}, {"geometry_y",startGeometry.y()}});
         // Cocoa can deactivate the window synchronously while capture is acquired.
         grabMouse();
         if (!dragging && QWidget::mouseGrabber() == this) {
@@ -130,6 +142,11 @@ public:
         }
     }
 protected:
+    void changeEvent(QEvent *event) override
+    {
+        QWidget::changeEvent(event);
+        if (chromeInitialized && event->type() == QEvent::WindowTitleChange) updatePin();
+    }
     void resizeEvent(QResizeEvent *event) override
     {
         QWidget::resizeEvent(event);
@@ -152,6 +169,9 @@ protected:
     }
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        const auto type = event->type();
+        if (type != QEvent::MouseButtonPress && type != QEvent::MouseButtonRelease && type != QEvent::MouseMove &&
+            type != QEvent::KeyPress && type != QEvent::ApplicationDeactivate && type != QEvent::WindowDeactivate) return false;
         if (!dragging && QWidget::mouseGrabber() == this &&
             (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonRelease ||
              event->type() == QEvent::MouseMove || event->type() == QEvent::KeyPress)) {
@@ -177,10 +197,10 @@ protected:
             movePointerDrag(mouse->globalPos(), mouse->modifiers().testFlag(Qt::AltModifier));
             return true;
         }
-        auto widget = qobject_cast<QWidget *>(object);
-        if (!widget || widget->window() != this) return false;
         if (event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseButtonRelease && event->type() != QEvent::MouseMove)
             return false;
+        auto widget = qobject_cast<QWidget *>(object);
+        if (!widget || widget->window() != this) return false;
         auto mouse = static_cast<QMouseEvent *>(event);
         const QPoint point = mapFromGlobal(mouse->globalPos());
         Qt::Edges edges;
@@ -269,14 +289,19 @@ private:
                 guideWidgets[i]->setStyleSheet(QStringLiteral("background:#6582a0;"));
             }
             const auto line = alignment[i];
-            guideWidgets[i]->setGeometry(QRect(line.p1(), line.p2()).normalized().adjusted(0, 0, 1, 1));
-            guideWidgets[i]->show(); guideWidgets[i]->raise();
+            const auto frame = QRect(line.p1(), line.p2()).normalized().adjusted(0, 0, 1, 1);
+            if (guideWidgets[i]->geometry() != frame) guideWidgets[i]->setGeometry(frame);
+            if (!guideWidgets[i]->isVisible()) { guideWidgets[i]->show(); guideWidgets[i]->raise(); }
         }
         snapPosition = align ? QRect(snapped.topLeft() - offset, desired.size()) : QRect();
         QRect outline = snapped;
         DockZone chosen;
-        const auto destination = resolveDockDestination(this, dragPointer,
-            {preview, dropMarker, compass, guideWidgets[0], guideWidgets[1]});
+        DockDestination destination;
+        {
+            DragTiming::Sample lookup(dragTiming,"destination_lookup");
+            destination = resolveDockDestination(this, dragPointer,
+                {preview, dropMarker, compass, guideWidgets[0], guideWidgets[1]});
+        }
         auto surface = destination.surface;
         const auto surfaceFrame = destination.frame;
         const auto previous = surface == hoverDestination ? previousPlacement : DropPlacement::None;
@@ -327,13 +352,16 @@ private:
             preview->setStyleSheet(QStringLiteral("background: rgba(80,140,210,45); border: 2px solid #5099df;"));
         }
         if (preview->geometry() != outline) preview->setGeometry(outline);
-        if (!preview->isVisible()) { preview->show(); preview->raise(); }
-        if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
+        if (!preview->isVisible()) {
+            preview->show(); preview->raise();
+            if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
+        }
     }
     static bool surfacesAreGrouped(QWidget *widget) { return widget && widget->objectName().startsWith("unboundFloating_group_"); }
     void hidePreviews() { if (compass) compass->hide(); hoverDestination = nullptr; previousPlacement = DropPlacement::None; if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
     QToolButton *pinButton = nullptr;
     WindowChrome chrome = WindowChrome::Standard;
+    bool chromeInitialized = false;
     DragTiming dragTiming;
     bool snapping = true;
     DockCompass *compass = nullptr;

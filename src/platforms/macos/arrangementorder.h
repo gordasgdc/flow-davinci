@@ -13,7 +13,7 @@ public:
     {
         setObjectName("arrangementOrder"); setAccessibleName("Workspace preset order");
         setDragDropMode(QAbstractItemView::InternalMove); setDefaultDropAction(Qt::MoveAction);
-        setMinimumHeight(80); setMaximumHeight(180); setToolTip("Drag a grip to change the order in Workspace > Custom Workspace Presets");
+        setMinimumHeight(80); setMaximumHeight(180); setToolTip("Drag a grip to change the order in Workspace UI");
         timer.setSingleShot(true);
         connect(model(), &QAbstractItemModel::rowsMoved, this, [this] { timer.start(0); });
         connect(&timer, &QTimer::timeout, this, [this] {

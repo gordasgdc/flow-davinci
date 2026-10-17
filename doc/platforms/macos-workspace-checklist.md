@@ -1,5 +1,21 @@
 # Mac workspace checklist
 
+Current candidate branch: `macos-responsive-group-transfers`, based on installed
+baseline `73f4c2f`. Candidate changes are not installed. Historical branch/build
+records below remain evidence for their own iterations.
+
+## Current Workspace UI acceptance
+
+- [ ] WUI1: Separate top-level **Workspace UI** menu beside **Workspace**, not an
+  item inside Show Panel in Workspace. Native Edit UI stays first and cannot be
+  deleted; saved Edit names below it restore with one click. Management remains
+  available without cluttering panel callers.
+- [ ] WUI2: Native label and saved list follow the actual visible Resolve page.
+  Existing presets remain Edit layouts with stable IDs. Other-page names cannot
+  overwrite or reorder Edit layouts; queued commands cancel after a page change.
+- [ ] WUI3: Verify native Cocoa menu appearance and page switching in a fresh
+  Resolve process. Compilation and headless page/store fixtures do not close this.
+
 Working branch: `macos-docking-compass-and-controls`.
 Preserved prior iteration: `macos-docking-tabs-and-maximize` at `38d0616`,
 installed executable `21466f2`. See [controls/docking follow-up](macos-controls-docking-followup.md)

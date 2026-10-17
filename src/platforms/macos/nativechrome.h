@@ -15,6 +15,8 @@ void orderNativeWindows(const QList<QWidget *> &bottomToTop);
 qint64 nativeKeyWindowNumber();
 qint64 nativeWindowNumber(QWidget *widget);
 QList<qint64> nativeOrderedWindowNumbers();
+double nativeInputAgeMilliseconds(quint64 timestamp);
+double nativeCurrentDragAgeMilliseconds();
 QObject *watchNativePointerRelease(QObject *owner, std::function<void(QPoint, bool)> released);
 QObject *watchNativeWindowMove(QWidget *window, std::function<void()> begin,
     std::function<void(QPoint)> moved, std::function<void(QPoint, bool)> ended);
@@ -29,6 +31,7 @@ void activateNativeWindowForTest(QWidget *widget);
 bool saveNativeTrafficForTest(QWidget *widget, const QString &path);
 QList<QRect> nativeTrafficFramesForTest(QWidget *widget);
 QRect nativeTitleFrameForTest(QWidget *widget);
+QString nativeTitleTextForTest(QWidget *widget);
 void clickNativePinForTest(QWidget *widget);
 void postNativeMoveStartForTest(QWidget *widget);
 void postNativePointerReleaseForTest(QWidget *window);

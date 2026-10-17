@@ -30,7 +30,7 @@ public:
         order = new ArrangementOrder(owner); layout->addWidget(order); order->hide();
         order->reordered = [this](const QStringList &ids) {
             const auto id = presets->currentData().toString();
-            const auto error = arrangements.reorder(ids); reloadPresets(id);
+            const auto error = arrangements.reorderPage("edit",ids); reloadPresets(id);
             if (changed) changed();
             if (report) report(error.isEmpty() ? QStringLiteral("Workspace preset order saved.") : error);
             logEvent("arrangement.reorder", {{"success", error.isEmpty()}, {"error", error}});
@@ -68,6 +68,7 @@ private:
     {
         value["hide_background"] = value.value("hide_background").toBool();
         value["snap_windows"] = value.value("snap_windows").toBool(true);
+        value["page"] = value.value("page").toString("edit");
         QJsonArray layouts;
         for (auto saved : value.value("groups").toArray()) {
             auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
@@ -87,12 +88,12 @@ private:
     {
         const QSignalBlocker blocker(presets);
         presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
-        for (const auto &value : arrangements.list()) {
+        for (const auto &value : arrangements.list("edit")) {
             const auto entry = value.toObject();
             presets->addItem(entry["name"].toString(), entry["id"].toString());
         }
         presets->setCurrentIndex(qMax(0, presets->findData(selected)));
-        if (order) order->reload(arrangements.list());
+        if (order) order->reload(arrangements.list("edit"));
     }
     void manageArrangement(const QString &operation, const QString &target = {})
     {

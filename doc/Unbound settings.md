@@ -97,5 +97,9 @@ The macOS helper stores the current workspace in
 `Arrangements.json` beside it. `UNBOUND_WORKSPACE_FILE` and
 `UNBOUND_ARRANGEMENTS_FILE` override those locations for tests. Preset IDs remain
 stable when renamed or reordered; their array order is the displayed order in
-both Unbound's controls and Workspace > Custom Workspace Presets. Writes are
-atomic. Restore Native Workspace is a permanent command, not a deletable preset.
+both Unbound's controls and the candidate's separate Workspace UI menu. Presets
+carry a Resolve page ID; older untagged presets default to Edit without being
+rewritten on load. Names and reordering are scoped to their page. Updating from
+another page is rejected. Writes are atomic. Native Edit UI is a permanent
+command, not a deletable preset. The installed baseline still uses Workspace >
+Custom Workspace Presets until the candidate is validated and installed.

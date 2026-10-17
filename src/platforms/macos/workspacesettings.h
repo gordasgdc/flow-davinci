@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
+#include <QRect>
 
 namespace Unbound {
 class WorkspaceSettings

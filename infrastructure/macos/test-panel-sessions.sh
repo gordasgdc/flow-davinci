@@ -12,5 +12,17 @@ xcrun clang++ -std=c++17 -Wall -Wextra -Werror -DUNBOUND_NATIVE_TESTS \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
     -framework AppKit -framework CoreGraphics -Wl,-rpath,"$app/Contents/Frameworks" -o "$out"
 if [[ "${UNBOUND_TEST_COMPILE_ONLY:-0}" != 1 ]]; then
+    if [[ "${UNBOUND_TEST_HEADLESS:-0}" != 1 ]]; then
+        if pgrep -x Resolve >/dev/null; then
+            echo "NOT RUN: Resolve is open. Native-window fixtures require Resolve closed; compilation succeeded." >&2
+            exit 2
+        else
+            process_status=$?
+            if [[ "$process_status" != 1 ]]; then
+                echo "NOT RUN: unable to verify that Resolve is closed; compilation succeeded." >&2
+                exit 2
+            fi
+        fi
+    fi
     QT_PLUGIN_PATH="$app/Contents/PlugIns" "$out"
 fi

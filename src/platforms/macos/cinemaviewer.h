@@ -31,6 +31,8 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        const auto type = event->type();
+        if (type != QEvent::FocusIn && type != QEvent::ApplicationStateChange && type != QEvent::Show && type != QEvent::Hide) return false;
         auto widget = qobject_cast<QWidget *>(object);
         if (event->type() == QEvent::FocusIn && widget && !isCinemaViewer(widget->window())) lastFocus = widget;
         if (event->type() == QEvent::ApplicationStateChange && viewer && viewer->isVisible()) {

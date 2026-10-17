@@ -29,6 +29,7 @@ int main(int argc, char **argv)
         Unbound::WindowDiagnostics geometry(nullptr); qApp->installEventFilter(&geometry);
         for (int i = 0; i < 100; ++i) { QMoveEvent move(QPoint(i,0),QPoint(i-1,0)); QApplication::sendEvent(&moving,&move); }
         geometry.flushGeometry(); qApp->removeEventFilter(&geometry);
+        Unbound::flushDiagnostics();
         QFile events(logs.path() + "/events.jsonl"); events.open(QIODevice::ReadOnly);
         int records = 0, changes = 0;
         while (!events.atEnd()) {

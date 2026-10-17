@@ -9,6 +9,7 @@
 #include <QWidget>
 #include <QHash>
 #include <QTimer>
+#include "diagnosticsink.h"
 
 #ifndef UNBOUND_BUILD_ID
 #define UNBOUND_BUILD_ID "development"
@@ -19,16 +20,6 @@ inline void logEvent(const QString &event, QJsonObject details = {})
 {
     const QString directory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
         QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
-    if (!QDir().mkpath(directory)) return;
-    const QString path = directory + QStringLiteral("/events.jsonl");
-    if (QFile(path).size() > 8 * 1024 * 1024) {
-        QFile::remove(path + QStringLiteral(".5"));
-        for (int index = 4; index >= 1; --index)
-            QFile::rename(path + QStringLiteral(".%1").arg(index), path + QStringLiteral(".%1").arg(index + 1));
-        QFile::rename(path, path + QStringLiteral(".1"));
-    }
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Append)) return;
     details.insert(QStringLiteral("component"), QStringLiteral("Unbound"));
     details.insert(QStringLiteral("module"), QStringLiteral("UnboundWidgetProbe.dylib"));
     details.insert(QStringLiteral("event"), event);
@@ -36,13 +27,14 @@ inline void logEvent(const QString &event, QJsonObject details = {})
     details.insert(QStringLiteral("pid"), QCoreApplication::applicationPid());
     details.insert(QStringLiteral("build"), QStringLiteral(UNBOUND_BUILD_ID));
     details.insert(QStringLiteral("process"), QCoreApplication::applicationName());
-    file.write(QJsonDocument(details).toJson(QJsonDocument::Compact) + '\n');
+    writeDiagnostic(directory,event,QJsonDocument(details).toJson(QJsonDocument::Compact) + '\n');
 }
 
 inline QJsonObject widgetState(QWidget *widget)
 {
     if (!widget) return {{"exists", false}};
     const QRect r = widget->geometry();
+    const auto minimumHint = widget->minimumSizeHint();
     return {{"exists", true}, {"name", widget->objectName()},
         {"class", widget->metaObject()->className()},
         {"parent", widget->parentWidget() ? widget->parentWidget()->objectName() : QString()},
@@ -52,8 +44,8 @@ inline QJsonObject widgetState(QWidget *widget)
         {"focus_proxy", widget->focusProxy() ? widget->focusProxy()->objectName() : QString()},
         {"x", r.x()}, {"y", r.y()}, {"width", r.width()}, {"height", r.height()},
         {"minimum_width", widget->minimumWidth()}, {"minimum_height", widget->minimumHeight()},
-        {"minimum_hint_width", widget->minimumSizeHint().width()},
-        {"minimum_hint_height", widget->minimumSizeHint().height()}};
+        {"minimum_hint_width", minimumHint.width()},
+        {"minimum_hint_height", minimumHint.height()}};
 }
 
 class WindowDiagnostics : public QObject
@@ -75,11 +67,6 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
-        auto widget = qobject_cast<QWidget *>(object);
-        if (!widget || !widget->isWindow()) return false;
-        const QString name = widget->objectName();
-        if (name != QLatin1String("UiMainWindow") && name != QLatin1String("unboundPanelTest") &&
-            !name.startsWith(QLatin1String("unboundFloating_"))) return false;
         const char *action = nullptr;
         switch (event->type()) {
         case QEvent::Move: action = "window.move"; break;
@@ -92,15 +79,22 @@ protected:
         case QEvent::WindowDeactivate: action = "window.deactivate"; break;
         default: return false;
         }
-        auto state = widgetState(widget);
-        state.insert(QStringLiteral("state"), int(widget->windowState()));
+        auto widget = qobject_cast<QWidget *>(object);
+        if (!widget || !widget->isWindow()) return false;
+        const QString name = widget->objectName();
+        if (name != QLatin1String("UiMainWindow") && name != QLatin1String("unboundPanelTest") &&
+            !name.startsWith(QLatin1String("unboundFloating_"))) return false;
         if (event->type() == QEvent::Move || event->type() == QEvent::Resize) {
+            const auto rect = widget->geometry();
+            QJsonObject state{{"name",name},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()},
+                {"state",int(widget->windowState())},{"visible",widget->isVisible()}};
             state["coalesced_events"] = geometryChanges.value(widget).value("coalesced_events").toInt() + 1;
             state["geometry_event"] = action; geometryChanges[widget] = state;
             if (!geometryTimer.isActive()) geometryTimer.start();
             return false;
         }
         if (event->type() == QEvent::Hide || event->type() == QEvent::Close) flushGeometry();
+        auto state = widgetState(widget); state["state"] = int(widget->windowState());
         logEvent(QLatin1String(action), state);
         return false;
     }

@@ -23,6 +23,31 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_WORKSPACE_FILE", (temporary.path() + "/Workspace.json").toUtf8());
     qputenv("UNBOUND_ARRANGEMENTS_FILE", (temporary.path() + "/Arrangements.json").toUtf8());
     {
+        QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
+        Unbound::activateNativeWindowForTest(&main); settle();
+        const auto key = Unbound::nativeKeyWindowNumber();
+        Unbound::GroupHostReserve reserve(&main); reserve.request(&main); settle(300);
+        QPointer<QWidget> prepared = main.findChild<QWidget *>("unboundPreparedGroupHost");
+        check(prepared && !prepared->isVisible() && !(Unbound::nativeVisibilityFlags(prepared) & 1),
+            "preparing an empty group never exposes another native window");
+        check(Unbound::nativeKeyWindowNumber() == key,
+            "preparing group chrome preserves the user's key window");
+        auto taken = reserve.take(&main);
+        check(taken == prepared && !taken->layout() && !taken->isVisible(),
+            "group reservation transfers one empty hidden host without cached content");
+        taken->setWindowTitle("Changed group membership");
+        check(Unbound::nativeTitleTextForTest(taken) == "Changed group membership",
+            "prepared group titles refresh without resizing or rebuilding native chrome");
+        reserve.clear();
+        check(prepared && taken->parentWidget() == &main,
+            "clearing the reserve cannot destroy a host already adopted by a group");
+        delete taken;
+        reserve.request(&main); settle(300);
+        QPointer<QWidget> unused = main.findChild<QWidget *>("unboundPreparedGroupHost");
+        reserve.clear();
+        check(unused.isNull(),"unused native group hosts are released on shutdown");
+    }
+    {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100,700);
         auto layout = new QVBoxLayout(&main);
         auto page = new QWidget(&main); layout->addWidget(page);
@@ -137,7 +162,7 @@ int main(int argc, char **argv)
         auto modeLayout = new QHBoxLayout(mode); auto left = new QWidget(mode); left->setObjectName("frameEditTopBarLeftInSSM"); modeLayout->addWidget(left);
         (new QHBoxLayout(left))->addWidget(new QLabel("Media Pool / Index / Inspector", left));
         QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel");
-        QMenu nativeWorkspace(&main); nativeWorkspace.setObjectName("workspace"); main.show(); settle();
+        QMenuBar menuBar(&main); QMenu nativeWorkspace(&menuBar); nativeWorkspace.setObjectName("workspace"); menuBar.addMenu(&nativeWorkspace); main.show(); settle();
         {
             PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
@@ -155,8 +180,8 @@ int main(int argc, char **argv)
                 workspaceCaller |= action->text() == "Workspace Toolbar";
             }
             check(timelineCaller && workspaceCaller, "both toolbars remain discoverable in Show Panel in Workspace");
-            auto nativeRecall = nativeWorkspace.findChild<QAction *>("unboundRestoreNativeWorkspace");
-            check(nativeRecall, "permanent native-workspace recall is prepopulated in the top Workspace menu");
+            auto nativeRecall = menuBar.findChild<QAction *>("unboundRestoreNativeWorkspace");
+            check(nativeRecall && nativeRecall->text() == "Native Edit UI", "permanent native-workspace recall is prepopulated in Workspace UI");
             controls.hide();
             if (nativeRecall) nativeRecall->trigger(); settle(200);
             check(timelineToolbar->parentWidget() == page && toolbarModes->parentWidget() == page,
@@ -385,8 +410,16 @@ int main(int argc, char **argv)
         check(group.join(&i, &m, Qt::Orientation(0)).isEmpty(), "center placement creates real native Qt tabs"); settle();
         auto tabs = group.window()->findChild<QTabWidget *>("unboundPanelTabs");
         check(tabs && tabs->count() == 2, "tab stack contains both real panel surfaces");
-        tabs->setCurrentIndex(1); group.syncVisibility(&i); settle();
+        check(inspector->isVisible() && !media->isVisible(),
+            "a newly built tab stack exposes only its selected native panel");
+        tabs->setCurrentIndex(1); settle();
+        check(media->isVisible() && !inspector->isVisible(),"switching tabs hides the previous native surface");
+        group.syncVisibility(&i); settle();
         check(group.selected(&i) && !group.selected(&m), "revealing a covered panel selects its tab");
+        Unbound::activateNativeWindowForTest(group.window()); settle();
+        auto visibleButton = inspector->findChild<QPushButton *>();
+        check(visibleButton && QApplication::widgetAt(visibleButton->mapToGlobal(visibleButton->rect().center())) == visibleButton,
+            "selected tab's native button remains the actual pointer hit target");
         i.setHiddenByUser(true); group.syncVisibility(); settle();
         check(!tabs->isTabVisible(0) && tabs->isTabVisible(1) && group.selected(&m), "hiding a tab leaves its neighbor usable");
         i.setHiddenByUser(false); group.syncVisibility(&i); settle();
@@ -401,6 +434,8 @@ int main(int argc, char **argv)
         check(i.grouped() && i.window() == surface && surface->layout() == nativeLayout && !i.expandedWindow(), "maximize restore returns native content to the exact same tab slot");
         check(group.snapshot()["tree"] == before["tree"], "temporary maximize preserves tab selection and group structure");
         check(group.add(&s, Qt::Vertical, false).isEmpty(), "source can span beneath a tab stack"); settle();
+        check(inspector->isVisible() && !media->isVisible() && source->isVisible(),
+            "rebuilding a tabbed subtree cannot expose its inactive native panel over the selected page");
         group.dissolve(); settle();
         auto top = Unbound::splitGroupTree({{"panel", "MediaPool"}}, {{"panel", "Inspector"}}, Qt::Horizontal);
         auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);

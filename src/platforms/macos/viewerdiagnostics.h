@@ -13,7 +13,13 @@ namespace Unbound {
 class ViewerDiagnostics : public QObject
 {
 public:
-    explicit ViewerDiagnostics(QObject *parent) : QObject(parent) {}
+    explicit ViewerDiagnostics(QObject *parent) : QObject(parent)
+    {
+        focusSnapshot.setSingleShot(true); focusSnapshot.setInterval(100);
+        focusSettled.setSingleShot(true); focusSettled.setInterval(120);
+        connect(&focusSnapshot,&QTimer::timeout,this,[this] { capture("native-focus-coalesced",lastFocusSignal); });
+        connect(&focusSettled,&QTimer::timeout,this,[this] { capture("native-focus-settled",lastFocusSignal); });
+    }
     void scan()
     {
         for (auto widget : QApplication::allWidgets()) {
@@ -33,6 +39,14 @@ public:
                 const bool connected = bool(QObject::connect(widget, method, mapper, slot, Qt::AutoConnection));
                 connect(mapper, &QSignalMapper::mappedString, this,
                     [this](const QString &signal) {
+                        if (!signal.contains("CinemaViewer") && !signal.contains("CinemaMode")) {
+                            // Keep every signal identity, but do not serialize the entire
+                            // window/player tree repeatedly while focus is changing.
+                            logEvent("viewer.native-signal",{{"signal",signal}});
+                            lastFocusSignal = signal;
+                            if (!focusSnapshot.isActive()) focusSnapshot.start();
+                            focusSettled.start(); return;
+                        }
                         capture("native-player-signal", signal);
                         QTimer::singleShot(120, this, [this, signal] { capture("native-player-settled", signal); });
                     });
@@ -58,5 +72,7 @@ public:
     }
 private:
     QSet<QWidget *> players;
+    QTimer focusSnapshot,focusSettled;
+    QString lastFocusSignal;
 };
 }

@@ -4,10 +4,13 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMenu>
+#include <QMenuBar>
 #include <QSet>
+#include <QHash>
 #include <QTimer>
 #include <functional>
 #include "diagnostics.h"
+#include "workspacepages.h"
 
 namespace Unbound {
 // Native menus and the controls window dispatch to the same arrangement owner.
@@ -15,32 +18,70 @@ namespace Unbound {
 class WorkspaceArrangements : public QObject
 {
 public:
-    explicit WorkspaceArrangements(QObject *owner) : QObject(owner) {}
+    explicit WorkspaceArrangements(QObject *owner) : QObject(owner) { qApp->installEventFilter(this); }
+    ~WorkspaceArrangements() override { if (qApp) qApp->removeEventFilter(this); }
     std::function<QJsonArray()> entries;
     std::function<QString()> selected;
     std::function<void(QString, QString)> invoke;
-    std::function<void()> nativeWorkspace;
+    std::function<void(QString)> nativeWorkspace;
+    std::function<QString()> currentPage = [] { return QStringLiteral("edit"); };
+    std::function<bool()> nativeActive = [] { return false; };
+    std::function<bool(QString)> supportedPage = [](const QString &page) { return page == "edit"; };
     void wire()
     {
         if (!entries || !selected || !invoke || !nativeWorkspace) return;
-        for (auto widget : QApplication::allWidgets()) if (auto root = qobject_cast<QMenu *>(widget))
-            if (root->objectName() == QLatin1String("workspace")) refresh(root);
+        const auto widgets = QApplication::allWidgets();
+        for (auto widget : widgets) if (auto workspace = qobject_cast<QMenu *>(widget)) {
+            if (workspace->objectName() != QLatin1String("workspace")) continue;
+            for (auto candidate : widgets) if (auto bar = qobject_cast<QMenuBar *>(candidate)) {
+                const auto actions = bar->actions(); const int index = actions.indexOf(workspace->menuAction());
+                if (index < 0) continue;
+                auto menu = bar->findChild<QMenu *>("unboundWorkspaceUI",Qt::FindDirectChildrenOnly);
+                if (!menu) {
+                    menu = new QMenu("Workspace UI",bar); menu->setObjectName("unboundWorkspaceUI");
+                    menu->setProperty("unboundOwnMenu",true); menu->menuAction()->setMenuRole(QAction::NoRole);
+                    logEvent("workspace.menu.attached",{{"placement","menubar"},{"label","Workspace UI"},{"page",currentPage()}});
+                }
+                const auto current = bar->actions();
+                if (current.indexOf(menu->menuAction()) != current.indexOf(workspace->menuAction())+1)
+                    bar->insertMenu(index+1 < actions.size() ? actions[index+1] : nullptr,menu);
+                watch(menu,menu); refresh(menu);
+                break;
+            }
+        }
+    }
+protected:
+    bool eventFilter(QObject *object,QEvent *event) override
+    {
+        if (event->type() != QEvent::Show && event->type() != QEvent::Hide) return false;
+        auto widget = qobject_cast<QWidget *>(object);
+        if (widget && widget->objectName().startsWith("WStackPage_") && !pageRefreshQueued) {
+            pageRefreshQueued = true;
+            QTimer::singleShot(0,this,[this] { pageRefreshQueued = false; wire(); });
+        }
+        return false;
     }
 private:
     QAction *action(QMenu *menu, const QString &name, const QString &label, const QString &operation, const QString &id = {})
     {
         QAction *result = nullptr;
-        for (auto item : menu->actions()) if (item->objectName() == name) { result = item; break; }
+        result = menu->findChild<QAction *>(name,Qt::FindDirectChildrenOnly);
         if (!result) { result = menu->addAction(label); result->setObjectName(name); }
-        result->setText(label); result->setProperty("unboundArrangementId", id);
+        else if (!menu->actions().contains(result)) menu->addAction(result);
+        if (result->text() != label) result->setText(label);
+        result->setMenuRole(QAction::NoRole); result->setProperty("unboundArrangementId", id);
+        result->setProperty("unboundWorkspacePage",currentPage());
         if (!wiredActions.contains(result)) {
             wiredActions.insert(result);
             connect(result, &QObject::destroyed, this, [this, result] { wiredActions.remove(result); });
             connect(result, &QAction::triggered, this, [this, result, operation] {
                 const auto id = result->property("unboundArrangementId").toString();
-                QTimer::singleShot(0, this, [this, operation, id] {
-                    logEvent(QStringLiteral("workspace.menu.command"), {{"operation", operation}, {"id", id}});
-                    if (operation == "Native") nativeWorkspace(); else invoke(operation, id);
+                const auto page = result->property("unboundWorkspacePage").toString();
+                QTimer::singleShot(0, this, [this, operation, id, page] {
+                    if (currentPage() != page) { logEvent("workspace.menu.cancelled",{{"reason","page-changed"},{"page",page}}); return; }
+                    if (operation != "Native" && !supportedPage(page)) { logEvent("workspace.menu.cancelled",{{"reason","unsupported-page"},{"page",page}}); return; }
+                    logEvent(QStringLiteral("workspace.menu.command"), {{"operation", operation}, {"id", id},{"page",page}});
+                    if (operation == "Native") nativeWorkspace(page); else invoke(operation, id);
                     wire();
                 });
             });
@@ -51,35 +92,51 @@ private:
     {
         if (wiredMenus.contains(menu)) return;
         wiredMenus.insert(menu);
-        connect(menu, &QObject::destroyed, this, [this, menu] { wiredMenus.remove(menu); });
+        connect(menu, &QObject::destroyed, this, [this, menu] { wiredMenus.remove(menu); rendered.remove(menu); });
         connect(menu, &QMenu::aboutToShow, this, [this, root] { refresh(root); });
     }
     void refresh(QMenu *root)
     {
-        action(root, "unboundRestoreNativeWorkspace", "Restore Native Workspace (Dock All)", "Native");
+        const auto page = currentPage(); const auto label = workspacePageLabel(page);
+        auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
+        const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
         auto menu = root->findChild<QMenu *>("unboundWorkspaceArrangements", Qt::FindDirectChildrenOnly);
+        bool created = !menu;
         if (!menu) {
-            menu = new QMenu("Custom Workspace Presets", root); menu->setObjectName("unboundWorkspaceArrangements"); root->addMenu(menu);
+            menu = new QMenu("Manage Saved Workspaces", root); menu->setObjectName("unboundWorkspaceArrangements"); root->addMenu(menu);
         }
-        menu->setTitle("Custom Workspace Presets");
+        menu->setTitle("Manage Saved Workspaces");
         menu->setProperty("unboundOwnMenu", true);
         watch(root, root); watch(menu, root);
-        action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Current Workspace As…"), QString::fromUtf8("Save As…"));
-        const auto saved = entries(); const auto current = selected(); bool currentExists = false; QSet<QString> ids;
+        const auto all = entries(); QJsonArray saved; QSet<QString> allIds;
+        for (const auto &value : all) allIds.insert(value.toObject()["id"].toString());
+        for (const auto &value : all) if (workspacePage(value.toObject()) == page) saved.append(value);
+        const auto current = selected(); const bool supported = supportedPage(page);
+        QJsonArray labels;
+        for (const auto &value : saved) {
+            const auto entry = value.toObject(); labels.append(QJsonObject{{"id",entry["id"]},{"name",entry["name"]}});
+        }
+        const QJsonObject model{{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
+        if (!created && rendered.value(root) == model) return;
+        action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Current Workspace As…"), QString::fromUtf8("Save As…"))->setEnabled(supported);
+        bool currentExists = false; QSet<QString> ids;
         for (const auto &value : saved) if (value.toObject()["id"].toString() == current) currentExists = true;
-        action(menu, "unboundUpdateWorkspace", "Update Current Saved Workspace", "Update", current)->setEnabled(currentExists);
-        action(menu, "unboundReorderWorkspaces", QString::fromUtf8("Reorder Presets…"), "Reorder");
-        QList<QAction *> ordered;
+        action(menu, "unboundUpdateWorkspace", "Update Current Saved Workspace", "Update", current)->setEnabled(supported && currentExists);
+        action(menu, "unboundReorderWorkspaces", QString::fromUtf8("Reorder Presets…"), "Reorder")->setEnabled(supported);
+        QList<QAction *> ordered, quick;
         for (const auto &value : saved) {
             const auto entry = value.toObject(); const auto id = entry["id"].toString(); ids.insert(id);
+            auto quickRestore = action(root,"unboundWorkspaceRestore_"+id,entry["name"].toString().replace('&',"&&"),"Restore",id);
+            quickRestore->setCheckable(true); quickRestore->setChecked(!nativeSelected && id == current); quickRestore->setEnabled(supported); quick.append(quickRestore);
             auto preset = menu->findChild<QMenu *>("unboundWorkspace_" + id, Qt::FindDirectChildrenOnly);
             if (!preset) {
                 preset = new QMenu(menu); preset->setObjectName("unboundWorkspace_" + id);
                 preset->setProperty("unboundArrangementId", id); menu->addMenu(preset);
-            }
+            } else if (!menu->actions().contains(preset->menuAction())) menu->addMenu(preset);
             preset->setProperty("unboundOwnMenu", true);
+            preset->menuAction()->setEnabled(supported);
             auto title = entry["name"].toString(); title.replace('&', "&&"); preset->setTitle(title);
-            preset->menuAction()->setCheckable(true); preset->menuAction()->setChecked(id == current);
+            preset->menuAction()->setCheckable(true); preset->menuAction()->setChecked(!nativeSelected && id == current);
             ordered.append(preset->menuAction());
             watch(preset, root);
             action(preset, "unboundRestoreArrangement", "Restore Workspace", "Restore", id);
@@ -89,7 +146,10 @@ private:
         }
         for (auto preset : menu->findChildren<QMenu *>(QString(), Qt::FindDirectChildrenOnly))
             if (!ids.contains(preset->property("unboundArrangementId").toString())) {
-                menu->removeAction(preset->menuAction()); preset->deleteLater();
+                menu->removeAction(preset->menuAction());
+                if (!allIds.contains(preset->property("unboundArrangementId").toString())) {
+                    preset->setObjectName("unboundRetiredWorkspace"); preset->deleteLater();
+                }
             }
         QList<QAction *> currentOrder;
         for (auto item : menu->actions()) if (item->menu()) currentOrder.append(item);
@@ -97,8 +157,22 @@ private:
             for (auto item : currentOrder) menu->removeAction(item);
             for (auto item : ordered) menu->addAction(item);
         }
+        auto divider = root->findChild<QAction *>("unboundSavedWorkspaceSeparator",Qt::FindDirectChildrenOnly);
+        if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
+        auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
+        if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction());
+        divider->setVisible(!quick.isEmpty());
+        if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
+        for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))
+            if (item->objectName().startsWith("unboundWorkspaceRestore_") && !allIds.contains(item->property("unboundArrangementId").toString())) {
+                item->setObjectName("unboundRetiredWorkspaceAction"); item->deleteLater();
+            }
+        rendered[root] = model;
     }
     QSet<QAction *> wiredActions;
     QSet<QMenu *> wiredMenus;
+    QHash<QMenu *,QJsonObject> rendered;
+    bool pageRefreshQueued = false;
 };
 }

@@ -6,13 +6,20 @@ configuration, and Windows release builds remain independent.
 
 ## Workspace presets in the current experiment
 
-Resolve's Workspace menu exposes Custom Workspace Presets. Save the current
-layout there; each saved name has Restore, Update, Rename, Duplicate and Delete
-commands. These share the controls window's arrangement store. Manage > Reorder
-in Unbound opens a grip list; dragging changes both the widget and native menu
-order and saves it across launches.
+The candidate adds a separate **Workspace UI** menu beside **Workspace** in the
+macOS menu bar. **Native Edit UI** is first, followed by one-click recall of saved
+Edit layouts. **Manage Saved Workspaces** contains Save As, Update, Rename,
+Duplicate, Delete and Reorder. These share the controls window's arrangement
+store. Grip ordering changes both entry points and persists across launches.
+Existing untagged presets remain Edit presets with their original IDs.
 
-Restore Native Workspace (Dock All) is a separate permanent Workspace action.
+The native entry and saved list follow the visible Resolve page. Other pages
+receive their own native label; custom restoration and saving there stay disabled
+until their panel backend exists. A page change cancels an already queued command
+for the previous page. This candidate is not installed; native Cocoa appearance
+and current-page recovery still require a fresh-process check.
+
+Native Edit UI is permanent, outside the removable preset collection.
 It restores native docking and reveals Resolve's main interface without deleting
 saved presets. Page Navigation has its own compact Float/Dock control. Timeline
 tools can attach back to their actual native slot; detachment leaves no empty

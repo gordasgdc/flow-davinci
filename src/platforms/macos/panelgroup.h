@@ -8,12 +8,15 @@
 #include "workspacesettings.h"
 #include "tabtearoff.h"
 #include "groupvisibility.h"
+#include "docksurfaces.h"
+#include "uiworktiming.h"
+#include "grouphostreserve.h"
 
 namespace Unbound {
 class PanelGroup : public QObject
 {
 public:
-    explicit PanelGroup(QObject *owner) : QObject(owner)
+    explicit PanelGroup(QObject *owner, GroupHostReserve *reserve = nullptr) : QObject(owner), reserve(reserve)
     {
         timer.setSingleShot(true); timer.setInterval(180);
         connect(&timer, &QTimer::timeout, this, [this] { if (host) report("group.arrangement"); });
@@ -27,21 +30,23 @@ public:
     void fitFrame(const QRect &frame)
     {
         if (!host) return;
+        UiWorkTiming timing("group.fit-frame",host);
         host->setGeometry(QRect(frame.topLeft() + host->geometry().topLeft() - host->frameGeometry().topLeft(),
             frame.size() - (host->frameGeometry().size() - host->size()))); keepOnDisplay(host);
     }
     std::function<void()> changed;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
-    QString join(MacPanelSession *a, MacPanelSession *b, Qt::Orientation orientation)
+    QString join(MacPanelSession *a, MacPanelSession *b, Qt::Orientation orientation, const QRect &destination = {})
     {
         if (!a || !b || !a->active() || !b->active()) return "Show both panels first.";
         const auto left = a->floatingGeometry(), right = b->floatingGeometry();
         return initialize({a, b}, splitGroupTree({{"panel", panelName(a)}}, {{"panel", panelName(b)}}, orientation),
-            QRect(left.topLeft(), orientation == Qt::Horizontal ? QSize(left.width() + right.width() + 4, qMax(left.height(), right.height())) :
+            destination.isValid() ? destination : QRect(left.topLeft(), orientation == Qt::Horizontal ? QSize(left.width() + right.width() + 4, qMax(left.height(), right.height())) :
                 QSize(qMax(left.width(), right.width()), left.height() + right.height() + 4)));
     }
     QString initialize(const QList<MacPanelSession *> &panels, const QJsonObject &tree, const QRect &position)
     {
+        UiWorkTiming timing("group.initialize",nullptr);
         QStringList expected, actual;
         if (host || panels.size() < 2 || !groupTreeNames(tree, expected) || expected.size() != panels.size()) return "Invalid group layout.";
         auto a = panels.first();
@@ -52,7 +57,7 @@ public:
             actual.append(panelName(panel));
         }
         expected.sort(); actual.sort(); if (expected != actual) return "Saved group contains different panels.";
-        page = a->pageWidget(); host = new MacFloatingHost(a->nativeOwnerWindow());
+        page = a->pageWidget(); host = reserve ? reserve->take(a->nativeOwnerWindow()) : new MacFloatingHost(a->nativeOwnerWindow());
         host->setObjectName(QStringLiteral("unboundFloating_group_") + actual.join('_'));
         host->setAttribute(Qt::WA_QuitOnClose, false);
         auto layout = new QVBoxLayout(host); layout->setContentsMargins(0, 0, 0, 0); host->setGeometry(position);
@@ -60,7 +65,9 @@ public:
         rebuild(tree); host->setChrome(WindowChrome::Standard);
         host->attachRequested = [this](QWidget *target, Qt::Edge edge) { if (attachRequested) attachRequested(target, edge); };
         host->installEventFilter(this); page->installEventFilter(this);
-        refresh(); keepOnDisplay(host); report("group.create"); return {};
+        refresh();
+        for (auto panel : panels) panel->finishGroupTransfer();
+        keepOnDisplay(host); report("group.create"); return {};
     }
     QString add(MacPanelSession *panel, Qt::Orientation orientation, bool before = false, const QString &target = {})
     {
@@ -69,7 +76,7 @@ public:
         if (!target.isEmpty() && !names().contains(target)) return "Dock target no longer exists.";
         const auto tree = insertGroupTree(treeSnapshot(root), {{"panel", panelName(panel)}}, target, orientation, before);
         const auto error = addMember(panel); if (!error.isEmpty()) return error;
-        rebuild(tree); refresh(); report("group.add"); return {};
+        rebuild(tree); refresh(); panel->finishGroupTransfer(); report("group.add"); return {};
     }
     QString merge(PanelGroup *other, Qt::Orientation orientation, bool before = false, const QString &target = {})
     {
@@ -103,7 +110,7 @@ public:
         }
         if (selected.size() != selectedNames.size() || selected.size() == all.size()) return nullptr;
         for (auto candidate : selected) if (contains(candidate)) detachMember(candidate);
-        auto detached = new PanelGroup(parent());
+        auto detached = new PanelGroup(parent(),reserve);
         const auto error = detached->initialize(selected, tree, frame);
         if (!error.isEmpty()) {
             delete detached; dissolve();
@@ -169,6 +176,7 @@ public:
     void syncVisibility(MacPanelSession *select = nullptr)
     {
         if (!host || rebuilding || releasing || syncingVisibility) return;
+        UiWorkTiming timing("group.visibility",host);
         QScopedValueRollback<bool> guard(syncingVisibility, true);
         if (root) visibility.remember(root);
         for (auto member : members) if (member) {
@@ -248,11 +256,17 @@ private:
         label->setProperty("groupMember", members.size()); label->setToolTip("Drag to detach this panel"); label->installEventFilter(this);
         auto detach = new QPushButton(QStringLiteral("Detach"), bar); detach->setObjectName(QStringLiteral("unboundDetachPanel"));
         auto hide = new QPushButton(QStringLiteral("Hide"), bar); hide->setObjectName("unboundHidePanel");
+        for (auto button : {hide,detach}) {
+            button->setFixedWidth(button->fontMetrics().horizontalAdvance(button->text()) + 16);
+            button->setToolTip(button == hide ? "Hide this panel" : "Detach this panel into its own window");
+        }
         hide->setToolTip("Hide this panel; reopen it from Workspace > Show Panel in Workspace");
         row->addWidget(label, 1); row->addWidget(hide); row->addWidget(detach);
         auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
         layout->addWidget(bar); layout->addWidget(content, 1);
-        const auto error = member->attachToGroup(content); if (!error.isEmpty()) { delete wrapper; return error; }
+        // Keep old hosts until the destination is ready. Hiding the active host
+        // earlier makes Cocoa activate another window in the middle of transfer.
+        const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
         members.append(member); leaves[member] = wrapper; wireMember(member); return {};
     }
     void wireMember(MacPanelSession *member)
@@ -328,6 +342,7 @@ private:
     }
     void rebuild(const QJsonObject &tree)
     {
+        UiWorkTiming timing("group.rebuild",host);
         QScopedValueRollback<bool> guard(rebuilding, true);
         visibility.reset();
         for (auto member : members) if (member) leaves.value(member)->setParent(host);
@@ -338,7 +353,16 @@ private:
             return;
         }
         host->layout()->addWidget(root);
-        for (auto member : members) if (member) { leaves.value(member)->show(); member->window()->setVisible(!member->hiddenByUser()); }
+        for (auto member : members) if (member) {
+            auto wrapper = leaves.value(member);
+            // QStackedWidget owns tab-page visibility. Showing an inactive page
+            // here makes it overlap the selected native panel and receive input.
+            const bool visible = !member->hiddenByUser();
+            if (auto stack = qobject_cast<QStackedWidget *>(wrapper->parentWidget())) {
+                if (auto tabs = qobject_cast<QTabWidget *>(stack->parentWidget())) visibility.tabVisibility(tabs,wrapper,visible,false);
+            } else wrapper->setVisible(visible);
+            member->window()->setVisible(visible);
+        }
         root->show(); host->layout()->activate();
         auto splitters = root->findChildren<QSplitter *>(); if (auto splitter = qobject_cast<QSplitter *>(root.data())) splitters.prepend(splitter);
         for (auto splitter : splitters) {
@@ -347,7 +371,11 @@ private:
         }
         QStringList titles; for (auto member : members) if (member && member->window()) titles.append(member->window()->windowTitle());
         host->setWindowTitle(titles.join(QStringLiteral(" + ")));
-        QTimer::singleShot(0, this, [this] { syncVisibility(); });
+        QList<QWidget *> surfaces;
+        for (auto member : members) if (member) surfaces.append(member->window());
+        registerDockSurfaces(host,surfaces);
+        // Visibility is established before the initial layout/show. Scheduling
+        // another visibility/layout pass after presentation repeats that work.
     }
     void retireHost()
     {
@@ -361,7 +389,10 @@ private:
         bool visible = false;
         for (auto member : members) { if (!member || !member->active()) { dissolve(); return; } visible |= !member->hiddenByUser(); }
         visible &= page && page->isVisible();
-        if (host->isVisible() != visible) { host->setAttribute(Qt::WA_ShowWithoutActivating); host->setVisible(visible); }
+        if (host->isVisible() != visible) {
+            UiWorkTiming timing("group.host.visibility",host);
+            host->setAttribute(Qt::WA_ShowWithoutActivating); host->setVisible(visible);
+        }
     }
     void report(const QString &event) { logEvent(event, snapshot()); if (changed) changed(); }
     static void place(MacPanelSession *session, const QRect &frame)
@@ -371,6 +402,7 @@ private:
             frame.size() - (window->frameGeometry().size() - window->size())));
     }
     GroupVisibility visibility;
+    QPointer<GroupHostReserve> reserve;
     QPointer<MacFloatingHost> host;
     QPointer<QWidget> root, page;
     QList<QPointer<MacPanelSession>> members;

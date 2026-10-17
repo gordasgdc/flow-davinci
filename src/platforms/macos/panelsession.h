@@ -16,6 +16,7 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "cinemaviewer.h"
+#include "uiworktiming.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
@@ -44,20 +45,33 @@ public:
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
-    QString attachToGroup(QWidget *container)
+    QString attachToGroup(QWidget *container, bool deferHostHide = false)
     {
+        UiWorkTiming timing("panel.attach-to-group",host);
         if (!host || !host->layout() || grouped() || !container || container->layout() || container->window()->parentWidget() != originalMain)
             return QStringLiteral("Panel cannot join this group.");
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);
-        container->setLayout(host->layout());
+        {
+            UiWorkTiming transfer("panel.group.layout-transfer",host);
+            container->setLayout(host->layout());
+        }
         if (host->layout() || !container->layout()) return QStringLiteral("Could not transfer panel layout into group.");
         groupContainer = container;
         if (relaxedWidth) groupWidth.apply(container);
         groupContainer->installEventFilter(this);
-        host->hide();
+        if (!deferHostHide) {
+            UiWorkTiming hide("panel.group.hide-old-host",host);
+            host->hide();
+        }
         groupContainer->setVisible(!userHidden);
         return {};
+    }
+    void finishGroupTransfer()
+    {
+        if (!grouped() || !host) return;
+        UiWorkTiming hide("panel.group.hide-old-host",host);
+        host->hide();
     }
     void detachFromGroup()
     {

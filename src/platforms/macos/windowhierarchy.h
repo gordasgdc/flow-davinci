@@ -8,6 +8,7 @@
 #include "diagnostics.h"
 #include "nativechrome.h"
 #include "cinemaviewer.h"
+#include "uiworktiming.h"
 
 namespace Unbound {
 inline int floatingTier(const QString &name)
@@ -36,6 +37,7 @@ public:
     {
         if (!enabled || ordering || QApplication::activeModalWidget() || QApplication::activePopupWidget()) return;
         if (visibleCinemaViewer()) return;
+        UiWorkTiming timing("window.order",nullptr);
         QList<QWidget *> floating;
         QWidget *main = nullptr, *controls = nullptr;
         for (auto widget : QApplication::topLevelWidgets()) {
@@ -72,6 +74,9 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (!enabled || ordering) return false;
+        const auto type = event->type();
+        if (type != QEvent::ApplicationStateChange && type != QEvent::WindowActivate && type != QEvent::DynamicPropertyChange &&
+            type != QEvent::Show && type != QEvent::Hide && type != QEvent::WindowStateChange && type != QEvent::ZOrderChange) return false;
         if (event->type() == QEvent::ApplicationStateChange) { timer.start(0); return false; }
         auto widget = qobject_cast<QWidget *>(object);
         if (!widget || !widget->isWindow()) return false;

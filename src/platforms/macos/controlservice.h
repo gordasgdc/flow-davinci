@@ -5,6 +5,7 @@
 #include "panelcontrols.h"
 #include "interactiondiagnostics.h"
 #include "activationbridge.h"
+#include "responsiveness.h"
 
 namespace Unbound {
 class ControlService : public QObject
@@ -15,6 +16,7 @@ public:
         setObjectName(QStringLiteral("unboundControlService"));
         new InteractionDiagnostics(this);
         new ResolveActivationBridge(this);
+        new ResponsivenessProbe(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(directory);

@@ -33,6 +33,18 @@
 @end
 
 namespace Unbound {
+double nativeInputAgeMilliseconds(quint64 timestamp)
+{
+    if (!timestamp) return -1;
+    const double age = NSProcessInfo.processInfo.systemUptime * 1000.0 - double(timestamp);
+    return age >= 0 && age < 60000 ? age : -1;
+}
+double nativeCurrentDragAgeMilliseconds()
+{
+    NSEvent *event = NSApp.currentEvent;
+    if (!event || event.type != NSEventTypeLeftMouseDragged) return -1;
+    return nativeInputAgeMilliseconds(quint64(event.timestamp * 1000.0));
+}
 static char pinKey, titleKey, expansionLevelKey;
 class PointerReleaseWatch : public QObject
 {
@@ -134,11 +146,17 @@ void applyNativeChrome(QWidget *widget, bool compact)
     if (!window) return;
     // Qt tool ownership preserves the main window's shortcut scope; native level
     // stays normal so the explicit hierarchy and optional control pin decide Z.
-    if (widget->windowType() == Qt::Tool) { window.level = NSNormalWindowLevel; window.hidesOnDeactivate = NO; }
-    window.titleVisibility = compact ? NSWindowTitleHidden : NSWindowTitleVisible;
-    window.titlebarAppearsTransparent = compact;
-    if (compact) window.styleMask |= NSWindowStyleMaskFullSizeContentView;
-    else window.styleMask &= ~NSWindowStyleMaskFullSizeContentView;
+    if (widget->windowType() == Qt::Tool) {
+        if (window.level != NSNormalWindowLevel) window.level = NSNormalWindowLevel;
+        if (window.hidesOnDeactivate) window.hidesOnDeactivate = NO;
+    }
+    const auto visibility = compact ? NSWindowTitleHidden : NSWindowTitleVisible;
+    if (window.titleVisibility != visibility) window.titleVisibility = visibility;
+    if (window.titlebarAppearsTransparent != compact) window.titlebarAppearsTransparent = compact;
+    const auto mask = compact ? window.styleMask | NSWindowStyleMaskFullSizeContentView :
+        window.styleMask & ~NSWindowStyleMaskFullSizeContentView;
+    // Request a native style change only when the current mask differs.
+    if (window.styleMask != mask) window.styleMask = mask;
 }
 bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> &changed)
 {
@@ -158,7 +176,11 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
     if (button.superview != green.superview) { [button removeFromSuperview]; [green.superview addSubview:button]; }
     NSRect frame = green.frame;
     frame.origin.x += green.frame.origin.x - yellow.frame.origin.x;
-    button.frame = frame; button.hidden = NO; button.state = pinned ? NSControlStateValueOn : NSControlStateValueOff;
+    if (!NSEqualRects(button.frame,frame)) button.frame = frame;
+    if (button.hidden) button.hidden = NO;
+    const auto state = pinned ? NSControlStateValueOn : NSControlStateValueOff;
+    const bool stateChanged = button.state != state;
+    if (stateChanged) button.state = state;
     // Reserve actual traffic-light space instead of relying on a centered native title.
     auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
     if (!title) {
@@ -170,16 +192,26 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
     }
     if (title.superview != green.superview) { [title removeFromSuperview]; [green.superview addSubview:title]; }
     const bool compact = window.styleMask & NSWindowStyleMaskFullSizeContentView;
-    title.hidden = compact;
+    if (title.hidden != compact) title.hidden = compact;
     if (!compact) {
-        window.titleVisibility = NSWindowTitleHidden;
+        if (window.titleVisibility != NSWindowTitleHidden) window.titleVisibility = NSWindowTitleHidden;
         const CGFloat left = NSMaxX(frame) + 12;
-        title.frame = NSMakeRect(left, NSMidY(frame)-9, MAX(0, NSWidth(green.superview.bounds)-left-12), 18);
-        title.stringValue = window.title ?: @"";
+        const auto titleFrame = NSMakeRect(left, NSMidY(frame)-9, MAX(0, NSWidth(green.superview.bounds)-left-12), 18);
+        if (!NSEqualRects(title.frame,titleFrame)) title.frame = titleFrame;
+        NSString *text = window.title ?: @"";
+        if (![title.stringValue isEqualToString:text]) title.stringValue = text;
     }
-    [button setChangeCallback:changed]; [button setNeedsDisplay:YES]; return true;
+    [button setChangeCallback:changed];
+    if (stateChanged) [button setNeedsDisplay:YES];
+    return true;
 }
 #ifdef UNBOUND_NATIVE_TESTS
+QString nativeTitleTextForTest(QWidget *widget)
+{
+    NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
+    auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
+    return title ? QString::fromUtf8(title.stringValue.UTF8String) : QString();
+}
 QRect nativeTitleFrameForTest(QWidget *widget)
 {
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;

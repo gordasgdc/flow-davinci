@@ -3,16 +3,23 @@
 #include <QApplication>
 #include <QHash>
 #include "nativechrome.h"
+#include "docksurfaces.h"
 namespace Unbound {
 struct DockDestination { QWidget *surface = nullptr; QRect frame; };
 inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, const QList<QWidget *> &overlays)
 {
     QWidget *destination = nullptr;
     QHash<qint64, QWidget *> windows;
+    QList<QWidget *> underPointer; bool possible = false;
     for (auto candidate : QApplication::topLevelWidgets()) {
         if (candidate == source || overlays.contains(candidate) || !candidate->isVisible() || candidate->isMinimized()) continue;
-        windows.insert(nativeWindowNumber(candidate), candidate);
+        if (!candidate->frameGeometry().contains(pointer)) continue;
+        underPointer.append(candidate); possible |= candidate->objectName().startsWith("unboundFloating_");
     }
+    // Free dragging needs no WindowServer query. When a target is possible we
+    // still use the current native stack, including non-dockable occluders.
+    if (!possible) return {};
+    for (auto candidate : underPointer) windows.insert(nativeWindowNumber(candidate),candidate);
     for (auto number : nativeOrderedWindowNumbers()) {
         auto hit = windows.value(number);
         if (!hit || !hit->frameGeometry().contains(pointer)) continue;
@@ -20,9 +27,7 @@ inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, c
         break;
     }
     if (!destination) return {};
-    QList<QWidget *> surfaces;
-    for (auto child : destination->findChildren<QWidget *>())
-        if (child->objectName().startsWith("unboundGroupCell_") && child->isVisible()) surfaces.append(child);
+    const auto surfaces = dockSurfaces(destination);
     if (surfaces.isEmpty()) return {destination, destination->frameGeometry()};
     const auto outer = destination->frameGeometry();
     if (outer.contains(pointer) && !outer.adjusted(10,10,-10,-10).contains(pointer)) return {destination, outer};

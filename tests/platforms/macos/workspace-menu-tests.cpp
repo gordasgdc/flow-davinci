@@ -4,6 +4,7 @@
 #include <cstdio>
 #include "workspacearrangements.h"
 #include "arrangementcontrols.h"
+#include "pagecontext.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -14,13 +15,31 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_DIAGNOSTICS_DIR", temporary.path().toUtf8());
     int failures = 0;
     const auto check = [&](bool pass,const char *message) { if (!pass) { ++failures; std::fprintf(stderr,"FAIL: %s\n",message); } };
+    {
+        QWidget main; main.setAttribute(Qt::WA_DontShowOnScreen);
+        auto pages = new QStackedWidget(&main); (new QVBoxLayout(&main))->addWidget(pages);
+        auto edit = new QWidget(pages); edit->setObjectName("WStackPage_Conform"); pages->addWidget(edit);
+        auto color = new QWidget(pages); color->setObjectName("WStackPage_Color"); pages->addWidget(color);
+        auto audio = new QWidget(pages); audio->setObjectName("WStackPage_Audio"); pages->addWidget(audio);
+        main.show();
+        check(Unbound::currentWorkspacePage(&main) == "edit","current page follows native Edit widget visibility");
+        pages->setCurrentWidget(color);
+        check(Unbound::currentWorkspacePage(&main) == "color","page identity follows the active native stack without a key mapping");
+        pages->setCurrentWidget(audio);
+        check(Unbound::currentWorkspacePage(&main) == "fairlight","native Audio page maps to the Fairlight menu label");
+        main.hide();
+        check(Unbound::currentWorkspacePage(&main).isEmpty(),"hidden or unavailable pages are not guessed to be Edit");
+    }
     Unbound::ArrangementStore store; QString first,second;
     check(store.create("Edit & Review",{{"version",1}},first).isEmpty() && store.create("Audio",{{"version",1}},second).isEmpty(), "create stable saved workspace identities");
-    QMenu root; root.setObjectName("workspace"); root.setAttribute(Qt::WA_DontShowOnScreen);
-    int nativeCalls = 0, restores = 0; QString selected = first;
+    QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
+    QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
+    QMenu *root = nullptr;
+    int nativeCalls = 0, restores = 0; QString selected = first, activePage = "edit", nativePage;
     const auto configure = [&](Unbound::WorkspaceArrangements &menus) {
         menus.entries = [&] { return store.list(); }; menus.selected = [&] { return selected; };
-        menus.nativeWorkspace = [&] { ++nativeCalls; };
+        menus.currentPage = [&] { return activePage; };
+        menus.nativeWorkspace = [&](QString page) { ++nativeCalls; nativePage = page; };
         menus.invoke = [&](QString operation,QString id) {
             if (operation == "Restore" && !store.find(id).isEmpty()) { selected = id; ++restores; }
             if (operation == "Delete") { store.remove(id); if (id == selected) selected.clear(); }
@@ -29,29 +48,48 @@ int main(int argc, char **argv)
     };
     {
         Unbound::WorkspaceArrangements menus(nullptr); configure(menus); menus.wire(); menus.wire();
-        auto submenu = root.findChild<QMenu *>("unboundWorkspaceArrangements");
-        auto preset = root.findChild<QMenu *>("unboundWorkspace_"+second);
-        check(submenu && submenu->title() == "Custom Workspace Presets" && preset && !root.isVisible(), "native submenu is populated before display");
-        check(root.findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
-        auto original = preset->findChild<QAction *>("unboundRestoreArrangement");
+        root = bar.findChild<QMenu *>("unboundWorkspaceUI");
+        check(root && bar.actions().indexOf(root->menuAction()) == bar.actions().indexOf(workspace.menuAction())+1,
+            "Workspace UI is a separate top-level menu beside Workspace");
+        if (!root) return 1;
+        auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements");
+        auto preset = root->findChild<QMenu *>("unboundWorkspace_"+second);
+        check(submenu && submenu->title() == "Manage Saved Workspaces" && preset && !root->isVisible(), "menu is populated before native display");
+        check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
+            "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
+        check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
+        auto original = root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly);
         original->trigger(); QApplication::processEvents(); menus.wire();
         check(restores == 1 && selected == second && preset->menuAction()->isChecked(), "menu restores stable ID once and synchronizes selection");
         store.rename(second,"Mix"); store.reorder({second,first}); menus.wire();
         QList<QString> ids; for (auto action : submenu->actions()) if (action->menu()) ids.append(action->menu()->property("unboundArrangementId").toString());
-        check(preset->title() == "Mix" && preset->findChild<QAction *>("unboundRestoreArrangement") == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
+        check(preset->title() == "Mix" && root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly) == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
         original->trigger(); QApplication::processEvents();
         check(restores == 2, "repeated menu synchronization creates no duplicate restore callbacks");
         preset->findChild<QAction *>("unboundUpdateArrangement")->trigger(); QApplication::processEvents();
         check(store.find(second)["workspace"].toObject()["version"] == 2, "menu updates the selected workspace record");
         preset->findChild<QAction *>("unboundArrangement_Delete")->trigger(); QApplication::processEvents();
-        check(store.find(second).isEmpty() && root.findChild<QAction *>("unboundRestoreNativeWorkspace"), "deleting a preset cannot delete the native recovery action");
-        root.findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
+        check(store.find(second).isEmpty() && root->findChild<QAction *>("unboundRestoreNativeWorkspace"), "deleting a preset cannot delete the native recovery action");
+        root->findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
         check(nativeCalls == 1, "native recovery remains callable after deleting the selected preset");
+        QString color; store.create("Color Review",{{"page","color"},{"version",1}},color);
+        activePage = "color"; menus.wire();
+        auto colorRecall = root->findChild<QAction *>("unboundWorkspaceRestore_"+color,Qt::FindDirectChildrenOnly);
+        check(root->actions().first()->text() == "Native Color UI" && colorRecall && root->actions().contains(colorRecall) &&
+            !root->actions().contains(root->findChild<QAction *>("unboundWorkspaceRestore_"+first,Qt::FindDirectChildrenOnly)),
+            "page switching relabels native recovery and filters saved workspaces without mixing Edit and Color");
+        check(!colorRecall->isEnabled(),"unimplemented page backends cannot restore Edit content under another page's name");
+        root->actions().first()->trigger(); QApplication::processEvents();
+        check(nativeCalls == 2 && nativePage == "color","native recovery receives the page shown in its label");
+        menus.supportedPage = [](QString) { return true; }; menus.wire();
+        colorRecall->trigger(); activePage = "edit"; QApplication::processEvents();
+        check(restores == 2,"queued page-specific commands cannot run after switching to another page");
+        store.remove(color); menus.wire();
     }
     {
         Unbound::WorkspaceArrangements reopened(nullptr); configure(reopened); reopened.wire();
-        root.findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
-        check(nativeCalls == 2, "native recovery rebinds once after controller recreation");
+        root->findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
+        check(nativeCalls == 3, "native recovery rebinds once after controller recreation");
     }
     Unbound::ArrangementStore reloaded;
     check(reloaded.list().size() == 1 && reloaded.list()[0].toObject()["id"] == first, "saved deletion and order survive store reload");
@@ -74,10 +112,10 @@ int main(int argc, char **argv)
     for (const auto &entry : store.list()) store.remove(entry.toObject()["id"].toString());
     {
         Unbound::WorkspaceArrangements empty(nullptr); configure(empty); empty.wire();
-        auto submenu = root.findChild<QMenu *>("unboundWorkspaceArrangements"); int presets = 0, recovery = 0;
+        auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements"); int presets = 0, recovery = 0;
         for (auto action : submenu->actions()) if (action->menu()) ++presets;
-        for (auto action : root.actions()) if (action->objectName() == "unboundRestoreNativeWorkspace") ++recovery;
-        check(presets == 0 && recovery == 1 && root.findChild<QAction *>("unboundSaveWorkspaceAs")->isEnabled(),
+        for (auto action : root->actions()) if (action->objectName() == "unboundRestoreNativeWorkspace") ++recovery;
+        check(presets == 0 && recovery == 1 && root->findChild<QAction *>("unboundSaveWorkspaceAs")->isEnabled(),
             "deleting every preset retains one permanent recovery command and Save As");
     }
     check(Unbound::nativeFrontmostProcessForTest() == foreground, "hidden workspace-menu tests preserve foreground app");

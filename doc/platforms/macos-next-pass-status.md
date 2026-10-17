@@ -1,6 +1,48 @@
 # Next-pass acceptance record
 
-## Custom Workspace Presets follow-up
+## Current candidate: macos-responsive-group-transfers
+
+Installed baseline remains `73f4c2f`; the new branch leaves it unchanged.
+The candidate adds a separate top-level **Workspace UI** menu beside Workspace.
+Native Edit UI is permanent and first; saved names restore directly below it.
+Management commands use the same store/widget owner. Page labels/filtering use
+the visible native page widget. Untagged legacy records remain Edit presets
+without rewriting on load; names, updates and grip ordering are page-scoped.
+Other-page native recall preserves Edit panel sessions; unsupported custom page
+backends cannot save or restore Edit content under another page's name.
+
+Headless workspace-page tests pass migration, stable IDs, name isolation,
+cross-page update rejection and page-specific ordering. Native menu/page tests
+compile but require a closed Resolve session to execute. Actual Cocoa placement
+and native recovery remain open, as do the other live acceptance rows.
+
+New actual-visibility assertions reproduced overlapping inactive tab pages.
+Group rebuilding now lets QStackedWidget control those pages; selected-panel
+pointer-hit assertions passed at that source state. Current source also applies
+initial hidden state before first sizing/show, instead of queuing another layout.
+These later changes still need a fresh isolated native regression run.
+
+Dock transactions now use the destination frame from the start and defer hiding
+old hosts until the new destination is ready. A bounded one-host reserve prepares
+empty native chrome after quiet input, without retaining content or layout.
+Its hidden-window, key-window and ownership fixtures passed. A native-window
+reuse experiment was discarded because it added complexity without a reliable
+timing improvement. An isolated twelve-drop run reached about 20 ms p95, still
+above the unchanged 16.667 ms target; a single 16.475 ms sample was not treated
+as sufficient evidence of completion.
+
+Resolve reopened at 14:32 UTC on 2026-10-17 during this investigation. Later
+displayed/timing runs are not isolated acceptance evidence. Test scripts now
+refuse native-window execution if Resolve is running or its process state cannot
+be checked. Compilation and QCoreApplication-only tests continue safely.
+The current candidate is **not installed** and the running session is preserved.
+
+Diagnostic fault tests now cover failed/zero/short writes as well as rotation.
+Pending telemetry is capped at 1 MiB; storage failure discards the backlog and
+identifies Unbound in Qt/Resolve's warning stream. Click/action and ownership
+precursor records still flush immediately when storage is available.
+
+## Installed 73f4c2f: Custom Workspace Presets follow-up
 
 - Workspace > Custom Workspace Presets contains saved layouts in persisted order. Each layout exposes Restore, Update from Current Layout, Rename, Duplicate and Delete. Save Current Workspace As and Update Current Saved Workspace use the same arrangement owner as the controls widget.
 - Controls > Manage > Reorder opens an inline list with drag grips. Moving rows saves UUID order atomically to Arrangements.json, retains current selection, and refreshes the native menu. Invalid duplicate/missing-ID reorder requests are rejected.
@@ -76,3 +118,48 @@ The main controls file now delegates preset UI/CRUD to arrangementcontrols.h. Ne
 Lifecycle checks: both toolbar buttons and menu callers are rebound when controls are recreated; fixtures passed without duplicate buttons/actions. Cinema priority fixture measured pinned Qt controls at level 8, verifies level 9 for the viewer, verifies key ownership and original-level restoration. Focus fixtures require explicit native app/window activation after closing all fixture windows; all ripple-delete/text-entry/page-scope tests pass with that setup. This is a native-window fixture, not evidence of actual Cinema image rendering.
 
 Preset UI and CRUD refactor passes the panel/preset regression suite. Main controller is 807 lines versus 883 before extraction. No source file absorbs the new toolbar, command, expansion, tab gesture, feedback, visibility or timing implementation wholesale.
+
+## Responsiveness investigation — 2026-10-17, working tree after 73f4c2f
+
+External review suggestions are hypotheses, not verified implementation facts.
+Confirmed hot paths include repeated diagnostic file setup, geometry records
+calling native widget size hints, and destination lookup doing a WindowServer
+query even when no eligible target is beneath the pointer. Candidate modules
+now batch routine telemetry, retain immediate button/action and ownership-request
+flushes, record geometry without size-hint calls, register group docking surfaces,
+and skip the native order query only when no target is possible. Eligible targets
+still use fresh native stacking information. Existing application filters reject
+irrelevant event types early; no global event-router replacement is claimed.
+
+`build/macos/responsiveness-report.json` is overwritten by each native-window fixture
+with all fixture features and diagnostics enabled. Its simulated input measures
+Qt event-turn work, not Resolve playback, physical input-to-display latency, or
+GPU presentation. Recorded p95 milliseconds: free drag 1.919, dock approach 8.132,
+divider resize 7.761, door toggle 13.943, linked viewer command 14.300, button
+dispatch 0.781. **Dock commit 45.147 fails the unchanged 16.667 ms budget.**
+Behavior assertions passed; the report and process exit explicitly retain the
+budget failure. These results do not close live responsiveness checklist rows.
+The earlier, smaller baseline fixture is retained at
+`build/macos/responsiveness-baseline.json`; it did not include actual dock commit
+or divider resizing, so those scenarios have no comparable baseline there.
+
+Group initialization accounts for about 32 ms of the failed commit, including
+about 14 ms attaching Timeline and 11 ms creating native group chrome. Additional
+transfer/hide spans distinguish native content transfer from old-host hiding.
+Do not hide this failure by dropping diagnostics, weakening timing thresholds,
+or disabling native content layout. New telemetry lives in diagnosticsink.h,
+latencystats.h, responsiveness.h, docksurfaces.h and uiworktiming.h.
+
+Verification on the earlier candidate state: diagnostic batching/rotation/path-change fixture,
+displayed panel-session suite, nested panel-group suite and native reliability
+suite passed, including accepted controls close, ownership restoration, native
+focus/stacking, Cinema lifecycle, shortcut scope and logging. Repeated timing
+runs still fail dock commit at roughly 44–46 ms. Moving chrome setup before
+content transfer did not materially improve that result and was reverted.
+Live Resolve verification remains required. Candidate performance changes are
+not installed.
+
+Not adopted without evidence: a 100–150 ms stale window-order cache, blanket
+layout suppression during resize, automatic native viewer-mode priming, or a
+replacement backtick behavior. Independent UI scaling remains feasibility work;
+width relaxation is not UI scaling.

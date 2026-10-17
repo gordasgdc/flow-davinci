@@ -29,3 +29,10 @@ bash infrastructure/macos/test-panel-sessions.sh
 The native startup bundle is `build/macos/io-helper/Unbound.dvcp.bundle` and the
 launcher is `build/macos/Unbound.app`. Installation and current limitations are
 in the platform status document. Resolve must be closed before replacing helpers.
+
+Native-window fixtures refuse to launch while Resolve is running, or when the
+process check cannot establish that it is closed. To compile without displaying
+test windows, use `UNBOUND_TEST_COMPILE_ONLY=1` with a test script. Only the
+QCoreApplication diagnostics, layout-plan and workspace-page fixtures declare themselves
+headless; they can run alongside Resolve. Responsiveness reports cover Qt event
+turns with simulated input, not Resolve playback or GPU presentation latency.

@@ -31,6 +31,7 @@
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
+#include "pagecontext.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -90,6 +91,7 @@ public:
             save();
         });
         hierarchy = new Unbound::WindowHierarchy(this);
+        groupReserve = new Unbound::GroupHostReserve(this);
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
         hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
@@ -272,20 +274,28 @@ public:
                 if (panels[index].session->active()) queuePanelDoor(index);
                 else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
             }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
-        callers->add({"unboundShowNativeWorkspace", "Show Native Workspace",
-            [this] { return !background->isChecked(); }, [this] { background->setChecked(!background->isChecked()); }});
         callers->wire();
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
         workspaceMenu->entries = [this] { return presetsUi->list(); };
+        workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
+        workspaceMenu->nativeActive = [this] {
+            if (Unbound::currentWorkspacePage(Unbound::resolveMainWindow()) == "edit")
+                for (const auto &panel : panels) if (panel.session->active()) return false;
+            auto main = Unbound::resolveMainWindow();
+            return main && !main->property("unboundBackgroundHidden").toBool() && !footer->snapshot()["floating"].toBool();
+        };
         workspaceMenu->selected = [this] { return presets->currentData().toString(); };
         workspaceMenu->invoke = [this](const QString &operation, const QString &id) {
             if (operation == "Reorder") { showNormal(); raise(); activateWindow(); }
             presetsUi->invoke(operation, id);
         };
-        workspaceMenu->nativeWorkspace = [this] {
-            ++bulkVersion; restoreExpanded(); dockAll();
-            if (auto root = page()) { root->window()->showNormal(); root->window()->raise(); root->window()->activateWindow(); }
-            save();
+        workspaceMenu->nativeWorkspace = [this](const QString &activePage) {
+            if (activePage == "edit") { ++bulkVersion; restoreExpanded(); dockAll(); save(); }
+            else footer->dock();
+            if (auto main = Unbound::resolveMainWindow()) {
+                Unbound::setNativeBackgroundHidden(main,{},false);
+                main->showNormal(); main->raise(); main->activateWindow();
+            }
         };
         workspaceMenu->wire();
         auto footerRow = new QHBoxLayout;
@@ -327,7 +337,7 @@ public:
 protected:
     void closeEvent(QCloseEvent *event) override
     {
-        action("hide-controls"); save(); event->ignore(); hide();
+        action("hide-controls"); save(); event->accept(); hide();
     }
     bool eventFilter(QObject *object, QEvent *event) override
     {
@@ -423,6 +433,7 @@ private:
     QJsonObject arrangement() const
     {
         auto result = settings.data;
+        result["page"] = "edit";
         result.remove(QStringLiteral("controls"));
         result.remove(QStringLiteral("selected_arrangement"));
         return result;
@@ -606,6 +617,7 @@ private:
         const QString error = p.contents ? p.session->undockContents(target, root, p.label) :
             p.session->undock(target, root, p.label, p.name == QLatin1String("widgetEditSourcePlayer"));
         if (error.isEmpty()) {
+            groupReserve->request(p.session->nativeOwnerWindow());
             p.session->window()->setObjectName(QStringLiteral("unboundFloating_") + p.name);
             p.desired = true;
             if (p.label.endsWith("Toolbar")) {
@@ -643,10 +655,10 @@ private:
         if (!success) status->setText(QStringLiteral("Could not hide the background independently; it remains visible."));
         return success;
     }
-    QString createGroup(int a, int b, Qt::Orientation orientation, const QJsonObject &saved = {})
+    QString createGroup(int a, int b, Qt::Orientation orientation, const QJsonObject &saved = {}, const QRect &destination = {})
     {
-        auto group = new Unbound::PanelGroup(this);
-        const auto error = group->join(panels[a].session, panels[b].session, orientation);
+        auto group = new Unbound::PanelGroup(this,groupReserve);
+        const auto error = group->join(panels[a].session, panels[b].session, orientation,destination);
         if (!error.isEmpty()) { delete group; return error; }
         configureGroup(group);
         if (!saved.isEmpty()) group->restore(saved);
@@ -654,6 +666,7 @@ private:
     }
     void configureGroup(Unbound::PanelGroup *group)
     {
+        Unbound::UiWorkTiming timing("group.configure",group->window());
         groups.append(group);
         group->sectionDetached = [this](Unbound::PanelGroup *section) { configureGroup(section); };
         group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
@@ -669,24 +682,25 @@ private:
     }
     Unbound::PanelGroup *groupFor(int panel) const
     { for (auto group : groups) if (group->contains(panels[panel].session)) return group; return nullptr; }
-    QString combinePanels(int a, int b, Qt::Orientation orientation, bool before = true, const QString &targetLeaf = {})
+    QString combinePanels(int a, int b, Qt::Orientation orientation, bool before = true, const QString &targetLeaf = {}, const QRect &destination = {})
     {
         auto left = groupFor(a), right = groupFor(b);
         if (left && left == right) return QStringLiteral("Those panels already share a group.");
         if (right && left) return right->merge(left, orientation, before, targetLeaf);
         if (right) return right->add(panels[a].session, orientation, before, targetLeaf);
         if (left) return left->add(panels[b].session, orientation, !before);
-        return before ? createGroup(a, b, orientation) : createGroup(b, a, orientation);
+        return before ? createGroup(a, b, orientation,{},destination) : createGroup(b, a, orientation,{},destination);
     }
     void attachDrop(int source, QWidget *target, Qt::Edge edge)
     {
+        Unbound::UiWorkTiming timing("group.drop",target ? target->window() : nullptr);
         if (quitting || QApplication::activeModalWidget() || expanded >= 0 || !panels[source].session->active()) return;
         for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
             (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
             if (groupFor(source) && groupFor(source) == groupFor(j)) return;
             const auto frame = target->window()->frameGeometry();
             const auto error = combinePanels(source, j, edge == Qt::Edge(0) ? Qt::Orientation(0) : edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
-                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name);
+                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name,target->window()->geometry());
             if (error.isEmpty()) if (auto group = groupFor(source)) group->fitFrame(frame);
             status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
             Unbound::logEvent(QStringLiteral("group.drop.result"), {{"success", error.isEmpty()}, {"error", error}});
@@ -764,6 +778,7 @@ private:
     void save()
     {
         if (quitting) return;
+        Unbound::UiWorkTiming timing("workspace.save",this);
         QJsonObject saved;
         for (int i = 0; i < panels.size(); ++i) {
             auto &p = panels[i];
@@ -794,6 +809,7 @@ private:
     {
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
+        groupReserve->clear();
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
@@ -805,6 +821,7 @@ private:
     QComboBox *style = nullptr;
     QCheckBox *hierarchyOption = nullptr;
     Unbound::WindowHierarchy *hierarchy = nullptr;
+    Unbound::GroupHostReserve *groupReserve = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
     QSet<QAbstractButton *> observedToggles;

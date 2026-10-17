@@ -51,6 +51,9 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        const auto type = event->type();
+        if (type != QEvent::ActionAdded && type != QEvent::Shortcut && type != QEvent::Show && type != QEvent::Polish &&
+            type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate) return false;
         auto widget = qobject_cast<QWidget *>(object);
         if (event->type() == QEvent::ActionAdded && related(widget)) {
             observe(static_cast<QActionEvent *>(event)->action());
@@ -89,7 +92,10 @@ protected:
                 commandContext(QKeySequence(int(key->modifiers()) | key->key()));
         }
         if (widget->isWindow() && event->type() == QEvent::WindowActivate) {
-            QTimer::singleShot(0, this, [this] { activationState(); scanActions(); });
+            if (!activationScanQueued) {
+                activationScanQueued = true;
+                QTimer::singleShot(0, this, [this] { activationScanQueued = false; activationState(); scanActions(); });
+            }
         }
         if (widget->isWindow() && event->type() == QEvent::Show && widget->objectName() == QLatin1String("UiMainWindow")) scanActions();
         return false;
@@ -171,7 +177,10 @@ private:
                         {"enabled", action->isEnabled()}, {"checkable", action->isCheckable()}, {"checked", action->isChecked()},
                         {"context", int(action->shortcutContext())}, {"shortcut", action->shortcut().toString()}});
             }
-        if (!viewerActions.isEmpty()) logEvent(QStringLiteral("input.viewer-actions"), {{"actions", viewerActions}});
+        if (!viewerActions.isEmpty() && viewerActions != lastViewerActions) {
+            lastViewerActions = viewerActions;
+            logEvent(QStringLiteral("input.viewer-actions"), {{"actions", viewerActions}});
+        }
         for (auto window : QApplication::topLevelWidgets()) if (related(window))
             for (auto button : window->findChildren<QAbstractButton *>())
                 if (button->isVisible() && (button->text().trimmed() == "Stabilize" || button->text().trimmed() == "Stabilization")) stabilizationContext(button);
@@ -206,5 +215,7 @@ private:
     ViewerDiagnostics *viewerDiagnostics = nullptr;
     QSet<QAction *> tracked;
     QSet<QAbstractButton *> buttons;
+    QJsonArray lastViewerActions;
+    bool activationScanQueued = false;
 };
 }

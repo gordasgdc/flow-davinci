@@ -254,6 +254,7 @@ int main(int argc, char **argv)
         cinema.setObjectName("workspaceViewerModeCinemaViewer"); controls.addAction(&cinema); cinema.trigger();
     }
     settle();
+    Unbound::flushDiagnostics();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "interaction evidence log exists");
     bool shortcutObserved = false, textObserved = false, pageMoveObserved = false, buttonObserved = false, actionObserved = false, cinemaObserved = false;

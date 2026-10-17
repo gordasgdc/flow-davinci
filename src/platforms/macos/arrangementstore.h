@@ -5,6 +5,7 @@
 #include <QSet>
 #include <QUuid>
 #include "workspacesettings.h"
+#include "workspacepages.h"
 
 namespace Unbound {
 class ArrangementStore
@@ -26,31 +27,34 @@ public:
         QSet<QString> ids, names;
         for (const auto &value : entries) {
             const auto entry = value.toObject();
-            const auto id = entry["id"].toString(), name = entry["name"].toString().trimmed().toCaseFolded();
-            if (id.isEmpty() || name.isEmpty() || ids.contains(id) || names.contains(name) || !entry["workspace"].isObject()) {
+            const auto id = entry["id"].toString(), name = workspacePage(entry)+QLatin1Char('\n')+entry["name"].toString().trimmed().toCaseFolded();
+            if (id.isEmpty() || entry["name"].toString().trimmed().isEmpty() || ids.contains(id) || names.contains(name) || !entry["workspace"].isObject()) {
                 failure = "Saved arrangements contain invalid or duplicate entries."; return;
             }
             ids.insert(id); names.insert(name);
         }
     }
     QJsonArray list() const { return entries; }
+    QJsonArray list(const QString &page) const
+    { QJsonArray result; for (const auto &entry : entries) if (workspacePage(entry.toObject()) == page) result.append(entry); return result; }
     QString error() const { return failure; }
     QJsonObject find(const QString &id) const
     { for (const auto &entry : entries) if (entry.toObject()["id"] == id) return entry.toObject(); return {}; }
     QString create(const QString &name, const QJsonObject &workspace, QString &id)
     {
-        const QString problem = validName(name);
+        const QString page = workspace.value("page").toString("edit");
+        const QString problem = validName(name,{},page);
         if (!problem.isEmpty()) return problem;
         id = QUuid::createUuid().toString(QUuid::WithoutBraces);
         auto next = entries;
-        next.append(QJsonObject{{"id", id}, {"name", name.trimmed()}, {"workspace", workspace}});
+        next.append(QJsonObject{{"id", id}, {"name", name.trimmed()}, {"page",page}, {"workspace", workspace}});
         return write(next);
     }
     QString update(const QString &id, const QJsonObject &workspace)
     { return change(id, QString(), workspace, false); }
     QString rename(const QString &id, const QString &name)
     {
-        const auto problem = validName(name, id);
+        const auto problem = validName(name, id,workspacePage(find(id)));
         return problem.isEmpty() ? change(id, name.trimmed(), {}, false) : problem;
     }
     QString remove(const QString &id) { return change(id, {}, {}, true); }
@@ -65,13 +69,21 @@ public:
         }
         return write(next);
     }
+    QString reorderPage(const QString &page,const QStringList &order)
+    {
+        if (order.size() != list(page).size()) return "Arrangement order does not match this page's saved presets.";
+        for (const auto &id : order) if (workspacePage(find(id)) != page) return "Arrangement belongs to another page.";
+        QStringList all; int next = 0;
+        for (const auto &entry : entries) all.append(workspacePage(entry.toObject()) == page ? order[next++] : entry.toObject()["id"].toString());
+        return reorder(all);
+    }
 private:
-    QString validName(const QString &name, const QString &except = {}) const
+    QString validName(const QString &name, const QString &except = {}, const QString &page = "edit") const
     {
         if (name.trimmed().isEmpty()) return "Enter an arrangement name.";
         for (auto value : entries) {
             auto entry = value.toObject();
-            if (entry["id"] != except && entry["name"].toString().compare(name.trimmed(), Qt::CaseInsensitive) == 0)
+            if (entry["id"] != except && workspacePage(entry) == page && entry["name"].toString().compare(name.trimmed(), Qt::CaseInsensitive) == 0)
                 return "An arrangement already has that name.";
         }
         return {};
@@ -82,6 +94,8 @@ private:
         for (int i = 0; i < next.size(); ++i) {
             auto entry = next[i].toObject();
             if (entry["id"] != id) continue;
+            if (!workspace.isEmpty() && workspace.value("page").toString("edit") != workspacePage(entry))
+                return "A workspace cannot be updated from a different Resolve page.";
             if (erase) next.removeAt(i);
             else {
                 if (!name.isNull()) entry["name"] = name;

@@ -1,5 +1,20 @@
 # Unbound - Floating panels for DaVinci Resolve
 
+## Experimental macOS branch status — October 17, 2026
+
+This branch, `macos-responsive-group-transfers`, is an experimental macOS build
+shared for ongoing development; it has not been merged into main. Arrangement
+and docking flow still need refinement, which Jordan plans to address in the next
+pass. A reported clipping issue can let Timeline content overlap Inspector in a
+combined window; that issue is not fixed in this snapshot.
+
+The previous `macos-tethered-timeline-and-viewers` build contains useful experiments
+and remains available for comparison and rollback. Jordan reports that it feels
+less snappy than this iteration. That is user feedback, not a completed performance
+validation: this branch's responsiveness target and full live regression checklist
+remain open. See the [current development status](doc/platforms/macos-next-pass-status.md)
+and [verification checklist](doc/platforms/macos-workspace-checklist.md).
+
 Unbound lets you undock DaVinci Resolve panels into independent, resizable windows.
 Arrange them across your displays and restore your custom workspace between sessions.
 Unbound remembers window positions, sizes, docking and panel-toggle states.

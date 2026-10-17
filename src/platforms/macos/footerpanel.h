@@ -76,6 +76,7 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
+        if (event->type() != QEvent::Show && event->type() != QEvent::Resize) return false;
         auto menu = qobject_cast<QMenu *>(object);
         if (menu && event->type() == QEvent::Show && menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
         if (object == decoratedFooter && event->type() == QEvent::Resize) positionButton();
