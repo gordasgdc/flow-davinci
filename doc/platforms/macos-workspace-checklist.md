@@ -3,7 +3,7 @@
 Working branch: `macos-docking-compass-and-controls`.
 Preserved prior iteration: `macos-docking-tabs-and-maximize` at `38d0616`,
 installed executable `21466f2`. See [controls/docking follow-up](macos-controls-docking-followup.md)
-for current evidence and acceptance checks. No new follow-up helper installed.
+for current evidence and acceptance checks. Installed follow-up: **cc2c233**.
 Preserved previous branch: `macos-docking-layouts-v2` at `4a3f13f`.
 Installed checkpoint: `f64c401`; archived binaries and dSYM in
 `build/macos/checkpoints/f64c401/`. Do not overwrite that checkpoint.

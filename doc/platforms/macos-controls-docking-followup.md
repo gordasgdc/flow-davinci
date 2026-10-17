@@ -71,3 +71,17 @@ now allows 80 ms for WindowServer to commit the foreground cover before sampling
 native order. The initial immediate sample failed; the committed-order run passed.
 These fixtures still do not establish physical native-titlebar drag behavior or
 live Resolve acceptance, and Cinema Viewer is not yet claimed fixed.
+
+## Installed cc2c233
+
+Installed after confirming Resolve closed. All three GUI suites, hidden background
+regression checks and no-GUI layout-plan checks passed; helper/bootstrap build
+and native SDK handshake passed. Installed files match built SHA-256 hashes:
+- Bootstrap: e6fe27395aa4d67da4bd47feba35759d322130ca1b21db1bf5222f9521459d44
+- Qt helper: 2c4925d3fd6ef46801f7f637d3a6a432fa17d6ba1674060faaf48d475c9a4215
+Matching symbol UUID: 6716D1A9-A273-342B-80BE-AE7AD5882804.
+Archive: `build/macos/checkpoints/cc2c233/`. Prior 21466f2 archive preserved.
+Live acceptance remains pending. Test small controls-window scroll stability,
+native circular pin on Media Pool/viewers/groups/controls, physical native-titlebar
+and member-header hover/drop, tab versus directional split, free release, and
+backtick restore/input accessibility. Cinema Viewer remains unverified.
