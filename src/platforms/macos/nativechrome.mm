@@ -32,7 +32,7 @@
 @end
 
 namespace Unbound {
-static char pinKey, titleKey;
+static char pinKey, titleKey, expansionLevelKey;
 class PointerReleaseWatch : public QObject
 {
 public:
@@ -106,6 +106,19 @@ QObject *watchNativeWindowMove(QWidget *window, std::function<void()> begin,
     std::function<void(QPoint)> moved, std::function<void(QPoint, bool)> ended)
 { return new NativeMoveWatch(window, std::move(begin), std::move(moved), std::move(ended)); }
 
+void setNativeExpansionPriority(QWidget *widget, bool expanded)
+{
+    NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
+    if (!window) return;
+    auto prior = (NSNumber *)objc_getAssociatedObject(window, &expansionLevelKey);
+    if (expanded) {
+        if (!prior) objc_setAssociatedObject(window, &expansionLevelKey, @(window.level), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        window.level = NSFloatingWindowLevel + 1;
+    } else if (prior) {
+        window.level = prior.integerValue;
+        objc_setAssociatedObject(window, &expansionLevelKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+}
 void applyNativeChrome(QWidget *widget, bool compact)
 {
     NSView *view = reinterpret_cast<NSView *>(widget->winId());

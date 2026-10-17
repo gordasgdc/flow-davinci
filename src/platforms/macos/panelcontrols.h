@@ -25,6 +25,7 @@
 #include "controlscroll.h"
 #include "viewerpreparation.h"
 #include "footerpanel.h"
+#include "panelexpansion.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -545,6 +546,7 @@ private:
             const auto margins = host->windowHandle() ? host->windowHandle()->frameMargins() : QMargins();
             host->setGeometry(screen->availableGeometry().adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom()));
             panels[i].session->setHiddenByUser(false);
+            expansion.foreground(host);
             updateRow(i);
             Unbound::logEvent(QStringLiteral("panel.expand"), {{"panel", panels[i].name}, {"originally_floating", expandedWasFloating}});
         });
@@ -554,6 +556,7 @@ private:
     {
         if (expanded < 0) return;
         const int i = expanded;
+        expansion.restore();
         ++expandVersion;
         expanded = -1;
         auto &panel = panels[i];
@@ -628,8 +631,10 @@ private:
         Unbound::logEvent(QStringLiteral("panel.undock.preconditions"), {{"panel", p.name},
             {"page_found", bool(root)}, {"page_visible", root && root->isVisible()}, {"target_found", bool(target)},
             {"target_visible", target && target->isVisible()}, {"target_in_page", root && target && root->isAncestorOf(target)}});
+        if (p.name == QLatin1String("widgetEditSourcePlayer")) target = Unbound::sourceViewerSurface(target);
         const QString error = p.contents ? p.session->undockContents(target, root, p.label) : p.session->undock(target, root, p.label);
         if (error.isEmpty()) {
+            p.session->window()->setObjectName(QStringLiteral("unboundFloating_") + p.name);
             p.desired = true;
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
@@ -821,6 +826,7 @@ private:
     Unbound::ArrangementStore arrangements;
     QComboBox *presets = nullptr;
     QLabel *presetState = nullptr;
+    Unbound::PanelExpansion expansion;
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;
     bool quitting = false;

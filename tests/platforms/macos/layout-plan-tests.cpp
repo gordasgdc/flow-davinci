@@ -5,12 +5,18 @@
 #include "windowsnap.h"
 #include "viewport.h"
 #include "droppolicy.h"
+#include "dockfeedback.h"
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     int failures = 0;
     const auto check = [&](bool pass, const char *message) { if (!pass) { ++failures; std::fprintf(stderr, "FAIL: %s\n", message); } };
     const QRect frame(100, 100, 800, 600);
+    check(Unbound::dropCaption(Unbound::DropPlacement::Tab, "Media Pool", false) == "Add as tab to Media Pool",
+        "tab feedback names the destination and action");
+    check(Unbound::dropCaption(Unbound::DropPlacement::Below, "Source Monitor", false) == "Dock below Source Monitor" &&
+        Unbound::dropCaption(Unbound::DropPlacement::Right, "", true) == "Dock right of entire group",
+        "split feedback distinguishes leaf and whole-group scope");
     using Placement = Unbound::DropPlacement;
     for (const QSize size : {QSize(80,60), QSize(800,600), QSize(3000,1600)}) {
         const QRect surface(QPoint(-300,90), size);

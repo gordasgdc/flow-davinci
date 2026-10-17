@@ -49,6 +49,27 @@ int main(int argc, char **argv)
             "saved footer arrangement restores independently of the hidden page");
         footer.dock();
     }
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); main.resize(1000,700);
+        auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); outer->addWidget(page);
+        auto layout = new QVBoxLayout(page);
+        auto stack = new QStackedWidget(page); stack->setObjectName("stackedEditSourceOfflinePlayers"); layout->addWidget(stack);
+        auto empty = new QLabel("No clip loaded", stack); stack->addWidget(empty);
+        auto player = new QWidget(stack); player->setObjectName("widgetEditSourcePlayer"); stack->addWidget(player);
+        stack->setCurrentWidget(empty); main.show(); settle();
+        {
+            PanelControls controls; controls.show(); settle();
+            controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer")->click(); settle();
+            check(stack->window() != &main && stack->window()->objectName() == "unboundFloating_widgetEditSourcePlayer",
+                "Source Undock works with the offline surface and no clip loaded");
+            check(stack->currentWidget() == empty && !player->isVisible(),
+                "empty Source detachment preserves native offline selection without loading footage");
+            controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
+            check(stack->parentWidget() == page && layout->indexOf(stack) >= 0 && stack->currentWidget() == empty,
+                "empty Source docking restores its original slot and offline state");
+        }
+    }
     for (auto orientation : {Qt::Horizontal, Qt::Vertical}) for (bool contents : {false, true}) {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100, 700);
         auto mainLayout = new QVBoxLayout(&main);

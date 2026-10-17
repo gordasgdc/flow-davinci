@@ -504,3 +504,14 @@ Next-pass requirements from live feedback:
 - Native Workspace submenu callers for panels and footer; hide the native backdrop by intent with explicit Show Native Workspace recall.
 - Source callable without manually detaching through native UI.
 - Footer controls/submenu need live discovery and usability verification; user cannot find a dependable path.
+
+
+### Next branch: macos-docking-interaction-polish
+
+User requirement: the native toolbar must also be independently undockable and placeable, with a discoverable native undock control/menu action, a Show Panel in Workspace caller, and persisted placement/visibility. Identify the exact native toolbar container before implementation.
+
+Global discoverability rule: every detachable element (including toolbar, footer/page navigation, Source, Program and Timeline) must have a discoverable undock action plus a shared-state caller in Workspace > Show Panel in Workspace. Hiding a panel must not remove its caller. Native macOS menu verification is mandatory; a QWidget Show-event fixture alone is insufficient.
+
+Current source work (not installed): separate TabTearOff, PanelExpansion, DockFeedback and DragTiming modules; candidate source/offline-stack detachment; regression fixtures for empty Source, tab drag and temporary expansion priority. Compile/fixture results must be recorded separately from live verification.
+
+Verification at polish checkpoint: layout-plan tests PASS; hidden controls/tab-tear-off tests PASS and foreground preserved; group fixtures compile-only PASS; widget helper builds with warnings as errors. Displayed fixtures and live Resolve checks pending because Resolve is open. Toolbar/menu/door sizing work remains unimplemented at this checkpoint.

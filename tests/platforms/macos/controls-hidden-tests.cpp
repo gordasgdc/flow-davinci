@@ -10,6 +10,7 @@
 #include "controlscroll.h"
 #include "floatinghost.h"
 #include "viewerpreparation.h"
+#include "tabtearoff.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -35,6 +36,25 @@ int main(int argc, char **argv)
     Unbound::ControlScroll candidate(nullptr); const auto after = exercise(candidate, true);
     check(before > 0, "reproduce Qt focus-transfer horizontal scroll jump");
     check(after == 0, "row-update guard prevents the reproduced scroll jump");
+    QTabWidget tabs; tabs.setAttribute(Qt::WA_DontShowOnScreen); tabs.resize(400,200);
+    auto firstTab = new QWidget; auto secondTab = new QWidget;
+    tabs.addTab(firstTab, "Inspector"); tabs.addTab(secondTab, "Media Pool"); tabs.show(); QApplication::processEvents();
+    int tears = 0; QWidget *torn = nullptr;
+    Unbound::TabTearOff tearOff(&tabs, &tabs, [&](QWidget *panel, QPoint) { ++tears; torn = panel; });
+    auto bar = tabs.tabBar(); const auto tabPoint = bar->tabRect(0).center();
+    const auto send = [&](QEvent::Type type, QPoint point, Qt::MouseButton button, Qt::MouseButtons buttons) {
+        QMouseEvent event(type, QPointF(point), QPointF(bar->mapToGlobal(point)), button, buttons, Qt::NoModifier);
+        QApplication::sendEvent(bar, &event);
+    };
+    send(QEvent::MouseButtonPress, tabPoint, Qt::LeftButton, Qt::LeftButton);
+    send(QEvent::MouseButtonRelease, tabPoint, Qt::LeftButton, Qt::NoButton); QApplication::processEvents();
+    check(tears == 0, "clicking a tab does not detach it");
+    send(QEvent::MouseButtonPress, tabPoint, Qt::LeftButton, Qt::LeftButton);
+    send(QEvent::MouseMove, QPoint(tabPoint.x(),bar->height()+40), Qt::NoButton, Qt::LeftButton);
+    QApplication::processEvents();
+    check(tears == 1 && torn == firstTab, "dragging a tab outside the strip requests that exact panel");
+    send(QEvent::MouseButtonRelease, tabPoint, Qt::LeftButton, Qt::NoButton);
+    tabs.hide();
     QWidget nativeRoot; nativeRoot.setAttribute(Qt::WA_DontShowOnScreen);
     QWidget source(&nativeRoot); source.hide();
     QAction singleViewer(&nativeRoot); singleViewer.setText("Single Viewer Mode");

@@ -390,7 +390,7 @@ int main(int argc, char **argv)
         check(maximizeOverride.isAccepted(), "hovered panel reserves backtick before competing native shortcuts");
         QKeyEvent maximizeKey(QEvent::KeyPress, Qt::Key_QuoteLeft, Qt::NoModifier);
         QApplication::sendEvent(source, &maximizeKey); settleFor(160);
-        check(expandSource->text() == "Restore Size", "backtick expands hovered grouped panel");
+        check(expandSource->text() == "Restore Size" && source->window()->property("unboundExpanded").toBool(), "backtick expands hovered grouped panel with temporary foreground priority");
         QCursor::setPos(controls.mapToGlobal(QPoint(10, 10)));
         QApplication::sendEvent(&controls, &maximizeKey); settleFor(180);
         check(source->window() == groupedHost && expandSource->text() == "Expand", "second backtick restores same panel even after pointer leaves");
@@ -411,7 +411,7 @@ int main(int argc, char **argv)
         QApplication::sendEvent(draggedSource, &move);
         auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
-        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(72, 24),
+        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->width() >= 120,
             "panel attachment labels the selected region and previews the proposed split");
         const QPoint hover = targetProgram->frameGeometry().center() + QPoint(-65, -45);
         QMouseEvent hoverMove(QEvent::MouseMove, QPointF(), QPointF(hover), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);

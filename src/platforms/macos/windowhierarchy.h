@@ -45,7 +45,7 @@ public:
             if (widget->objectName() == QLatin1String("unboundPanelTest")) controls = widget;
         }
         if (floating.isEmpty()) return;
-        for (auto widget : floating) normalizeNativePanel(widget);
+        for (auto widget : floating) if (!widget->property("unboundExpanded").toBool()) normalizeNativePanel(widget);
         const bool pinned = controls && controls->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
         if (controls && !pinned) floating.append(controls);
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
@@ -58,6 +58,9 @@ public:
         else if (main) windows.append(main);
         windows.append(floating);
         if (controls && pinned) windows.append(controls);
+        for (int i = 0; i < windows.size(); ++i) if (windows[i]->property("unboundExpanded").toBool()) {
+            auto expanded = windows.takeAt(i); windows.append(expanded); break;
+        }
         const qint64 key = nativeKeyWindowNumber();
         ordering = true; orderNativeWindows(windows); ordering = false;
         QJsonArray names;

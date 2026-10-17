@@ -6,6 +6,7 @@
 #include "grouplayout.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
+#include "tabtearoff.h"
 
 namespace Unbound {
 class PanelGroup : public QObject
@@ -271,6 +272,15 @@ private:
                 for (auto member : members) if (member && panelName(member) == title) title = member->window()->windowTitle();
                 tabs->addTab(widget, title.isEmpty() ? QStringLiteral("Panel group") : title);
             }
+            new TabTearOff(tabs, tabs, [this](QWidget *leaf, QPoint pointer) {
+                QPointer<MacPanelSession> member;
+                for (auto candidate : members) if (leaves.value(candidate) == leaf) member = candidate;
+                if (!member) return;
+                detachMember(member);
+                auto floating = static_cast<MacFloatingHost *>(member->window());
+                floating->move(pointer - QPoint(80, 12)); floating->raise(); floating->activateWindow();
+                floating->beginPointerDrag(pointer, true);
+            });
             tabs->setCurrentIndex(qBound(0, node["selected"].toInt(), tabs->count() - 1));
             connect(tabs, &QTabWidget::currentChanged, this, [this] { if (!rebuilding) timer.start(); });
             return tabs;

@@ -12,6 +12,8 @@
 #include "dockoverlay.h"
 #include "droppolicy.h"
 #include "dockdestination.h"
+#include "dockfeedback.h"
+#include "dragtiming.h"
 #include "diagnostics.h"
 #include <QScreen>
 #include <QPointer>
@@ -87,6 +89,7 @@ public:
         delete nativeMoveWatch.data();
         nativeMoveWatch = watchNativeWindowMove(this, [this] {
             if (dragging) return;
+            dragTiming.begin();
             ++dragGeneration; nativeDragging = dragging = movedEnough = true; startGeometry = geometry();
             delete releaseWatch.data();
             releaseWatch = watchNativePointerRelease(this, [this](QPoint position, bool bypass) {
@@ -105,6 +108,7 @@ public:
     {
         if (dragging) return; // Native and custom events may report the same gesture.
         snapPosition = {}; attachmentTarget = nullptr;
+        dragTiming.begin();
         ++dragGeneration;
         dragging = true; movedEnough = continuing; start = global; startGeometry = geometry();
         delete releaseWatch.data();
@@ -222,6 +226,7 @@ private:
         delete releaseWatch.data(); releaseWatch = nullptr;
         hidePreviews();
         if (QWidget::mouseGrabber() == this) releaseMouse();
+        dragTiming.report(objectName());
         logEvent(QStringLiteral("drag.end"), {{"window", objectName()}, {"reason", reason}, {"cancelled", cancelled}, {"attach", attach}, {"target", target ? target->objectName() : QString()}, {"edge", int(edge)}});
         const auto generation = dragGeneration;
         if (attach) QTimer::singleShot(0, this, [this, target, edge, generation] {
@@ -230,6 +235,7 @@ private:
     }
     void previewSnap(const QRect &desired, bool bypass)
     {
+        DragTiming::Sample timing(dragTiming);
         snapPosition = {};
         attachmentTarget = nullptr;
         if (!snapping || bypass) { hidePreviews(); return; }
@@ -293,8 +299,14 @@ private:
             }
             dropMarker->setToolTip(chosen.edge == Qt::Edge(0) ? QStringLiteral("Add as tab") :
                 attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? QStringLiteral("Split group") : QStringLiteral("Split panel"));
-            static_cast<QLabel *>(dropMarker)->setText(chosen.edge == Qt::Edge(0) ? QStringLiteral("Tab") : chosen.edge == Qt::LeftEdge ? QStringLiteral("Left") : chosen.edge == Qt::RightEdge ? QStringLiteral("Right") : chosen.edge == Qt::TopEdge ? QStringLiteral("Above") : QStringLiteral("Below"));
-            dropMarker->setGeometry(QRect(chosen.target.center() - QPoint(36,12), QSize(72,24))); dropMarker->show(); dropMarker->raise();
+            const auto caption = dropCaption(drop.placement, surface ? surface->windowTitle() : QString(),
+                surface && surface->isWindow() && surfacesAreGrouped(surface));
+            auto label = static_cast<QLabel *>(dropMarker);
+            label->setText(caption); label->setToolTip(caption);
+            const QSize labelSize(qMax(120, label->fontMetrics().horizontalAdvance(caption) + 24), 26);
+            const QRect labelFrame(chosen.target.center() - QPoint(labelSize.width()/2, labelSize.height()/2), labelSize);
+            if (dropMarker->geometry() != labelFrame) dropMarker->setGeometry(labelFrame);
+            if (!dropMarker->isVisible()) { dropMarker->show(); dropMarker->raise(); }
             attachmentEdge = chosen.edge;
             if (chosen.active) outline = chosen.preview;
         } else if (dropMarker) dropMarker->hide();
@@ -306,13 +318,15 @@ private:
             preview->setAttribute(Qt::WA_TransparentForMouseEvents);
             preview->setStyleSheet(QStringLiteral("background: rgba(80,140,210,45); border: 2px solid #5099df;"));
         }
-        preview->setGeometry(outline); preview->show(); preview->raise();
+        if (preview->geometry() != outline) preview->setGeometry(outline);
+        if (!preview->isVisible()) { preview->show(); preview->raise(); }
         if (dropMarker && dropMarker->isVisible()) dropMarker->raise();
     }
     static bool surfacesAreGrouped(QWidget *widget) { return widget && widget->objectName().startsWith("unboundFloating_group_"); }
     void hidePreviews() { if (compass) compass->hide(); hoverDestination = nullptr; previousPlacement = DropPlacement::None; if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
     QToolButton *pinButton = nullptr;
     WindowChrome chrome = WindowChrome::Standard;
+    DragTiming dragTiming;
     bool snapping = true;
     DockCompass *compass = nullptr;
     QPointer<QWidget> hoverDestination;
