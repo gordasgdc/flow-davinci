@@ -21,7 +21,8 @@ inline QList<QAction *> nativeViewerModeActions(QWidget *main)
         if (auto menu = qobject_cast<QMenu *>(widget)) candidates.append(menu->actions());
     QSet<QAction *> seen; QList<QAction *> result;
     for (auto action : candidates)
-        if (!seen.contains(action) && viewerCommandLabel(action) == QLatin1String("Single Viewer Mode")) {
+        if (!seen.contains(action) && !action->menu() && !action->objectName().startsWith("unbound") &&
+            viewerCommandLabel(action) == QLatin1String("Single Viewer Mode")) {
             seen.insert(action); result.append(action);
         }
     return result;

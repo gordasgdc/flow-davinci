@@ -105,11 +105,15 @@ int main(int argc, char **argv)
             controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(3);
             controls.findChild<QPushButton *>("group_1")->click(); settle(200);
             check(singleViewer->isEnabled(), "native viewer mode command remains available for managed viewers");
+            const auto viewerFrame = stack->window()->geometry();
             singleViewer->trigger(); settle();
             check(!empty->isVisible() && program->isVisible(), "native single-viewer command hides Source while retaining Program");
             singleViewer->trigger(); settle();
             check(empty->isVisible() && program->isVisible() && singleViewer->shortcut() == QKeySequence(Qt::Key_F9),
                 "native dual-viewer command restores Source and preserves a non-default key mapping");
+            for (int cycle=0; cycle<20; ++cycle) { singleViewer->trigger(); settle(); singleViewer->trigger(); settle(); }
+            check(stack->window()->geometry() == viewerFrame,
+                "twenty native viewer-command cycles preserve the outer magnetic window frame");
             controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
             check(stack->parentWidget() == page && layout->indexOf(stack) >= 0 && stack->currentWidget() == empty,
                 "empty Source docking restores its original slot and offline state");
@@ -132,7 +136,8 @@ int main(int argc, char **argv)
         auto mode = new QWidget; mode->setObjectName("pageSingleScreenModeTools"); toolbarModes->addWidget(mode);
         auto modeLayout = new QHBoxLayout(mode); auto left = new QWidget(mode); left->setObjectName("frameEditTopBarLeftInSSM"); modeLayout->addWidget(left);
         (new QHBoxLayout(left))->addWidget(new QLabel("Media Pool / Index / Inspector", left));
-        QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel"); main.show(); settle();
+        QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel");
+        QMenu nativeWorkspace(&main); nativeWorkspace.setObjectName("workspace"); main.show(); settle();
         {
             PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
@@ -150,9 +155,14 @@ int main(int argc, char **argv)
                 workspaceCaller |= action->text() == "Workspace Toolbar";
             }
             check(timelineCaller && workspaceCaller, "both toolbars remain discoverable in Show Panel in Workspace");
-            controls.findChild<QPushButton *>("bulk_1")->click(); settle(200);
+            auto nativeRecall = nativeWorkspace.findChild<QAction *>("unboundRestoreNativeWorkspace");
+            check(nativeRecall, "permanent native-workspace recall is prepopulated in the top Workspace menu");
+            controls.hide();
+            if (nativeRecall) nativeRecall->trigger(); settle(200);
             check(timelineToolbar->parentWidget() == page && toolbarModes->parentWidget() == page,
-                "Dock All restores both native toolbar slots");
+                "top native-workspace recovery restores both native toolbar slots");
+            check(!controls.findChild<QCheckBox *>("hideResolveBackground")->isChecked() && (Unbound::nativeVisibilityFlags(&main) & 1),
+                "permanent recovery reveals the native background and exits floating workspace mode");
         }
         {
             PanelControls reopened; reopened.show(); settle(400);
@@ -414,9 +424,12 @@ int main(int argc, char **argv)
             check(column->sizes()[0] < before[0] && m.window()->geometry() == mediaGeometry,
                 "dragging Source's top boundary resizes its own column without moving Media Pool");
             const auto openColumn = column->sizes(), openOuter = outerSplit->sizes();
+            const auto outerFrame = group.window()->geometry();
             for (int cycle=0; cycle<20; ++cycle) {
                 i.setHiddenByUser(true); group.syncVisibility(); settle();
+                check(group.window()->geometry() == outerFrame, "closing a nested door preserves outer frame");
                 i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+                check(group.window()->geometry() == outerFrame, "opening a nested door preserves outer frame");
             }
             check(column->sizes() == openColumn && outerSplit->sizes() == openOuter,
                 "nested door cycling preserves user-dragged dividers and neighboring column widths");

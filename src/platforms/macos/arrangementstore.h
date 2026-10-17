@@ -54,6 +54,17 @@ public:
         return problem.isEmpty() ? change(id, name.trimmed(), {}, false) : problem;
     }
     QString remove(const QString &id) { return change(id, {}, {}, true); }
+    QString reorder(const QStringList &order)
+    {
+        if (order.size() != entries.size()) return "Arrangement order does not match saved presets.";
+        QJsonArray next; QSet<QString> seen;
+        for (const auto &id : order) {
+            const auto entry = find(id);
+            if (seen.contains(id) || entry.isEmpty()) return "Arrangement order contains missing or duplicate presets.";
+            seen.insert(id); next.append(entry);
+        }
+        return write(next);
+    }
 private:
     QString validName(const QString &name, const QString &except = {}) const
     {

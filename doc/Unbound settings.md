@@ -89,3 +89,13 @@ Pane discovery and deferred restoration run on widget/page lifecycle events;
 there is no recurring discovery timer or settings change needed to enable this.
 Normal releases have no diagnostic switches. The separate diagnostic build is
 documented in tests/platforms/windows/diagnostic/README.md and uses the same settings format.
+
+## Experimental macOS workspace settings
+
+The macOS helper stores the current workspace in
+`~/Library/Application Support/Unbound/Workspace.json` and named presets in
+`Arrangements.json` beside it. `UNBOUND_WORKSPACE_FILE` and
+`UNBOUND_ARRANGEMENTS_FILE` override those locations for tests. Preset IDs remain
+stable when renamed or reordered; their array order is the displayed order in
+both Unbound's controls and Workspace > Custom Workspace Presets. Writes are
+atomic. Restore Native Workspace is a permanent command, not a deletable preset.

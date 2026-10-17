@@ -4,7 +4,22 @@ The Mac branch has an experimental Apple Silicon helper, launcher and panel
 controls. It is not a release backend: root CMake still rejects Mac application
 configuration, and Windows release builds remain independent.
 
-## Current experiment
+## Workspace presets in the current experiment
+
+Resolve's Workspace menu exposes Custom Workspace Presets. Save the current
+layout there; each saved name has Restore, Update, Rename, Duplicate and Delete
+commands. These share the controls window's arrangement store. Manage > Reorder
+in Unbound opens a grip list; dragging changes both the widget and native menu
+order and saves it across launches.
+
+Restore Native Workspace (Dock All) is a separate permanent Workspace action.
+It restores native docking and reveals Resolve's main interface without deleting
+saved presets. Page Navigation has its own compact Float/Dock control. Timeline
+tools can attach back to their actual native slot; detachment leaves no empty
+tools placeholder. The retained Source/offline stack can float without loading
+footage. See macos-next-pass-status.md for candidate and live acceptance evidence.
+
+## Initial experiment and loading investigation
 
 Resolve 21.1.1 / Qt 5.15.2 on arm64 exposed its Qt application and panel widgets
 through a native OpenFX discovery probe. Startup environment insertion did not

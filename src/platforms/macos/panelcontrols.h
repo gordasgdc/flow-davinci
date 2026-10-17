@@ -30,6 +30,7 @@
 #include "toolbars.h"
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
+#include "workspacearrangements.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -274,6 +275,19 @@ public:
         callers->add({"unboundShowNativeWorkspace", "Show Native Workspace",
             [this] { return !background->isChecked(); }, [this] { background->setChecked(!background->isChecked()); }});
         callers->wire();
+        workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        workspaceMenu->entries = [this] { return presetsUi->list(); };
+        workspaceMenu->selected = [this] { return presets->currentData().toString(); };
+        workspaceMenu->invoke = [this](const QString &operation, const QString &id) {
+            if (operation == "Reorder") { showNormal(); raise(); activateWindow(); }
+            presetsUi->invoke(operation, id);
+        };
+        workspaceMenu->nativeWorkspace = [this] {
+            ++bulkVersion; restoreExpanded(); dockAll();
+            if (auto root = page()) { root->window()->showNormal(); root->window()->raise(); root->window()->activateWindow(); }
+            save();
+        };
+        workspaceMenu->wire();
         auto footerRow = new QHBoxLayout;
         auto floatFooter = new QPushButton(QStringLiteral("Float Page Navigation"), body);
         floatFooter->setObjectName("floatPageNavigation"); footerRow->addWidget(floatFooter);
@@ -413,7 +427,11 @@ private:
         result.remove(QStringLiteral("selected_arrangement"));
         return result;
     }
-    void updatePresetState() { if (presetsUi) presetsUi->updateState(arrangement()); }
+    void updatePresetState()
+    {
+        if (presetsUi) presetsUi->updateState(arrangement());
+        if (workspaceMenu) workspaceMenu->wire();
+    }
     void restoreArrangement()
     {
         action(QStringLiteral("arrangement-restore"));
@@ -721,6 +739,7 @@ private:
         if (footer) footer->restore();
         if (callers) callers->wire();
         if (nativeMenus) nativeMenus->wire();
+        if (workspaceMenu) workspaceMenu->wire();
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         if (toolbarDecoration) for (int i = 0; i < panels.size(); ++i)
             if (panels[i].name == QLatin1String("frameEditToolbarTop") || panels[i].name == QLatin1String("unboundWorkspaceToolbar"))
@@ -792,6 +811,7 @@ private:
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
     Unbound::ArrangementControls *presetsUi = nullptr;
+    Unbound::WorkspaceArrangements *workspaceMenu = nullptr;
     QComboBox *presets = nullptr;
     Unbound::PanelExpansion expansion;
     Unbound::ViewerModeCommand *viewerMode = nullptr;

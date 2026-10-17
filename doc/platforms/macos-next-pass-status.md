@@ -1,5 +1,15 @@
 # Next-pass acceptance record
 
+## Custom Workspace Presets follow-up
+
+- Workspace > Custom Workspace Presets contains saved layouts in persisted order. Each layout exposes Restore, Update from Current Layout, Rename, Duplicate and Delete. Save Current Workspace As and Update Current Saved Workspace use the same arrangement owner as the controls widget.
+- Controls > Manage > Reorder opens an inline list with drag grips. Moving rows saves UUID order atomically to Arrangements.json, retains current selection, and refreshes the native menu. Invalid duplicate/missing-ID reorder requests are rejected.
+- Workspace > Restore Native Workspace (Dock All) is a separate permanent action, never an arrangement record. It cancels pending bulk work, restores expansion, docks panels/footer/tools, reveals and activates Resolve's native workspace, and leaves saved layouts intact. Deleting every preset cannot remove it.
+- Menu refresh retains existing action identity and only moves submenu actions when order changes. Repeated sync and controls recreation do not add duplicate callbacks. User names containing ampersands remain literal labels.
+- New test-workspace-menu.sh covers native prepopulation, restore/update dispatch by stable ID, rename/reorder sync, persistence, deletion of all layouts, native recovery survival, controller recreation and an actual list-model row move. The displayed panel-group suite verifies top-menu native recovery and twenty viewer/door cycles with exact outer-frame retention. Full panel-session and hidden-controls suites pass.
+
+Live build 52d8342 was installed, hashes/signature verified and launched: actual logs confirmed Source detaching from its hidden stack, narrower Timeline/Inspector constraints, native Mixer/Timeline docking entries and real workspaceSingleViewerModeToggle discovery. Resolve subsequently recorded a clean shutdown. Live Single Viewer behavior, Cinema output and real-menu appearance still need the new candidate's fresh-process check; these rows are not closed by fixtures.
+
 ## Follow-up branch acceptance (macos-tethered-timeline-and-viewers)
 
 Preserved baseline: 7551bce, tagged macos-live-workspace-7551bce and published to the personal fork. The rows below are requirements, not completed implementation.
