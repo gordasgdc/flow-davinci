@@ -34,6 +34,10 @@ int main(int argc, char **argv)
         check(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation"), "native footer exposes a discoverable undock control");
         check(footer.floatPanel().isEmpty() && nativeFooter->window() != &main,
             "native footer floats independently of the page content");
+        check(nativeFooter->layout()->indexOf(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation")) < 0,
+            "footer action does not consume an extra native layout row");
+        check(nativeFooter->window()->height() < 100,
+            "floating navigation fits its native controls rather than retaining a tall empty host");
         page->hide(); settle();
         check(nativeFooter->isVisible(), "switching away from a page does not hide global navigation");
         QMenu menu(&main); menu.setObjectName("workspaceShowPanel"); menu.show(); settle();
@@ -51,6 +55,31 @@ int main(int argc, char **argv)
         check(nativeFooter->window() != &main && footer.snapshot()["floating"].toBool(),
             "saved footer arrangement restores independently of the hidden page");
         footer.dock();
+    }
+    {
+        QWidget main; main.resize(1400,700); auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); outer->addWidget(page); auto row = new QHBoxLayout(page);
+        auto timeline = new QWidget(page); timeline->setObjectName("frameConformTimelines");
+        auto inspector = new QWidget(page); inspector->setObjectName("widgetEditInspector");
+        for (auto panel : {timeline, inspector}) {
+            auto content = new QVBoxLayout(panel); content->addWidget(new QPushButton("Native control", panel)); row->addWidget(panel);
+        }
+        timeline->setMinimumWidth(900); inspector->setMinimumWidth(600); main.show(); settle();
+        Unbound::MacPanelSession a, b;
+        check(a.undock(timeline,page,"Timeline").isEmpty() && b.undock(inspector,page,"Inspector").isEmpty(),
+            "wide native panels detach for narrow-group regression");
+        Unbound::PanelGroup group(nullptr);
+        check(group.join(&a,&b,Qt::Horizontal).isEmpty(), "wide native panels join one magnetic surface");
+        group.window()->resize(620,400); settle();
+        const auto frame = group.window()->geometry();
+        auto splitter = group.window()->findChild<QSplitter *>();
+        check(frame.width() == 620 && splitter, "native minimum widths do not force the magnetic host wider");
+        if (splitter) { splitter->setSizes({1,1000}); settle(); }
+        check(group.window()->geometry() == frame && timeline->width() >= 240 && inspector->width() >= 240,
+            "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
+        group.dissolve(true); settle();
+        check(timeline->minimumWidth() == 900 && inspector->minimumWidth() == 600,
+            "native docking restores both original width constraints");
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1000,700);

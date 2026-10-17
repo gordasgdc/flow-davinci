@@ -73,6 +73,12 @@ public:
     }
     void setPinned(bool pinned) { pinButton->setChecked(pinned); }
     bool pinned() const { return pinButton->isChecked(); }
+    QSize minimumSizeHint() const override
+    {
+        auto hint = QWidget::minimumSizeHint();
+        if (property("unboundRelaxedWidth").toBool()) hint.setWidth(240);
+        return hint;
+    }
     ~MacFloatingHost() override { delete nativeMoveWatch.data(); delete releaseWatch.data(); if (qApp) qApp->removeEventFilter(this); }
     void setChrome(WindowChrome value)
     {

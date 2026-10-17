@@ -48,7 +48,10 @@ inline QJsonObject widgetState(QWidget *widget)
         {"hidden", widget->isHidden()}, {"enabled", widget->isEnabled()},
         {"focus_policy", int(widget->focusPolicy())}, {"window_type", int(widget->windowType())},
         {"focus_proxy", widget->focusProxy() ? widget->focusProxy()->objectName() : QString()},
-        {"x", r.x()}, {"y", r.y()}, {"width", r.width()}, {"height", r.height()}};
+        {"x", r.x()}, {"y", r.y()}, {"width", r.width()}, {"height", r.height()},
+        {"minimum_width", widget->minimumWidth()}, {"minimum_height", widget->minimumHeight()},
+        {"minimum_hint_width", widget->minimumSizeHint().width()},
+        {"minimum_hint_height", widget->minimumSizeHint().height()}};
 }
 
 class WindowDiagnostics : public QObject

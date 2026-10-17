@@ -1,5 +1,25 @@
 # Next-pass acceptance record
 
+## Follow-up branch acceptance (macos-tethered-timeline-and-viewers)
+
+Preserved baseline: 7551bce, tagged macos-live-workspace-7551bce and published to the personal fork. The rows below are requirements, not completed implementation.
+
+- [ ] Page Navigation means the bottom Media/Cut/Edit/Fusion/Color/Fairlight/Deliver strip. Float it compactly without the tall empty area shown in the 03:04 screenshot. Keep Float/Dock discoverable without adding another full-height row. Restore its native footer slot on Dock; do not confuse it with the editing toolbar.
+- [ ] Magnetic groups must support smaller panel widths, including Timeline, without increasing the outer window to satisfy inherited native workspace minimums. Scope constraint overrides to the floating/grouped lifetime and restore original constraints on native docking.
+- [ ] Distinguish explicit native minimum widths, layout-derived minimum hints, and Unbound header/button minimums before changing them. Do not merely remove the outer minimum while leaving inaccessible content behind.
+- [ ] Verify narrow horizontal and nested splits: divider dragging redistributes existing space, the outer frame stays fixed, hide/show cycles restore intended proportions, and native docking restores original constraints. Verify actual Resolve controls remain reachable at the supported narrow widths.
+- [ ] Keep editing toolbar policy separate from Page Navigation. Earlier preference was Timeline tethered to its tools; the latest footer clarification does not authorize replacing the footer with the editing toolbar.
+
+Initial source inspection: MacPanelSession preserves native widget constraints and transfers its layout into group cells; PanelGroup wraps those cells in additional header layouts. Floating hosts also consult minimumSizeHint during edge resizing. FooterPanel currently restores a saved rectangle or defaults to 900x100; this alone does not account for native container padding or inherited minimum heights. Diagnose the actual container before choosing compact geometry.
+
+Candidate implementation: panelwidth.h temporarily relaxes the container's horizontal policy and explicit minimum to 240 logical pixels for Timeline, Inspector and Media Pool, without changing child control constraints or vertical limits. Group transfers retain the allowance; native docking restores the captured minimum, policy and layout constraint. Group titles no longer impose their full text width. Fixture coverage includes 20 apply/restore cycles and a 620-pixel Timeline/Inspector group with minimum-boundary redistribution and exact outer-frame retention. Actual narrow Resolve content still requires acceptance; this is not independent UI scaling.
+
+Page Navigation candidate: replace the extra button layout row with a reserved 24-pixel ellipsis action exposing Float/Dock; derive floating height from native size hints plus chrome and discard excess saved height. Native footer content remains retained. Fixture asserts no extra layout row, compact host, and restoration. Live screenshot comparison remains pending.
+
+Independent scaling research remains open. Qt's documented high-DPI controls apply globally or per display, not as an arbitrary per-panel slider (https://lists.qt-project.org/pipermail/development/2019-September/037434.html). A graphics-proxy scaling approach also excludes paint-on-screen/OpenGL widgets and is not recommended for high-performance use (https://doc.qt.io/qt-6/qgraphicsproxywidget.html). These are constraints on candidate approaches, not proof that Resolve-specific independent scaling is impossible. Do not present font-only changes as full-panel scaling.
+
+Validation on this follow-up: layout-plans, hidden controls, panel groups, reliability and session suites passed. One earlier session run failed the two docking-preview assertions; a fresh process passed without a code change. Treat native-order/preview timing as an unresolved intermittent result, not a fixed runtime bug. No actual Resolve acceptance or installation is implied by these fixtures.
+
 Branch: macos-native-workspace-callers. Installed baseline remains 6bd0e36.
 No row is complete merely because its source builds.
 

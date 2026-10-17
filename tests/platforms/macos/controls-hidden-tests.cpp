@@ -13,6 +13,7 @@
 #include "tabtearoff.h"
 #include "workspacecallers.h"
 #include "groupvisibility.h"
+#include "panelwidth.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -21,6 +22,27 @@ int main(int argc, char **argv)
     QTemporaryDir logs; qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     int failures = 0;
     const auto check = [&](bool pass, const char *message) { if (!pass) { ++failures; std::fprintf(stderr, "FAIL: %s\n", message); } };
+    {
+        QWidget nativePanel; nativePanel.setAttribute(Qt::WA_DontShowOnScreen);
+        auto nativeLayout = new QHBoxLayout(&nativePanel);
+        auto control = new QPushButton("Native control", &nativePanel); control->setMinimumWidth(160);
+        nativeLayout->addWidget(control); nativePanel.setMinimumSize(900,100);
+        const auto originalPolicy = nativePanel.sizePolicy();
+        const auto originalConstraint = nativeLayout->sizeConstraint();
+        Unbound::PanelWidthAllowance allowance;
+        for (int cycle = 0; cycle < 20; ++cycle) {
+            allowance.apply(&nativePanel); nativePanel.resize(280,200); nativeLayout->activate();
+            check(nativePanel.width() == 280 && nativePanel.minimumWidth() == 240,
+                "floating width allowance permits a narrow surface without outer growth");
+            check(control->minimumWidth() == 160 && nativePanel.minimumHeight() == 100,
+                "width allowance preserves native controls and vertical constraints");
+            allowance.restore();
+            check(nativePanel.minimumSize() == QSize(900,100) && nativePanel.sizePolicy() == originalPolicy &&
+                nativeLayout->sizeConstraint() == originalConstraint,
+                "repeated native docking restores original minimum, policy and layout constraint");
+        }
+        auto temporary = new QWidget; allowance.apply(temporary); delete temporary; allowance.restore();
+    }
     const auto exercise = [&](QScrollArea &scroll, bool guarded) {
         scroll.setAttribute(Qt::WA_DontShowOnScreen); scroll.resize(220, 120);
         auto body = new QWidget; auto row = new QHBoxLayout(body);

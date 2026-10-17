@@ -244,6 +244,7 @@ private:
         auto layout = new QVBoxLayout(wrapper); layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0);
         auto bar = new QWidget(wrapper); auto row = new QHBoxLayout(bar); row->setContentsMargins(6, 2, 4, 2);
         auto label = new QLabel(title, bar); label->setObjectName("unboundGroupHeader"); label->setProperty("groupPanel", name);
+        label->setMinimumWidth(0); label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         label->setProperty("groupMember", members.size()); label->setToolTip("Drag to detach this panel"); label->installEventFilter(this);
         auto detach = new QPushButton(QStringLiteral("Detach"), bar); detach->setObjectName(QStringLiteral("unboundDetachPanel"));
         auto hide = new QPushButton(QStringLiteral("Hide"), bar); hide->setObjectName("unboundHidePanel");

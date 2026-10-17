@@ -28,11 +28,17 @@ public:
         auto footer = main ? main->findChild<QWidget *>("m_PageSwitcherContainer") : nullptr;
         if (!footer) return QStringLiteral("Native page navigation is not available yet.");
         const QPoint position = footer->mapToGlobal(QPoint());
+        const int rowHeight = qMax(footer->minimumHeight(), footer->sizeHint().height());
         footer->show();
         const auto error = session.undock(footer, main, QStringLiteral("Page Navigation"));
         if (!error.isEmpty()) return error;
         const auto saved = WorkspaceSettings::rectangle(state);
-        session.setFloatingGeometry(saved.isValid() ? saved : QRect(position, QSize(900,100)));
+        auto window = session.window();
+        const int chromeHeight = window->contentsMargins().top() + window->contentsMargins().bottom();
+        const int compactHeight = qMax(32, rowHeight) + chromeHeight;
+        window->setMaximumHeight(compactHeight);
+        session.setFloatingGeometry(QRect(saved.isValid() ? saved.topLeft() : position,
+            QSize(saved.isValid() ? saved.width() : 900, compactHeight)));
         state["floating"] = true;
         logEvent(QStringLiteral("footer.undock"));
         if (changed) changed();
@@ -72,6 +78,7 @@ protected:
     {
         auto menu = qobject_cast<QMenu *>(object);
         if (menu && event->type() == QEvent::Show && menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
+        if (object == decoratedFooter && event->type() == QEvent::Resize) positionButton();
         return false;
     }
 private:
@@ -81,19 +88,39 @@ private:
         if (!footer) return;
         auto button = footer->findChild<QToolButton *>("unboundUndockPageNavigation");
         if (!button) {
-            auto layout = qobject_cast<QBoxLayout *>(footer->layout()); if (!layout) return;
             button = new QToolButton(footer); button->setObjectName("unboundUndockPageNavigation");
-            button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus); layout->addWidget(button);
+            button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
         }
+        // Reserve a small action at the end of the row, not a second layout row.
+        if (decoratedFooter != footer) {
+            decoratedFooter = footer; footer->installEventFilter(this);
+            if (!footer->property("unboundFooterActionSpace").toBool()) {
+                auto margins = footer->contentsMargins(); margins.setRight(margins.right() + 24);
+                footer->setContentsMargins(margins); footer->setProperty("unboundFooterActionSpace", true);
+            }
+        }
+        if (footer->layout()) footer->layout()->removeWidget(button);
         if (nativeButton != button) {
             nativeButton = button;
-            connect(button, &QToolButton::clicked, this, [this] {
+            if (button->menu()) button->menu()->deleteLater();
+            auto menu = new QMenu(button); button->setMenu(menu); button->setPopupMode(QToolButton::InstantPopup);
+            auto toggle = menu->addAction(QString());
+            connect(menu, &QMenu::aboutToShow, this, [this, toggle] {
+                toggle->setText(session.active() ? "Dock Page Navigation to Native Footer" : "Float Page Navigation");
+            });
+            connect(toggle, &QAction::triggered, this, [this] {
                 logEvent(QStringLiteral("footer.native-toggle.clicked"));
                 QTimer::singleShot(0, this, [this] { if (session.active()) dock(); else floatPanel(); });
             });
         }
-        button->setText(session.active() ? QStringLiteral("Dock") : QStringLiteral("Undock"));
-        button->setToolTip("Float or dock page navigation; reopen it from Workspace > Show Panel in Workspace");
+        button->setText(QStringLiteral("…"));
+        button->setToolTip(session.active() ? "Dock Page Navigation to native footer" : "Float Page Navigation");
+        positionButton(); button->show(); button->raise();
+    }
+    void positionButton()
+    {
+        if (nativeButton && decoratedFooter)
+            nativeButton->setGeometry(decoratedFooter->width() - 24, qMax(0, (decoratedFooter->height() - 24) / 2), 24, 24);
     }
     void refreshMenu(QMenu *menu)
     {
@@ -121,6 +148,7 @@ private:
     }
 private:
     QPointer<QToolButton> nativeButton;
+    QPointer<QWidget> decoratedFooter;
     QSet<QAction *> wiredEntries;
     std::function<QWidget *()> root;
     QJsonObject state;

@@ -14,6 +14,7 @@
 #include "diagnostics.h"
 #include "viewport.h"
 #include "floatinghost.h"
+#include "panelwidth.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
@@ -51,6 +52,7 @@ public:
         container->setLayout(host->layout());
         if (host->layout() || !container->layout()) return QStringLiteral("Could not transfer panel layout into group.");
         groupContainer = container;
+        if (relaxedWidth) groupWidth.apply(container);
         groupContainer->installEventFilter(this);
         host->hide();
         groupContainer->setVisible(!userHidden);
@@ -62,6 +64,7 @@ public:
         if (!grouped()) return;
         if (!host) return;
         QScopedValueRollback<bool> moving(recovering, true);
+        groupWidth.restore();
         if (groupContainer->layout()) host->setLayout(groupContainer->layout());
         groupContainer->removeEventFilter(this);
         groupContainer = nullptr;
@@ -152,6 +155,8 @@ public:
             delete host.data(); clear(); return QStringLiteral("Could not transfer this panel's content layout.");
         }
         transferredLayout = true;
+        relaxedWidth = slot->objectName() == QLatin1String("frameEditPageMediaPool");
+        if (relaxedWidth) { widthAllowance.apply(host); host->setProperty("unboundRelaxedWidth", true); }
         placeholderLayout = new QVBoxLayout(slot);
         auto marker = new QLabel(title + QStringLiteral(" is floating."), slot);
         marker->setAlignment(Qt::AlignCenter);
@@ -236,6 +241,10 @@ public:
         auto box = new QVBoxLayout(host);
         box->setContentsMargins(0, 0, 0, 0);
         box->addWidget(widget);
+        relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
+            widget->objectName() == QLatin1String("widgetEditInspector") ||
+            widget->objectName() == QLatin1String("frameEditPageMediaPool");
+        if (relaxedWidth) widthAllowance.apply(widget);
         marker->show();
         widget->show();
         widget->installEventFilter(this);
@@ -276,6 +285,7 @@ public:
             if (!originalParent || !originalLayout || !placeholderLayout ||
                 originalParent->layout() != placeholderLayout || host->layout() != originalLayout)
                 return QStringLiteral("Resolve changed this panel's content layout.");
+            widthAllowance.restore();
             delete placeholderLayout.data();
             delete placeholder.data();
             originalParent->setLayout(originalLayout);
@@ -325,6 +335,7 @@ public:
         }
         if (content->parentWidget() != originalParent || content->isWindow())
             return QStringLiteral("Resolve did not retain the restored panel in its original parent.");
+        widthAllowance.restore();
         content->setGeometry(geometry);
         content->setVisible(!hidden && (!originalStack || originalStack->currentWidget() == content));
         if (currentLayout) currentLayout->activate();
@@ -419,6 +430,7 @@ private:
     void clear()
     {
         if (releaseGroup) { auto release = releaseGroup; release(); }
+        groupWidth.restore(); widthAllowance.restore(); relaxedWidth = false;
         ++generation;
         if (content) content->removeEventFilter(this);
         host = nullptr; content = nullptr; placeholder = nullptr;
@@ -435,6 +447,8 @@ private:
         recoveryQueued = false; pendingDock = false;
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
+    PanelWidthAllowance widthAllowance, groupWidth;
+    bool relaxedWidth = false;
     QPointer<QWidget> originalMain;
     QPointer<QLayout> originalLayout;
     QPointer<QSplitter> originalSplitter;
