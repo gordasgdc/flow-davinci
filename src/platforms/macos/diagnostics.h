@@ -7,6 +7,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QWidget>
+#include <QHash>
+#include <QTimer>
 
 #ifndef UNBOUND_BUILD_ID
 #define UNBOUND_BUILD_ID "development"
@@ -57,7 +59,19 @@ inline QJsonObject widgetState(QWidget *widget)
 class WindowDiagnostics : public QObject
 {
 public:
-    explicit WindowDiagnostics(QObject *parent) : QObject(parent) {}
+    explicit WindowDiagnostics(QObject *parent) : QObject(parent)
+    {
+        geometryTimer.setSingleShot(true); geometryTimer.setInterval(100);
+        connect(&geometryTimer, &QTimer::timeout, this, [this] { flushGeometry(); });
+    }
+    ~WindowDiagnostics() override { flushGeometry(); }
+    void flushGeometry()
+    {
+        const auto pending = geometryChanges; geometryChanges.clear(); geometryTimer.stop();
+        for (auto state : pending) {
+            const auto event = state.take("geometry_event").toString(); logEvent(event, state);
+        }
+    }
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
@@ -80,8 +94,18 @@ protected:
         }
         auto state = widgetState(widget);
         state.insert(QStringLiteral("state"), int(widget->windowState()));
+        if (event->type() == QEvent::Move || event->type() == QEvent::Resize) {
+            state["coalesced_events"] = geometryChanges.value(widget).value("coalesced_events").toInt() + 1;
+            state["geometry_event"] = action; geometryChanges[widget] = state;
+            if (!geometryTimer.isActive()) geometryTimer.start();
+            return false;
+        }
+        if (event->type() == QEvent::Hide || event->type() == QEvent::Close) flushGeometry();
         logEvent(QLatin1String(action), state);
         return false;
     }
+private:
+    QTimer geometryTimer;
+    QHash<QWidget *, QJsonObject> geometryChanges;
 };
 }

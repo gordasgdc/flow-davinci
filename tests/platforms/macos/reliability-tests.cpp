@@ -87,6 +87,19 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     Unbound::InteractionDiagnostics diagnostics(&app);
     {
+        QWidget main; main.resize(600,400); auto layout = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); layout->addWidget(page); auto row = new QVBoxLayout(page);
+        auto player = new QWidget(page); player->setObjectName("widgetEditTimelinePlayer"); row->addWidget(player);
+        main.show(); settle(); Unbound::MacPanelSession session;
+        check(session.undock(player,page,"Program Monitor").isEmpty(), "native viewer recovery fixture starts floating");
+        QWidget cinema; cinema.setObjectName("UiCinemaViewerDialog"); cinema.show(); player->hide(); settle(240);
+        check(player->isHidden(), "panel recovery yields while Cinema deliberately hides the native player");
+        cinema.hide(); settle(240);
+        check(player->isVisible() && player->parentWidget() == session.window(),
+            "Cinema exit resumes native player recovery in its retained floating host");
+        check(session.dock().isEmpty(), "Cinema recovery leaves original native docking intact");
+    }
+    {
         QWidget main; main.setObjectName("UiMainWindow");
         auto pages = new QStackedWidget(&main);
         auto mainLayout = new QVBoxLayout(&main); mainLayout->addWidget(pages);

@@ -347,7 +347,10 @@ protected:
         });
         if (object == this && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) saveTimer.start();
         if (event->type() == QEvent::Show) {
-            QTimer::singleShot(0, this, [this] { wireNativeToggles(); });
+            if (!toggleScanQueued) {
+                toggleScanQueued = true;
+                QTimer::singleShot(0, this, [this] { toggleScanQueued = false; wireNativeToggles(); });
+            }
             auto widget = qobject_cast<QWidget *>(object);
             if (widget && (widget->objectName() == QLatin1String("UiMainWindow") ||
                 widget->objectName() == QLatin1String("WStackPage_Conform"))) restoreTimer.start();
@@ -582,7 +585,8 @@ private:
             {"target_visible", target && target->isVisible()}, {"target_in_page", root && target && root->isAncestorOf(target)}});
         if (p.name == QLatin1String("widgetEditSourcePlayer")) target = Unbound::sourceViewerSurface(target);
         const QSize nativeSize = target ? target->size() : QSize();
-        const QString error = p.contents ? p.session->undockContents(target, root, p.label) : p.session->undock(target, root, p.label);
+        const QString error = p.contents ? p.session->undockContents(target, root, p.label) :
+            p.session->undock(target, root, p.label, p.name == QLatin1String("widgetEditSourcePlayer"));
         if (error.isEmpty()) {
             p.session->window()->setObjectName(QStringLiteral("unboundFloating_") + p.name);
             p.desired = true;
@@ -716,6 +720,7 @@ private:
     {
         if (footer) footer->restore();
         if (callers) callers->wire();
+        if (nativeMenus) nativeMenus->wire();
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         if (toolbarDecoration) for (int i = 0; i < panels.size(); ++i)
             if (panels[i].name == QLatin1String("frameEditToolbarTop") || panels[i].name == QLatin1String("unboundWorkspaceToolbar"))
@@ -795,6 +800,7 @@ private:
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;
     bool quitting = false;
+    bool toggleScanQueued = false;
     unsigned bulkVersion = 0;
     unsigned expandVersion = 0;
     int expanded = -1;

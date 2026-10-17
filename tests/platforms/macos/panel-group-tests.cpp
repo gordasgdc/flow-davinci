@@ -113,6 +113,13 @@ int main(int argc, char **argv)
             controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
             check(stack->parentWidget() == page && layout->indexOf(stack) >= 0 && stack->currentWidget() == empty,
                 "empty Source docking restores its original slot and offline state");
+            stack->hide(); singleViewer->setChecked(true); singleViewer->setEnabled(false);
+            controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer")->click(); settle(220);
+            check(stack->window() != &main && stack->isVisible() && stack->currentWidget() == empty,
+                "hidden offline Source floats without footage or an enabled native dual-viewer command");
+            controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
+            check(stack->parentWidget() == page && stack->isHidden(),
+                "docking a previously hidden Source restores its original native visibility");
         }
     }
     {
@@ -129,6 +136,8 @@ int main(int argc, char **argv)
         {
             PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
+            check(timelineFloat && timelineToolbar->layout()->indexOf(timelineFloat) < 0,
+                "toolbar float control occupies no additional native layout row");
             auto workspaceFloat = mode->findChild<QToolButton *>("unboundUndockToolbar_unboundWorkspaceToolbar");
             check(timelineFloat && workspaceFloat, "both native toolbar surfaces have discoverable undock buttons");
             if (timelineFloat) timelineFloat->click(); if (workspaceFloat) workspaceFloat->click(); settle(250);

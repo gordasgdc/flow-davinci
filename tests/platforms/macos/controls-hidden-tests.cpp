@@ -14,6 +14,8 @@
 #include "workspacecallers.h"
 #include "groupvisibility.h"
 #include "panelwidth.h"
+#include "panelmenus.h"
+#include "viewermodecommand.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -22,6 +24,68 @@ int main(int argc, char **argv)
     QTemporaryDir logs; qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     int failures = 0;
     const auto check = [&](bool pass, const char *message) { if (!pass) { ++failures; std::fprintf(stderr, "FAIL: %s\n", message); } };
+    {
+        QWidget moving; moving.setAttribute(Qt::WA_DontShowOnScreen); moving.setObjectName("unboundFloating_geometryFixture");
+        Unbound::WindowDiagnostics geometry(nullptr); qApp->installEventFilter(&geometry);
+        for (int i = 0; i < 100; ++i) { QMoveEvent move(QPoint(i,0),QPoint(i-1,0)); QApplication::sendEvent(&moving,&move); }
+        geometry.flushGeometry(); qApp->removeEventFilter(&geometry);
+        QFile events(logs.path() + "/events.jsonl"); events.open(QIODevice::ReadOnly);
+        int records = 0, changes = 0;
+        while (!events.atEnd()) {
+            const auto record = QJsonDocument::fromJson(events.readLine()).object();
+            if (record["name"] == moving.objectName()) { ++records; changes += record["coalesced_events"].toInt(); }
+        }
+        check(records == 1 && changes == 100, "drag geometry diagnostics coalesce hot-path writes while retaining the event count");
+    }
+    {
+        QWidget timeline; timeline.setObjectName("frameConformTimelines");
+        QWidget toolbar(&timeline); toolbar.setObjectName("frameEditToolbarTop");
+        QWidget mixer(&timeline); mixer.setObjectName("frameEditAudioMeter");
+        QPushButton timelineOptions(&toolbar); timelineOptions.setObjectName("btnEditToolbarPreferences");
+        QPushButton mixerOptions(&mixer); mixerOptions.setObjectName("btnAudioMixerOptions");
+        QMenu timelineMenu(&timelineOptions), mixerMenu(&mixerOptions), unrelatedMenu(&mixer);
+        int timelineCalls = 0, mixerCalls = 0, toolbarCalls = 0;
+        const auto bind = [&](Unbound::PanelMenus &menus) {
+            menus.add({"frameConformTimelines", [] { return false; }, [&] { ++timelineCalls; }});
+            menus.add({"frameEditAudioMeter", [] { return true; }, [&] { ++mixerCalls; }});
+            menus.add({"frameEditToolbarTop", [] { return false; }, [&] { ++toolbarCalls; }});
+        };
+        const auto prepare = [](QMenu &menu) { QEvent show(QEvent::Show); QApplication::sendEvent(&menu, &show); };
+        {
+            Unbound::PanelMenus menus(nullptr); bind(menus);
+            menus.wire();
+            check(mixerMenu.findChild<QAction *>("unboundDockPanel") && !mixerMenu.isVisible(),
+                "native menu docking entry exists before Cocoa displays the menu");
+            prepare(mixerMenu); prepare(timelineMenu); prepare(unrelatedMenu);
+            auto mixerCommand = mixerMenu.findChild<QAction *>("unboundDockPanel");
+            auto timelineCommand = timelineMenu.findChild<QAction *>("unboundDockPanel");
+            check(!mixerOptions.menu() && mixerCommand && mixerCommand->text() == "Dock Panel",
+                "custom parented Mixer menu maps to the nearest panel inside Timeline");
+            check(timelineCommand && timelineCommand->text() == "Undock Panel" && !unrelatedMenu.findChild<QAction *>("unboundDockPanel"),
+                "Timeline preferences target Timeline and unrelated menus remain untouched");
+            if (mixerCommand) mixerCommand->trigger();
+            if (timelineCommand) timelineCommand->trigger(); QApplication::processEvents();
+        }
+        {
+            Unbound::PanelMenus reopened(nullptr); bind(reopened); prepare(mixerMenu); prepare(mixerMenu);
+            auto command = mixerMenu.findChild<QAction *>("unboundDockPanel");
+            if (command) command->trigger(); QApplication::processEvents();
+            check(timelineCalls == 1 && mixerCalls == 2 && toolbarCalls == 0,
+                "menu callbacks rebind once after controls recreation without stale or duplicate calls");
+        }
+    }
+    {
+        QWidget nativeMain; QMenu detachedMenu; detachedMenu.setObjectName("ViewerModeMenu");
+        auto command = detachedMenu.addAction("Single &Viewer Mode\tF9");
+        command->setCheckable(true); command->setEnabled(false); command->setShortcut(QKeySequence(Qt::Key_F9));
+        bool managed = true; int calls = 0; bool single = false;
+        Unbound::ViewerModeCommand mode(nullptr, [&] { return managed; }, [&](bool value) { ++calls; single = value; });
+        mode.refresh(&nativeMain); mode.refresh(&nativeMain); command->trigger(); QApplication::processEvents();
+        check(calls == 1 && single && command->shortcut() == QKeySequence(Qt::Key_F9),
+            "detached native viewer menu is discovered with mnemonic and shortcut suffix without remapping");
+        managed = false; mode.refresh(&nativeMain);
+        check(!command->isEnabled(), "leaving managed viewer mode restores the original native enabled state");
+    }
     {
         QWidget nativePanel; nativePanel.setAttribute(Qt::WA_DontShowOnScreen);
         auto nativeLayout = new QHBoxLayout(&nativePanel);

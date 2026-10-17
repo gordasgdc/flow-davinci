@@ -20,7 +20,22 @@ Independent scaling research remains open. Qt's documented high-DPI controls app
 
 Validation on this follow-up: layout-plans, hidden controls, panel groups, reliability and session suites passed. One earlier session run failed the two docking-preview assertions; a fresh process passed without a code change. Treat native-order/preview timing as an unresolved intermittent result, not a fixed runtime bug. No actual Resolve acceptance or installation is implied by these fixtures.
 
-Branch: macos-native-workspace-callers. Installed baseline remains 6bd0e36.
+## Native menu and viewer follow-up
+
+On macos-tethered-timeline-and-viewers, following candidate fe6e347:
+
+- Native menu ownership supports the custom parented menus observed in Resolve's logs. Nearest-panel resolution handles Mixer nested inside Timeline; Timeline display preferences target Timeline rather than its optional tools row. Shared menus remain rejected when distinct panels claim them. Prepopulation/aboutToShow cover Cocoa menus; recreated controls rebind existing actions once.
+- Single Viewer Mode discovery scans detached menus without relying on object-name case, strips mnemonic/shortcut decorations, deduplicates actions and preserves the user mapping. Native enabled/checkable/checked state is logged on discovery. Non-checkable commands are reported rather than guessed at.
+- Empty/offline Source can detach while hidden and the native dual-viewer command is disabled. Only Source opts into that path. Native docking restores its original hidden state.
+- Cinema recovery yields while Resolve deliberately hides/borrows player content, then resumes afterward. The fixture reproduces this lifecycle; actual rendered Cinema verification remains separate.
+- Toolbar float controls reserve 24 pixels within the existing row rather than adding another row. Detaching Timeline tools collapses the original placeholder. Native attachment restores the original slot.
+- Show-event toggle scans coalesce into one queued scan. Geometry logging coalesces bursts at 100 ms, retaining final geometry and event counts. Button/action/input logs remain immediate.
+
+New hidden fixtures cover parented/nested/shared menus, prepopulation, controller recreation, detached Single Viewer commands and geometry logging. Displayed fixtures cover hidden empty Source, original visibility restoration, inline toolbar controls and Cinema recovery. Session preview assertions have intermittently failed; failure diagnostics now print native target visibility and pointer-hit ordering. The suite passed after the shared-menu correction; this does not establish that the intermittent native-order issue is resolved.
+
+## Previous acceptance record
+
+Branch at that point: macos-native-workspace-callers. Baseline at that point: 6bd0e36. Subsequent installed baseline 7551bce is preserved in the checkpoint archive and tag.
 No row is complete merely because its source builds.
 
 | Request | Implementation | Verification | Live Resolve |

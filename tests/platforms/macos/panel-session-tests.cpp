@@ -411,6 +411,13 @@ int main(int argc, char **argv)
         QApplication::sendEvent(draggedSource, &move);
         auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
+        if (!attachmentPreview || !attachmentPreview->isVisible()) {
+            std::fprintf(stderr, "Preview diagnostic pointer=%d,%d source=%lld target=%lld targetVisible=%d\n", dockPointer.x(), dockPointer.y(),
+                (long long)Unbound::nativeWindowNumber(draggedSource), (long long)Unbound::nativeWindowNumber(targetProgram), int(Unbound::nativeVisibilityFlags(targetProgram)));
+            for (auto number : Unbound::nativeOrderedWindowNumbers()) for (auto window : QApplication::topLevelWidgets())
+                if (Unbound::nativeWindowNumber(window) == number && window->frameGeometry().contains(dockPointer))
+                    std::fprintf(stderr, "Pointer hit %s native=%lld visible=%d\n", qPrintable(window->objectName()), (long long)number, int(window->isVisible()));
+        }
         check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->width() >= 120,
             "panel attachment labels the selected region and previews the proposed split");
         const QPoint hover = targetProgram->frameGeometry().center() + QPoint(-65, -45);

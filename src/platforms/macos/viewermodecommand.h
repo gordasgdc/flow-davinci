@@ -9,6 +9,7 @@
 #include <functional>
 #include <QTimer>
 #include "diagnostics.h"
+#include "nativevieweractions.h"
 namespace Unbound {
 // Follow the native command identity and retain its user-assigned shortcut.
 class ViewerModeCommand : public QObject
@@ -16,15 +17,22 @@ class ViewerModeCommand : public QObject
 public:
     ViewerModeCommand(QObject *owner, std::function<bool()> managed, std::function<void(bool)> apply)
         : QObject(owner), managed(std::move(managed)), apply(std::move(apply)) {}
+    ~ViewerModeCommand() override
+    {
+        for (auto action : priorEnabled.keys()) action->setEnabled(priorEnabled.value(action));
+    }
     void refresh(QWidget *main)
     {
         if (!main) return;
-        QList<QAction *> actions = main->findChildren<QAction *>();
-        for (auto widget : QApplication::allWidgets()) if (auto menu = qobject_cast<QMenu *>(widget))
-            if (menu->objectName().startsWith("workspace")) actions.append(menu->actions());
-        for (auto action : actions) {
-            QString text = action->text(); text.remove('&');
-            if (text.trimmed() != QLatin1String("Single Viewer Mode") || !action->isCheckable()) continue;
+        for (auto action : nativeViewerModeActions(main)) {
+            if (!discovered.contains(action)) {
+                discovered.insert(action);
+                connect(action, &QObject::destroyed, this, [this, action] { discovered.remove(action); });
+                logEvent(QStringLiteral("viewer.mode.discovered"), {{"name", action->objectName()},
+                    {"label", action->text()}, {"checkable", action->isCheckable()}, {"checked", action->isChecked()},
+                    {"enabled", action->isEnabled()}, {"shortcut", action->shortcut().toString()}, {"managed", managed()}});
+            }
+            if (!action->isCheckable()) continue;
             if (!observed.contains(action)) {
                 observed.insert(action);
                 connect(action, &QObject::destroyed, this, [this, action] { observed.remove(action); priorEnabled.remove(action); });
@@ -48,6 +56,7 @@ private:
     std::function<bool()> managed;
     std::function<void(bool)> apply;
     QSet<QAction *> observed;
+    QSet<QAction *> discovered;
     QHash<QAction *, bool> priorEnabled;
 };
 }

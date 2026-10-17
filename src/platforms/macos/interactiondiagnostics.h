@@ -166,7 +166,7 @@ private:
             for (auto action : window->findChildren<QAction *>()) {
                 observe(action);
                 const QString text = action->text().toLower();
-                if (text.contains("full screen") || text.contains("fullscreen") || text.contains("cinema viewer"))
+                if (text.contains("full screen") || text.contains("fullscreen") || text.contains("cinema viewer") || text.contains("single viewer"))
                     viewerActions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()},
                         {"enabled", action->isEnabled()}, {"checkable", action->isCheckable()}, {"checked", action->isChecked()},
                         {"context", int(action->shortcutContext())}, {"shortcut", action->shortcut().toString()}});

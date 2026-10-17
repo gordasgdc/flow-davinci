@@ -35,17 +35,18 @@ public:
             const auto id = QStringLiteral("unboundUndockToolbar_") + panel;
             auto button = row->findChild<QToolButton *>(id);
             if (!button) {
-                auto layout = qobject_cast<QBoxLayout *>(row->layout());
-                if (!layout) {
-                    logEvent(QStringLiteral("toolbar.decoration.unavailable"), {{"row", row->objectName()}});
-                    continue;
-                }
                 button = new QToolButton(row); button->setObjectName(id);
                 button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
-                button->setToolTip("Float this toolbar; reopen it from Workspace > Show Panel in Workspace");
-                layout->addWidget(button);
             }
-            button->setText(surface->window()->objectName().startsWith("unboundFloating_") ? "Dock" : "Undock");
+            if (row->layout()) row->layout()->removeWidget(button);
+            if (!row->property("unboundToolbarActionSpace").toBool()) {
+                auto margins = row->contentsMargins(); margins.setRight(margins.right() + 24);
+                row->setContentsMargins(margins); row->setProperty("unboundToolbarActionSpace", true);
+            }
+            row->installEventFilter(this); position(row, button); button->show(); button->raise();
+            const bool floating = surface->window()->objectName().startsWith("unboundFloating_");
+            button->setText(floating ? QStringLiteral("↙") : QStringLiteral("↗"));
+            button->setToolTip(floating ? (panel == "frameEditToolbarTop" ? "Attach tools to Timeline" : "Dock toolbar to native workspace") : "Float this toolbar");
             if (wired.contains(button)) continue;
             wired.insert(button);
             connect(button, &QObject::destroyed, this, [this, button] { wired.remove(button); });
@@ -55,7 +56,18 @@ public:
             });
         }
     }
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        auto row = qobject_cast<QWidget *>(object);
+        if (row && event->type() == QEvent::Resize)
+            for (auto button : row->findChildren<QToolButton *>(QString(), Qt::FindDirectChildrenOnly))
+                if (button->objectName().startsWith("unboundUndockToolbar_")) position(row, button);
+        return false;
+    }
 private:
+    static void position(QWidget *row, QToolButton *button)
+    { button->setGeometry(row->width() - 24, qMax(0, (row->height() - 24) / 2), 24, 24); }
     QSet<QToolButton *> wired;
 };
 }

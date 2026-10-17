@@ -15,6 +15,7 @@
 #include "viewport.h"
 #include "floatinghost.h"
 #include "panelwidth.h"
+#include "cinemaviewer.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
@@ -177,11 +178,12 @@ public:
         return {};
     }
 
-    QString undock(QWidget *widget, QWidget *page, const QString &title)
+    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false)
     {
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
-        if (!widget || !page || !page->isAncestorOf(widget) || !widget->isVisible() || widget->isWindow())
+        if (!widget || !page || !page->isAncestorOf(widget) ||
+            (!widget->isVisible() && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
             return QStringLiteral("Show this panel on the Edit page first.");
         QWidget *parent = widget->parentWidget();
         auto splitter = qobject_cast<QSplitter *>(parent);
@@ -245,7 +247,8 @@ public:
             widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
         if (relaxedWidth) widthAllowance.apply(widget);
-        marker->show();
+        // A detached tools row must not leave a second empty tools row in Timeline.
+        marker->setVisible(widget->objectName() != QLatin1String("frameEditToolbarTop"));
         widget->show();
         widget->installEventFilter(this);
         host->installEventFilter(this);
@@ -403,6 +406,12 @@ private:
             if (token != generation) return;
             recoveryQueued = false;
             if (!host || !originalPage || !originalPage->isVisible() || docking) return;
+            // Cinema Viewer temporarily borrows/hides native player content.
+            // Reclaiming it during that command interrupts Resolve's presentation.
+            if (visibleCinemaViewer()) {
+                QTimer::singleShot(100, this, [this, token] { if (token == generation) queueRecovery(); });
+                return;
+            }
             if (pendingDock) {
                 const QString error = dock();
                 logEvent(QStringLiteral("panel.dock.deferred-result"), {{"success", error.isEmpty()}, {"error", error}});

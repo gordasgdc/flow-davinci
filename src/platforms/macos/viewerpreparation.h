@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QStackedWidget>
 #include "diagnostics.h"
+#include "nativevieweractions.h"
 namespace Unbound {
 inline QWidget *sourceViewerSurface(QWidget *source)
 {
@@ -14,9 +15,8 @@ inline QWidget *sourceViewerSurface(QWidget *source)
 inline bool prepareSourceViewer(QWidget *page, QWidget *source)
 {
     if (!page || !source || sourceViewerSurface(source)->isVisible()) return false;
-    for (auto action : page->window()->findChildren<QAction *>()) {
-        QString text = action->text(); text.remove('&');
-        if (text.trimmed() != QLatin1String("Single Viewer Mode") || !action->isCheckable() ||
+    for (auto action : nativeViewerModeActions(page->window())) {
+        if (!action->isCheckable() ||
             !action->isChecked() || !action->isEnabled()) continue;
         logEvent(QStringLiteral("source.prepare.dual-viewer"), {{"action", action->objectName()}});
         action->trigger();
