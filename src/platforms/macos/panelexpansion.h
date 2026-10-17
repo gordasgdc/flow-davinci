@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QPointer>
+#include <QApplication>
 #include <QWidget>
 #include "nativechrome.h"
 namespace Unbound {
-class PanelExpansion
+class PanelExpansion : public QObject
 {
 public:
-    ~PanelExpansion() { restore(); }
+    PanelExpansion() { qApp->installEventFilter(this); }
+    ~PanelExpansion() override { restore(); if (qApp) qApp->removeEventFilter(this); }
     void foreground(QWidget *host)
     {
         restore(); current = host;
@@ -23,6 +25,13 @@ public:
             current->setProperty("unboundExpanded", false);
         }
         current = nullptr;
+    }
+protected:
+    bool eventFilter(QObject *, QEvent *event) override
+    {
+        if (current && event->type() == QEvent::ApplicationStateChange)
+            setNativeExpansionPriority(current, QGuiApplication::applicationState() == Qt::ApplicationActive);
+        return false;
     }
 private:
     QPointer<QWidget> current;

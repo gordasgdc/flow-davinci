@@ -3,6 +3,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
 #include <QWidget>
+#include <QApplication>
 #include <QCursor>
 #include <QPointer>
 #include <QTimer>
@@ -113,7 +114,14 @@ void setNativeExpansionPriority(QWidget *widget, bool expanded)
     auto prior = (NSNumber *)objc_getAssociatedObject(window, &expansionLevelKey);
     if (expanded) {
         if (!prior) objc_setAssociatedObject(window, &expansionLevelKey, @(window.level), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        window.level = NSFloatingWindowLevel + 1;
+        NSInteger highest = NSFloatingWindowLevel;
+        for (auto candidate : QApplication::topLevelWidgets()) {
+            if (candidate == widget || !candidate->isVisible() || candidate->isMinimized()) continue;
+            if (!candidate->objectName().startsWith("unboundFloating_") && candidate->objectName() != "unboundPanelTest") continue;
+            NSWindow *other = reinterpret_cast<NSView *>(candidate->winId()).window;
+            highest = MAX(highest, other.level);
+        }
+        window.level = highest + 1;
     } else if (prior) {
         window.level = prior.integerValue;
         objc_setAssociatedObject(window, &expansionLevelKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -180,6 +188,8 @@ QRect nativeTitleFrameForTest(QWidget *widget)
     const auto frame = title.frame;
     return QRect(qRound(frame.origin.x), qRound(frame.origin.y), qRound(frame.size.width), qRound(frame.size.height));
 }
+void activateNativeWindowForTest(QWidget *widget) { [NSApp activateIgnoringOtherApps:YES]; [reinterpret_cast<NSView *>(widget->winId()).window makeKeyAndOrderFront:nil]; }
+qint64 nativeWindowLevelForTest(QWidget *widget) { return reinterpret_cast<NSView *>(widget->winId()).window.level; }
 qint64 nativeFrontmostProcessForTest() { return NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier; }
 bool saveNativeTrafficForTest(QWidget *widget, const QString &path)
 {

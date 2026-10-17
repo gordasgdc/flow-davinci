@@ -24,6 +24,8 @@ int nativeVisibilityFlags(QWidget *widget);
 bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bool hidden);
 #ifdef UNBOUND_NATIVE_TESTS
 qint64 nativeFrontmostProcessForTest();
+qint64 nativeWindowLevelForTest(QWidget *widget);
+void activateNativeWindowForTest(QWidget *widget);
 bool saveNativeTrafficForTest(QWidget *widget, const QString &path);
 QList<QRect> nativeTrafficFramesForTest(QWidget *widget);
 QRect nativeTitleFrameForTest(QWidget *widget);

@@ -4,35 +4,60 @@
 #include <QPointer>
 #include <QTimer>
 #include "diagnostics.h"
+#include "nativechrome.h"
 
 namespace Unbound {
+inline bool isCinemaViewer(QWidget *window)
+{
+    return window && window->isWindow() && (window->inherits("UiCinemaViewerDialog") ||
+        window->objectName() == QLatin1String("UiCinemaViewerDialog"));
+}
 inline QWidget *visibleCinemaViewer()
 {
-    for (auto window : QApplication::topLevelWidgets())
-        if (window->isVisible() && window->inherits("UiCinemaViewerDialog")) return window;
+    for (auto window : QApplication::topLevelWidgets()) if (window->isVisible() && isCinemaViewer(window)) return window;
     return nullptr;
 }
 
-// Native Cinema Viewer owns foreground input until it closes. It is not panel expansion.
+// Yield panel ordering while the native viewer owns foreground input.
 class CinemaViewerLifecycle : public QObject
 {
 public:
     explicit CinemaViewerLifecycle(QObject *owner) : QObject(owner) { qApp->installEventFilter(this); }
-    ~CinemaViewerLifecycle() override { if (qApp) qApp->removeEventFilter(this); }
+    ~CinemaViewerLifecycle() override
+    {
+        if (viewer) setNativeExpansionPriority(viewer, false);
+        if (qApp) qApp->removeEventFilter(this);
+    }
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
-        auto viewer = qobject_cast<QWidget *>(object);
-        if (!viewer || !viewer->isWindow() || !viewer->inherits("UiCinemaViewerDialog")) return false;
+        auto widget = qobject_cast<QWidget *>(object);
+        if (event->type() == QEvent::FocusIn && widget && !isCinemaViewer(widget->window())) lastFocus = widget;
+        if (event->type() == QEvent::ApplicationStateChange && viewer && viewer->isVisible()) {
+            setNativeExpansionPriority(viewer, QGuiApplication::applicationState() == Qt::ApplicationActive);
+        }
+        if (!isCinemaViewer(widget)) return false;
         if (event->type() == QEvent::Show) {
-            QPointer<QWidget> alive(viewer);
+            viewer = widget; previousFocus = lastFocus;
+            QPointer<QWidget> alive(widget);
             QTimer::singleShot(0, this, [alive] {
                 if (!alive || !alive->isVisible()) return;
+                setNativeExpansionPriority(alive, true);
                 alive->raise(); alive->activateWindow();
                 logEvent(QStringLiteral("cinema.foreground.request"), {{"window", alive->objectName()}});
             });
+        } else if (event->type() == QEvent::Hide && viewer == widget) {
+            setNativeExpansionPriority(widget, false); viewer = nullptr;
+            const auto focus = previousFocus; previousFocus = nullptr;
+            QTimer::singleShot(0, this, [focus] {
+                if (!focus || !focus->isVisible() || QGuiApplication::applicationState() != Qt::ApplicationActive || QApplication::activeModalWidget()) return;
+                focus->window()->raise(); focus->window()->activateWindow(); focus->setFocus(Qt::OtherFocusReason);
+            });
+            logEvent(QStringLiteral("cinema.foreground.restore"));
         }
         return false;
     }
+private:
+    QPointer<QWidget> viewer, lastFocus, previousFocus;
 };
 }

@@ -527,3 +527,20 @@ Implemented in source: workspacecallers.h prepopulates Source, Program, Timeline
 ### Door behavior and explicit acceptance audit
 
 See [next-pass acceptance record](macos-next-pass-status.md) for implemented/tested/live/open distinctions. GroupVisibility now tracks divider sizes by open/closed combination and previous selected tab; grouped headers gain Hide. Hidden 20-cycle sizing and tab return tests passed after explicitly refreshing splitters. Native existing actions are reused and route through the same queued door transition; hidden tests verify action identity, shortcuts and single dispatch. Destination lookup is linear rather than repeated native ID lookup inside nested loops; normal drags skip alignment collection. These changes are not installed or live verified.
+
+
+### Implementation and regression pass — toolbars, viewers, layout
+
+- Both native toolbar rows now have panel definitions, persisted placement, native-layout Undock buttons and workspace callers. Detachment retains the workspace single/dual-mode stack. Displayed toolbar fixtures pass.
+- Footer native-layout Undock control added; submenu prepopulation retained. Displayed footer controls and original-slot recovery pass.
+- Empty Source stack detachment and native Single Viewer Mode routing pass displayed integration tests. The test deliberately uses F9 to prove command identity rather than Shift+W hardcoding.
+- Nested tab containing a split section can detach into its own host, preserving its tree, then merge back. Rollback is explicit on initialization failure. Displayed fixture passes.
+- Reported Inspector-above-Source/Media-Pool-right layout has a mouse-driven divider regression and 20-cycle exact sizing checks; passes. Splitter handles are 6 logical pixels.
+- Cinema/native expansion priority no longer assumes NSFloatingWindowLevel is above pinned Qt controls: the fixture measured controls level 8 and now verifies viewer level 9. Original levels restore; app deactivation yields priority. Actual Resolve rendering remains unverified.
+- Preset controls extracted into arrangementcontrols.h, reducing the main controller rather than adding another large feature block there. Preset/panel regression suite passes.
+- Floating workspace is the explicit preference, with native recall/Dock All restoring visibility. Existing native ownership remains intact. Workflow/Relay activation still requires live validation.
+
+Full automated suites have separate results in the acceptance record; live checkboxes remain open. Independent interface scaling and section-level Stabilization extraction remain separate investigations, not completed features.
+
+
+Lifecycle follow-up: native toolbar buttons, footer controls and workspace actions survive destruction/recreation of the controls owner. Per-controller connection tracking replaces persistent wiring flags; displayed toolbar rebind and hidden action rebind fixtures pass. The fixture for native Cinema window/key/level restoration now passes alongside timeline shortcut/text focus and page-scope tests. Preset refactor keeps the controller at 807 lines (down from 883 before extraction). Live Resolve rendering/menu/workflow checks remain required.

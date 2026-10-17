@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QMenu>
 #include <QPointer>
+#include <QSet>
 #include <QTimer>
 #include <functional>
 namespace Unbound {
@@ -31,11 +32,12 @@ private:
             if (!entry) {
                 entry = menu->addAction(command.label); entry->setObjectName(command.id); entry->setCheckable(true);
             }
-            const QString wiring = command.id + QStringLiteral("_wired");
-            if (!entry->property(wiring.toUtf8().constData()).toBool()) {
-                entry->setProperty(wiring.toUtf8().constData(), true);
-                if (!menu->property("unboundCallersWired").toBool()) {
-                    menu->setProperty("unboundCallersWired", true);
+            if (!wiredActions.contains(entry)) {
+                wiredActions.insert(entry);
+                connect(entry, &QObject::destroyed, this, [this, entry] { wiredActions.remove(entry); });
+                if (!wiredMenus.contains(menu)) {
+                    wiredMenus.insert(menu);
+                    connect(menu, &QObject::destroyed, this, [this, menu] { wiredMenus.remove(menu); });
                     connect(menu, &QMenu::aboutToShow, this, [this, menu] { refresh(menu); });
                 }
                 connect(entry, &QAction::triggered, this, [this, i] {
@@ -45,6 +47,8 @@ private:
             if (!command.managed || command.managed()) entry->setChecked(command.visible());
         }
     }
+    QSet<QAction *> wiredActions;
+    QSet<QMenu *> wiredMenus;
     QList<Command> commands;
 };
 }

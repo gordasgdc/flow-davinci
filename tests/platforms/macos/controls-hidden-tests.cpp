@@ -80,6 +80,19 @@ int main(int argc, char **argv)
     for (auto action : nativeMenu.actions()) inspectorEntries += action->text() == "Inspector";
     check(inspectorEntries == 1 && inspectorCalls == 1 && nativeInspector->shortcut() == QKeySequence(Qt::Key_Q),
         "existing native menu action is reused once without replacing its shortcut");
+    int restoredCalls = 0;
+    {
+        Unbound::WorkspaceCallers oldOwner(nullptr);
+        oldOwner.add({"testLifecycleCaller", "Lifecycle Panel", [] { return false; }, [] {}});
+        oldOwner.wire();
+    }
+    {
+        Unbound::WorkspaceCallers newOwner(nullptr);
+        newOwner.add({"testLifecycleCaller", "Lifecycle Panel", [] { return true; }, [&] { ++restoredCalls; }});
+        newOwner.wire(); newOwner.wire();
+        for (auto action : nativeMenu.actions()) if (action->objectName() == "testLifecycleCaller") action->trigger();
+        check(restoredCalls == 1, "caller actions rebind exactly once after controls are destroyed and recreated");
+    }
     QTabWidget tabs; tabs.setAttribute(Qt::WA_DontShowOnScreen); tabs.resize(400,200);
     auto firstTab = new QWidget; auto secondTab = new QWidget;
     tabs.addTab(firstTab, "Inspector"); tabs.addTab(secondTab, "Media Pool"); tabs.show(); QApplication::processEvents();

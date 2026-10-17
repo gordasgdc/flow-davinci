@@ -27,8 +27,11 @@ int main(int argc, char **argv)
         auto layout = new QVBoxLayout(&main);
         auto page = new QWidget(&main); layout->addWidget(page);
         auto nativeFooter = new QWidget(&main); nativeFooter->setObjectName("m_PageSwitcherContainer");
+        (new QHBoxLayout(nativeFooter))->addWidget(new QLabel("Native page buttons", nativeFooter));
         layout->addWidget(nativeFooter); main.show(); settle();
         Unbound::FooterPanel footer(nullptr, [&] { return &main; }, {});
+        footer.wireMenu();
+        check(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation"), "native footer exposes a discoverable undock control");
         check(footer.floatPanel().isEmpty() && nativeFooter->window() != &main,
             "native footer floats independently of the page content");
         page->hide(); settle();
@@ -57,6 +60,9 @@ int main(int argc, char **argv)
         auto stack = new QStackedWidget(page); stack->setObjectName("stackedEditSourceOfflinePlayers"); layout->addWidget(stack);
         auto empty = new QLabel("No clip loaded", stack); stack->addWidget(empty);
         auto player = new QWidget(stack); player->setObjectName("widgetEditSourcePlayer"); stack->addWidget(player);
+        auto program = new QWidget(page); program->setObjectName("widgetEditTimelinePlayer"); layout->addWidget(program);
+        auto singleViewer = new QAction("Single Viewer Mode", &main); singleViewer->setCheckable(true); singleViewer->setEnabled(false);
+        singleViewer->setShortcut(QKeySequence(Qt::Key_F9));
         stack->setCurrentWidget(empty); main.show(); settle();
         {
             PanelControls controls; controls.show(); settle();
@@ -65,9 +71,90 @@ int main(int argc, char **argv)
                 "Source Undock works with the offline surface and no clip loaded");
             check(stack->currentWidget() == empty && !player->isVisible(),
                 "empty Source detachment preserves native offline selection without loading footage");
+            controls.findChild<QPushButton *>("undock_widgetEditTimelinePlayer")->click(); settle();
+            controls.findChild<QComboBox *>("groupFirst")->setCurrentIndex(2);
+            controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(3);
+            controls.findChild<QPushButton *>("group_1")->click(); settle(200);
+            check(singleViewer->isEnabled(), "native viewer mode command remains available for managed viewers");
+            singleViewer->trigger(); settle();
+            check(!empty->isVisible() && program->isVisible(), "native single-viewer command hides Source while retaining Program");
+            singleViewer->trigger(); settle();
+            check(empty->isVisible() && program->isVisible() && singleViewer->shortcut() == QKeySequence(Qt::Key_F9),
+                "native dual-viewer command restores Source and preserves a non-default key mapping");
             controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
             check(stack->parentWidget() == page && layout->indexOf(stack) >= 0 && stack->currentWidget() == empty,
                 "empty Source docking restores its original slot and offline state");
+        }
+    }
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); main.resize(1000,700);
+        auto outer = new QVBoxLayout(&main); auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); outer->addWidget(page);
+        auto layout = new QVBoxLayout(page);
+        auto timelineToolbar = new QWidget(page); timelineToolbar->setObjectName("frameEditToolbarTop"); layout->addWidget(timelineToolbar);
+        (new QHBoxLayout(timelineToolbar))->addWidget(new QLabel("Native timeline tools", timelineToolbar));
+        auto toolbarModes = new QStackedWidget(page); layout->addWidget(toolbarModes);
+        auto mode = new QWidget; mode->setObjectName("pageSingleScreenModeTools"); toolbarModes->addWidget(mode);
+        auto modeLayout = new QHBoxLayout(mode); auto left = new QWidget(mode); left->setObjectName("frameEditTopBarLeftInSSM"); modeLayout->addWidget(left);
+        (new QHBoxLayout(left))->addWidget(new QLabel("Media Pool / Index / Inspector", left));
+        QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel"); main.show(); settle();
+        {
+            PanelControls controls; controls.show(); settle(400);
+            auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
+            auto workspaceFloat = mode->findChild<QToolButton *>("unboundUndockToolbar_unboundWorkspaceToolbar");
+            check(timelineFloat && workspaceFloat, "both native toolbar surfaces have discoverable undock buttons");
+            if (timelineFloat) timelineFloat->click(); if (workspaceFloat) workspaceFloat->click(); settle(250);
+            check(timelineToolbar->window() != &main && toolbarModes->window() != &main,
+                "both toolbar rows float through native surface controls");
+            check(toolbarModes->currentWidget() == mode, "floating workspace toolbar preserves native mode selection");
+            bool timelineCaller = false, workspaceCaller = false;
+            for (auto action : nativeMenu.actions()) {
+                timelineCaller |= action->text() == "Timeline Toolbar";
+                workspaceCaller |= action->text() == "Workspace Toolbar";
+            }
+            check(timelineCaller && workspaceCaller, "both toolbars remain discoverable in Show Panel in Workspace");
+            controls.findChild<QPushButton *>("bulk_1")->click(); settle(200);
+            check(timelineToolbar->parentWidget() == page && toolbarModes->parentWidget() == page,
+                "Dock All restores both native toolbar slots");
+        }
+        {
+            PanelControls reopened; reopened.show(); settle(400);
+            auto button = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
+            if (button) button->click(); settle(200);
+            check(button && timelineToolbar->window() != &main && timelineToolbar->findChildren<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop").size() == 1,
+                "native toolbar control rebinds after reopening Unbound without duplication");
+            reopened.findChild<QPushButton *>("bulk_1")->click(); settle();
+        }
+    }
+    {
+        QWidget main; main.resize(1000,700); auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); outer->addWidget(page); auto row = new QHBoxLayout(page);
+        QList<Unbound::MacPanelSession *> sessions;
+        for (const auto &name : {"Source", "Program", "MediaPool", "Inspector"}) {
+            auto content = new QWidget(page); content->setObjectName(name); row->addWidget(content);
+            sessions.append(new Unbound::MacPanelSession(&main));
+        }
+        main.show(); settle();
+        for (int index = 0; index < sessions.size(); ++index)
+            check(sessions[index]->undock(row->itemAt(index)->widget(), page, row->itemAt(index)->widget()->objectName()).isEmpty(), "prepare section member");
+        const auto leftTree = Unbound::splitGroupTree({{"panel","Source"}}, {{"panel","Program"}}, Qt::Horizontal);
+        const auto rightTree = Unbound::splitGroupTree({{"panel","MediaPool"}}, {{"panel","Inspector"}}, Qt::Vertical);
+        Unbound::PanelGroup group(nullptr);
+        check(group.initialize(sessions, Unbound::splitGroupTree(leftTree,rightTree,Qt::Orientation(0)), QRect(100,100,800,500)).isEmpty(),
+            "nested tab fixture contains split arrangements rather than only individual panels"); settle();
+        auto tabs = group.window()->findChild<QTabWidget *>("unboundPanelTabs");
+        auto detached = tabs ? group.detachSection(tabs->widget(0)) : nullptr; settle();
+        check(detached && sessions[0]->window()->window() == sessions[1]->window()->window() &&
+            sessions[2]->window()->window() == sessions[3]->window()->window() &&
+            sessions[0]->window()->window() != sessions[2]->window()->window(),
+            "tearing off a section preserves both donor and detached arrangements");
+        if (detached) {
+            check(detached->snapshot()["tree"].toObject()["orientation"] == "horizontal",
+                "section tear-off preserves internal orientation");
+            check(detached->merge(&group, Qt::Vertical).isEmpty(), "a detached section can merge back into another arrangement");
+            QStringList names;
+            check(Unbound::groupTreeNames(detached->snapshot()["tree"].toObject(), names) && names.size() == 4,
+                "section remerge neither loses nor duplicates panels");
+            delete detached;
         }
     }
     for (auto orientation : {Qt::Horizontal, Qt::Vertical}) for (bool contents : {false, true}) {
@@ -270,6 +357,32 @@ int main(int argc, char **argv)
         auto top = Unbound::splitGroupTree({{"panel", "MediaPool"}}, {{"panel", "Inspector"}}, Qt::Horizontal);
         auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);
         check(group.initialize({&i, &m, &s}, puzzle, QRect(50, 50, 900, 700)).isEmpty(), "screenshot arrangement has a side-by-side top row and spanning source below"); settle();
+        auto leftColumn = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "Source"}}, Qt::Vertical);
+        group.dissolve(); settle();
+        check(group.initialize({&i,&m,&s}, Unbound::splitGroupTree(leftColumn, {{"panel","MediaPool"}}, Qt::Horizontal), QRect(50,50,900,700)).isEmpty(),
+            "reported arrangement has Inspector above Source and Media Pool spanning the right"); settle();
+        auto outerSplit = group.window()->findChild<QSplitter *>();
+        auto column = outerSplit ? qobject_cast<QSplitter *>(outerSplit->widget(0)) : nullptr;
+        if (column) {
+            const auto before = column->sizes(); const auto mediaGeometry = m.window()->geometry();
+            auto handle = column->handle(1); const QPoint downPoint = handle->rect().center();
+            const QPoint global = handle->mapToGlobal(downPoint);
+            QMouseEvent down(QEvent::MouseButtonPress, QPointF(downPoint), QPointF(global), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(handle, &down);
+            QMouseEvent move(QEvent::MouseMove, QPointF(downPoint-QPoint(0,60)), QPointF(global-QPoint(0,60)), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(handle, &move);
+            QMouseEvent up(QEvent::MouseButtonRelease, QPointF(downPoint-QPoint(0,60)), QPointF(global-QPoint(0,60)), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+            QApplication::sendEvent(handle, &up); settle();
+            check(column->sizes()[0] < before[0] && m.window()->geometry() == mediaGeometry,
+                "dragging Source's top boundary resizes its own column without moving Media Pool");
+            const auto openColumn = column->sizes(), openOuter = outerSplit->sizes();
+            for (int cycle=0; cycle<20; ++cycle) {
+                i.setHiddenByUser(true); group.syncVisibility(); settle();
+                i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+            }
+            check(column->sizes() == openColumn && outerSplit->sizes() == openOuter,
+                "nested door cycling preserves user-dragged dividers and neighboring column widths");
+        } else check(false, "reported layout exposes its vertical column splitter");
         auto beforeHide = group.snapshot(); i.setHiddenByUser(true); group.syncVisibility(); settle();
         check(!i.window()->parentWidget()->isVisible() && m.window()->isVisible(), "split door collapses the wrapper rather than leaving empty content space");
         i.setHiddenByUser(false); group.syncVisibility(&i); settle();

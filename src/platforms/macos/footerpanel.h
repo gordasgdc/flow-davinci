@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QMenu>
+#include <QToolButton>
+#include <QBoxLayout>
+#include <QSet>
 #include "panelsession.h"
 #include "workspacesettings.h"
 namespace Unbound {
@@ -13,7 +16,7 @@ public:
     {
         qApp->installEventFilter(this);
         QTimer::singleShot(0, this, [this] { wireMenu(); });
-        session.changed = [this] { if (changed) changed(); };
+        session.changed = [this] { decorate(); if (changed) changed(); };
         session.arrangementChanged = [this] { if (changed) changed(); };
     }
     ~FooterPanel() override { qApp->removeEventFilter(this); session.changed = {}; session.arrangementChanged = {}; }
@@ -60,6 +63,7 @@ public:
     }
     void wireMenu()
     {
+        decorate();
         for (auto widget : QApplication::allWidgets()) if (auto menu = qobject_cast<QMenu *>(widget))
             if (menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
     }
@@ -71,6 +75,26 @@ protected:
         return false;
     }
 private:
+    void decorate()
+    {
+        auto main = root(); auto footer = main ? main->findChild<QWidget *>("m_PageSwitcherContainer") : nullptr;
+        if (!footer) return;
+        auto button = footer->findChild<QToolButton *>("unboundUndockPageNavigation");
+        if (!button) {
+            auto layout = qobject_cast<QBoxLayout *>(footer->layout()); if (!layout) return;
+            button = new QToolButton(footer); button->setObjectName("unboundUndockPageNavigation");
+            button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus); layout->addWidget(button);
+        }
+        if (nativeButton != button) {
+            nativeButton = button;
+            connect(button, &QToolButton::clicked, this, [this] {
+                logEvent(QStringLiteral("footer.native-toggle.clicked"));
+                QTimer::singleShot(0, this, [this] { if (session.active()) dock(); else floatPanel(); });
+            });
+        }
+        button->setText(session.active() ? QStringLiteral("Dock") : QStringLiteral("Undock"));
+        button->setToolTip("Float or dock page navigation; reopen it from Workspace > Show Panel in Workspace");
+    }
     void refreshMenu(QMenu *menu)
     {
         QAction *entry = nullptr;
@@ -78,6 +102,10 @@ private:
         if (!entry) {
             entry = menu->addAction(QStringLiteral("Page Navigation (Footer)"));
             entry->setObjectName(QStringLiteral("unboundPageNavigation")); entry->setCheckable(true);
+        }
+        if (!wiredEntries.contains(entry)) {
+            wiredEntries.insert(entry);
+            connect(entry, &QObject::destroyed, this, [this, entry] { wiredEntries.remove(entry); });
             connect(menu, &QMenu::aboutToShow, this, [this, menu] { refreshMenu(menu); });
             connect(entry, &QAction::triggered, this, [this] {
                 QTimer::singleShot(0, this, [this] {
@@ -92,6 +120,8 @@ private:
         entry->setChecked(session.active() && !session.hiddenByUser());
     }
 private:
+    QPointer<QToolButton> nativeButton;
+    QSet<QAction *> wiredEntries;
     std::function<QWidget *()> root;
     QJsonObject state;
     MacPanelSession session;

@@ -27,6 +27,9 @@
 #include "footerpanel.h"
 #include "panelexpansion.h"
 #include "workspacecallers.h"
+#include "toolbars.h"
+#include "viewermodecommand.h"
+#include "arrangementcontrols.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -47,26 +50,14 @@ public:
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
         auto layout = new QVBoxLayout(this);
-        status = new QLabel(QStringLiteral("Open the Edit page. Enable dual viewers for Source Monitor."), this);
+        status = new QLabel(QStringLiteral("Open a project on the Edit page. Source Monitor can float with no clip loaded."), this);
         status->setWordWrap(true); layout->addWidget(status);
-        auto presetRow = new QHBoxLayout;
-        presets = new QComboBox(this); presets->setObjectName(QStringLiteral("arrangements"));
-        presets->setMinimumWidth(0); presets->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-        presetRow->addWidget(presets, 1);
-        auto restorePreset = new QPushButton(QStringLiteral("Restore"), this);
-        restorePreset->setObjectName(QStringLiteral("restoreArrangement"));
-        presetRow->addWidget(restorePreset);
-        auto manage = new QPushButton(QStringLiteral("Manage"), this);
-        auto menu = new QMenu(manage); manage->setMenu(menu); presetRow->addWidget(manage);
-        for (const auto &operation : {"Save As…", "Update", "Rename…", "Duplicate…", "Delete"}) {
-            auto command = menu->addAction(QString::fromUtf8(operation));
-            connect(command, &QAction::triggered, this, [this, operation] { manageArrangement(QString::fromUtf8(operation)); });
-        }
-        layout->addLayout(presetRow);
-        presetState = new QLabel(this); presetState->setObjectName(QStringLiteral("arrangementState")); layout->addWidget(presetState);
-        reloadPresets(settings.data["selected_arrangement"].toString());
-        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { save(); });
-        connect(restorePreset, &QPushButton::clicked, this, [this] { restoreArrangement(); });
+        presetsUi = new Unbound::ArrangementControls(this, layout, settings.data["selected_arrangement"].toString());
+        presets = presetsUi->selection();
+        presetsUi->workspace = [this] { return arrangement(); };
+        presetsUi->changed = [this] { save(); };
+        presetsUi->restoreRequested = [this] { restoreArrangement(); };
+        presetsUi->report = [this](QString message) { status->setText(message); };
         auto scroll = new Unbound::ControlScroll(this); optionsScroll = scroll;
         scroll->setObjectName(QStringLiteral("panelOptionsScroll"));
         scroll->setWidgetResizable(true);
@@ -83,9 +74,9 @@ public:
         snap->setObjectName(QStringLiteral("snapWindows"));
         snap->setChecked(settings.data["snap_windows"].toBool(true));
         options->addWidget(snap);
-        background = new QCheckBox(QStringLiteral("Hide empty Resolve background"), this);
+        background = new QCheckBox(QStringLiteral("Floating workspace (hide native background)"), this);
         background->setObjectName(QStringLiteral("hideResolveBackground"));
-        background->setChecked(settings.data["hide_background"].toBool()); options->addWidget(background);
+        background->setChecked(!settings.data.contains("native_workspace_mode") || settings.data["native_workspace_mode"] == "floating"); options->addWidget(background);
         connect(background, &QCheckBox::toggled, this, [this](bool hidden) {
             action(QStringLiteral("background-visibility"));
             if (!applyBackgroundVisibility(hidden)) { const QSignalBlocker blocker(background); background->setChecked(!hidden); }
@@ -175,7 +166,9 @@ public:
             {"Metadata", "frameEditPageMetadata", "Metadata", true},
             {"Mixer", "frameEditAudioMeter", "Mixer", true},
             {"Sound Library", "frameEditPageSoundLibrary", "SoundLibrary", true},
-            {"Keyframes", "frameEditPageKeyframeEditor", "KeyframeEditor", true}
+            {"Keyframes", "frameEditPageKeyframeEditor", "KeyframeEditor", true},
+            {"Timeline Toolbar", "frameEditToolbarTop", "", false},
+            {"Workspace Toolbar", "unboundWorkspaceToolbar", "", false}
         };
         const QJsonObject savedPanels = settings.data["panels"].toObject();
         pendingGroups = settings.data["groups"].toArray();
@@ -246,6 +239,7 @@ public:
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
                 syncNativeToggle(i);
+                if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); if (!quitting) saveTimer.start();
             };
             panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
@@ -263,6 +257,13 @@ public:
             return nullptr;
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
+        viewerMode = new Unbound::ViewerModeCommand(this,
+            [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
+            [this](bool single) {
+                panels[2].session->setHiddenByUser(single);
+                if (auto group = groupFor(2)) group->syncVisibility(single ? nullptr : panels[2].session);
+            });
+        toolbarDecoration = new Unbound::ToolbarDecoration(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
             [this, index] { return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
@@ -409,75 +410,11 @@ private:
         result.remove(QStringLiteral("selected_arrangement"));
         return result;
     }
-    static QJsonObject normalizedArrangement(QJsonObject value)
-    {
-        value["hide_background"] = value.value("hide_background").toBool();
-        value["snap_windows"] = value.value("snap_windows").toBool(true);
-        QJsonArray layouts;
-        for (auto saved : value.value("groups").toArray()) {
-            auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
-            QStringList names; Unbound::groupTreeNames(tree, names);
-            group["pinned"] = group.value("pinned").toBool();
-            group["tree"] = tree; group["panels"] = QJsonArray::fromStringList(names);
-            group.remove("orientation"); group.remove("sizes"); layouts.append(group);
-        }
-        value["groups"] = layouts;
-        auto savedPanels = value["panels"].toObject();
-        for (auto entry = savedPanels.begin(); entry != savedPanels.end(); ++entry) {
-            auto panel = entry.value().toObject(); panel["pinned"] = panel.value("pinned").toBool(); entry.value() = panel;
-        }
-        value["panels"] = savedPanels; return value;
-    }
-    void reloadPresets(const QString &selected = {})
-    {
-        const QSignalBlocker blocker(presets);
-        presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
-        for (const auto &value : arrangements.list()) {
-            const auto entry = value.toObject();
-            presets->addItem(entry["name"].toString(), entry["id"].toString());
-        }
-        presets->setCurrentIndex(qMax(0, presets->findData(selected)));
-    }
-    void updatePresetState()
-    {
-        if (!presetState) return;
-        const auto saved = arrangements.find(presets->currentData().toString());
-        presetState->setText(!arrangements.error().isEmpty() ? arrangements.error() : saved.isEmpty() ?
-            QStringLiteral("Current layout is not saved as a preset.") :
-            normalizedArrangement(saved["workspace"].toObject()) == normalizedArrangement(arrangement()) ? QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
-        presetState->setWordWrap(true);
-    }
-    void manageArrangement(const QString &operation)
-    {
-        action(QStringLiteral("arrangement-") + operation);
-        save();
-        QString id = presets->currentData().toString(), error;
-        const auto entry = arrangements.find(id);
-        if (operation != QString::fromUtf8("Save As…") && entry.isEmpty()) {
-            status->setText(QStringLiteral("Select a saved arrangement first.")); return;
-        }
-        if (operation == "Update") error = arrangements.update(id, arrangement());
-        else if (operation == "Delete") {
-            if (QMessageBox::question(this, QStringLiteral("Delete arrangement"),
-                QStringLiteral("Delete “%1”? Your current windows will stay in place.").arg(entry["name"].toString())) != QMessageBox::Yes) return;
-            error = arrangements.remove(id); if (error.isEmpty()) id.clear();
-        } else {
-            bool accepted = false;
-            QString initial = entry["name"].toString();
-            if (operation == QString::fromUtf8("Duplicate…")) initial += QStringLiteral(" copy");
-            const auto name = QInputDialog::getText(this, operation, QStringLiteral("Arrangement name"), QLineEdit::Normal, initial, &accepted);
-            if (!accepted) return;
-            if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
-            else error = arrangements.create(name, operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : arrangement(), id);
-        }
-        reloadPresets(id); save();
-        status->setText(error.isEmpty() ? QStringLiteral("Arrangement saved.") : error);
-        Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", id}, {"success", error.isEmpty()}, {"error", error}});
-    }
+    void updatePresetState() { if (presetsUi) presetsUi->updateState(arrangement()); }
     void restoreArrangement()
     {
         action(QStringLiteral("arrangement-restore"));
-        const auto entry = arrangements.find(presets->currentData().toString());
+        const auto entry = presetsUi->find(presets->currentData().toString());
         if (entry.isEmpty()) { status->setText(QStringLiteral("Select a saved arrangement first.")); return; }
         if (!page() || !page()->isVisible()) { status->setText(QStringLiteral("Open the Edit page to restore an arrangement.")); return; }
         ++bulkVersion;
@@ -606,7 +543,7 @@ private:
         if (p.pending || p.session->active()) return;
         if (!restoring) p.saved["hidden"] = false;
         QWidget *root = page();
-        QWidget *target = root ? root->findChild<QWidget *>(p.name) : nullptr;
+        QWidget *target = Unbound::panelSurface(root, p.name);
         if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
             Unbound::prepareSourceViewer(root, target)) {
             p.pending = true; updateRow(i);
@@ -639,19 +576,27 @@ private:
     {
         if (quitting) return;
         auto &p = panels[i]; QWidget *root = page();
-        QWidget *target = root ? root->findChild<QWidget *>(p.name) : nullptr;
+        QWidget *target = Unbound::panelSurface(root, p.name);
         Unbound::logEvent(QStringLiteral("panel.undock.preconditions"), {{"panel", p.name},
             {"page_found", bool(root)}, {"page_visible", root && root->isVisible()}, {"target_found", bool(target)},
             {"target_visible", target && target->isVisible()}, {"target_in_page", root && target && root->isAncestorOf(target)}});
         if (p.name == QLatin1String("widgetEditSourcePlayer")) target = Unbound::sourceViewerSurface(target);
+        const QSize nativeSize = target ? target->size() : QSize();
         const QString error = p.contents ? p.session->undockContents(target, root, p.label) : p.session->undock(target, root, p.label);
         if (error.isEmpty()) {
             p.session->window()->setObjectName(QStringLiteral("unboundFloating_") + p.name);
             p.desired = true;
+            if (p.label.endsWith("Toolbar")) {
+                auto frame = p.session->floatingGeometry(); frame.setSize(QSize(qMax(320, nativeSize.width()), qMax(64, nativeSize.height()+28)));
+                p.session->setFloatingGeometry(frame);
+            }
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
             p.session->setPinned(p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
+            if (background->isChecked()) QTimer::singleShot(0, this, [this] {
+                if (!quitting && background->isChecked()) applyBackgroundVisibility(true);
+            });
         }
         outcome("undock", i, error); updateRow(i); save();
     }
@@ -688,6 +633,7 @@ private:
     void configureGroup(Unbound::PanelGroup *group)
     {
         groups.append(group);
+        group->sectionDetached = [this](Unbound::PanelGroup *section) { configureGroup(section); };
         group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
         group->setSnapping(snap->isChecked());
         group->attachRequested = [this, group](QWidget *target, Qt::Edge edge) {
@@ -770,6 +716,10 @@ private:
     {
         if (footer) footer->restore();
         if (callers) callers->wire();
+        if (viewerMode && page()) viewerMode->refresh(page()->window());
+        if (toolbarDecoration) for (int i = 0; i < panels.size(); ++i)
+            if (panels[i].name == QLatin1String("frameEditToolbarTop") || panels[i].name == QLatin1String("unboundWorkspaceToolbar"))
+                toolbarDecoration->wire(page(), panels[i].name, [this, i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); });
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
         for (int i = 0; i < panels.size(); ++i)
@@ -805,7 +755,7 @@ private:
         QJsonArray savedGroups = pendingGroups;
         for (auto group : groups) if (group->active()) savedGroups.append(expanded >= 0 && group == expandedGroup ? beforeExpandedGroup : group->snapshot());
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
-            {"hide_background", background->isChecked()}, {"footer", footer ? footer->snapshot() : QJsonObject{}},
+            {"hide_background", background->isChecked()}, {"native_workspace_mode", background->isChecked() ? "floating" : "native"}, {"footer", footer ? footer->snapshot() : QJsonObject{}},
             {"selected_arrangement", presets->currentData().toString()},
             {"window_chrome", style->currentIndex()},
             {"panel_hierarchy", hierarchyOption->isChecked()},
@@ -836,10 +786,11 @@ private:
     QSet<QAbstractButton *> observedToggles;
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
-    Unbound::ArrangementStore arrangements;
+    Unbound::ArrangementControls *presetsUi = nullptr;
     QComboBox *presets = nullptr;
-    QLabel *presetState = nullptr;
     Unbound::PanelExpansion expansion;
+    Unbound::ViewerModeCommand *viewerMode = nullptr;
+    Unbound::ToolbarDecoration *toolbarDecoration = nullptr;
     Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;

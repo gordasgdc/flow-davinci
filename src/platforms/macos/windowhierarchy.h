@@ -78,7 +78,7 @@ protected:
         const QString name = widget->objectName();
         if (!name.startsWith(QLatin1String("unboundFloating_")) && name != QLatin1String("UiMainWindow") &&
             name != QLatin1String("unboundPanelTest")) {
-            if (event->type() == QEvent::WindowActivate || (widget->inherits("UiCinemaViewerDialog") && event->type() == QEvent::Hide)) timer.start(0);
+            if (event->type() == QEvent::WindowActivate || (isCinemaViewer(widget) && event->type() == QEvent::Hide)) timer.start(0);
             return false;
         }
         switch (event->type()) {

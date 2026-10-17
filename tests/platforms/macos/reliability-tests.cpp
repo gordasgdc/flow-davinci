@@ -11,6 +11,7 @@
 #include "panelsession.h"
 #include "interactiondiagnostics.h"
 #include "activationbridge.h"
+#include "windowhierarchy.h"
 
 class TestApplication : public QApplication
 {
@@ -37,16 +38,17 @@ static void check(bool value, const char *description)
 {
     if (!value) { ++failures; std::fprintf(stderr, "FAIL: %s\n", description); }
 }
-static void settle()
+static void settle(int duration = 35)
 {
-    for (int i = 0; i < 5; ++i) QCoreApplication::processEvents();
+    QElapsedTimer timer; timer.start();
+    do { QCoreApplication::processEvents(); QThread::msleep(1); } while (timer.elapsed() < duration);
     QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
 }
 static void activate(QWidget *widget)
 {
-    widget->show(); widget->activateWindow();
+    widget->show(); Unbound::activateNativeWindowForTest(widget); widget->activateWindow();
     QElapsedTimer timer; timer.start();
-    while (Unbound::nativeKeyWindowNumber() != Unbound::nativeWindowNumber(widget) && timer.elapsed() < 1500) {
+    while ((Unbound::nativeKeyWindowNumber() != Unbound::nativeWindowNumber(widget) || QApplication::activeWindow() != widget) && timer.elapsed() < 1500) {
         settle(); QThread::msleep(10);
     }
 }
@@ -61,6 +63,26 @@ static void pressB(QWidget *widget)
 int main(int argc, char **argv)
 {
     TestApplication app(argc, argv); app.setQuitOnLastWindowClosed(false);
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); main.resize(600,400);
+        auto layout = new QVBoxLayout(&main); auto edit = new QLineEdit(&main); layout->addWidget(edit);
+        QWidget controls(nullptr, Qt::Window | Qt::WindowStaysOnTopHint); controls.setObjectName("unboundPanelTest");
+        QWidget viewer; viewer.setObjectName("UiCinemaViewerDialog"); viewer.resize(600,400);
+        main.show(); controls.show(); main.activateWindow(); edit->setFocus(); settle();
+        const auto initialLevel = Unbound::nativeWindowLevelForTest(&viewer);
+        Unbound::WindowHierarchy hierarchy(nullptr);
+        viewer.show(); settle(150);
+        std::printf("Cinema level=%lld controls=%lld state=%d\n", (long long)Unbound::nativeWindowLevelForTest(&viewer), (long long)Unbound::nativeWindowLevelForTest(&controls), int(QGuiApplication::applicationState()));
+        check(Unbound::visibleCinemaViewer() == &viewer &&
+            Unbound::nativeWindowLevelForTest(&viewer) > Unbound::nativeWindowLevelForTest(&controls),
+            "Cinema viewer foreground tier exceeds pinned controls while visible");
+        hierarchy.apply(); settle();
+        check(Unbound::nativeKeyWindowNumber() == Unbound::nativeWindowNumber(&viewer),
+            "normal panel ordering does not steal the cinema key window");
+        viewer.hide(); settle(120);
+        check(Unbound::nativeWindowLevelForTest(&viewer) == initialLevel,
+            "Cinema exit restores its original native window level");
+    }
     QTemporaryDir logs;
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     Unbound::InteractionDiagnostics diagnostics(&app);

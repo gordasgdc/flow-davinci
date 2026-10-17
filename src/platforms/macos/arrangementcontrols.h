@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <QComboBox>
+#include <QInputDialog>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include "arrangementstore.h"
+#include "panelgroup.h"
+namespace Unbound {
+class ArrangementControls : public QObject
+{
+public:
+    ArrangementControls(QWidget *owner, QVBoxLayout *layout, const QString &selected) : QObject(owner), owner(owner)
+    {
+        auto row = new QHBoxLayout;
+        presets = new QComboBox(owner); presets->setObjectName("arrangements"); presets->setMinimumWidth(0);
+        presets->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon); row->addWidget(presets,1);
+        auto restore = new QPushButton("Restore", owner); restore->setObjectName("restoreArrangement"); row->addWidget(restore);
+        auto manage = new QPushButton("Manage", owner); auto menu = new QMenu(manage); manage->setMenu(menu); row->addWidget(manage);
+        for (const auto &operation : {"Save As…", "Update", "Rename…", "Duplicate…", "Delete"})
+            connect(menu->addAction(QString::fromUtf8(operation)), &QAction::triggered, this,
+                [this, operation] { manageArrangement(QString::fromUtf8(operation)); });
+        layout->addLayout(row);
+        state = new QLabel(owner); state->setObjectName("arrangementState"); state->setWordWrap(true); layout->addWidget(state);
+        reloadPresets(selected);
+        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { if (changed) changed(); });
+        connect(restore, &QPushButton::clicked, this, [this] { if (restoreRequested) restoreRequested(); });
+    }
+    QComboBox *selection() const { return presets; }
+    QJsonObject find(const QString &id) const { return arrangements.find(id); }
+    std::function<QJsonObject()> workspace;
+    std::function<void()> changed, restoreRequested;
+    std::function<void(QString)> report;
+    void updateState(const QJsonObject &current)
+    {
+        const auto saved = find(presets->currentData().toString());
+        state->setText(!arrangements.error().isEmpty() ? arrangements.error() : saved.isEmpty() ?
+            QStringLiteral("Current layout is not saved as a preset.") :
+            normalizedArrangement(saved["workspace"].toObject()) == normalizedArrangement(current) ?
+            QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
+    }
+private:
+    static QJsonObject normalizedArrangement(QJsonObject value)
+    {
+        value["hide_background"] = value.value("hide_background").toBool();
+        value["snap_windows"] = value.value("snap_windows").toBool(true);
+        QJsonArray layouts;
+        for (auto saved : value.value("groups").toArray()) {
+            auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
+            QStringList names; Unbound::groupTreeNames(tree, names);
+            group["pinned"] = group.value("pinned").toBool();
+            group["tree"] = tree; group["panels"] = QJsonArray::fromStringList(names);
+            group.remove("orientation"); group.remove("sizes"); layouts.append(group);
+        }
+        value["groups"] = layouts;
+        auto savedPanels = value["panels"].toObject();
+        for (auto entry = savedPanels.begin(); entry != savedPanels.end(); ++entry) {
+            auto panel = entry.value().toObject(); panel["pinned"] = panel.value("pinned").toBool(); entry.value() = panel;
+        }
+        value["panels"] = savedPanels; return value;
+    }
+    void reloadPresets(const QString &selected = {})
+    {
+        const QSignalBlocker blocker(presets);
+        presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
+        for (const auto &value : arrangements.list()) {
+            const auto entry = value.toObject();
+            presets->addItem(entry["name"].toString(), entry["id"].toString());
+        }
+        presets->setCurrentIndex(qMax(0, presets->findData(selected)));
+    }
+    void manageArrangement(const QString &operation)
+    {
+        logEvent(QStringLiteral("button.click"), {{"action", QStringLiteral("arrangement-") + operation}});
+        if (changed) changed();
+        QString id = presets->currentData().toString(), error;
+        const auto entry = arrangements.find(id);
+        if (operation != QString::fromUtf8("Save As…") && entry.isEmpty()) {
+            report(QStringLiteral("Select a saved arrangement first.")); return;
+        }
+        if (operation == "Update") error = arrangements.update(id, workspace());
+        else if (operation == "Delete") {
+            if (QMessageBox::question(owner, QStringLiteral("Delete arrangement"),
+                QStringLiteral("Delete “%1”? Your current windows will stay in place.").arg(entry["name"].toString())) != QMessageBox::Yes) return;
+            error = arrangements.remove(id); if (error.isEmpty()) id.clear();
+        } else {
+            bool accepted = false;
+            QString initial = entry["name"].toString();
+            if (operation == QString::fromUtf8("Duplicate…")) initial += QStringLiteral(" copy");
+            const auto name = QInputDialog::getText(owner, operation, QStringLiteral("Arrangement name"), QLineEdit::Normal, initial, &accepted);
+            if (!accepted) return;
+            if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
+            else error = arrangements.create(name, operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : workspace(), id);
+        }
+        reloadPresets(id); if (changed) changed();
+        report(error.isEmpty() ? QStringLiteral("Arrangement saved.") : error);
+        Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", id}, {"success", error.isEmpty()}, {"error", error}});
+    }
+    QWidget *owner;
+    QComboBox *presets = nullptr;
+    QLabel *state = nullptr;
+    ArrangementStore arrangements;
+};
+}

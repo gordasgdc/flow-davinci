@@ -88,6 +88,34 @@ public:
         other->members.clear(); other->leaves.clear(); other->retireHost();
         rebuild(tree); refresh(); if (other->changed) other->changed(); report("group.merge"); return {};
     }
+    // Transfer a tab containing a split subtree without flattening its panels.
+    PanelGroup *detachSection(QWidget *section)
+    {
+        if (!host || !section || !root || section == root || !root->isAncestorOf(section)) return nullptr;
+        const auto tree = treeSnapshot(section); QStringList selectedNames;
+        if (!groupTreeNames(tree, selectedNames) || selectedNames.size() < 2) return nullptr;
+        const auto originalTree = treeSnapshot(root); const auto originalFrame = host->geometry();
+        const QRect frame(section->mapToGlobal(QPoint()), section->size());
+        QList<MacPanelSession *> selected, all;
+        for (auto candidate : members) if (candidate) {
+            all.append(candidate);
+            if (selectedNames.contains(panelName(candidate))) selected.append(candidate);
+        }
+        if (selected.size() != selectedNames.size() || selected.size() == all.size()) return nullptr;
+        for (auto candidate : selected) if (contains(candidate)) detachMember(candidate);
+        auto detached = new PanelGroup(parent());
+        const auto error = detached->initialize(selected, tree, frame);
+        if (!error.isEmpty()) {
+            delete detached; dissolve();
+            const auto rollback = initialize(all, originalTree, originalFrame);
+            logEvent(QStringLiteral("group.section.rollback"), {{"error", error}, {"rollback_error", rollback}});
+            return nullptr;
+        }
+        if (sectionDetached) sectionDetached(detached);
+        logEvent(QStringLiteral("group.section.detach"), {{"panels", QJsonArray::fromStringList(selectedNames)}});
+        return detached;
+    }
+    std::function<void(PanelGroup *)> sectionDetached;
     void dissolve(bool dockMembers = false)
     {
         if (releasing || (!host && members.isEmpty())) return;
@@ -275,7 +303,14 @@ private:
             new TabTearOff(tabs, tabs, [this](QWidget *leaf, QPoint pointer) {
                 QPointer<MacPanelSession> member;
                 for (auto candidate : members) if (leaves.value(candidate) == leaf) member = candidate;
-                if (!member) return;
+                if (!member) {
+                    if (auto section = detachSection(leaf)) {
+                        auto floating = static_cast<MacFloatingHost *>(section->window());
+                        floating->move(pointer - QPoint(80,12)); floating->raise(); floating->activateWindow();
+                        floating->beginPointerDrag(pointer, true);
+                    }
+                    return;
+                }
                 detachMember(member);
                 auto floating = static_cast<MacFloatingHost *>(member->window());
                 floating->move(pointer - QPoint(80, 12)); floating->raise(); floating->activateWindow();
@@ -285,7 +320,7 @@ private:
             connect(tabs, &QTabWidget::currentChanged, this, [this] { if (!rebuilding) timer.start(); });
             return tabs;
         }
-        auto splitter = new QSplitter(node["orientation"] == "vertical" ? Qt::Vertical : Qt::Horizontal, host); splitter->setChildrenCollapsible(false);
+        auto splitter = new QSplitter(node["orientation"] == "vertical" ? Qt::Vertical : Qt::Horizontal, host); splitter->setChildrenCollapsible(false); splitter->setHandleWidth(6);
         for (auto child : node["children"].toArray()) if (auto widget = buildTree(child.toObject())) splitter->addWidget(widget);
         splitter->setProperty("savedSizes", node["sizes"].toArray().toVariantList());
         connect(splitter, &QSplitter::splitterMoved, this, [this] { timer.start(); }); return splitter;
