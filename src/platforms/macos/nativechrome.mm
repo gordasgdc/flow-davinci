@@ -32,7 +32,7 @@
 @end
 
 namespace Unbound {
-static char pinKey;
+static char pinKey, titleKey;
 class PointerReleaseWatch : public QObject
 {
 public:
@@ -138,9 +138,35 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
     NSRect frame = green.frame;
     frame.origin.x += green.frame.origin.x - yellow.frame.origin.x;
     button.frame = frame; button.hidden = NO; button.state = pinned ? NSControlStateValueOn : NSControlStateValueOff;
+    // Reserve actual traffic-light space instead of relying on a centered native title.
+    auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
+    if (!title) {
+        title = [[NSTextField alloc] initWithFrame:NSZeroRect];
+        title.editable = NO; title.selectable = NO; title.bezeled = NO; title.drawsBackground = NO;
+        title.font = [NSFont boldSystemFontOfSize:12]; title.textColor = NSColor.labelColor;
+        title.lineBreakMode = NSLineBreakByTruncatingTail;
+        objc_setAssociatedObject(window, &titleKey, title, OBJC_ASSOCIATION_RETAIN_NONATOMIC); [title release];
+    }
+    if (title.superview != green.superview) { [title removeFromSuperview]; [green.superview addSubview:title]; }
+    const bool compact = window.styleMask & NSWindowStyleMaskFullSizeContentView;
+    title.hidden = compact;
+    if (!compact) {
+        window.titleVisibility = NSWindowTitleHidden;
+        const CGFloat left = NSMaxX(frame) + 12;
+        title.frame = NSMakeRect(left, NSMidY(frame)-9, MAX(0, NSWidth(green.superview.bounds)-left-12), 18);
+        title.stringValue = window.title ?: @"";
+    }
     [button setChangeCallback:changed]; [button setNeedsDisplay:YES]; return true;
 }
 #ifdef UNBOUND_NATIVE_TESTS
+QRect nativeTitleFrameForTest(QWidget *widget)
+{
+    NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
+    auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
+    if (!title || title.hidden) return {};
+    const auto frame = title.frame;
+    return QRect(qRound(frame.origin.x), qRound(frame.origin.y), qRound(frame.size.width), qRound(frame.size.height));
+}
 qint64 nativeFrontmostProcessForTest() { return NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier; }
 bool saveNativeTrafficForTest(QWidget *widget, const QString &path)
 {

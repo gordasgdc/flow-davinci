@@ -23,6 +23,8 @@
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
+#include "viewerpreparation.h"
+#include "footerpanel.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -254,6 +256,19 @@ public:
             connect(panel.center, &QPushButton::clicked, this, [this, i] { action("center", panels[i].label); panels[i].session->centerOnCurrentDisplay(); });
             updateRow(i);
         }
+        footer = new Unbound::FooterPanel(this, []() -> QWidget * {
+            for (auto window : QApplication::topLevelWidgets()) if (window->objectName() == QLatin1String("UiMainWindow")) return window;
+            return nullptr;
+        }, settings.data["footer"].toObject());
+        footer->changed = [this] { saveTimer.start(); };
+        auto footerRow = new QHBoxLayout;
+        auto floatFooter = new QPushButton(QStringLiteral("Float Page Navigation"), body);
+        floatFooter->setObjectName("floatPageNavigation"); footerRow->addWidget(floatFooter);
+        auto dockFooter = new QPushButton(QStringLiteral("Dock Page Navigation"), body);
+        dockFooter->setObjectName("dockPageNavigation"); footerRow->addWidget(dockFooter);
+        connect(floatFooter, &QPushButton::clicked, this, [this] { status->setText(footer->floatPanel()); });
+        connect(dockFooter, &QPushButton::clicked, this, [this] { footer->dock(); });
+        bodyLayout->addLayout(footerRow);
         bodyLayout->addStretch();
         setMinimumSize(280, 200);
         saveTimer.setSingleShot(true); saveTimer.setInterval(250);
@@ -313,7 +328,7 @@ protected:
             }
         }
         if (expanded >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
-        if (object == this && event->type() == QEvent::Show) QTimer::singleShot(0, this, [this] {
+        if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
             Unbound::setNativePin(this, pin->isChecked(), [alive](bool value) { if (alive) alive->pin->setChecked(value); });
         });
@@ -461,6 +476,7 @@ private:
             Unbound::logEvent(QStringLiteral("arrangement.restore.failed"), {{"panel", panel.name}}); return;
         }
         const auto value = entry["workspace"].toObject();
+        if (footer) footer->setState(value["footer"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
         pendingGroups = value["groups"].toArray();
         pin->setChecked(value["pin_controls"].toBool());
@@ -576,6 +592,16 @@ private:
         if (!restoring) p.saved["hidden"] = false;
         QWidget *root = page();
         QWidget *target = root ? root->findChild<QWidget *>(p.name) : nullptr;
+        if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
+            Unbound::prepareSourceViewer(root, target)) {
+            p.pending = true; updateRow(i);
+            const unsigned request = ++p.requestVersion;
+            QTimer::singleShot(100, this, [this, i, request] {
+                if (panels[i].requestVersion != request) return;
+                panels[i].pending = false; finishUndock(i);
+            });
+            return;
+        }
         if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
             const QString base = QStringLiteral("btnEditToggle") + p.toggle;
             for (auto button : root->findChildren<QAbstractButton *>()) {
@@ -599,6 +625,9 @@ private:
         if (quitting) return;
         auto &p = panels[i]; QWidget *root = page();
         QWidget *target = root ? root->findChild<QWidget *>(p.name) : nullptr;
+        Unbound::logEvent(QStringLiteral("panel.undock.preconditions"), {{"panel", p.name},
+            {"page_found", bool(root)}, {"page_visible", root && root->isVisible()}, {"target_found", bool(target)},
+            {"target_visible", target && target->isVisible()}, {"target_in_page", root && target && root->isAncestorOf(target)}});
         const QString error = p.contents ? p.session->undockContents(target, root, p.label) : p.session->undock(target, root, p.label);
         if (error.isEmpty()) {
             p.desired = true;
@@ -618,7 +647,7 @@ private:
         if (error.isEmpty()) p.desired = false;
         outcome("dock", i, error); updateRow(i); save();
     }
-    void dockAll() { background->setChecked(false); ++groupVersion; pendingGroups = {}; for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
+    void dockAll() { if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {}; for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
     bool applyBackgroundVisibility(bool hidden)
     {
         auto root = page(); if (!root) return !hidden;
@@ -722,6 +751,7 @@ private:
     }
     void restore()
     {
+        if (footer) footer->restore();
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
         for (int i = 0; i < panels.size(); ++i)
@@ -757,7 +787,7 @@ private:
         QJsonArray savedGroups = pendingGroups;
         for (auto group : groups) if (group->active()) savedGroups.append(expanded >= 0 && group == expandedGroup ? beforeExpandedGroup : group->snapshot());
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
-            {"hide_background", background->isChecked()},
+            {"hide_background", background->isChecked()}, {"footer", footer ? footer->snapshot() : QJsonObject{}},
             {"selected_arrangement", presets->currentData().toString()},
             {"window_chrome", style->currentIndex()},
             {"panel_hierarchy", hierarchyOption->isChecked()},
@@ -791,6 +821,7 @@ private:
     Unbound::ArrangementStore arrangements;
     QComboBox *presets = nullptr;
     QLabel *presetState = nullptr;
+    Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;
     bool quitting = false;
     unsigned bulkVersion = 0;

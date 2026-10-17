@@ -4,12 +4,38 @@
 #include "grouplayout.h"
 #include "windowsnap.h"
 #include "viewport.h"
+#include "droppolicy.h"
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     int failures = 0;
     const auto check = [&](bool pass, const char *message) { if (!pass) { ++failures; std::fprintf(stderr, "FAIL: %s\n", message); } };
     const QRect frame(100, 100, 800, 600);
+    using Placement = Unbound::DropPlacement;
+    for (const QSize size : {QSize(80,60), QSize(800,600), QSize(3000,1600)}) {
+        const QRect surface(QPoint(-300,90), size);
+        for (int x = surface.left()-1; x <= surface.right()+1; ++x)
+            for (int y = surface.top()-1; y <= surface.bottom()+1; y += 7) {
+                const QPoint point(x,y);
+                const auto selection = Unbound::selectPanelDrop(surface, point);
+                check((selection.placement != Placement::None) == surface.contains(point),
+                    "regional targets cover the destination without extending onto the desktop");
+                if (selection.placement != Placement::None)
+                    check(surface.contains(selection.preview), "preview stays inside its destination");
+            }
+        check(Unbound::selectPanelDrop(surface, surface.center()).placement == Placement::Tab,
+            "tab region remains reachable at all tested window sizes");
+        const QPoint left(surface.left()+1, surface.center().y());
+        check(Unbound::selectPanelDrop(surface, left).placement == Placement::Left,
+            "an edge is reachable without hunting for a centered icon");
+        check(Unbound::selectPanelDrop(surface, QPoint(surface.left()-1,left.y()), Placement::Left).placement == Placement::None,
+            "leaving an active target clears docking even with retention enabled");
+    }
+    const QPoint boundary(frame.left()+40, frame.center().y());
+    check(Unbound::selectPanelDrop(frame, boundary, Placement::Left).placement == Placement::Left &&
+        Unbound::selectPanelDrop(frame, boundary+QPoint(5,0), Placement::Left).placement == Placement::Tab,
+        "boundary jitter is retained briefly without trapping the pointer in a split");
+
     int offered = 0;
     for (int x = -100; x < 1200; x += 10) for (int y = -100; y < 1000; y += 10)
         offered += Unbound::localDockZone(frame, QPoint(x, y)).target.isValid();
@@ -45,11 +71,49 @@ int main(int argc, char **argv)
     const QPoint outer(frame.right() + 24, frame.center().y());
     check(Unbound::outerDockZone(frame, outer).active && !Unbound::localDockZone(frame, outer).active,
         "whole-group target is separate from panel edge targets");
+    // Merge independent arrangements repeatedly; preserve each subtree and every panel.
+    QJsonObject arrangement;
+    QStringList expected;
+    for (int group = 0; group < 6; ++group) {
+        QJsonObject subtree;
+        for (int panel = 0; panel < 4; ++panel) {
+            const QString name = QString("group%1-panel%2").arg(group).arg(panel);
+            expected.append(name);
+            const QJsonObject leaf{{"panel", name}};
+            subtree = subtree.isEmpty() ? leaf : Unbound::splitGroupTree(subtree, leaf,
+                panel % 2 ? Qt::Horizontal : Qt::Vertical);
+        }
+        const auto prior = arrangement;
+        arrangement = arrangement.isEmpty() ? subtree : Unbound::insertGroupTree(arrangement, subtree,
+            QString(), group % 2 ? Qt::Vertical : Qt::Horizontal, false);
+        names.clear();
+        check(Unbound::groupTreeNames(arrangement, names) && names == expected,
+            "N groups merge without losing, duplicating or reordering panels");
+        if (!prior.isEmpty()) check(arrangement["children"].toArray()[0].toObject() == prior &&
+            arrangement["children"].toArray()[1].toObject() == subtree,
+            "whole-group merge preserves internal split geometry and structure");
+    }
+    // A nested destination must not split unrelated neighbors.
+    const auto original = arrangement;
+    const QJsonObject extra{{"panel", "extra"}};
+    arrangement = Unbound::insertGroupTree(arrangement, extra, "group2-panel1", Qt::Horizontal, true);
+    names.clear();
+    check(Unbound::groupTreeNames(arrangement, names) && names.size() == 25,
+        "a panel can be inserted into an interior leaf of a large arrangement");
+    arrangement = Unbound::removeGroupLeaf(arrangement, "extra");
+    check(arrangement == original, "tearing the inserted panel out restores the original tree exactly");
+    for (const auto &name : expected) {
+        arrangement = Unbound::removeGroupLeaf(arrangement, name);
+        names.clear();
+        check(arrangement.isEmpty() || (Unbound::groupTreeNames(arrangement, names) && !names.contains(name)),
+            "successive tear-offs leave a valid arrangement without orphan split nodes");
+    }
+    check(arrangement.isEmpty(), "removing the final panel leaves no empty arrangement");
     const QRect desktop(0, 0, 1920, 1080), partial(-450, 50, 600, 500);
     check(Unbound::keepGripReachable(partial, {desktop}) == partial, "intentional partial off-screen placement stays unchanged");
     const auto recovered = Unbound::keepGripReachable(QRect(4000, -3000, 2400, 1500), {desktop});
     check(recovered.size() == QSize(2400, 1500) && recovered.top() >= 0 && recovered.left() <= desktop.right() - 95,
         "lost windows retain size while a draggable strip is rescued");
-    if (!failures) std::puts("PASS: fixed local docking targets, tab/split plans and partial off-screen recovery (no GUI windows)");
+    if (!failures) std::puts("PASS: regional drop policy, recursive 24-panel merges/tear-offs, legacy geometry and viewport recovery (no GUI windows)");
     return failures ? 1 : 0;
 }

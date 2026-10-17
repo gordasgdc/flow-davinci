@@ -9,6 +9,7 @@
 #include <cstdio>
 #include "controlscroll.h"
 #include "floatinghost.h"
+#include "viewerpreparation.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -34,11 +35,29 @@ int main(int argc, char **argv)
     Unbound::ControlScroll candidate(nullptr); const auto after = exercise(candidate, true);
     check(before > 0, "reproduce Qt focus-transfer horizontal scroll jump");
     check(after == 0, "row-update guard prevents the reproduced scroll jump");
+    QWidget nativeRoot; nativeRoot.setAttribute(Qt::WA_DontShowOnScreen);
+    QWidget source(&nativeRoot); source.hide();
+    QAction singleViewer(&nativeRoot); singleViewer.setText("Single Viewer Mode");
+    singleViewer.setCheckable(true); singleViewer.setChecked(true);
+    int commands = 0;
+    QObject::connect(&singleViewer, &QAction::triggered, [&] { ++commands; });
+    check(Unbound::prepareSourceViewer(&nativeRoot, &source) && commands == 1 && !singleViewer.isChecked(),
+        "hidden source requests dual viewers through the existing checked native command");
+    check(!Unbound::prepareSourceViewer(&nativeRoot, &source) && commands == 1,
+        "source preparation does not toggle dual viewers back off");
+    singleViewer.setChecked(true); singleViewer.setEnabled(false);
+    check(!Unbound::prepareSourceViewer(&nativeRoot, &source) && commands == 1,
+        "disabled native viewer command is left untouched");
     Unbound::MacFloatingHost host; host.setAttribute(Qt::WA_DontShowOnScreen); host.resize(400, 250);
     for (auto style : {Unbound::WindowChrome::Standard, Unbound::WindowChrome::Compact}) {
         host.setChrome(style); const auto lights = Unbound::nativeTrafficFramesForTest(&host);
         check(lights.size() == 4 && lights[3].size() == lights[2].size() && lights[3].y() == lights[2].y() &&
             lights[3].x() - lights[2].x() == lights[2].x() - lights[1].x(), "native pin matches traffic light size, spacing and baseline");
+        if (style == Unbound::WindowChrome::Standard) {
+            const auto title = Unbound::nativeTitleFrameForTest(&host);
+            check(title.isValid() && lights.size() == 4 && title.left() > lights[3].right(),
+                "native title reserves space after the fourth traffic light");
+        }
         Unbound::clickNativePinForTest(&host); check(host.pinned(), "native pin light pins shared state");
         Unbound::clickNativePinForTest(&host); check(!host.pinned(), "native pin light unpins shared state");
     }

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "diagnostics.h"
 #include "nativechrome.h"
+#include "cinemaviewer.h"
 
 namespace Unbound {
 inline int floatingTier(const QString &name)
@@ -22,6 +23,7 @@ class WindowHierarchy : public QObject
 public:
     explicit WindowHierarchy(QObject *parent) : QObject(parent)
     {
+        new CinemaViewerLifecycle(this);
         timer.setSingleShot(true);
         connect(&timer, &QTimer::timeout, this, [this] {
             if (QGuiApplication::applicationState() == Qt::ApplicationActive) apply();
@@ -33,6 +35,7 @@ public:
     void apply()
     {
         if (!enabled || ordering || QApplication::activeModalWidget() || QApplication::activePopupWidget()) return;
+        if (visibleCinemaViewer()) return;
         QList<QWidget *> floating;
         QWidget *main = nullptr, *controls = nullptr;
         for (auto widget : QApplication::topLevelWidgets()) {
@@ -72,7 +75,7 @@ protected:
         const QString name = widget->objectName();
         if (!name.startsWith(QLatin1String("unboundFloating_")) && name != QLatin1String("UiMainWindow") &&
             name != QLatin1String("unboundPanelTest")) {
-            if (event->type() == QEvent::WindowActivate) timer.start(0);
+            if (event->type() == QEvent::WindowActivate || (widget->inherits("UiCinemaViewerDialog") && event->type() == QEvent::Hide)) timer.start(0);
             return false;
         }
         switch (event->type()) {

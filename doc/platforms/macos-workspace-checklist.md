@@ -483,3 +483,9 @@ Test native Q Inspector toggle in split/tab arrangements, backtick/tilde expand
 and second-press restoration, partial offscreen placement, and Stabilize/dividers/
 Dock All after moves. Exercise Cinema Viewer separately and collect its trace;
 this installation adds Cinema Viewer diagnostics, not a confirmed cinema fix.
+
+
+### 2026-10-17 — workspace drag architecture branch
+
+See [implementation checkpoint and pending acceptance gates](macos-docking-interaction-research.md).
+Regional drop policy is connected in source, with separated destination resolution and candidate native viewer lifecycle. Layout/session/group/reliability/hidden-control fixtures passed. This is an uninstalled candidate, not live Resolve verification. Footer/submenu integration, subtree tear-off UI and shared command state remain open. Preserve macos-docking-compass-and-controls as rollback.

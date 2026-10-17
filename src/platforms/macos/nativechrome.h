@@ -25,6 +25,7 @@ bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bo
 qint64 nativeFrontmostProcessForTest();
 bool saveNativeTrafficForTest(QWidget *widget, const QString &path);
 QList<QRect> nativeTrafficFramesForTest(QWidget *widget);
+QRect nativeTitleFrameForTest(QWidget *widget);
 void clickNativePinForTest(QWidget *widget);
 void postNativeMoveStartForTest(QWidget *widget);
 void postNativePointerReleaseForTest(QWidget *window);

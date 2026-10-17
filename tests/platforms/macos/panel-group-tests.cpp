@@ -22,6 +22,33 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_DIAGNOSTICS_DIR", temporary.path().toUtf8());
     qputenv("UNBOUND_WORKSPACE_FILE", (temporary.path() + "/Workspace.json").toUtf8());
     qputenv("UNBOUND_ARRANGEMENTS_FILE", (temporary.path() + "/Arrangements.json").toUtf8());
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100,700);
+        auto layout = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); layout->addWidget(page);
+        auto nativeFooter = new QWidget(&main); nativeFooter->setObjectName("m_PageSwitcherContainer");
+        layout->addWidget(nativeFooter); main.show(); settle();
+        Unbound::FooterPanel footer(nullptr, [&] { return &main; }, {});
+        check(footer.floatPanel().isEmpty() && nativeFooter->window() != &main,
+            "native footer floats independently of the page content");
+        page->hide(); settle();
+        check(nativeFooter->isVisible(), "switching away from a page does not hide global navigation");
+        QMenu menu(&main); menu.setObjectName("workspaceShowPanel"); menu.show(); settle();
+        QAction *caller = nullptr;
+        for (auto action : menu.actions()) if (action->objectName() == "unboundPageNavigation") caller = action;
+        check(caller && caller->isChecked(), "native Show Panel submenu exposes shared footer visibility");
+        menu.hide(); if (caller) caller->trigger(); settle();
+        check(footer.snapshot()["hidden"].toBool(), "submenu caller hides the floating footer");
+        if (caller) caller->trigger(); settle();
+        check(!footer.snapshot()["hidden"].toBool(), "submenu caller reopens the same footer");
+        const auto saved = footer.snapshot(); footer.dock(); settle();
+        check(nativeFooter->parentWidget() == &main && layout->indexOf(nativeFooter) >= 0,
+            "footer docking restores the original native layout slot");
+        footer.setState(saved); settle();
+        check(nativeFooter->window() != &main && footer.snapshot()["floating"].toBool(),
+            "saved footer arrangement restores independently of the hidden page");
+        footer.dock();
+    }
     for (auto orientation : {Qt::Horizontal, Qt::Vertical}) for (bool contents : {false, true}) {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100, 700);
         auto mainLayout = new QVBoxLayout(&main);

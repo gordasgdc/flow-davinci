@@ -406,17 +406,18 @@ int main(int argc, char **argv)
         const QPoint delta = dockPointer - press;
         QMouseEvent down(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(press), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &down);
+        static_cast<Unbound::MacFloatingHost *>(draggedSource)->beginPointerDrag(press + QPoint(500,500));
         QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &move);
         auto attachmentPreview = draggedSource->findChild<QWidget *>("unboundSnapPreview");
         auto dockTarget = draggedSource->findChild<QWidget *>("unboundDockTarget");
-        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(18, 18),
-            "panel attachment shows one small local target and proposed split");
+        check(attachmentPreview && attachmentPreview->isVisible() && dockTarget && dockTarget->isVisible() && dockTarget->size() == QSize(72, 24),
+            "panel attachment labels the selected region and previews the proposed split");
         const QPoint hover = targetProgram->frameGeometry().center() + QPoint(-65, -45);
         QMouseEvent hoverMove(QEvent::MouseMove, QPointF(), QPointF(hover), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &hoverMove); settleFor(230);
         auto compass = draggedSource->findChild<QWidget *>("unboundDockCompass");
-        check(compass && compass->isVisible(), "deliberate hover reveals one reachable split/tab compass");
+        check((!compass || !compass->isVisible()) && attachmentPreview && attachmentPreview->isVisible(), "moving into the panel selects a regional tab preview without a delayed compass");
         QApplication::sendEvent(draggedSource, &move);
         QWidget covering;
         covering.setWindowFlag(Qt::WindowStaysOnTopHint, true);
