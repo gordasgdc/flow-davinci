@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QApplication>
+#include <QHash>
 #include "nativechrome.h"
 namespace Unbound {
 struct DockDestination { QWidget *surface = nullptr; QRect frame; };
 inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, const QList<QWidget *> &overlays)
 {
     QWidget *destination = nullptr;
-    const auto windows = QApplication::topLevelWidgets();
+    QHash<qint64, QWidget *> windows;
+    for (auto candidate : QApplication::topLevelWidgets()) {
+        if (candidate == source || overlays.contains(candidate) || !candidate->isVisible() || candidate->isMinimized()) continue;
+        windows.insert(nativeWindowNumber(candidate), candidate);
+    }
     for (auto number : nativeOrderedWindowNumbers()) {
-        QWidget *hit = nullptr;
-        for (auto candidate : windows) {
-            if (candidate == source || overlays.contains(candidate) || !candidate->isVisible() ||
-                candidate->isMinimized() || nativeWindowNumber(candidate) != number) continue;
-            if (candidate->frameGeometry().contains(pointer)) { hit = candidate; break; }
-        }
-        if (!hit) continue;
+        auto hit = windows.value(number);
+        if (!hit || !hit->frameGeometry().contains(pointer)) continue;
         if (hit->objectName().startsWith("unboundFloating_")) destination = hit;
         break;
     }

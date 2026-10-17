@@ -244,13 +244,15 @@ private:
         const QSize decoration = currentFrame.size() - size();
         const QRect proposed(desired.topLeft() + offset, desired.size() + decoration);
         QList<QRect> targets, displays;
-        for (auto window : QApplication::topLevelWidgets())
-            if (window != this && window->isVisible() && !window->isMinimized() &&
-                (window->objectName().startsWith("unboundFloating_") || window->objectName() == "UiMainWindow"))
-                targets.append(window->frameGeometry());
-        for (auto screen : QGuiApplication::screens()) displays.append(screen->availableGeometry());
         QList<QLine> alignment;
         const bool align = QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier);
+        if (align) {
+            for (auto window : QApplication::topLevelWidgets())
+                if (window != this && window->isVisible() && !window->isMinimized() &&
+                    (window->objectName().startsWith("unboundFloating_") || window->objectName() == "UiMainWindow"))
+                    targets.append(window->frameGeometry());
+            for (auto screen : QGuiApplication::screens()) displays.append(screen->availableGeometry());
+        }
         const QRect snapped = align ? alignWindowEdges(snapWindowFrame(proposed, targets, displays), targets, alignment) : proposed;
         for (int i = 0; i < 2; ++i) {
             if (i >= alignment.size()) { if (guideWidgets[i]) guideWidgets[i]->hide(); continue; }

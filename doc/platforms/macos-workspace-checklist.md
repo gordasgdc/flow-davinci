@@ -522,3 +522,8 @@ Verification at polish checkpoint: layout-plan tests PASS; hidden controls/tab-t
 Published fork: https://github.com/jordantetewsky/unbound. Baseline branch and solid-build tag pushed; unfinished interaction candidates preserved on macos-docking-interaction-polish. Continuation: macos-native-workspace-callers.
 
 Implemented in source: workspacecallers.h prepopulates Source, Program, Timeline and Show Native Workspace actions; footer registration also prepopulates rather than relying solely on QWidget Show. Uses aboutToShow for refresh. Helper builds; hidden tests PASS for pre-display discovery, shared state and no duplicate menu entries. Cocoa menu appearance and actual Resolve callers are NOT live verified. Native existing panel actions/shortcuts and stable door sizing still require completion. Toolbar is required but not implemented; identify its container before claiming detachment. No new install.
+
+
+### Door behavior and explicit acceptance audit
+
+See [next-pass acceptance record](macos-next-pass-status.md) for implemented/tested/live/open distinctions. GroupVisibility now tracks divider sizes by open/closed combination and previous selected tab; grouped headers gain Hide. Hidden 20-cycle sizing and tab return tests passed after explicitly refreshing splitters. Native existing actions are reused and route through the same queued door transition; hidden tests verify action identity, shortcuts and single dispatch. Destination lookup is linear rather than repeated native ID lookup inside nested loops; normal drags skip alignment collection. These changes are not installed or live verified.

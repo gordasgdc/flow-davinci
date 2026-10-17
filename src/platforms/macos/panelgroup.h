@@ -7,6 +7,7 @@
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "tabtearoff.h"
+#include "groupvisibility.h"
 
 namespace Unbound {
 class PanelGroup : public QObject
@@ -141,24 +142,17 @@ public:
     {
         if (!host || rebuilding || releasing || syncingVisibility) return;
         QScopedValueRollback<bool> guard(syncingVisibility, true);
-        auto splitters = host->findChildren<QSplitter *>();
-        for (auto splitter : splitters) {
-            const auto sizes = splitter->sizes();
-            if (!sizes.contains(0)) splitter->setProperty("unboundVisibleSizes", QVariant::fromValue(sizes));
-        }
+        if (root) visibility.remember(root);
         for (auto member : members) if (member) {
             auto wrapper = leaves.value(member); if (!wrapper) continue;
             const bool visible = !member->hiddenByUser();
             for (auto tabs : host->findChildren<QTabWidget *>()) for (int i = 0; i < tabs->count(); ++i)
-                if (tabs->widget(i) == wrapper) { tabs->setTabVisible(i, visible); if (visible && select == member) tabs->setCurrentIndex(i); }
+                if (tabs->widget(i) == wrapper) visibility.tabVisibility(tabs, wrapper, visible, select == member);
             if (!wrapper->parentWidget() || !qobject_cast<QStackedWidget *>(wrapper->parentWidget())) wrapper->setVisible(visible);
             member->window()->setVisible(visible);
         }
-        for (auto splitter : splitters) {
-            const auto saved = splitter->property("unboundVisibleSizes").value<QList<int>>();
-            if (saved.size() == splitter->count()) splitter->setSizes(saved);
-        }
         if (host->layout()) host->layout()->activate();
+        if (root) visibility.restore(root);
         refresh();
     }
     void detachMember(MacPanelSession *member)
@@ -224,7 +218,9 @@ private:
         auto label = new QLabel(title, bar); label->setObjectName("unboundGroupHeader"); label->setProperty("groupPanel", name);
         label->setProperty("groupMember", members.size()); label->setToolTip("Drag to detach this panel"); label->installEventFilter(this);
         auto detach = new QPushButton(QStringLiteral("Detach"), bar); detach->setObjectName(QStringLiteral("unboundDetachPanel"));
-        row->addWidget(label, 1); row->addWidget(detach);
+        auto hide = new QPushButton(QStringLiteral("Hide"), bar); hide->setObjectName("unboundHidePanel");
+        hide->setToolTip("Hide this panel; reopen it from Workspace > Show Panel in Workspace");
+        row->addWidget(label, 1); row->addWidget(hide); row->addWidget(detach);
         auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
         layout->addWidget(bar); layout->addWidget(content, 1);
         const auto error = member->attachToGroup(content); if (!error.isEmpty()) { delete wrapper; return error; }
@@ -238,6 +234,10 @@ private:
         for (auto button : wrapper->findChildren<QPushButton *>("unboundDetachPanel")) {
             QObject::disconnect(button, nullptr, this, nullptr);
             connect(button, &QPushButton::clicked, this, [this, member] { detachMember(member); });
+        }
+        for (auto button : wrapper->findChildren<QPushButton *>("unboundHidePanel")) {
+            QObject::disconnect(button, nullptr, nullptr, nullptr);
+            connect(button, &QPushButton::clicked, this, [this, member] { member->setHiddenByUser(true); syncVisibility(); });
         }
         connect(member->window(), &QObject::destroyed, this, [this] { if (!releasing && !rebuilding) dissolve(); });
     }
@@ -293,6 +293,7 @@ private:
     void rebuild(const QJsonObject &tree)
     {
         QScopedValueRollback<bool> guard(rebuilding, true);
+        visibility.reset();
         for (auto member : members) if (member) leaves.value(member)->setParent(host);
         if (root) { host->layout()->removeWidget(root); root->hide(); root->deleteLater(); }
         root = buildTree(tree);
@@ -333,6 +334,7 @@ private:
         session->setFloatingGeometry(QRect(frame.topLeft() + window->geometry().topLeft() - window->frameGeometry().topLeft(),
             frame.size() - (window->frameGeometry().size() - window->size())));
     }
+    GroupVisibility visibility;
     QPointer<MacFloatingHost> host;
     QPointer<QWidget> root, page;
     QList<QPointer<MacPanelSession>> members;

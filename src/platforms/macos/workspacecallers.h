@@ -10,7 +10,7 @@ namespace Unbound {
 class WorkspaceCallers : public QObject
 {
 public:
-    struct Command { QString id, label; std::function<bool()> visible; std::function<void()> toggle; };
+    struct Command { QString id, label; std::function<bool()> visible; std::function<void()> toggle; std::function<bool()> managed = {}; };
     explicit WorkspaceCallers(QObject *owner) : QObject(owner) {}
     void add(Command command) { commands.append(std::move(command)); }
     void wire()
@@ -24,17 +24,25 @@ private:
         for (int i = 0; i < commands.size(); ++i) {
             const auto &command = commands[i]; QAction *entry = nullptr;
             for (auto action : menu->actions()) if (action->objectName() == command.id) entry = action;
+            if (!entry) for (auto action : menu->actions()) {
+                QString text = action->text(); text.remove('&');
+                if (text.trimmed() == command.label) { entry = action; break; }
+            }
             if (!entry) {
                 entry = menu->addAction(command.label); entry->setObjectName(command.id); entry->setCheckable(true);
+            }
+            const QString wiring = command.id + QStringLiteral("_wired");
+            if (!entry->property(wiring.toUtf8().constData()).toBool()) {
+                entry->setProperty(wiring.toUtf8().constData(), true);
                 if (!menu->property("unboundCallersWired").toBool()) {
                     menu->setProperty("unboundCallersWired", true);
                     connect(menu, &QMenu::aboutToShow, this, [this, menu] { refresh(menu); });
                 }
                 connect(entry, &QAction::triggered, this, [this, i] {
-                    QTimer::singleShot(0, this, [this, i] { commands[i].toggle(); });
+                    if (!commands[i].managed || commands[i].managed()) commands[i].toggle();
                 });
             }
-            entry->setChecked(command.visible());
+            if (!command.managed || command.managed()) entry->setChecked(command.visible());
         }
     }
     QList<Command> commands;

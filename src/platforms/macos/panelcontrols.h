@@ -264,9 +264,12 @@ public:
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
         callers = new Unbound::WorkspaceCallers(this);
-        for (int index : {1,2,3}) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
+        for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
             [this, index] { return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
-            [this, index] { if (panels[index].session->active()) togglePanelDoor(index); else requestUndock(index); }});
+            [this, index] {
+                if (panels[index].session->active()) queuePanelDoor(index);
+                else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
+            }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->add({"unboundShowNativeWorkspace", "Show Native Workspace",
             [this] { return !background->isChecked(); }, [this] { background->setChecked(!background->isChecked()); }});
         callers->wire();
@@ -366,6 +369,12 @@ private:
         syncNativeToggle(i);
         Unbound::logEvent(QStringLiteral("panel.visibility.native-toggle"), {{"panel", panels[i].name}, {"visible", reveal}});
     }
+    void queuePanelDoor(int i)
+    {
+        if (!panels[i].session->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
+        pendingNativeDoors.insert(i);
+        QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
+    }
     void syncNativeToggle(int i)
     {
         if (!panels[i].session->active()) return;
@@ -385,12 +394,7 @@ private:
                 if (!button->objectName().startsWith(base + "In") || observedToggles.contains(button)) continue;
                 observedToggles.insert(button);
                 connect(button, &QObject::destroyed, this, [this, button] { observedToggles.remove(button); });
-                const auto request = [this, i] {
-                    if (!panels[i].session->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
-                    pendingNativeDoors.insert(i);
-                    // Clicks and native shortcut-driven check changes share one queued transition.
-                    QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
-                };
+                const auto request = [this, i] { queuePanelDoor(i); };
                 connect(button, &QAbstractButton::clicked, this, request);
                 connect(button, &QAbstractButton::toggled, this, [this, i, request](bool checked) {
                     if (checked != !panels[i].session->hiddenByUser()) request();

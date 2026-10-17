@@ -12,6 +12,7 @@
 #include "viewerpreparation.h"
 #include "tabtearoff.h"
 #include "workspacecallers.h"
+#include "groupvisibility.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -37,6 +38,27 @@ int main(int argc, char **argv)
     Unbound::ControlScroll candidate(nullptr); const auto after = exercise(candidate, true);
     check(before > 0, "reproduce Qt focus-transfer horizontal scroll jump");
     check(after == 0, "row-update guard prevents the reproduced scroll jump");
+    QWidget doorRoot; doorRoot.setAttribute(Qt::WA_DontShowOnScreen); doorRoot.resize(800,400);
+    auto doorLayout = new QVBoxLayout(&doorRoot);
+    auto split = new QSplitter(Qt::Horizontal, &doorRoot); doorLayout->addWidget(split);
+    auto neighbor = new QWidget(split); auto door = new QWidget(split);
+    split->addWidget(neighbor); split->addWidget(door); doorRoot.show(); QApplication::processEvents();
+    split->setSizes({500,250}); const auto openSizes = split->sizes();
+    Unbound::GroupVisibility doors;
+    for (int cycle = 0; cycle < 20; ++cycle) {
+        doors.remember(&doorRoot); door->hide(); doorLayout->activate(); doors.restore(&doorRoot);
+        const auto closedSizes = split->sizes();
+        doors.remember(&doorRoot); door->show(); doorLayout->activate(); doors.restore(&doorRoot);
+        check(split->sizes() == openSizes && closedSizes[1] == 0, "repeated door cycles restore exact open sizes without divider drift");
+    }
+    QTabWidget doorTabs; doorTabs.setAttribute(Qt::WA_DontShowOnScreen);
+    auto sourceTab = new QWidget; auto otherTab = new QWidget; auto inspectorTab = new QWidget;
+    doorTabs.addTab(sourceTab,"Source"); doorTabs.addTab(otherTab,"Other"); doorTabs.addTab(inspectorTab,"Inspector");
+    doorTabs.setCurrentWidget(sourceTab);
+    doors.tabVisibility(&doorTabs, inspectorTab, true, true);
+    doors.tabVisibility(&doorTabs, inspectorTab, false, false);
+    check(doorTabs.currentWidget() == sourceTab, "closing a called Inspector tab returns to the previously selected Source tab");
+    doorRoot.hide();
     QMenu nativeMenu; nativeMenu.setObjectName("workspaceShowPanel"); nativeMenu.setAttribute(Qt::WA_DontShowOnScreen);
     bool calledVisible = false;
     Unbound::WorkspaceCallers callers(nullptr);
@@ -50,6 +72,14 @@ int main(int argc, char **argv)
     callers.wire(); int callerCount = 0;
     for (auto action : nativeMenu.actions()) callerCount += action->objectName() == "testSourceCaller";
     check(callerCount == 1, "repeated menu discovery does not duplicate callers");
+    auto nativeInspector = nativeMenu.addAction("Inspector"); nativeInspector->setCheckable(true);
+    nativeInspector->setShortcut(QKeySequence(Qt::Key_Q)); int inspectorCalls = 0;
+    callers.add({"testInspectorCaller", "Inspector", [] { return true; }, [&] { ++inspectorCalls; }, [] { return true; }});
+    callers.wire(); callers.wire(); nativeInspector->trigger();
+    int inspectorEntries = 0;
+    for (auto action : nativeMenu.actions()) inspectorEntries += action->text() == "Inspector";
+    check(inspectorEntries == 1 && inspectorCalls == 1 && nativeInspector->shortcut() == QKeySequence(Qt::Key_Q),
+        "existing native menu action is reused once without replacing its shortcut");
     QTabWidget tabs; tabs.setAttribute(Qt::WA_DontShowOnScreen); tabs.resize(400,200);
     auto firstTab = new QWidget; auto secondTab = new QWidget;
     tabs.addTab(firstTab, "Inspector"); tabs.addTab(secondTab, "Media Pool"); tabs.show(); QApplication::processEvents();
