@@ -59,3 +59,15 @@ bootstrap handshake fixture PASS. Matching binary/dSYM UUID:
 All three full GUI suites compile in compile-only mode; no displayed GUI suite
 was run during the user's open Resolve session. Hidden background fixture and
 no-GUI geometry suite passed. Installed helper remains 21466f2.
+
+## Full GUI verification after Resolve closed
+
+All three displayed GUI suites PASS: session/persistence/input/viewport, nested
+groups/tabs/visibility/restore, and reliability/focus/shortcut diagnostics. The
+session suite includes scroll-position preservation in the small controls window,
+matched native traffic-light pin geometry/toggle and hidden-titlebar fallback,
+and deliberate hover revealing the docking compass. Its covering-window fixture
+now allows 80 ms for WindowServer to commit the foreground cover before sampling
+native order. The initial immediate sample failed; the committed-order run passed.
+These fixtures still do not establish physical native-titlebar drag behavior or
+live Resolve acceptance, and Cinema Viewer is not yet claimed fixed.

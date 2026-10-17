@@ -421,7 +421,7 @@ int main(int argc, char **argv)
         QWidget covering;
         covering.setWindowFlag(Qt::WindowStaysOnTopHint, true);
         covering.setObjectName("diagnosticCoveringWindow"); covering.setAttribute(Qt::WA_ShowWithoutActivating);
-        covering.setGeometry(QRect(dockPointer - QPoint(30, 30), QSize(60, 60))); covering.show(); covering.raise(); settle();
+        covering.setGeometry(QRect(dockPointer - QPoint(30, 30), QSize(60, 60))); covering.show(); covering.raise(); settleFor(80);
         QApplication::sendEvent(draggedSource, &move);
         check((!dockTarget || !dockTarget->isVisible()) && (!attachmentPreview || !attachmentPreview->isVisible()), "covering non-dockable window blocks targets on panels behind it");
         covering.hide(); QApplication::sendEvent(draggedSource, &move);
