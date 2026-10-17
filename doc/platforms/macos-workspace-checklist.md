@@ -489,3 +489,18 @@ this installation adds Cinema Viewer diagnostics, not a confirmed cinema fix.
 
 See [implementation checkpoint and pending acceptance gates](macos-docking-interaction-research.md).
 Regional drop policy is connected in source, with separated destination resolution and candidate native viewer lifecycle. Layout/session/group/reliability/hidden-control fixtures passed. This is an uninstalled candidate, not live Resolve verification. Footer/submenu integration, subtree tear-off UI and shared command state remain open. Preserve macos-docking-compass-and-controls as rollback.
+
+
+### User-confirmed baseline — 6bd0e36
+
+Local annotated tag: `macos-solid-docking-2026-10-17`. Installed helper and symbols archived under ignored `build/macos/checkpoints/6bd0e36/`, with installed hashes in receipt.json. User reports mostly progressions; preserve this exact executable as rollback. This does not close outstanding acceptance items.
+
+Next-pass requirements from live feedback:
+- Backtick expansion must temporarily bring the expanded panel above other Unbound panels/groups, then restore its placement, group and prior stacking policy on the second press. Keep Cinema Viewer separate.
+- Profile drag latency before optimizing; preserve improved split placement.
+- Drag a tab out in one continuous gesture, then redock or leave floating.
+- Reliable horizontal/vertical split dividers; reproduce Inspector above Source in the left column with Media Pool spanning the right.
+- Clear tab placement previews and discoverable grouping.
+- Native Workspace submenu callers for panels and footer; hide the native backdrop by intent with explicit Show Native Workspace recall.
+- Source callable without manually detaching through native UI.
+- Footer controls/submenu need live discovery and usability verification; user cannot find a dependable path.
