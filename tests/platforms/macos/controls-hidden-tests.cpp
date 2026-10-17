@@ -11,6 +11,7 @@
 #include "floatinghost.h"
 #include "viewerpreparation.h"
 #include "tabtearoff.h"
+#include "workspacecallers.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -36,6 +37,19 @@ int main(int argc, char **argv)
     Unbound::ControlScroll candidate(nullptr); const auto after = exercise(candidate, true);
     check(before > 0, "reproduce Qt focus-transfer horizontal scroll jump");
     check(after == 0, "row-update guard prevents the reproduced scroll jump");
+    QMenu nativeMenu; nativeMenu.setObjectName("workspaceShowPanel"); nativeMenu.setAttribute(Qt::WA_DontShowOnScreen);
+    bool calledVisible = false;
+    Unbound::WorkspaceCallers callers(nullptr);
+    callers.add({"testSourceCaller", "Source Monitor", [&] { return calledVisible; }, [&] { calledVisible = !calledVisible; }});
+    callers.wire();
+    auto caller = nativeMenu.findChild<QAction *>("testSourceCaller");
+    check(caller && !caller->isChecked() && !nativeMenu.isVisible(),
+        "workspace caller exists before any QWidget menu Show event");
+    if (caller) caller->trigger(); QApplication::processEvents(); callers.wire();
+    check(calledVisible && caller && caller->isChecked(), "native menu caller shares command visibility state");
+    callers.wire(); int callerCount = 0;
+    for (auto action : nativeMenu.actions()) callerCount += action->objectName() == "testSourceCaller";
+    check(callerCount == 1, "repeated menu discovery does not duplicate callers");
     QTabWidget tabs; tabs.setAttribute(Qt::WA_DontShowOnScreen); tabs.resize(400,200);
     auto firstTab = new QWidget; auto secondTab = new QWidget;
     tabs.addTab(firstTab, "Inspector"); tabs.addTab(secondTab, "Media Pool"); tabs.show(); QApplication::processEvents();

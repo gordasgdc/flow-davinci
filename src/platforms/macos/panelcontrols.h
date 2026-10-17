@@ -26,6 +26,7 @@
 #include "viewerpreparation.h"
 #include "footerpanel.h"
 #include "panelexpansion.h"
+#include "workspacecallers.h"
 #include <QGroupBox>
 
 class PanelControls : public QWidget
@@ -262,6 +263,13 @@ public:
             return nullptr;
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
+        callers = new Unbound::WorkspaceCallers(this);
+        for (int index : {1,2,3}) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
+            [this, index] { return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
+            [this, index] { if (panels[index].session->active()) togglePanelDoor(index); else requestUndock(index); }});
+        callers->add({"unboundShowNativeWorkspace", "Show Native Workspace",
+            [this] { return !background->isChecked(); }, [this] { background->setChecked(!background->isChecked()); }});
+        callers->wire();
         auto footerRow = new QHBoxLayout;
         auto floatFooter = new QPushButton(QStringLiteral("Float Page Navigation"), body);
         floatFooter->setObjectName("floatPageNavigation"); footerRow->addWidget(floatFooter);
@@ -757,6 +765,7 @@ private:
     void restore()
     {
         if (footer) footer->restore();
+        if (callers) callers->wire();
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
         for (int i = 0; i < panels.size(); ++i)
@@ -827,6 +836,7 @@ private:
     QComboBox *presets = nullptr;
     QLabel *presetState = nullptr;
     Unbound::PanelExpansion expansion;
+    Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;
     bool quitting = false;

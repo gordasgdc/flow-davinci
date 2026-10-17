@@ -12,6 +12,7 @@ public:
         : QObject(owner), root(std::move(mainWindow)), state(std::move(saved)), session(this)
     {
         qApp->installEventFilter(this);
+        QTimer::singleShot(0, this, [this] { wireMenu(); });
         session.changed = [this] { if (changed) changed(); };
         session.arrangementChanged = [this] { if (changed) changed(); };
     }
@@ -42,6 +43,7 @@ public:
     }
     void restore()
     {
+        wireMenu();
         if (!state["floating"].toBool() || session.active()) return;
         const bool hidden = state["hidden"].toBool();
         if (floatPanel().isEmpty()) session.setHiddenByUser(hidden);
@@ -56,16 +58,27 @@ public:
         }
         return value;
     }
+    void wireMenu()
+    {
+        for (auto widget : QApplication::allWidgets()) if (auto menu = qobject_cast<QMenu *>(widget))
+            if (menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
+    }
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         auto menu = qobject_cast<QMenu *>(object);
-        if (!menu || event->type() != QEvent::Show || menu->objectName() != QLatin1String("workspaceShowPanel")) return false;
+        if (menu && event->type() == QEvent::Show && menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
+        return false;
+    }
+private:
+    void refreshMenu(QMenu *menu)
+    {
         QAction *entry = nullptr;
         for (auto action : menu->actions()) if (action->objectName() == QLatin1String("unboundPageNavigation")) entry = action;
         if (!entry) {
             entry = menu->addAction(QStringLiteral("Page Navigation (Footer)"));
             entry->setObjectName(QStringLiteral("unboundPageNavigation")); entry->setCheckable(true);
+            connect(menu, &QMenu::aboutToShow, this, [this, menu] { refreshMenu(menu); });
             connect(entry, &QAction::triggered, this, [this] {
                 QTimer::singleShot(0, this, [this] {
                     if (session.active()) session.setHiddenByUser(!session.hiddenByUser());
@@ -77,7 +90,6 @@ protected:
             });
         }
         entry->setChecked(session.active() && !session.hiddenByUser());
-        return false;
     }
 private:
     std::function<QWidget *()> root;
