@@ -10,13 +10,14 @@
 #include <QTimer>
 #include "diagnostics.h"
 #include "nativevieweractions.h"
+#include "vieweractionregistry.h"
 namespace Unbound {
 // Follow the native command identity and retain its user-assigned shortcut.
 class ViewerModeCommand : public QObject
 {
 public:
     ViewerModeCommand(QObject *owner, std::function<bool()> managed, std::function<void(bool)> apply)
-        : QObject(owner), managed(std::move(managed)), apply(std::move(apply)) {}
+        : QObject(owner), managed(std::move(managed)), apply(std::move(apply)), registry(this) {}
     ~ViewerModeCommand() override
     {
         for (auto action : priorEnabled.keys()) action->setEnabled(priorEnabled.value(action));
@@ -24,7 +25,7 @@ public:
     void refresh(QWidget *main)
     {
         if (!main) return;
-        for (auto action : nativeViewerModeActions(main)) {
+        for (auto action : registry.actions(main)) {
             if (!discovered.contains(action)) {
                 discovered.insert(action);
                 connect(action, &QObject::destroyed, this, [this, action] { discovered.remove(action); });
@@ -55,6 +56,7 @@ public:
 private:
     std::function<bool()> managed;
     std::function<void(bool)> apply;
+    ViewerActionRegistry registry;
     QSet<QAction *> observed;
     QSet<QAction *> discovered;
     QHash<QAction *, bool> priorEnabled;

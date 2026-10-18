@@ -6,6 +6,7 @@
 #include "nativepaneldecoration.h"
 #include "arrangementcontrols.h"
 #include "pagecontext.h"
+#include "vieweractionregistry.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -16,6 +17,19 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_DIAGNOSTICS_DIR", temporary.path().toUtf8());
     int failures = 0;
     const auto check = [&](bool pass,const char *message) { if (!pass) { ++failures; std::fprintf(stderr,"FAIL: %s\n",message); } };
+    {
+        QWidget main; QObject owner; QMenu menu;
+        Unbound::ViewerActionRegistry registry(&owner);
+        check(registry.actions(&main).isEmpty(), "viewer registry starts without invented commands");
+        auto action = new QAction("Single Viewer Mode", &menu); menu.addAction(action);
+        check(registry.actions(&main) == QList<QAction *>{action}, "late native menu command invalidates discovery cache");
+        action->setShortcut(QKeySequence("Shift+W")); action->setChecked(true);
+        check(registry.actions(&main).first()->shortcut() == QKeySequence("Shift+W"), "cached command retains live shortcut identity");
+        menu.removeAction(action); delete action;
+        check(registry.actions(&main).isEmpty(), "destroyed native commands cannot leave stale pointers");
+        auto replacement = menu.addAction("Single Viewer Mode");
+        check(registry.actions(&main) == QList<QAction *>{replacement}, "rebuilt menu registers its replacement command");
+    }
     {
         QWidget main; main.setAttribute(Qt::WA_DontShowOnScreen);
         auto pages = new QStackedWidget(&main); (new QVBoxLayout(&main))->addWidget(pages);
