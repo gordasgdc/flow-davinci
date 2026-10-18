@@ -9,6 +9,7 @@
 #include "panelcontrols.h"
 #include "responsiveness.h"
 #include "activationbridge.h"
+#include "eventworkprobe.h"
 
 static void settle(int duration = 50)
 {
@@ -18,7 +19,7 @@ static void settle(int duration = 50)
 }
 int main(int argc,char **argv)
 {
-    QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
+    EventWorkApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
     QTemporaryDir files;
     qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());
     qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());
@@ -60,6 +61,7 @@ int main(int argc,char **argv)
     const auto measure = [&](const QString &name,int count,const std::function<void(int)> &operation,
                              const std::function<void(int)> &prepare = {}) {
         Unbound::LatencyStats timing, dispatch, deferred;
+        app.beginProbe();
         for (int i=0;i<count;++i) {
             if (prepare) prepare(i);
             QElapsedTimer turn; turn.start(); operation(i);
@@ -70,6 +72,7 @@ int main(int argc,char **argv)
             while (turn.elapsed() < 16) { QApplication::processEvents(); QThread::msleep(1); }
         }
         auto summary = timing.summary();
+        summary["event_work"] = app.endProbe();
         summary["dispatch"] = dispatch.summary(); summary["deferred_event_drain"] = deferred.summary();
         scenarios[name] = summary;
         std::printf("%s p95=%.3f ms max=%.3f ms dispatch_p95=%.3f ms deferred_p95=%.3f ms\n",qPrintable(name),

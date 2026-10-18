@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <QApplication>
+#include <QElapsedTimer>
+#include <QHash>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <algorithm>
+
+// Fixture-only attribution. Measure outer event deliveries so nested signals and
+// sendEvent calls are not counted twice. No per-event logging or disk I/O.
+class EventWorkApplication : public QApplication {
+public:
+    using QApplication::QApplication;
+    void beginProbe() { records.clear(); probing=true; }
+    QJsonArray endProbe() {
+        probing=false;
+        QList<QString> keys=records.keys();
+        std::sort(keys.begin(),keys.end(),[this](const QString &a,const QString &b) { return records[a].total>records[b].total; });
+        QJsonArray result;
+        for (const auto &key : keys.mid(0,12)) {
+            const auto record=records.value(key);
+            result.append(QJsonObject{{"receiver_class_and_event",key},{"count",double(record.count)},
+                {"total_ms",record.total/1000000.0},{"max_ms",record.maximum/1000000.0}});
+        }
+        return result;
+    }
+    bool notify(QObject *receiver,QEvent *event) override {
+        const bool sample=probing && depth==0;
+        const QString key=sample ? QString::fromLatin1(receiver->metaObject()->className())+":"+QString::number(int(event->type())) : QString();
+        QElapsedTimer clock; if (sample) clock.start();
+        ++depth;
+        const bool result=QApplication::notify(receiver,event);
+        --depth;
+        if (sample && records.size()<256) {
+            const auto elapsed=clock.nsecsElapsed(); auto &record=records[key];
+            ++record.count; record.total+=elapsed; record.maximum=qMax(record.maximum,elapsed);
+        }
+        return result;
+    }
+private:
+    struct Record { quint64 count=0; qint64 total=0,maximum=0; };
+    QHash<QString,Record> records;
+    int depth=0;
+    bool probing=false;
+};
