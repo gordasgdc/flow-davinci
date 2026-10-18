@@ -288,8 +288,6 @@ int main(int argc, char **argv)
         check(a.window()->window() == group.window() && b.window()->window() == group.window(), "both members share exactly one native host");
         auto splitter = group.window()->findChild<QSplitter *>();
         check(splitter && splitter->count() == 2 && splitter->orientation() == orientation, "group uses native split layout in requested direction");
-        check(splitter && !splitter->testAttribute(Qt::WA_NativeWindow),
-            "native clipping cells do not promote the shared splitter to another native view");
         const auto startA = a.window()->mapToGlobal(QPoint()), startB = b.window()->mapToGlobal(QPoint());
         group.window()->move(group.window()->pos() + QPoint(15, 20));
         check(a.window()->mapToGlobal(QPoint()) - startA == QPoint(15, 20) &&

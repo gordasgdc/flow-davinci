@@ -266,9 +266,6 @@ private:
         auto wrapper = new QWidget(host); wrapper->setProperty("groupPanel", name);
         auto layout = new QVBoxLayout(wrapper); layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0);
         auto bar = new QWidget(wrapper); auto row = new QHBoxLayout(bar); row->setContentsMargins(6, 2, 4, 2);
-        // Qt promotes siblings of a native clipping cell. Keep that owned
-        // header from recursively promoting the splitter/container ancestors.
-        bar->setAttribute(Qt::WA_DontCreateNativeAncestors);
         auto label = new QLabel(title, bar); label->setObjectName("unboundGroupHeader"); label->setProperty("groupPanel", name);
         label->setMinimumWidth(0); label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         label->setProperty("groupMember", members.size()); label->setToolTip("Drag to detach this panel"); label->installEventFilter(this);
