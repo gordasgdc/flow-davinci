@@ -54,6 +54,7 @@ public:
             keyboard->setToolTip("Keyboard Customization"); keyboard->setAccessibleName(keyboard->toolTip());
             keyboard->setAutoRaise(true); keyboard->setFocusPolicy(Qt::NoFocus); keyboard->setFixedSize(24,24);
             layout->insertWidget(layout->indexOf(anchor),keyboard,0,Qt::AlignVCenter);
+            connect(button,&QObject::destroyed,keyboard,[keyboard] { delete keyboard; });
             connect(keyboard,&QToolButton::clicked,this,[] { openNativeKeyboardCustomization(); });
             connect(button,&QToolButton::clicked,this,[id,toggle] {
                 logEvent("panel.header.toggle",{{"panel",id},{"origin","native-header"}}); toggle();
