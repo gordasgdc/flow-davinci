@@ -13,7 +13,14 @@ inline QWidget *panelSurface(QWidget *page, const QString &name)
     if (!page) return nullptr;
     if (name != QLatin1String("unboundWorkspaceToolbar")) {
         auto result = page->findChild<QWidget *>(name);
-        return result ? result : page->window()->findChild<QWidget *>(name);
+        if (!result) result = page->window()->findChild<QWidget *>(name);
+        // The offline source stack can exist before Resolve constructs a loaded
+        // source player. It is itself the stable surface we detach, not a clip.
+        if (!result && name == QLatin1String("widgetEditSourcePlayer")) {
+            result = page->findChild<QStackedWidget *>("stackedEditSourceOfflinePlayers");
+            if (!result) result = page->window()->findChild<QStackedWidget *>("stackedEditSourceOfflinePlayers");
+        }
+        return result;
     }
     // Keep both native single/dual-screen toolbar modes together.
     auto mode = page->findChild<QWidget *>("pageSingleScreenModeTools");
