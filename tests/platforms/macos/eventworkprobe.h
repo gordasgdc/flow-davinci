@@ -13,6 +13,7 @@ class EventWorkApplication : public QApplication {
 public:
     using QApplication::QApplication;
     void beginProbe() { records.clear(); probing=true; }
+    void setProbeEnabled(bool enabled) { probing=enabled; }
     QJsonArray endProbe() {
         probing=false;
         QList<QString> keys=records.keys();
