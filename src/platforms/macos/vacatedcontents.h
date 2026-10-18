@@ -10,13 +10,16 @@ public:
     ~VacatedContents() { restore(); }
     void hide(QWidget *slot) {
         restore(); original=slot;
-        if (original) { wasHidden=original->isHidden(); original->hide(); }
+        if (original) {
+            wasHidden=original->isHidden(); minimum=original->minimumSize(); policy=original->sizePolicy();
+            original->setMinimumSize(0,0); original->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored); original->hide();
+        }
     }
     void restore() {
-        if (original) original->setHidden(wasHidden);
+        if (original) { original->setSizePolicy(policy); original->setMinimumSize(minimum); original->setHidden(wasHidden); }
         original=nullptr;
     }
 private:
-    QPointer<QWidget> original; bool wasHidden=false;
+    QPointer<QWidget> original; QSize minimum; QSizePolicy policy; bool wasHidden=false;
 };
 }
