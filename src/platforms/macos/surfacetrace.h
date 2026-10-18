@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <cmath>
 #include "diagnostics.h"
+#include "nativechrome.h"
 namespace Unbound {
 // Bounded pointer samples, separate from action logs. Never consumes input.
 class SurfaceTrace : public QObject {
@@ -40,6 +41,10 @@ protected:
         if (lastSample >= 0 && now > lastSample) {
             const auto delta = point-lastPoint;
             record["speed_logical_px_per_s"] = std::hypot(double(delta.x()),double(delta.y()))*1e9/double(now-lastSample);
+        }
+        if (mouse->timestamp()) {
+            const auto age = nativeInputAgeMilliseconds(mouse->timestamp());
+            if (age >= 0) record["native_age_ms"] = age;
         }
         lastSample = now; lastPoint = point;
         if (samples.size() >= 256) flush();
