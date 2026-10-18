@@ -8,7 +8,7 @@ root = pathlib.Path(__file__).resolve().parents[2]
 def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 features = []
-for branch in git('for-each-ref', '--format=%(refname:short)', 'refs/heads/feature/macos-', 'refs/heads/experiment/macos-').splitlines():
+for branch in git('for-each-ref', '--format=%(refname:short)', 'refs/heads/feature/macos-*', 'refs/heads/experiment/macos-*').splitlines():
     commit = git('rev-parse', branch)
     feature_commits = int(git('rev-list', '--count', '8828868..'+commit))
     included = feature_commits > 0 and subprocess.run(['git', '-C', str(root), 'merge-base', '--is-ancestor', commit, 'HEAD']).returncode == 0
