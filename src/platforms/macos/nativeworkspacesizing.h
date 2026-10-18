@@ -9,7 +9,7 @@
 #include "diagnostics.h"
 #include "cinemaviewer.h"
 namespace Unbound {
-// Scoped to a native page with detached panels. Never changes content constraints
+// Scoped to a native page with managed panels. Never changes content constraints
 // or floating group sizes, and never raises/activates the native window.
 class NativeWorkspaceSizing : public QObject {
 public:
@@ -20,31 +20,31 @@ public:
     ~NativeWorkspaceSizing() override { restore(); }
     std::function<bool()> blocked = [] { return false; };
     void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids) {
-        if (window==main && nativePage==page && ids==detached) { if (!captured && !ids.isEmpty()) settle.start(0); return; }
+        if (window==main && nativePage==page && ids==managedPanels) { if (!captured && !ids.isEmpty()) settle.start(0); return; }
         if (window!=main || nativePage!=page) {
             restore(); main=window; page=nativePage;
             if (main) originalGeometry=main->geometry();
             if (page) page->installEventFilter(this);
         }
-        detached=ids;
-        if (detached.isEmpty()) { restore(); return; }
+        managedPanels=ids;
+        if (managedPanels.isEmpty()) { restore(); return; }
         settle.start(0);
     }
     void restore() {
         settle.stop(); restoreConstraints(true);
         if (page) page->removeEventFilter(this);
-        page=nullptr; main=nullptr; detached.clear();
+        page=nullptr; main=nullptr; managedPanels.clear();
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
         if (object!=page) return false;
         if (event->type()==QEvent::Hide) { settle.stop(); restoreConstraints(false); }
-        if (event->type()==QEvent::Show && !detached.isEmpty()) settle.start(0);
+        if (event->type()==QEvent::Show && !managedPanels.isEmpty()) settle.start(0);
         return false;
     }
 private:
     void apply() {
-        if ((blocked && blocked()) || !main || !page || !page->isVisible() || detached.isEmpty() || visibleCinemaViewer() ||
+        if ((blocked && blocked()) || !main || !page || !page->isVisible() || managedPanels.isEmpty() || visibleCinemaViewer() ||
             QApplication::activeModalWidget() || QApplication::activePopupWidget()) return;
         auto layout=main->layout(); if (!layout) return;
         if (!captured) {
@@ -66,7 +66,7 @@ private:
             main->resize(before.size().boundedTo(preferred).expandedTo(required));
             lastAutomaticGeometry=main->geometry(); automaticGeometry=true;
         }
-        logEvent("workspace.native-sizing.applied",{{"detached_count",detached.size()},
+        logEvent("workspace.native-sizing.applied",{{"managed_panel_count",managedPanels.size()},
             {"minimum_width",required.width()},{"minimum_height",required.height()},
             {"width_before",before.width()},{"height_before",before.height()},
             {"width_after",main->width()},{"height_after",main->height()},
@@ -86,7 +86,7 @@ private:
         captured=false; automaticGeometry=false; originalLayout=nullptr;
     }
     QPointer<QWidget> main,page; QPointer<QLayout> originalLayout;
-    QSet<QString> detached; QTimer settle; QSize originalMinimum;
+    QSet<QString> managedPanels; QTimer settle; QSize originalMinimum;
     QRect originalGeometry,lastAutomaticGeometry;
     QLayout::SizeConstraint originalConstraint=QLayout::SetDefaultConstraint;
     bool captured=false,automaticGeometry=false;

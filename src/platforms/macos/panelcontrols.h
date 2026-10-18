@@ -835,9 +835,9 @@ private:
     void updateNativeSizing()
     {
         if (quitting || expanded>=0 || !nativeSizing) return;
-        QSet<QString> detached;
-        for (const auto &panel : panels) if (panel.session->active()) detached.insert(panel.name);
-        if (auto root=page()) nativeSizing->setPanels(root->window(),root,detached);
+        QSet<QString> managed;
+        for (const auto &panel : panels) if (panel.session->active()) managed.insert(panel.name);
+        if (auto root=page()) nativeSizing->setPanels(root->window(),root,managed);
     }
     void shutdown()
     {
