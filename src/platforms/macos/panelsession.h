@@ -15,6 +15,7 @@
 #include "viewport.h"
 #include "floatinghost.h"
 #include "panelwidth.h"
+#include "vacatedcontents.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
 
@@ -177,6 +178,7 @@ public:
         marker->setAlignment(Qt::AlignCenter);
         placeholder = marker;
         placeholderLayout->addWidget(marker);
+        vacatedContents.hide(slot);
         host->installEventFilter(this);
         page->installEventFilter(this);
         parentDestroyed = connect(slot, &QObject::destroyed, this, [this] {
@@ -314,6 +316,7 @@ public:
             if (originalParent->layout() != originalLayout)
                 return QStringLiteral("Could not restore this panel's content layout.");
             originalLayout->activate();
+            vacatedContents.restore();
             disconnect(parentDestroyed);
             if (originalPage) originalPage->removeEventFilter(this);
             auto oldHost = host.data();
@@ -458,7 +461,7 @@ private:
     void clear()
     {
         if (releaseGroup) { auto release = releaseGroup; release(); }
-        groupWidth.restore(); widthAllowance.restore(); relaxedWidth = false;
+        groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         ++generation;
         if (content) content->removeEventFilter(this);
         host = nullptr; content = nullptr; placeholder = nullptr;
@@ -476,6 +479,7 @@ private:
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
     PanelWidthAllowance widthAllowance, groupWidth;
+    VacatedContents vacatedContents;
     bool relaxedWidth = false;
     QPointer<QWidget> originalMain;
     QPointer<QLayout> originalLayout;

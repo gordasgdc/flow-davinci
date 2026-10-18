@@ -9,6 +9,7 @@
 #include <cstdio>
 #include "panelsession.h"
 #include "panelcontrols.h"
+#include "nativeworkspacesizing.h"
 #include "controlservice.h"
 
 static int failures = 0;
@@ -36,6 +37,19 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
     const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
     qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
+    {
+        QWidget main; main.setMinimumSize(1000,700); main.resize(1200,800);
+        auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
+        auto contents=new QHBoxLayout(page); auto remaining=new QWidget(page); remaining->setMinimumSize(200,100); contents->addWidget(remaining);
+        main.show(); settle(); const auto baseline=main.geometry(); const auto minimum=main.minimumSize(); const auto constraint=outer->sizeConstraint();
+        Unbound::NativeWorkspaceSizing sizing(nullptr); sizing.setPanels(&main,page,{"detached"}); settle();
+        check(main.minimumWidth()<minimum.width() && main.width()<baseline.width(),"native window can shrink below its old explicit minimum around remaining content");
+        check(remaining->minimumSize()==QSize(200,100),"native outer sizing never relaxes remaining content constraints");
+        sizing.restore(); settle();
+        check(main.minimumSize()==minimum && outer->sizeConstraint()==constraint && main.geometry()==baseline,"native sizing restores exact captured constraints and automatic geometry");
+        sizing.setPanels(&main,page,{"detached"}); settle(); main.move(main.pos()+QPoint(20,15)); const auto moved=main.pos();
+        sizing.restore(); settle(); check(main.pos()==moved,"native restore preserves deliberate user movement after automatic sizing");
+    }
     {
         QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
         auto page = new QWidget(&main); outer->addWidget(page); auto row = new QHBoxLayout(page);
@@ -553,6 +567,7 @@ int main(int argc, char **argv)
             session.setChrome(chrome);
             check(session.undockContents(slot, &page, "Index").isEmpty(), "multipart sidebar detaches");
             auto host = session.window(); settle();
+            check(slot->isHidden(), "transferred content leaves a hidden native container rather than a duplicate blank surface");
             check(slot->parentWidget() == &page && header->parentWidget() == host && content->parentWidget() == host,
                 "native slot stays while all panel parts move together");
             const int flags = Unbound::nativeChromeFlags(host);

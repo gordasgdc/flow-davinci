@@ -20,6 +20,7 @@
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
 #include "panelmenus.h"
+#include "nativeworkspacesizing.h"
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
@@ -92,6 +93,7 @@ public:
         });
         hierarchy = new Unbound::WindowHierarchy(this);
         groupReserve = new Unbound::GroupHostReserve(this);
+        nativeSizing = new Unbound::NativeWorkspaceSizing(this);
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
         hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
@@ -243,7 +245,7 @@ public:
                 if (auto group = groupFor(i)) group->syncVisibility();
                 syncNativeToggle(i);
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
-                updateRow(i); if (!quitting) saveTimer.start();
+                updateRow(i); updateNativeSizing(); if (!quitting) saveTimer.start();
             };
             panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
@@ -805,11 +807,19 @@ private:
         Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success}});
         updatePresetState();
     }
+    void updateNativeSizing()
+    {
+        if (quitting || !nativeSizing) return;
+        QSet<QString> detached;
+        for (const auto &panel : panels) if (panel.session->active()) detached.insert(panel.name);
+        if (auto root=page()) nativeSizing->setPanels(root->window(),root,detached);
+    }
     void shutdown()
     {
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
         groupReserve->clear();
+        if (nativeSizing) nativeSizing->restore();
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
@@ -822,6 +832,7 @@ private:
     QCheckBox *hierarchyOption = nullptr;
     Unbound::WindowHierarchy *hierarchy = nullptr;
     Unbound::GroupHostReserve *groupReserve = nullptr;
+    Unbound::NativeWorkspaceSizing *nativeSizing = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
     QSet<QAbstractButton *> observedToggles;
