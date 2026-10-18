@@ -78,9 +78,10 @@ private:
             const bool unchanged=automaticGeometry && main->geometry()==lastAutomaticGeometry;
             if (originalLayout && main->layout()==originalLayout) originalLayout->setSizeConstraint(originalConstraint);
             main->setMinimumSize(originalMinimum);
-            if (geometry && unchanged && !main->isMaximized() && !main->isFullScreen()) main->setGeometry(originalGeometry);
+            const bool restoredGeometry=geometry && unchanged && !main->isMaximized() && !main->isFullScreen();
+            if (restoredGeometry) main->setGeometry(originalGeometry);
             logEvent("workspace.native-sizing.restored",{{"minimum_width",main->minimumWidth()},
-                {"minimum_height",main->minimumHeight()},{"geometry_restored",geometry && unchanged}});
+                {"minimum_height",main->minimumHeight()},{"geometry_restored",restoredGeometry}});
         }
         captured=false; automaticGeometry=false; originalLayout=nullptr;
     }
