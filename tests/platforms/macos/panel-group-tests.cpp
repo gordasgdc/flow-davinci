@@ -44,6 +44,9 @@ int main(int argc, char **argv)
         check(viewport && viewport->horizontalScrollBar()->maximum()>0 && session.window()->width()==300,
             "narrow Inspector scrolls instead of enlarging its floating host or clipping controls");
         check(inspector->minimumWidth()==700,"overflow does not relax native Inspector control constraints");
+        inspector->setParent(page); layout->addWidget(inspector); inspector->show(); settle(); settle();
+        check(viewport && viewport->widget()==inspector && inspector->parentWidget()==viewport->viewport(),
+            "native content reclamation recovers into the retained overflow viewport without duplicating the panel");
         if (viewport) viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->maximum());
         Unbound::activateNativeWindowForTest(session.window()); settle();
         check(QApplication::widgetAt(right->mapToGlobal(right->rect().center()))==right,
