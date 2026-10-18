@@ -179,6 +179,12 @@ public:
     void syncVisibility(MacPanelSession *select = nullptr)
     {
         if (!host || rebuilding || releasing || syncingVisibility) return;
+        bool transition = visibilityState.size() != members.size();
+        for (auto member : members) if (member &&
+            (!visibilityState.contains(member) || visibilityState.value(member) != member->hiddenByUser())) transition = true;
+        // The session notification and command completion can report the same
+        // transition. Do not resize/repaint the whole tree twice for one door.
+        if (!transition && (!select || selected(select))) { refresh(); return; }
         UiWorkTiming timing("group.visibility",host);
         QScopedValueRollback<bool> guard(syncingVisibility, true);
         if (root) visibility.remember(root);
@@ -192,6 +198,8 @@ public:
         }
         if (host->layout()) host->layout()->activate();
         if (root) visibility.restore(root);
+        visibilityState.clear();
+        for (auto member : members) if (member) visibilityState[member] = member->hiddenByUser();
         refresh();
     }
     void detachMember(MacPanelSession *member)
@@ -341,6 +349,7 @@ private:
         UiWorkTiming timing("group.rebuild",host);
         QScopedValueRollback<bool> guard(rebuilding, true);
         visibility.reset();
+        visibilityState.clear();
         for (auto member : members) if (member) leaves.value(member)->setParent(host);
         if (root) { host->layout()->removeWidget(root); root->hide(); root->deleteLater(); }
         root = buildTree(tree);
@@ -407,6 +416,7 @@ private:
             frame.size() - (window->frameGeometry().size() - window->size())));
     }
     GroupVisibility visibility;
+    QHash<MacPanelSession *,bool> visibilityState;
     HiddenPanelCallers *hiddenCallers = nullptr;
     QPointer<GroupHostReserve> reserve;
     QPointer<MacFloatingHost> host;
