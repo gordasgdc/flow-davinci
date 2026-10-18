@@ -582,11 +582,21 @@ int main(int argc, char **argv)
         check(layout->itemAt(0)->widget() == content && content->parentWidget() == &page, "session destruction restores content");
     }
     {
+        qputenv("UNBOUND_WORKSPACE_FILE",(logs.path()+"/fresh-start.json").toUtf8());
+        QFile stale(logs.path()+"/show-controls.request");
+        check(stale.open(QIODevice::WriteOnly),"stale launch fixture opens"); stale.write("old-session"); stale.flush();
+        check(stale.setFileTime(QDateTime::currentDateTimeUtc().addSecs(-60),QFileDevice::FileModificationTime),"stale launch fixture timestamp set"); stale.close();
+        const auto keyBeforeStartup=Unbound::nativeKeyWindowNumber();
         Unbound::ControlService service(&app);
+        check(Unbound::nativeKeyWindowNumber()==keyBeforeStartup,"background helper initialization does not change the native key window");
         PanelControls *controls = nullptr;
         for (auto window : QApplication::topLevelWidgets())
             if (window->objectName() == QLatin1String("unboundPanelTest")) controls = static_cast<PanelControls *>(window);
         check(controls != nullptr, "resident service creates controls");
+        check(controls && !controls->isVisible(),"fresh helper startup leaves the Panel Manager closed");
+        check(controls && !controls->findChild<QCheckBox *>("hideResolveBackground")->isChecked(),
+            "fresh installation retains the native workspace without requiring a background checkbox");
+        check(!QFile::exists(logs.path()+"/show-controls.request"),"startup consumes stale launch requests without reopening the manager");
         for (int i = 0; i < 2 && controls; ++i) {
             controls->hide();
             QSaveFile request(logs.path() + QStringLiteral("/show-controls.request"));
@@ -596,12 +606,28 @@ int main(int argc, char **argv)
             QElapsedTimer timer; timer.start();
             while (!controls->isVisible() && timer.elapsed() < 2500) { settle(); QThread::msleep(10); }
             check(controls->isVisible(), "relaunch request restores hidden controls");
+            check(!QFile::exists(logs.path()+"/show-controls.request"),"explicit manager launch requests are single-use");
             int count = 0;
             for (auto window : QApplication::topLevelWidgets())
                 if (window->objectName() == QLatin1String("unboundPanelTest")) ++count;
             check(count == 1, "relaunch reuses controls without duplicate sessions");
         }
     }
+    {
+        const auto path=logs.path()+"/startup-mode.json";
+        qputenv("UNBOUND_WORKSPACE_FILE",path.toUtf8());
+        const auto verifyStartupMode=[&](const QJsonObject &value,bool hidden) {
+            QSaveFile file(path); check(file.open(QIODevice::WriteOnly),"startup preference fixture opens");
+            file.write(QJsonDocument(value).toJson()); check(file.commit(),"startup preference fixture commits");
+            PanelControls controls;
+            check(controls.findChild<QCheckBox *>("hideResolveBackground")->isChecked()==hidden,
+                "explicit and legacy native-background preferences retain their intended value");
+        };
+        verifyStartupMode({{"hide_background",true}},true);
+        verifyStartupMode({{"native_workspace_mode","native"},{"hide_background",true}},false);
+        verifyStartupMode({{"native_workspace_mode","floating"},{"hide_background",false}},true);
+    }
+    qputenv("UNBOUND_WORKSPACE_FILE",(logs.path()+"/Workspace.json").toUtf8());
     settle();
     {
         using Unbound::fitToDisplays;

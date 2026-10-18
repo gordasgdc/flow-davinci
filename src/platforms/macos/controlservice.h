@@ -29,15 +29,7 @@ public:
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(directory);
         watcher.addPath(directory);
-        connect(&watcher, &QFileSystemWatcher::directoryChanged, this, [this] {
-            QFile request(directory + QStringLiteral("/show-controls.request"));
-            if (!request.open(QIODevice::ReadOnly)) return;
-            const QByteArray token = request.readAll();
-            if (token.isEmpty() || token == lastRequest) return;
-            lastRequest = token;
-            logEvent(QStringLiteral("controls.launch.request"), {{"request", QString::fromUtf8(token)}});
-            showControls();
-        });
+        connect(&watcher, &QFileSystemWatcher::directoryChanged, this, [this] { consumeLaunchRequest(false); });
         const QString logDirectory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(logDirectory);
@@ -63,7 +55,11 @@ public:
         connect(qApp, &QCoreApplication::aboutToQuit, this, [markerPath] {
             logEvent(QStringLiteral("helper.stop")); QFile::remove(markerPath);
         });
-        showControls();
+        // Initialize menus, native decorations and saved workspace restoration
+        // without putting a second UI in front of Resolve on every launch.
+        controls = new PanelControls;
+        logEvent("controls.ready",{{"visible",controls->isVisible()},{"startup","native-workspace"}});
+        consumeLaunchRequest(true);
     }
     ~ControlService() override { delete controls.data(); }
     void showControls()
@@ -76,6 +72,23 @@ public:
         logEvent(QStringLiteral("controls.show"));
     }
 private:
+    void consumeLaunchRequest(bool startup)
+    {
+        QFile request(directory+QStringLiteral("/show-controls.request"));
+        if (!request.open(QIODevice::ReadOnly)) return;
+        const auto age=QFileInfo(request).lastModified().msecsTo(QDateTime::currentDateTimeUtc());
+        const auto token=request.readAll(); request.close();
+        // Consume the single-use request, including stale files from an older
+        // Resolve session. A recent explicit launch may precede helper startup.
+        request.remove();
+        if (token.isEmpty() || token==lastRequest) return;
+        lastRequest=token;
+        if (startup && (age<0 || age>15000)) {
+            logEvent("controls.launch.stale",{{"age_ms",double(age)}}); return;
+        }
+        logEvent("controls.launch.request",{{"request",QString::fromUtf8(token)},{"startup",startup}});
+        showControls();
+    }
     QFileSystemWatcher watcher;
     QPointer<PanelControls> controls;
     QString directory;
