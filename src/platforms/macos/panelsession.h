@@ -364,6 +364,9 @@ public:
         content->setGeometry(geometry);
         content->setVisible(!hidden && (!originalStack || originalStack->currentWidget() == content));
         if (currentLayout) currentLayout->activate();
+        // replaceWidget inherits the hidden vacancy's state. Apply proportions
+        // after showing the restored pane, otherwise QSplitter assigns it zero.
+        if (originalSplitter) originalSplitter->setSizes(splitterSizes);
         disconnect(parentDestroyed);
         if (originalPage) originalPage->removeEventFilter(this);
         auto oldHost = host.data();
