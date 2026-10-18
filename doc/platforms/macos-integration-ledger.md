@@ -13,9 +13,11 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 
 | Area | Feature branch | Implemented so far | Still required |
 | --- | --- | --- | --- |
-| Discovery | feature/macos-panel-discovery | Workspace UI Panel Manager entry; renamed window; native-header undock glyph beside recognized options; existing-header hidden-panel callers | Native fixtures/live verification; header drag-to-detach; complete panel coverage; native live verification |
+| Discovery | feature/macos-panel-discovery | Workspace UI Panel Manager entry; renamed window; native-header undock glyph beside recognized options; existing-header hidden-panel callers | Native fixtures/live verification; complete panel coverage; native live verification |
+| Native button drag | feature/macos-native-panel-drag | Drag threshold, readiness-based host capture, release/click separation, header callback cleanup | Native drag/drop and lifecycle fixture execution; delayed readiness/live behavior |
+| Shared layout surface | feature/macos-layout-surfaces | Split/tab renderer used by floating groups and usable in an ordinary embedded host; invalid-tree checks before ownership changes | Native fixtures; actual original-window slot adapter and embedded arrangement persistence |
 | Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; scrolling at narrow widths; divider/resize/input and GPU/playback checks |
-| Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders no longer copy detached minimum sizes | Outer window shrink/reflow with remaining panels; transferred-layout vacancy; reversible minimum overrides; drag/split/tab rearrangement inside native surface; native recovery and focus |
+| Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders; transferred empty containers collapse; scoped native outer sizing/restoration | Native fixture/live verification of shrinking and restoration; drag/split/tab rearrangement inside native surface; native recovery and focus |
 | Commands | feature/macos-command-registration | Read-only native keyboard-dialog interface inventory; native Keyboard Customization launch from headers/Workspace UI | Command registry; assignable maximize/reveal for every panel; collision/typing behavior; native keyboard registration and persistence; viewer command regression matrix |
 | Clip colors | experiment/macos-custom-clip-colors | Known native palette action inventory, type metadata only | Storage investigation on disposable project; bright Red, picker/name/edit/remove; saved color identity; native menu and shortcut commands; reopening/undo/redo |
 | Tracing/performance | feature/macos-interaction-tracing | Bounded pointer position/speed samples; receipt-to-next-turn records; existing action and latency logs retained | Runtime tests for new records; hook new command outcomes; repeated performance matrix with all features; actual playback/paint limitations documented |
@@ -55,3 +57,17 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
   diagnostic integration; native clip integration compiles; final rebuild and native runtime verification remain pending.
 - No new native fixture pass or live acceptance claimed. No new custom-color,
   native-shortcut registration, scaling or native-root rearrangement claim.
+
+## Continued implementation
+
+Native outer sizing captures/restores its own minimum and layout constraint,
+respects surviving content hints, avoids maximize/fullscreen changes and does
+not apply during temporary Unbound expansion. User movement after an automatic
+resize prevents automatic geometry restoration. Transferred native content slots
+are hidden reversibly while their contents float. These are implemented candidates,
+not live acceptance claims.
+
+The shared layout renderer is now used by floating groups. It can construct the
+same split/tab tree in an ordinary QWidget host; connecting an original native
+slot requires ownership/restoration fixture verification before production wiring.
+The original-window drop adapter and preset representation are still open.
