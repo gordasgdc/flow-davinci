@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QMenu>
 #include <QMetaProperty>
+#include <QMetaMethod>
 #include "diagnostics.h"
 namespace Unbound {
 // Read-only inventory of the known native clip palette. No project mutations.
@@ -13,8 +14,24 @@ public:
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
         if (event->type() != QEvent::Show) return false;
-        auto menu = qobject_cast<QMenu *>(object);
-        if (!menu || menu->objectName() != "markSetClipColor") return false;
+        if (auto widget = qobject_cast<QWidget *>(object)) {
+            if (QString::fromLatin1(widget->metaObject()->className()) == "UiColorClipsWidget") {
+                QJsonArray signatures;
+                for (int i=widget->metaObject()->methodOffset(); i<widget->metaObject()->methodCount(); ++i)
+                    signatures.append(QString::fromLatin1(widget->metaObject()->method(i).methodSignature()));
+                logEvent("capability.clip-color.interface",{{"class","UiColorClipsWidget"},
+                    {"methods",signatures},{"read_only",true}});
+            }
+        }
+        auto menu = qobject_cast<QMenu *>(object); if (!menu) return false;
+        if (menu->objectName() != "markSetClipColor") {
+            bool apricot=false,chocolate=false;
+            for (auto action : menu->actions()) {
+                auto label=action->text(); label.remove('&'); label=label.trimmed();
+                apricot |= label == "Apricot"; chocolate |= label == "Chocolate";
+            }
+            if (!apricot || !chocolate) return false;
+        }
         QJsonArray actions;
         const QStringList colors{"Orange","Apricot","Yellow","Lime","Olive","Green","Teal","Navy","Blue","Purple","Violet","Pink","Tan","Beige","Brown","Chocolate","Red","Clear Color"};
         for (auto action : menu->actions()) {
