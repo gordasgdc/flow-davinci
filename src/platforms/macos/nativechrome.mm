@@ -278,6 +278,19 @@ void orderNativeWindows(const QList<QWidget *> &bottomToTop)
         previous = window;
     }
 }
+// Own one clipping NSView per group cell. Resolve's original widgets, GPU
+// surfaces and native restoration slots retain their own rendering attributes.
+bool setNativeGroupSurfaceClipping(QWidget *widget)
+{
+    if (!widget || !widget->objectName().startsWith("unboundGroupCell_")) return false;
+    widget->setAttribute(Qt::WA_DontCreateNativeAncestors);
+    widget->setAttribute(Qt::WA_NativeWindow);
+    NSView *view = reinterpret_cast<NSView *>(widget->winId());
+    if (!view || ![view respondsToSelector:@selector(setClipsToBounds:)]) return false;
+    view.clipsToBounds = YES;
+    return view.clipsToBounds;
+}
+
 void normalizeNativePanel(QWidget *widget)
 {
     if (!widget || widget->windowType() != Qt::Tool) return;

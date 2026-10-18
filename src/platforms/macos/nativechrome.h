@@ -20,6 +20,7 @@ double nativeCurrentDragAgeMilliseconds();
 QObject *watchNativePointerRelease(QObject *owner, std::function<void(QPoint, bool)> released);
 QObject *watchNativeWindowMove(QWidget *window, std::function<void()> begin,
     std::function<void(QPoint)> moved, std::function<void(QPoint, bool)> ended);
+bool setNativeGroupSurfaceClipping(QWidget *widget);
 void normalizeNativePanel(QWidget *widget);
 void setNativeExpansionPriority(QWidget *widget, bool expanded);
 int nativeVisibilityFlags(QWidget *widget);
