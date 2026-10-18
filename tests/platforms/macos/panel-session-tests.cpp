@@ -474,6 +474,17 @@ int main(int argc, char **argv)
         controls.move(1100, 700);
         draggedSource->setGeometry(40, 300, 320, 240); targetProgram->setGeometry(420, 300, 320, 240);
         targetProgram->raise(); draggedSource->raise(); settle();
+        // A Qt event drain does not synchronize WindowServer's on-screen list.
+        // Establish that precondition explicitly before simulating a drag.
+        QElapsedTimer presentation; presentation.start();
+        bool presented = false;
+        do {
+            const auto ordered = Unbound::nativeOrderedWindowNumbers();
+            presented = ordered.contains(Unbound::nativeWindowNumber(targetProgram)) &&
+                ordered.contains(Unbound::nativeWindowNumber(draggedSource));
+            if (!presented) { settle(); QThread::msleep(2); }
+        } while (!presented && presentation.elapsed() < 500);
+        check(presented, "native drag fixture windows reach the on-screen stack before pointer input");
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;
