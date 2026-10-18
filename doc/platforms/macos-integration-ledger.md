@@ -132,6 +132,22 @@ than reporting a partial selection of passing checks as full acceptance.
 
 ## Continued implementation
 
+Inspector overflow recovery follow-up (`feature/macos-panel-overflow`, `d2a1334`):
+the group fixture reproduced a 700-pixel content widget retaining a 936-pixel
+control layout after native reparent/recovery. Its rightmost button therefore
+remained outside the scrollable host despite scrolling to the maximum. Recovery
+now invalidates/activates that content layout once at the ownership boundary.
+The regression asserts layout/content geometry agreement and keeps detailed
+pointer-hit diagnostics on failure. Group fixtures pass on the overflow branch
+and together with the native-arrangement ownership draft. Actual Resolve input
+and responsiveness acceptance remain open.
+
+The separate `feature/macos-native-arrangement-surfaces` draft has tested native
+root layout ownership, shared nested split/tab rendering and scoped panel-session
+adoption, including restore, destruction, door visibility and temporary expansion.
+It is not integrated or installed: complete remaining-panel preservation,
+arrangement coordination, drop adapters and preset wiring are still required.
+
 Native outer sizing captures/restores its own minimum and layout constraint,
 respects surviving content hints, avoids maximize/fullscreen changes and does
 not apply during temporary Unbound expansion. User movement after an automatic
