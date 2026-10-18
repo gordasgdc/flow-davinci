@@ -9,6 +9,11 @@ implementation and verification status. Build manifests identify the exact
 included feature commits; they do not certify acceptance. The preserved installed
 snapshot is described below. Master and upstream have not been merged.
 
+The current candidate starts with Panel Manager closed and the native workspace
+visible on a fresh configuration. Nested tab-door selection and reversible narrow
+Inspector scrolling have fixture coverage. Original-window rearrangement, live
+Resolve acceptance and the responsiveness target remain unfinished.
+
 ## Preserved experimental macOS snapshot — October 17, 2026
 
 This branch, `macos-responsive-group-transfers`, is an experimental macOS build

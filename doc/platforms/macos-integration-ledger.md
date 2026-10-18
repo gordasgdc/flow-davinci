@@ -120,6 +120,16 @@ acceptance item; this does not prove lazy player creation in every Resolve state
 - New feature branches are stacked on required integration dependencies. Inclusion
   in the manifest does not make a branch independently merge-ready for master.
 
+Consolidated fixture receipt for `6b6cef81ab`:
+`build/macos/verification/6b6cef81ab-20261018T191923Z/receipt.json`.
+Eleven suites PASS; responsiveness FAILS, with zero functional failures and the
+unchanged latency gate exceeded by docking commit (38.898 ms p95) and door toggle
+(16.722 ms p95). Viewer command p95 is 12.832 ms in this run. The receipt records
+clean source, exact commit, feature-lock hash, every exit code and complete logs.
+Run `python3 -u infrastructure/macos/verify-integration.py` with Resolve closed;
+it briefly creates native fixture windows. The script retains failures rather
+than reporting a partial selection of passing checks as full acceptance.
+
 ## Continued implementation
 
 Native outer sizing captures/restores its own minimum and layout constraint,
