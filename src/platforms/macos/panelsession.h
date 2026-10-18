@@ -224,9 +224,11 @@ public:
         // QSplitter automatically inserts new children; replaceWidget needs an outsider.
         auto marker = new QLabel(title + QStringLiteral(" is floating."), (splitter || stack) ? nullptr : parent);
         marker->setAlignment(Qt::AlignCenter);
-        marker->setSizePolicy(widget->sizePolicy());
-        marker->setMinimumSize(widget->minimumSize());
-        marker->setMaximumSize(widget->maximumSize());
+        // Retain a reversible slot identity, not the detached panel's footprint.
+        // Hidden placeholders do not reserve splitter/layout space.
+        marker->setObjectName("unboundVacatedSlot_" + widget->objectName());
+        marker->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Ignored);
+        marker->setMinimumSize(0,0);
         placeholder = marker;
         if (stack) {
             const bool selected = stack->currentWidget() == widget;
@@ -262,7 +264,10 @@ public:
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
         if (relaxedWidth) widthAllowance.apply(widget);
         // A detached tools row must not leave a second empty tools row in Timeline.
-        marker->setVisible(widget->objectName() != QLatin1String("frameEditToolbarTop"));
+        marker->hide();
+        logEvent("workspace.native-slot.vacated", {{"panel",widget->objectName()},
+            {"parent",parent->objectName()},{"placeholder_hidden",marker->isHidden()},
+            {"main_min_width",originalMain->minimumWidth()},{"main_min_height",originalMain->minimumHeight()}});
         widget->show();
         widget->installEventFilter(this);
         host->installEventFilter(this);
