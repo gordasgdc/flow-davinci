@@ -19,16 +19,23 @@ public:
     }
     ~NativeWorkspaceSizing() override { restore(); }
     std::function<bool()> blocked = [] { return false; };
-    void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids) {
-        if (window==main && nativePage==page && ids==managedPanels) { if (!captured && !ids.isEmpty()) settle.start(0); return; }
+    void prepare(QWidget *window,QWidget *nativePage) {
         if (window!=main || nativePage!=page) {
             restore(); main=window; page=nativePage;
             if (main) originalGeometry=main->geometry();
             if (page) page->installEventFilter(this);
         }
-        managedPanels=ids;
-        if (managedPanels.isEmpty()) { restore(); return; }
-        settle.start(0);
+        if (!captured && main && main->layout()) {
+            originalMinimum=main->minimumSize(); originalLayout=main->layout();
+            originalConstraint=originalLayout->sizeConstraint(); captured=true;
+        }
+    }
+    void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids) {
+        if (ids.isEmpty()) { restore(); return; }
+        const bool unchanged=window==main && nativePage==page && ids==managedPanels;
+        prepare(window,nativePage);
+        if (unchanged && applied) return;
+        managedPanels=ids; settle.start(0);
     }
     void restore() {
         settle.stop(); restoreConstraints(true);
@@ -56,7 +63,7 @@ private:
             restoreConstraints(false); return;
         }
         const auto before=main->geometry();
-        layout->setSizeConstraint(QLayout::SetNoConstraint);
+        layout->setSizeConstraint(QLayout::SetNoConstraint); applied=true;
         // The real surviving native layout determines the floor. No child control
         // minima are lowered just to make the outer window appear smaller.
         const auto required=layout->minimumSize().expandedTo(QSize(320,200));
@@ -83,12 +90,12 @@ private:
             logEvent("workspace.native-sizing.restored",{{"minimum_width",main->minimumWidth()},
                 {"minimum_height",main->minimumHeight()},{"geometry_restored",restoredGeometry}});
         }
-        captured=false; automaticGeometry=false; originalLayout=nullptr;
+        captured=false; applied=false; automaticGeometry=false; originalLayout=nullptr;
     }
     QPointer<QWidget> main,page; QPointer<QLayout> originalLayout;
     QSet<QString> managedPanels; QTimer settle; QSize originalMinimum;
     QRect originalGeometry,lastAutomaticGeometry;
     QLayout::SizeConstraint originalConstraint=QLayout::SetDefaultConstraint;
-    bool captured=false,automaticGeometry=false;
+    bool captured=false,applied=false,automaticGeometry=false;
 };
 }

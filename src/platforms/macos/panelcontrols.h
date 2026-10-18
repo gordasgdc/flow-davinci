@@ -579,6 +579,7 @@ private:
         if (!restoring) p.saved["hidden"] = false;
         QWidget *root = page();
         QWidget *target = Unbound::panelSurface(root, p.name);
+        if (nativeSizing && expanded<0 && root && root->isVisible()) nativeSizing->prepare(root->window(),root);
         if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
             Unbound::prepareSourceViewer(root, target)) {
             p.pending = true; updateRow(i);
@@ -635,7 +636,7 @@ private:
                 if (!quitting && background->isChecked()) applyBackgroundVisibility(true);
             });
         }
-        outcome("undock", i, error); updateRow(i); save();
+        outcome("undock", i, error); updateRow(i); updateNativeSizing(); save();
     }
     void dockOne(int i)
     {
