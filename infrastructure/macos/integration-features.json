@@ -40,13 +40,13 @@
     },
     {
       "branch": "feature/macos-native-workspace-space",
-      "commit": "0fc1491ae6b41830fe63f7e16a99446923d7cac5",
+      "commit": "13ce0d744d35771acf4abb8a530452fb57bd0a15",
       "scope": "implementation",
       "acceptance": "pending"
     },
     {
       "branch": "feature/macos-panel-containment",
-      "commit": "3d2160ceb330684f314ac2fbdcc9277cd40bd5bd",
+      "commit": "0606efe2e81d42007553272ddea4f26a1289f9be",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -63,8 +63,14 @@
       "commit": "268bc64cbbfc6917d43dcb1a0dfdc101ddaf1194"
     },
     {
+      "branch": "feature/macos-responsive-command-discovery",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "66cd3bdd2bc537a4edb83690a270efb01ac83455"
+    },
+    {
       "branch": "feature/macos-viewer-commands",
-      "commit": "1a4e1b7db3fac6c19fe9a7b7b795177be45a3511",
+      "commit": "6ea5b8ee63c0144c9e099726651a104e0f0f10b3",
       "scope": "implementation",
       "acceptance": "pending"
     }

@@ -2,8 +2,8 @@
 
 Integration: `macos-panel-discovery-and-layout`. Preserved public baseline:
 `fbe835c` / `macos-responsive-group-transfers`. No changes to master or upstream.
-The new integration has NOT been installed. Resolve is running; native-window
-fixtures have intentionally not been executed during this session.
+The new integration has NOT been installed. Resolve was closed for the native
+fixture runs recorded below. Actual Resolve acceptance remains separate.
 
 A feature tip in the build manifest means its source is included, not that its
 acceptance requirements are complete. Worktrees live beside the main repository
@@ -53,11 +53,35 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 
 ## Current verification
 
-- Discovery workspace menu and group fixtures compile with warnings-as-errors.
-- Production helper compiles after discovery, pointer, capability and boundary
-  diagnostic integration; native clip integration compiles; final rebuild and native runtime verification remain pending.
-- No new native fixture pass or live acceptance claimed. No new custom-color,
-  native-shortcut registration, scaling or native-root rearrangement claim.
+- Native workspace-menu, group, instrumentation, hidden-controls and reliability
+  fixtures PASS. Session fixtures exposed a splitter restoration bug: proportions
+  were applied while the replacement pane still inherited the hidden vacancy.
+  Applying sizes after revealing it fixes the failure; feature and integration
+  session runs PASS.
+- Two preview assertions failed twice before a later pass. The fixture had only
+  drained Qt events, without waiting for WindowServer presentation. It now waits
+  on both native window IDs appearing (500 ms deadline); the integration session
+  fixture passes with that explicit precondition. Repeated/live acceptance remains
+  required; a passing rerun alone does not close the reported drop-zone issues.
+- Native clipping rejection compares original attributes against their baseline,
+  since Qt may already promote a sibling to native. No actual Resolve clipping,
+  custom-color storage, native-shortcut registration, independent scaling or
+  native-root rearrangement acceptance is claimed.
+- Responsiveness fixture functional checks PASS. At `29a431d`, p95 event-turn
+  times in ms: free drag 1.882, dock approach 6.705, dock commit 28.641,
+  divider 10.827, door 15.232, viewer command 12.953, button 0.795.
+  Dock commit still FAILS the unchanged 16.667 ms target. These are simulated
+  input on real Qt/native fixture windows, not playback/GPU presentation latency.
+- Viewer commands now reveal Source without raising/activating its group;
+  ordinary grouped doors avoid normalizing or moving an already-visible host.
+  Native viewer discovery is cached with menu action/language invalidation and
+  QPointer lifetime protection. Tests cover late menu creation/replacement and
+  live shortcut identity. The new responsiveness branch is
+  `feature/macos-responsive-command-discovery`.
+- An experimental repaint batch failed to improve docking latency and was
+  reverted. No feature or diagnostic logging was disabled to improve measurements.
+- Production rebuild and fresh Resolve acceptance are still required before
+  claiming this pass installed or complete.
 
 ## Continued implementation
 
