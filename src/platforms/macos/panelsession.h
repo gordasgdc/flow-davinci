@@ -16,6 +16,7 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "vacatedcontents.h"
+#include "panelplacement.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
 
@@ -34,7 +35,14 @@ public:
         });
     }
     ~MacPanelSession() override { changed = {}; arrangementChanged = {}; dock(); }
+    // active() is retained for compatibility: it means original content is leased.
     bool active() const { return !host.isNull(); }
+    PanelPlacement placement() const {
+        if (!active()) return PanelPlacement::NativeSlot;
+        const auto surface=window();
+        return surface && surface->window()==originalMain ? PanelPlacement::NativeSurface : PanelPlacement::FloatingSurface;
+    }
+    bool floating() const { return placement()==PanelPlacement::FloatingSurface; }
     bool dockPending() const { return pendingDock; }
     QWidget *window() const { return grouped() ? groupContainer.data() : host.data(); }
     std::function<void()> changed;
@@ -143,7 +151,7 @@ public:
                 keepOnDisplay(surface->window()); surface->window()->raise(); surface->window()->activateWindow();
             }
         }
-        logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}});
+        logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}, {"placement",panelPlacementName(placement())}});
         if (changed) changed();
         if (arrangementChanged) arrangementChanged();
     }
