@@ -45,6 +45,17 @@ int main(int argc, char **argv)
         if (button) button->click();
         check(toggles == 1 && button->toolTip() == "Dock Media Pool","native header button dispatches once and reflects docking state");
     }
+    {
+        QMenu nativeCommands; int opened=0;
+        auto keyboard = nativeCommands.addAction(QString::fromUtf8("Keyboard Customization…"));
+        QObject::connect(keyboard,&QAction::triggered,[&] { ++opened; });
+        check(Unbound::openNativeKeyboardCustomization() && opened==1,"keyboard launcher invokes the native action once");
+        keyboard->setEnabled(false);
+        check(!Unbound::openNativeKeyboardCustomization() && opened==1,"disabled native keyboard command is not invoked");
+        keyboard->setEnabled(true);
+        QMenu ambiguous; ambiguous.addAction("Keyboard Customization...");
+        check(!Unbound::openNativeKeyboardCustomization() && opened==1,"ambiguous native keyboard actions are rejected");
+    }
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
     QMenu *root = nullptr;
