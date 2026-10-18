@@ -59,15 +59,22 @@ int main(int argc,char **argv)
     QJsonObject scenarios;
     const auto measure = [&](const QString &name,int count,const std::function<void(int)> &operation,
                              const std::function<void(int)> &prepare = {}) {
-        Unbound::LatencyStats timing;
+        Unbound::LatencyStats timing, dispatch, deferred;
         for (int i=0;i<count;++i) {
             if (prepare) prepare(i);
-            QElapsedTimer turn; turn.start(); operation(i); QApplication::processEvents(QEventLoop::AllEvents,10);
-            timing.add(turn.nsecsElapsed());
+            QElapsedTimer turn; turn.start(); operation(i);
+            const auto dispatched = turn.nsecsElapsed();
+            QApplication::processEvents(QEventLoop::AllEvents,10);
+            const auto completed = turn.nsecsElapsed();
+            dispatch.add(dispatched); deferred.add(completed-dispatched); timing.add(completed);
             while (turn.elapsed() < 16) { QApplication::processEvents(); QThread::msleep(1); }
         }
-        scenarios[name] = timing.summary();
-        std::printf("%s p95=%.3f ms max=%.3f ms\n",qPrintable(name),timing.summary()["p95_ms"].toDouble(),timing.summary()["max_ms"].toDouble());
+        auto summary = timing.summary();
+        summary["dispatch"] = dispatch.summary(); summary["deferred_event_drain"] = deferred.summary();
+        scenarios[name] = summary;
+        std::printf("%s p95=%.3f ms max=%.3f ms dispatch_p95=%.3f ms deferred_p95=%.3f ms\n",qPrintable(name),
+            summary["p95_ms"].toDouble(),summary["max_ms"].toDouble(),
+            dispatch.summary()["p95_ms"].toDouble(),deferred.summary()["p95_ms"].toDouble());
     };
     QPoint press = moving->mapToGlobal(QPoint(100,8));
     const QPoint grabOffset = press-moving->geometry().topLeft(); moving->beginPointerDrag(press,false);
