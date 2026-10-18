@@ -7,6 +7,7 @@
 #include "clipcolorprobe.h"
 #include "keyboardprobe.h"
 #include "boundarydiagnostics.h"
+#include "nativepaneldrag.h"
 static int failures=0;
 static void check(bool pass,const char *message) { if (!pass) { ++failures; std::fprintf(stderr,"FAIL: %s\n",message); } }
 int main(int argc,char **argv) {
@@ -31,6 +32,10 @@ int main(int argc,char **argv) {
         auto privateLabel = palette.addAction("PRIVATE_FIXTURE_TEXT"); privateLabel->setProperty("identity",QStringLiteral("PRIVATE_PROPERTY_VALUE"));
         QEvent show(QEvent::Show); QApplication::sendEvent(&palette,&show);
         QWidget editor; editor.setObjectName("shortcutCustomizationTest"); QApplication::sendEvent(&editor,&show);
+        Unbound::NativePanelDrag drag(nullptr); drag.begin("fixture-panel");
+        QKeyEvent escape(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);
+        QApplication::sendEvent(&editor,&escape);
+        check(!drag.waiting(),"Escape cancels pending host capture before a delayed undock completes");
         QApplication::processEvents();
     }
     Unbound::diagnosticSink()->flush();

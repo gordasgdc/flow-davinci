@@ -16,7 +16,7 @@
     },
     {
       "branch": "feature/macos-command-registration",
-      "commit": "f2befee167af5e4f94f40c8657ca1ec660b73b0e",
+      "commit": "c2dc08d980d3f7aefd6fecf683afe09cf839f1b6",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -36,11 +36,11 @@
       "branch": "feature/macos-native-panel-drag",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "c053b344d3d188423d5311d06b0ad7b5c6865652"
+      "commit": "b238da352a214004b74c8118cce6d77b5b20a36c"
     },
     {
       "branch": "feature/macos-native-workspace-space",
-      "commit": "c7c85e165f935968ced5c4b682df71a4025406c5",
+      "commit": "0fc1491ae6b41830fe63f7e16a99446923d7cac5",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -52,9 +52,15 @@
     },
     {
       "branch": "feature/macos-panel-discovery",
-      "commit": "9469349b2547defff14d329f362aebf0426c2f69",
+      "commit": "4177f172c0e93541ec97af8e9c552b730c2995aa",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-placement",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "6dd4e359a47c851fe02786e29dbff46fc6240f33"
     },
     {
       "branch": "feature/macos-viewer-commands",
