@@ -59,7 +59,6 @@ public:
     explicit NativePanelDecoration(QObject *owner) : QObject(owner) {}
     ~NativePanelDecoration() override {
         for (const auto &button : buttons) delete button.data();
-        for (const auto &keyboard : keyboards) delete keyboard.data();
     }
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
@@ -84,7 +83,7 @@ public:
             keyboard->setToolTip("Keyboard Customization"); keyboard->setAccessibleName(keyboard->toolTip());
             keyboard->setAutoRaise(true); keyboard->setFocusPolicy(Qt::NoFocus); keyboard->setFixedSize(24,24);
             layout->insertWidget(layout->indexOf(anchor),keyboard,0,Qt::AlignVCenter);
-            keyboards.append(keyboard);
+            connect(button,&QObject::destroyed,keyboard,[keyboard] { delete keyboard; });
             connect(keyboard,&QToolButton::clicked,this,[] { openNativeKeyboardCustomization(); });
             connect(button,&QToolButton::clicked,this,[id,toggle] {
                 logEvent("panel.header.toggle",{{"panel",id},{"origin","native-header"}}); toggle();
@@ -97,6 +96,5 @@ public:
     }
 private:
     QHash<QString,QPointer<NativeUndockButton>> buttons;
-    QList<QPointer<QToolButton>> keyboards;
 };
 }
