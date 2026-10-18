@@ -54,6 +54,9 @@ public:
                 {"started", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}}).toJson());
             marker.commit();
         }
+        #ifdef UNBOUND_FEATURE_MANIFEST
+        logEvent("helper.feature-manifest", {{"manifest", QJsonDocument::fromJson(QByteArray(UNBOUND_FEATURE_MANIFEST)).object()}});
+#endif
         logEvent(QStringLiteral("helper.start"), {{"executable", QCoreApplication::applicationFilePath()}});
         connect(qApp, &QCoreApplication::aboutToQuit, this, [markerPath] {
             logEvent(QStringLiteral("helper.stop")); QFile::remove(markerPath);

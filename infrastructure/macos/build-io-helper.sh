@@ -10,6 +10,7 @@ xcrun clang -Wall -Wextra -Werror -fvisibility=hidden -c \
 xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fvisibility=hidden -dynamiclib \
     -I "$sdk/CodecPlugin/Examples/x264_encoder_plugin/include" \
     "$root/src/platforms/macos/io-bootstrap.cpp" "$out/bootstrap.o" -o "$bundle/Unbound.dvcp"
+cp "$root/build/macos/qt-generated/build-manifest.json" "$bundle/../build-manifest.json"
 cp "$root/build/macos/ofx-probe/UnboundLoadingProbe.ofx.bundle/Contents/MacOS/UnboundWidgetProbe.dylib" "$bundle/"
 /usr/bin/codesign --force --sign - "$bundle/Unbound.dvcp"
 xcrun clang++ -std=c++17 -Wall -Wextra -Werror \
