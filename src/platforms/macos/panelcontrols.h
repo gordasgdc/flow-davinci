@@ -20,6 +20,7 @@
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
 #include "panelmenus.h"
+#include "nativepaneldecoration.h"
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
@@ -48,7 +49,7 @@ public:
     PanelControls() : QWidget(nullptr, Qt::Window)
     {
         setObjectName(QStringLiteral("unboundPanelTest"));
-        setWindowTitle(QStringLiteral("Unbound — Panels"));
+        setWindowTitle(QStringLiteral("Unbound Panel Manager"));
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
         auto layout = new QVBoxLayout(this);
@@ -267,6 +268,7 @@ public:
                 if (auto group = groupFor(2)) group->syncVisibility(single ? nullptr : panels[2].session);
             });
         toolbarDecoration = new Unbound::ToolbarDecoration(this);
+        nativeDecoration = new Unbound::NativePanelDecoration(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
             [this, index] { return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
@@ -276,6 +278,10 @@ public:
             }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        workspaceMenu->showPanelManager = [this] {
+            showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
+            Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
+        };
         workspaceMenu->entries = [this] { return presetsUi->list(); };
         workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
         workspaceMenu->nativeActive = [this] {
@@ -753,6 +759,11 @@ private:
         if (footer) footer->restore();
         if (callers) callers->wire();
         if (nativeMenus) nativeMenus->wire();
+        if (nativeDecoration && page()) for (int i=0; i<panels.size(); ++i) {
+            auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
+            nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->active(),
+                [this,i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); });
+        }
         if (workspaceMenu) workspaceMenu->wire();
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         if (toolbarDecoration) for (int i = 0; i < panels.size(); ++i)
@@ -833,6 +844,7 @@ private:
     Unbound::PanelExpansion expansion;
     Unbound::ViewerModeCommand *viewerMode = nullptr;
     Unbound::ToolbarDecoration *toolbarDecoration = nullptr;
+    Unbound::NativePanelDecoration *nativeDecoration = nullptr;
     Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;

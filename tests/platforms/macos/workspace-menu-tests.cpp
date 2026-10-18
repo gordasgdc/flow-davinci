@@ -3,6 +3,7 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "workspacearrangements.h"
+#include "nativepaneldecoration.h"
 #include "arrangementcontrols.h"
 #include "pagecontext.h"
 int main(int argc, char **argv)
@@ -32,9 +33,22 @@ int main(int argc, char **argv)
     }
     Unbound::ArrangementStore store; QString first,second;
     check(store.create("Edit & Review",{{"version",1}},first).isEmpty() && store.create("Audio",{{"version",1}},second).isEmpty(), "create stable saved workspace identities");
+    {
+        QWidget nativePanel; auto row = new QHBoxLayout(&nativePanel);
+        auto options = new QToolButton(&nativePanel); options->setObjectName("btnMediaPoolOptions"); row->addWidget(options);
+        Unbound::NativePanelDecoration decoration(&nativePanel); int toggles=0;
+        decoration.wire(&nativePanel,"pool","Media Pool",false,[&] { ++toggles; });
+        decoration.wire(&nativePanel,"pool","Media Pool",true,[&] { ++toggles; });
+        auto button = nativePanel.findChild<QToolButton *>("unboundNativeUndock_pool");
+        check(button && row->indexOf(button)+1 == row->indexOf(options),"undock glyph occupies its own native layout slot before options");
+        check(nativePanel.findChildren<QToolButton *>("unboundNativeUndock_pool").size() == 1,"native header rewiring cannot duplicate the button");
+        if (button) button->click();
+        check(toggles == 1 && button->toolTip() == "Dock Media Pool","native header button dispatches once and reflects docking state");
+    }
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
     QMenu *root = nullptr;
+    int managerCalls = 0;
     int nativeCalls = 0, restores = 0; QString selected = first, activePage = "edit", nativePage;
     const auto configure = [&](Unbound::WorkspaceArrangements &menus) {
         menus.entries = [&] { return store.list(); }; menus.selected = [&] { return selected; };
@@ -55,6 +69,12 @@ int main(int argc, char **argv)
         auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements");
         auto preset = root->findChild<QMenu *>("unboundWorkspace_"+second);
         check(submenu && submenu->title() == "Manage Saved Workspaces" && preset && !root->isVisible(), "menu is populated before native display");
+        auto manager = root->findChild<QAction *>("unboundShowPanelManager");
+        check(manager && !manager->isEnabled(), "manager action is disabled without an owner callback");
+        menus.showPanelManager = [&] { ++managerCalls; };
+        menus.wire();
+        manager->trigger(); QApplication::processEvents();
+        check(managerCalls == 1, "Workspace UI opens the panel manager through its owner callback");
         check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
             "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
         check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");

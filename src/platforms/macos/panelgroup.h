@@ -11,6 +11,7 @@
 #include "docksurfaces.h"
 #include "uiworktiming.h"
 #include "grouphostreserve.h"
+#include "hiddenpanelcallers.h"
 
 namespace Unbound {
 class PanelGroup : public QObject
@@ -18,6 +19,7 @@ class PanelGroup : public QObject
 public:
     explicit PanelGroup(QObject *owner, GroupHostReserve *reserve = nullptr) : QObject(owner), reserve(reserve)
     {
+        hiddenCallers = new HiddenPanelCallers(this);
         timer.setSingleShot(true); timer.setInterval(180);
         connect(&timer, &QTimer::timeout, this, [this] { if (host) report("group.arrangement"); });
     }
@@ -273,6 +275,11 @@ private:
     {
         member->releaseGroup = [this, member] { detachMember(member); }; member->window()->installEventFilter(this);
         const auto wrapper = leaves.value(member);
+        for (auto old : wrapper->findChildren<QToolButton *>("unboundHiddenPanelCaller")) delete old;
+        if (auto header = wrapper->findChild<QLabel *>("unboundGroupHeader")) {
+            if (auto row = qobject_cast<QBoxLayout *>(header->parentWidget()->layout()))
+                row->insertWidget(1,hiddenCallers->add(header->parentWidget()));
+        }
         for (auto label : wrapper->findChildren<QLabel *>("unboundGroupHeader")) label->installEventFilter(this);
         for (auto button : wrapper->findChildren<QPushButton *>("unboundDetachPanel")) {
             QObject::disconnect(button, nullptr, this, nullptr);
@@ -386,6 +393,15 @@ private:
     void refresh()
     {
         if (!host || releasing || rebuilding) return;
+        QList<HiddenPanelCallers::Entry> hiddenEntries;
+        for (auto member : members) if (member && member->hiddenByUser()) {
+            QPointer<MacPanelSession> alive(member);
+            hiddenEntries.append({panelName(member),member->window()->windowTitle(),[this,alive] {
+                if (!alive || !contains(alive)) return;
+                alive->setHiddenByUser(false); syncVisibility(alive); report("group.hidden.reveal");
+            }});
+        }
+        hiddenCallers->setHidden(hiddenEntries);
         bool visible = false;
         for (auto member : members) { if (!member || !member->active()) { dissolve(); return; } visible |= !member->hiddenByUser(); }
         visible &= page && page->isVisible();
@@ -402,6 +418,7 @@ private:
             frame.size() - (window->frameGeometry().size() - window->size())));
     }
     GroupVisibility visibility;
+    HiddenPanelCallers *hiddenCallers = nullptr;
     QPointer<GroupHostReserve> reserve;
     QPointer<MacFloatingHost> host;
     QPointer<QWidget> root, page;
