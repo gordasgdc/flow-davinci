@@ -13,13 +13,14 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 
 | Area | Feature branch | Implemented so far | Still required |
 | --- | --- | --- | --- |
-| Discovery | feature/macos-panel-discovery | Workspace UI Panel Manager entry; renamed window; native-header undock glyph beside recognized options; existing-header hidden-panel callers | Native fixtures/live verification; header drag-to-detach; empty Source; complete panel coverage; keyboard button |
+| Discovery | feature/macos-panel-discovery | Workspace UI Panel Manager entry; renamed window; native-header undock glyph beside recognized options; existing-header hidden-panel callers | Native fixtures/live verification; header drag-to-detach; complete panel coverage; native live verification |
 | Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; scrolling at narrow widths; divider/resize/input and GPU/playback checks |
 | Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders no longer copy detached minimum sizes | Outer window shrink/reflow with remaining panels; transferred-layout vacancy; reversible minimum overrides; drag/split/tab rearrangement inside native surface; native recovery and focus |
-| Commands | feature/macos-command-registration | Read-only native keyboard-dialog interface inventory | Command registry; assignable maximize/reveal for every panel; collision/typing behavior; native keyboard registration and persistence; keyboard button; viewer command regression matrix |
+| Commands | feature/macos-command-registration | Read-only native keyboard-dialog interface inventory; native Keyboard Customization launch from headers/Workspace UI | Command registry; assignable maximize/reveal for every panel; collision/typing behavior; native keyboard registration and persistence; viewer command regression matrix |
 | Clip colors | experiment/macos-custom-clip-colors | Known native palette action inventory, type metadata only | Storage investigation on disposable project; bright Red, picker/name/edit/remove; saved color identity; native menu and shortcut commands; reopening/undo/redo |
 | Tracing/performance | feature/macos-interaction-tracing | Bounded pointer position/speed samples; receipt-to-next-turn records; existing action and latency logs retained | Runtime tests for new records; hook new command outcomes; repeated performance matrix with all features; actual playback/paint limitations documented |
-| Independent scale | experiment/macos-panel-scaling | Branch reserved; no scale implementation | Feasibility and hit/render/menu/GPU tests; +/-/100% controls; independent persistence; exact native restoration |
+| Empty Source/viewers | feature/macos-viewer-commands | Offline Source stack discovery without a loaded player; regression fixture | Live empty/loaded Source tests; Single Viewer and Cinema command matrix; maximize restoration |
+| Independent scale | experiment/macos-panel-scaling | Feasibility/restoration specification; no scale implementation | Feasibility and hit/render/menu/GPU tests; +/-/100% controls; independent persistence; exact native restoration |
 
 ## Cross-feature acceptance (all open unless evidence is explicitly recorded)
 
@@ -51,6 +52,6 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 
 - Discovery workspace menu and group fixtures compile with warnings-as-errors.
 - Production helper compiles after discovery, pointer, capability and boundary
-  diagnostic integration; latest native clip integration still needs rebuild.
+  diagnostic integration; native clip integration compiles; final rebuild and native runtime verification remain pending.
 - No new native fixture pass or live acceptance claimed. No new custom-color,
   native-shortcut registration, scaling or native-root rearrangement claim.
