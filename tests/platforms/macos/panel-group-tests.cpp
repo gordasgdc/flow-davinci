@@ -31,6 +31,21 @@ int main(int argc, char **argv)
             "native clipping helper rejects original Resolve widgets without altering their rendering attributes");
     }
     {
+        QWidget nativeHost; QObject owner;
+        QPointer<QWidget> a=new QWidget(&nativeHost), b=new QWidget(&nativeHost);
+        Unbound::PanelLayoutCallbacks callbacks;
+        callbacks.leaf=[&](const QString &id)->QWidget * { return id=="a" ? a.data() : id=="b" ? b.data() : nullptr; };
+        callbacks.title=[](const QString &id) { return id.toUpper(); };
+        const auto duplicate=Unbound::splitGroupTree({{"panel","a"}},{{"panel","a"}},Qt::Horizontal);
+        check(!Unbound::buildPanelLayoutSurface(duplicate,&nativeHost,&owner,callbacks) && a && a->parentWidget()==&nativeHost,
+            "invalid embedded surface cannot reparent or destroy native content");
+        const auto tree=Unbound::splitGroupTree({{"panel","a"}},{{"panel","b"}},Qt::Orientation(0));
+        auto surface=Unbound::buildPanelLayoutSurface(tree,&nativeHost,&owner,callbacks);
+        auto tabs=qobject_cast<QTabWidget *>(surface);
+        check(tabs && tabs->window()==&nativeHost && tabs->count()==2 && tabs->tabText(0)=="A",
+            "split/tab renderer embeds in an ordinary native host without creating a floating window");
+    }
+    {
         QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
         Unbound::activateNativeWindowForTest(&main); settle();
         const auto key = Unbound::nativeKeyWindowNumber();

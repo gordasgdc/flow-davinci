@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QTabWidget>
 #include "grouplayout.h"
+#include "panellayoutsurface.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "tabtearoff.h"
@@ -312,42 +313,28 @@ private:
     }
     QWidget *buildTree(const QJsonObject &node)
     {
-        if (node.contains("panel")) {
-            for (auto member : members) if (member && panelName(member) == node["panel"].toString()) return leaves.value(member);
+        PanelLayoutCallbacks callbacks;
+        callbacks.leaf = [this](const QString &id) -> QWidget * {
+            for (auto member : members) if (member && panelName(member)==id) return leaves.value(member);
             return nullptr;
-        }
-        if (node["orientation"] == "tabs") {
-            auto tabs = new QTabWidget(host); tabs->setObjectName("unboundPanelTabs");
-            tabs->setDocumentMode(true); tabs->setMovable(false);
-            for (auto child : node["children"].toArray()) if (auto widget = buildTree(child.toObject())) {
-                QString title = child.toObject().value("panel").toString();
-                for (auto member : members) if (member && panelName(member) == title) title = member->window()->windowTitle();
-                tabs->addTab(widget, title.isEmpty() ? QStringLiteral("Panel group") : title);
-            }
-            new TabTearOff(tabs, tabs, [this](QWidget *leaf, QPoint pointer) {
-                QPointer<MacPanelSession> member;
-                for (auto candidate : members) if (leaves.value(candidate) == leaf) member = candidate;
-                if (!member) {
-                    if (auto section = detachSection(leaf)) {
-                        auto floating = static_cast<MacFloatingHost *>(section->window());
-                        floating->move(pointer - QPoint(80,12)); floating->raise(); floating->activateWindow();
-                        floating->beginPointerDrag(pointer, true);
-                    }
-                    return;
-                }
-                detachMember(member);
-                auto floating = static_cast<MacFloatingHost *>(member->window());
-                floating->move(pointer - QPoint(80, 12)); floating->raise(); floating->activateWindow();
-                floating->beginPointerDrag(pointer, true);
-            });
-            tabs->setCurrentIndex(qBound(0, node["selected"].toInt(), tabs->count() - 1));
-            connect(tabs, &QTabWidget::currentChanged, this, [this] { if (!rebuilding) timer.start(); });
-            return tabs;
-        }
-        auto splitter = new QSplitter(node["orientation"] == "vertical" ? Qt::Vertical : Qt::Horizontal, host); splitter->setChildrenCollapsible(false); splitter->setHandleWidth(6);
-        for (auto child : node["children"].toArray()) if (auto widget = buildTree(child.toObject())) splitter->addWidget(widget);
-        splitter->setProperty("savedSizes", node["sizes"].toArray().toVariantList());
-        connect(splitter, &QSplitter::splitterMoved, this, [this] { timer.start(); }); return splitter;
+        };
+        callbacks.title = [this](const QString &id) {
+            for (auto member : members) if (member && panelName(member)==id) return member->window()->windowTitle();
+            return QString();
+        };
+        callbacks.changed = [this] { if (!rebuilding) timer.start(); };
+        callbacks.tearOff = [this](QWidget *leaf,QPoint pointer) {
+            QPointer<MacPanelSession> member;
+            for (auto candidate : members) if (leaves.value(candidate)==leaf) member=candidate;
+            QWidget *window=nullptr;
+            if (member) { detachMember(member); window=member->window(); }
+            else if (auto section=detachSection(leaf)) window=section->window();
+            if (!window) return;
+            auto floating=static_cast<MacFloatingHost *>(window);
+            floating->move(pointer-QPoint(80,12)); floating->raise(); floating->activateWindow();
+            floating->beginPointerDrag(pointer,true);
+        };
+        return buildPanelLayoutSurface(node,host,this,callbacks);
     }
     void rebuild(const QJsonObject &tree)
     {
