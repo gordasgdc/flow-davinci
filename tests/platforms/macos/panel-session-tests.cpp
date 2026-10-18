@@ -39,6 +39,16 @@ int main(int argc, char **argv)
     const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
     qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
     {
+        QWidget slot; slot.setMinimumSize(700,400); slot.setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
+        const auto minimum=slot.minimumSize(); const auto policy=slot.sizePolicy(); const bool hidden=slot.isHidden();
+        Unbound::VacatedContents vacancy; vacancy.hide(&slot);
+        check(slot.isHidden() && slot.minimumSize()==QSize(0,0) && slot.sizePolicy().horizontalPolicy()==QSizePolicy::Ignored,
+            "vacated native container releases its footprint and preferred width");
+        vacancy.restore();
+        check(slot.minimumSize()==minimum && slot.sizePolicy()==policy && slot.isHidden()==hidden,
+            "native content-container lease restores exact dimensions, policy and hidden state");
+    }
+    {
         QWidget main; main.setMinimumSize(1000,700); main.resize(1200,800);
         auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
         auto contents=new QHBoxLayout(page); auto remaining=new QWidget(page); remaining->setMinimumSize(200,100); contents->addWidget(remaining);
@@ -53,6 +63,9 @@ int main(int argc, char **argv)
         check(main.minimumSize()==minimum && outer->sizeConstraint()==constraint && main.geometry()==baseline,"native sizing restores exact captured constraints and automatic geometry");
         sizing.setPanels(&main,page,{"detached"}); settle(); main.move(main.pos()+QPoint(20,15)); const auto moved=main.pos();
         sizing.restore(); settle(); check(main.pos()==moved,"native restore preserves deliberate user movement after automatic sizing");
+        sizing.prepare(&main,page); main.setMinimumSize(700,500);
+        sizing.setPanels(&main,page,{"detached"}); settle(); sizing.restore(); settle();
+        check(main.minimumSize()==minimum,"baseline is captured before native detachment changes its own minimum");
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
