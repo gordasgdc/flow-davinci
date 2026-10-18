@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "layoutupdatebatch.h"
 #include <QHash>
 #include <QPushButton>
 #include <QTabWidget>
@@ -339,6 +340,7 @@ private:
     void rebuild(const QJsonObject &tree)
     {
         UiWorkTiming timing("group.rebuild",host);
+        LayoutUpdateBatch paintBatch(host);
         QScopedValueRollback<bool> guard(rebuilding, true);
         visibility.reset();
         for (auto member : members) if (member) leaves.value(member)->setParent(host);
