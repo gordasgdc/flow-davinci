@@ -201,9 +201,13 @@ public:
                 restoreExpanded();
                 requestUndock(a, true); requestUndock(b, true);
                 const unsigned request = ++groupVersion;
-                QTimer::singleShot(100, this, [this, a, b, i, request] {
-                    if (request != groupVersion) return;
+                new Unbound::SurfaceReadiness(this,page(),
+                    [this,request] { return !quitting && request==groupVersion; },
+                    [this,a,b] { return panels[a].session->active() && panels[b].session->active() && !panels[a].pending && !panels[b].pending; },
+                    [this, a, b, i, request](bool ready) {
+                    if (quitting || request != groupVersion) return;
                     const auto error = combinePanels(a, b, i == 3 ? Qt::Orientation(0) : i == 0 ? Qt::Horizontal : Qt::Vertical);
+                    Unbound::logEvent("group.prepare.result",{{"ready",ready},{"success",error.isEmpty()},{"error",error}});
                     status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag the group grip; resize the shared divider.") : error);
                     save();
                 });

@@ -457,7 +457,9 @@ int main(int argc, char **argv)
         QMenu unrelated(&main); unrelated.addAction("Unrelated"); unrelated.show(); settle();
         check(!unrelated.findChild<QAction *>("unboundDockPanel"), "unrelated menus are not modified");
         unrelated.hide();
-        controls.findChild<QPushButton *>("group_0")->click(); settleFor(350);
+        controls.findChild<QPushButton *>("group_0")->click(); settle(); settle(); settle();
+        check(source->window()==program->window(),"ready panel grouping completes without a fixed preparation sleep");
+        settleFor(350);
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
             "controls join Source and Program into a single host");
         check(expandSource->isEnabled(), "group members allow reversible individual expansion");
