@@ -60,7 +60,7 @@
       "branch": "feature/macos-panel-placement",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "6dd4e359a47c851fe02786e29dbff46fc6240f33"
+      "commit": "268bc64cbbfc6917d43dcb1a0dfdc101ddaf1194"
     },
     {
       "branch": "feature/macos-viewer-commands",
