@@ -30,6 +30,7 @@ static void settleFor(int milliseconds)
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
     QTemporaryDir logs;
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
@@ -55,6 +56,21 @@ int main(int argc, char **argv)
         check(!damaged.error().isEmpty() && !damaged.create("New", workspace, first).isEmpty(), "invalid files cannot be silently overwritten");
         invalid.open(QIODevice::ReadOnly); check(invalid.readAll() == "broken", "invalid preset data preserved for recovery");
         qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
+    }
+    {
+        QWidget main; auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
+        auto row=new QVBoxLayout(page); auto panel=new QWidget(page); row->addWidget(panel); main.show(); settle();
+        Unbound::MacPanelSession session;
+        check(session.placement()==Unbound::PanelPlacement::NativeSlot,"unleased panel starts in its original native slot");
+        check(session.undock(panel,page,"Placement fixture").isEmpty() && session.floating(),"leased standalone content is floating");
+        QWidget surface(&main,Qt::Tool); auto cell=new QWidget(&surface);
+        check(session.attachToGroup(cell).isEmpty(),"placement fixture joins a managed surface");
+        surface.setWindowFlags(Qt::Widget);
+        check(session.active() && !session.floating() && session.placement()==Unbound::PanelPlacement::NativeSurface,
+            "content leased into a native surface is managed but not floating");
+        session.detachFromGroup();
+        check(session.floating(),"detaching an embedded member returns floating placement");
+        check(session.dock().isEmpty() && session.placement()==Unbound::PanelPlacement::NativeSlot,"native restoration ends the original content lease");
     }
     Unbound::WindowDiagnostics windowLogs(&app);
     app.installEventFilter(&windowLogs);
