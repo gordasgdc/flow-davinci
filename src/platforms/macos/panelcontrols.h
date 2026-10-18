@@ -263,7 +263,7 @@ public:
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
-                panels[2].session->setHiddenByUser(single);
+                panels[2].session->setHiddenByUser(single, false);
                 if (auto group = groupFor(2)) group->syncVisibility(single ? nullptr : panels[2].session);
             });
         toolbarDecoration = new Unbound::ToolbarDecoration(this);
