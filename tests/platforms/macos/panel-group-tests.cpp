@@ -32,6 +32,47 @@ int main(int argc, char **argv)
             "native clipping helper rejects original Resolve widgets without altering their rendering attributes");
     }
     {
+        QWidget main; auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
+        auto layout=new QHBoxLayout(page); auto inspector=new QWidget(page); inspector->setObjectName("widgetEditInspector");
+        inspector->setMinimumWidth(700); auto native=new QHBoxLayout(inspector); native->addStretch();
+        auto right=new QPushButton("Rightmost native control",inspector); native->addWidget(right); layout->addWidget(inspector);
+        main.resize(1000,500); main.show(); settle(); const auto policy=inspector->sizePolicy(); const bool fill=inspector->autoFillBackground();
+        Unbound::MacPanelSession session;
+        check(session.undock(inspector,page,"Inspector").isEmpty(),"narrow Inspector viewport detaches native content");
+        session.window()->resize(300,360); settle();
+        auto viewport=session.window()->findChild<QScrollArea *>("unboundPanelOverflow_widgetEditInspector");
+        check(viewport && viewport->horizontalScrollBar()->maximum()>0 && session.window()->width()==300,
+            "narrow Inspector scrolls instead of enlarging its floating host or clipping controls");
+        check(inspector->minimumWidth()==700,"overflow does not relax native Inspector control constraints");
+        if (viewport) viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->maximum());
+        Unbound::activateNativeWindowForTest(session.window()); settle();
+        check(QApplication::widgetAt(right->mapToGlobal(right->rect().center()))==right,
+            "scrolling makes the original rightmost native button the real pointer target");
+        auto neighbor=new QWidget(page); neighbor->setObjectName("OverflowNeighbor"); layout->addWidget(neighbor); neighbor->show(); settle();
+        Unbound::MacPanelSession adjacent;
+        check(adjacent.undock(neighbor,page,"Neighbor").isEmpty(),"overflow neighbor detaches");
+        Unbound::PanelGroup group(nullptr);
+        check(group.join(&session,&adjacent,Qt::Horizontal).isEmpty(),"overflow Inspector joins a magnetic group");
+        group.window()->resize(620,400); settle();
+        check(group.window()->width()==620 && viewport && viewport->horizontalScrollBar()->maximum()>0,
+            "magnetic group can stay narrow while Inspector retains accessible overflow");
+        const auto frame=group.window()->geometry();
+        session.setHiddenByUser(true); group.syncVisibility(); settle();
+        session.setHiddenByUser(false); group.syncVisibility(&session); settle();
+        check(group.window()->geometry()==frame && viewport && viewport->widget()==inspector,
+            "grouped door cycling retains the same overflow viewport and outer geometry");
+        if (viewport) viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->maximum());
+        const auto scrollPosition=session.overflowOffset();
+        check(session.beginGroupedExpansion(),"overflow Inspector can borrow a temporary maximize host");
+        session.expandedWindow()->resize(1000,600); settle();
+        session.endGroupedExpansion(); session.restoreOverflowOffset(scrollPosition); settle();
+        check(session.overflowOffset()==scrollPosition && group.window()->geometry()==frame,
+            "maximize restoration can restore overflow position without changing the group frame");
+        check(session.dock().isEmpty(),"overflow viewport docks back to original native slot"); settle();
+        check(inspector->parentWidget()==page && inspector->minimumWidth()==700 && inspector->sizePolicy()==policy && inspector->autoFillBackground()==fill &&
+            !main.findChild<QScrollArea *>("unboundPanelOverflow_widgetEditInspector"),"native restoration removes the viewport and retains original constraints");
+    }
+    {
         QWidget nativeHost; QObject owner;
         QPointer<QWidget> a=new QWidget(&nativeHost), b=new QWidget(&nativeHost);
         Unbound::PanelLayoutCallbacks callbacks;

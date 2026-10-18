@@ -531,6 +531,7 @@ private:
         save();
         auto &panel = panels[i];
         beforeExpanded = panel.saved;
+        beforeOverflowOffset = panel.session->overflowOffset();
         expandedWasFloating = panel.session->active();
         expandedWasGrouped = panel.session->grouped();
         expandedGroup = groupFor(i);
@@ -575,6 +576,7 @@ private:
             if (!expandedWasFloating) error = panel.session->dock();
         }
         panel.saved = beforeExpanded;
+        panel.session->restoreOverflowOffset(beforeOverflowOffset);
         panel.desired = panel.session->active() && !panel.session->dockPending();
         updateRow(i); save();
         Unbound::logEvent(QStringLiteral("panel.expand.restore"), {{"panel", panel.name}, {"success", error.isEmpty()}, {"error", error}});
@@ -895,6 +897,7 @@ private:
     int expanded = -1;
     bool expandedWasFloating = false, expandedWasGrouped = false;
     QJsonObject beforeExpanded, beforeExpandedGroup;
+    QPoint beforeOverflowOffset;
     QPointer<Unbound::PanelGroup> expandedGroup;
     QList<Unbound::PanelGroup *> groups;
     QJsonArray pendingGroups;
