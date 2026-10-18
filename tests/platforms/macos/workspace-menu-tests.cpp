@@ -3,6 +3,7 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "workspacearrangements.h"
+#include "nativepaneldecoration.h"
 #include "arrangementcontrols.h"
 #include "pagecontext.h"
 int main(int argc, char **argv)
@@ -32,6 +33,18 @@ int main(int argc, char **argv)
     }
     Unbound::ArrangementStore store; QString first,second;
     check(store.create("Edit & Review",{{"version",1}},first).isEmpty() && store.create("Audio",{{"version",1}},second).isEmpty(), "create stable saved workspace identities");
+    {
+        QWidget nativePanel; auto row = new QHBoxLayout(&nativePanel);
+        auto options = new QToolButton(&nativePanel); options->setObjectName("btnMediaPoolOptions"); row->addWidget(options);
+        Unbound::NativePanelDecoration decoration(&nativePanel); int toggles=0;
+        decoration.wire(&nativePanel,"pool","Media Pool",false,[&] { ++toggles; });
+        decoration.wire(&nativePanel,"pool","Media Pool",true,[&] { ++toggles; });
+        auto button = nativePanel.findChild<QToolButton *>("unboundNativeUndock_pool");
+        check(button && row->indexOf(button)+1 == row->indexOf(options),"undock glyph occupies its own native layout slot before options");
+        check(nativePanel.findChildren<QToolButton *>("unboundNativeUndock_pool").size() == 1,"native header rewiring cannot duplicate the button");
+        if (button) button->click();
+        check(toggles == 1 && button->toolTip() == "Dock Media Pool","native header button dispatches once and reflects docking state");
+    }
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
     QMenu *root = nullptr;

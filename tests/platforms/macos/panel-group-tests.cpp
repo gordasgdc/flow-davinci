@@ -102,6 +102,19 @@ int main(int argc, char **argv)
         if (splitter) { splitter->setSizes({1,1000}); settle(); }
         check(group.window()->geometry() == frame && timeline->width() >= 240 && inspector->width() >= 240,
             "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
+        a.setHiddenByUser(true); group.syncVisibility(); settle();
+        QToolButton *reveal = nullptr;
+        for (auto candidate : group.window()->findChildren<QToolButton *>("unboundHiddenPanelCaller"))
+            if (candidate->isVisible()) { reveal=candidate; break; }
+        check(reveal && reveal->menu(),"hiding a group panel leaves a discoverable caller in its remaining header");
+        if (reveal) {
+            QMetaObject::invokeMethod(reveal->menu(),"aboutToShow",Qt::DirectConnection);
+            check(reveal->menu()->actions().size() == 1,"hidden-panel menu lists precisely the hidden member");
+            if (!reveal->menu()->actions().isEmpty()) reveal->menu()->actions().first()->trigger();
+        }
+        settle();
+        check(!a.hiddenByUser() && group.contains(&a) && group.window()->geometry() == frame,
+            "header caller restores the same member without detaching or changing outer frame");
         group.dissolve(true); settle();
         check(timeline->minimumWidth() == 900 && inspector->minimumWidth() == 600,
             "native docking restores both original width constraints");
