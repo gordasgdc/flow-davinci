@@ -27,7 +27,8 @@ int main(int argc, char **argv)
         check(Unbound::setNativeGroupSurfaceClipping(&cell) && cell.testAttribute(Qt::WA_NativeWindow),
             "each group content cell owns an explicit native clipping boundary");
         QWidget nativePanel(&main); nativePanel.setObjectName("widgetEditInspector");
-        check(!Unbound::setNativeGroupSurfaceClipping(&nativePanel) && !nativePanel.testAttribute(Qt::WA_NativeWindow),
+        const bool nativeBefore = nativePanel.testAttribute(Qt::WA_NativeWindow);
+        check(!Unbound::setNativeGroupSurfaceClipping(&nativePanel) && nativePanel.testAttribute(Qt::WA_NativeWindow) == nativeBefore,
             "native clipping helper rejects original Resolve widgets without altering their rendering attributes");
     }
     {
