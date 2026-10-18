@@ -148,8 +148,13 @@ public:
             if (hide) surface->hide();
             else if (originalPage && originalPage->isVisible()) {
                 if (activate) {
-                    if (grouped()) { surface->window()->showNormal(); surface->show(); } else host->showNormal();
-                    keepOnDisplay(surface->window()); surface->window()->raise(); surface->window()->activateWindow();
+                    auto window = surface->window();
+                    if (!window->isVisible() || window->isMinimized()) window->showNormal();
+                    surface->show();
+                    // A door changes space inside its group; it must not move
+                    // the group's outer frame or repeatedly reactivate it.
+                    if (!grouped()) keepOnDisplay(window);
+                    if (QApplication::activeWindow() != window) { window->raise(); window->activateWindow(); }
                 } else {
                     // Viewer-mode commands change presentation without stealing
                     // editing focus or reordering an already-visible group.
