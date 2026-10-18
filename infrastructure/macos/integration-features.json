@@ -27,8 +27,14 @@
       "acceptance": "pending"
     },
     {
+      "branch": "feature/macos-layout-surfaces",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "7895e9fb3bc7494f89287d8490f9cc8afcc83e6e"
+    },
+    {
       "branch": "feature/macos-native-workspace-space",
-      "commit": "744d720b8e4ff50ce972d339896a33c01dd97834",
+      "commit": "e97e01e0947d224d0db607e924647a25bbdbbc8d",
       "scope": "implementation",
       "acceptance": "pending"
     },
