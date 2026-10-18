@@ -68,6 +68,16 @@ int main(int argc, char **argv)
         check(main.minimumSize()==minimum,"baseline is captured before native detachment changes its own minimum");
     }
     {
+        QWidget root; QObject owner; bool ready=false; int completed=0;
+        new Unbound::SurfaceReadiness(&owner,&root,[] { return true; },[&] { return ready; },
+            [&](bool success) { check(success,"surface readiness completes from actual readiness"); ++completed; });
+        settle(); check(completed==0,"surface preparation does not finish before it is ready");
+        ready=true; QEvent layout(QEvent::LayoutRequest); QApplication::sendEvent(&root,&layout); settle();
+        check(completed==1,"layout readiness completes without a fixed preparation sleep");
+        QApplication::sendEvent(&root,&layout); settle();
+        check(completed==1,"completed readiness cannot dispatch a second undock");
+    }
+    {
         QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
         auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); outer->addWidget(page);
         auto row = new QVBoxLayout(page); auto stack = new QStackedWidget(page);
