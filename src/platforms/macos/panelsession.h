@@ -140,15 +140,25 @@ public:
         if (arrangementChanged) arrangementChanged();
     }
     void setFloatingGeometry(const QRect &r) { if (grouped()) { if (r.isValid()) detachedGeometry = r; } else if (host && r.isValid()) { host->setGeometry(r); if (constrain) keepOnDisplay(host); } }
-    void setHiddenByUser(bool hide)
+    void setHiddenByUser(bool hide, bool activate = true)
     {
         userHidden = hide;
         if (host) {
             auto surface = window();
             if (hide) surface->hide();
             else if (originalPage && originalPage->isVisible()) {
-                if (grouped()) { surface->window()->showNormal(); surface->show(); } else host->showNormal();
-                keepOnDisplay(surface->window()); surface->window()->raise(); surface->window()->activateWindow();
+                if (activate) {
+                    if (grouped()) { surface->window()->showNormal(); surface->show(); } else host->showNormal();
+                    keepOnDisplay(surface->window()); surface->window()->raise(); surface->window()->activateWindow();
+                } else {
+                    // Viewer-mode commands change presentation without stealing
+                    // editing focus or reordering an already-visible group.
+                    auto window = surface->window();
+                    const bool prior = window->testAttribute(Qt::WA_ShowWithoutActivating);
+                    window->setAttribute(Qt::WA_ShowWithoutActivating);
+                    window->show(); surface->show();
+                    window->setAttribute(Qt::WA_ShowWithoutActivating, prior);
+                }
             }
         }
         logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}, {"placement",panelPlacementName(placement())}});
