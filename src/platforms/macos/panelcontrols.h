@@ -82,7 +82,8 @@ public:
         options->addWidget(snap);
         background = new QCheckBox(QStringLiteral("Floating workspace (hide native background)"), this);
         background->setObjectName(QStringLiteral("hideResolveBackground"));
-        background->setChecked(!settings.data.contains("native_workspace_mode") || settings.data["native_workspace_mode"] == "floating"); options->addWidget(background);
+        const auto nativeMode=settings.data["native_workspace_mode"].toString();
+        background->setChecked(nativeMode=="floating" || (nativeMode.isEmpty() && settings.data["hide_background"].toBool(false))); options->addWidget(background);
         connect(background, &QCheckBox::toggled, this, [this](bool hidden) {
             action(QStringLiteral("background-visibility"));
             if (!applyBackgroundVisibility(hidden)) { const QSignalBlocker blocker(background); background->setChecked(!hidden); }
