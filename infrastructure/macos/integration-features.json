@@ -70,7 +70,7 @@
     },
     {
       "branch": "feature/macos-viewer-commands",
-      "commit": "6ea5b8ee63c0144c9e099726651a104e0f0f10b3",
+      "commit": "27ace95e808210db4c752dc9bfad7280b5de98d8",
       "scope": "implementation",
       "acceptance": "pending"
     }

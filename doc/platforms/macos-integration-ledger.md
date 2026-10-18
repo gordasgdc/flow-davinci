@@ -83,6 +83,13 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 - Production rebuild and fresh Resolve acceptance are still required before
   claiming this pass installed or complete.
 
+Source/native-toggle preparation now observes Show/ParentChange/LayoutRequest
+readiness instead of waiting fixed 100/50 ms. The temporary event filter is
+removed at completion/cancellation/deadline, with a one-second bounded fallback.
+Feature and integration session fixtures PASS, including not-before-ready and
+exactly-once completion. Actual empty Source behavior in Resolve remains a live
+acceptance item; this does not prove lazy player creation in every Resolve state.
+
 ## Continued implementation
 
 Native outer sizing captures/restores its own minimum and layout constraint,
