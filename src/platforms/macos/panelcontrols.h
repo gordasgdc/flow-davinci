@@ -24,6 +24,7 @@
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
 #include "viewerpreparation.h"
+#include "surfacereadiness.h"
 #include "footerpanel.h"
 #include "panelexpansion.h"
 #include "workspacecallers.h"
@@ -580,10 +581,7 @@ private:
             Unbound::prepareSourceViewer(root, target)) {
             p.pending = true; updateRow(i);
             const unsigned request = ++p.requestVersion;
-            QTimer::singleShot(100, this, [this, i, request] {
-                if (panels[i].requestVersion != request) return;
-                panels[i].pending = false; finishUndock(i);
-            });
+            awaitUndockSurface(i, request, root);
             return;
         }
         if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
@@ -594,15 +592,26 @@ private:
                     if (!button->isChecked()) button->click();
                     p.pending = true; updateRow(i);
                     const unsigned request = ++p.requestVersion;
-                    QTimer::singleShot(50, this, [this, i, request] {
-                        if (panels[i].requestVersion != request) return;
-                        panels[i].pending = false; finishUndock(i);
-                    });
+                    awaitUndockSurface(i, request, root);
                     return;
                 }
             }
         }
         finishUndock(i);
+    }
+    void awaitUndockSurface(int i, unsigned request, QWidget *root)
+    {
+        new Unbound::SurfaceReadiness(this,root,
+            [this,i,request] { return !quitting && panels[i].requestVersion==request; },
+            [this,i] {
+                auto surface=Unbound::panelSurface(page(),panels[i].name);
+                if (panels[i].name==QLatin1String("widgetEditSourcePlayer")) surface=Unbound::sourceViewerSurface(surface);
+                return page() && page()->isVisible() && surface && surface->isVisible();
+            }, [this,i,request](bool ready) {
+                if (quitting || panels[i].requestVersion!=request) return;
+                Unbound::logEvent("panel.undock.readiness",{{"panel",panels[i].name},{"ready",ready}});
+                panels[i].pending=false; finishUndock(i);
+            });
     }
     void finishUndock(int i)
     {
