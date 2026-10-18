@@ -11,6 +11,7 @@
 #include <functional>
 #include "diagnostics.h"
 #include "workspacepages.h"
+#include "keyboardlauncher.h"
 
 namespace Unbound {
 // Native menus and the controls window dispatch to the same arrangement owner.
@@ -79,6 +80,7 @@ private:
                 const auto id = result->property("unboundArrangementId").toString();
                 const auto page = result->property("unboundWorkspacePage").toString();
                 QTimer::singleShot(0, this, [this, operation, id, page] {
+                    if (operation == "Keyboard") { openNativeKeyboardCustomization(); return; }
                     if (operation == "PanelManager") {
                         logEvent("workspace.menu.command",{{"operation",operation},{"page",currentPage()}});
                         if (showPanelManager) showPanelManager();
@@ -105,6 +107,7 @@ private:
     {
         const auto page = currentPage(); const auto label = workspacePageLabel(page);
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
+        auto keyboard = action(root,"unboundKeyboardCustomization",QString::fromUtf8("Keyboard Customization…"),"Keyboard");
         auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("Unbound Panel Manager…"),"PanelManager");
         manager->setEnabled(bool(showPanelManager));
         const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
@@ -169,7 +172,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); topOrder.append(manager);
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); topOrder.append(manager); topOrder.append(keyboard);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))

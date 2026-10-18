@@ -9,6 +9,7 @@
 #include <QToolButton>
 #include <functional>
 #include "diagnostics.h"
+#include "keyboardlauncher.h"
 namespace Unbound {
 // Dedicated native-header button; never replaces or overlays Resolve's options.
 class PanelUndockGlyph : public QIconEngine {
@@ -47,6 +48,12 @@ public:
             button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
             button->setProperty("unboundPanelId",id);
             layout->insertWidget(layout->indexOf(anchor),button,0,Qt::AlignVCenter);
+            auto keyboard = new QToolButton(anchor->parentWidget());
+            keyboard->setObjectName("unboundNativeKeyboard_"+id); keyboard->setText(QString::fromUtf8("⌨"));
+            keyboard->setToolTip("Keyboard Customization"); keyboard->setAccessibleName(keyboard->toolTip());
+            keyboard->setAutoRaise(true); keyboard->setFocusPolicy(Qt::NoFocus); keyboard->setFixedSize(24,24);
+            layout->insertWidget(layout->indexOf(anchor),keyboard,0,Qt::AlignVCenter);
+            connect(keyboard,&QToolButton::clicked,this,[] { openNativeKeyboardCustomization(); });
             connect(button,&QToolButton::clicked,this,[id,toggle] {
                 logEvent("panel.header.toggle",{{"panel",id},{"origin","native-header"}}); toggle();
             });
