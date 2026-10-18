@@ -23,6 +23,14 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_WORKSPACE_FILE", (temporary.path() + "/Workspace.json").toUtf8());
     qputenv("UNBOUND_ARRANGEMENTS_FILE", (temporary.path() + "/Arrangements.json").toUtf8());
     {
+        QWidget main; QWidget cell(&main); cell.setObjectName("unboundGroupCell_clipFixture");
+        check(Unbound::setNativeGroupSurfaceClipping(&cell) && cell.testAttribute(Qt::WA_NativeWindow),
+            "each group content cell owns an explicit native clipping boundary");
+        QWidget nativePanel(&main); nativePanel.setObjectName("widgetEditInspector");
+        check(!Unbound::setNativeGroupSurfaceClipping(&nativePanel) && !nativePanel.testAttribute(Qt::WA_NativeWindow),
+            "native clipping helper rejects original Resolve widgets without altering their rendering attributes");
+    }
+    {
         QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
         Unbound::activateNativeWindowForTest(&main); settle();
         const auto key = Unbound::nativeKeyWindowNumber();

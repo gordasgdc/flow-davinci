@@ -264,6 +264,8 @@ private:
         row->addWidget(label, 1); row->addWidget(hide); row->addWidget(detach);
         auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
         layout->addWidget(bar); layout->addWidget(content, 1);
+        const bool clips = setNativeGroupSurfaceClipping(content);
+        logEvent("panel.boundary.native-clip",{{"panel",name},{"enabled",clips}});
         // Keep old hosts until the destination is ready. Hiding the active host
         // earlier makes Cocoa activate another window in the middle of transfer.
         const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
