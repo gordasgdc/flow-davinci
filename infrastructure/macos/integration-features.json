@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "base": "8828868",
+  "features": [
+    {
+      "branch": "experiment/macos-custom-clip-colors",
+      "commit": "8563a37ccf75a1402eb5e52eba3df65e44989a87",
+      "scope": "research",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "experiment/macos-panel-scaling",
+      "commit": "c9aea56a9f151e02debd6129bf1680951a854eee",
+      "scope": "research",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-command-registration",
+      "commit": "f2befee167af5e4f94f40c8657ca1ec660b73b0e",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-interaction-tracing",
+      "commit": "14dd3b9d5fa9dffe91b2856935e5d4ff9c00b8f9",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-native-workspace-space",
+      "commit": "744d720b8e4ff50ce972d339896a33c01dd97834",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-containment",
+      "commit": "3d2160ceb330684f314ac2fbdcc9277cd40bd5bd",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-discovery",
+      "commit": "9469349b2547defff14d329f362aebf0426c2f69",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-viewer-commands",
+      "commit": "1a4e1b7db3fac6c19fe9a7b7b795177be45a3511",
+      "scope": "implementation",
+      "acceptance": "pending"
+    }
+  ]
+}
