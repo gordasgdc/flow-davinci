@@ -9,6 +9,7 @@
 #include "surfacetrace.h"
 #include "clipcolorprobe.h"
 #include "keyboardprobe.h"
+#include "boundarydiagnostics.h"
 
 namespace Unbound {
 class ControlService : public QObject
@@ -23,6 +24,7 @@ public:
         new SurfaceTrace(this);
         new ClipColorProbe(this);
         new KeyboardProbe(this);
+        new BoundaryDiagnostics(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(directory);
