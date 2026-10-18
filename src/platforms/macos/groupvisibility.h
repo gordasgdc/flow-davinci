@@ -4,13 +4,43 @@
 #include <QMap>
 #include <QPointer>
 #include <QSplitter>
+#include <QStackedWidget>
 #include <QTabWidget>
+#include "diagnostics.h"
 namespace Unbound {
 // Remember divider sizes for each open/closed combination, rather than rescaling repeatedly.
 class GroupVisibility
 {
 public:
     void reset() { splitters.clear(); returnTabs.clear(); }
+    void selectPath(QWidget *leaf,QWidget *boundary)
+    {
+        const auto path=tabPath(leaf,boundary);
+        QJsonArray transitions;
+        for (const auto &step : path) transitions.append(QJsonObject{{"from",step.first->currentIndex()},{"to",step.first->indexOf(step.second)}});
+        for (int i=path.size()-1;i>=0;--i) tabVisibility(path[i].first,path[i].second,true,true);
+        logEvent("panel.tab-path.select",{{"panel",leaf ? leaf->property("groupPanel").toString() : QString()},
+            {"levels",path.size()},{"transitions",transitions}});
+    }
+    void closePath(QWidget *leaf,QWidget *boundary)
+    {
+        const auto path=tabPath(leaf,boundary);
+        // Hiding a covered tab must not change the user's current selection.
+        for (const auto &step : path) if (step.first->currentWidget()!=step.second) {
+            logEvent("panel.tab-path.covered",{{"panel",leaf ? leaf->property("groupPanel").toString() : QString()},{"levels",path.size()}});
+            return;
+        }
+        QJsonArray transitions;
+        for (const auto &step : path) {
+            const int before=step.first->currentIndex();
+            auto prior=returnTabs.take(step.first);
+            if (prior && step.first->indexOf(prior)>=0 && step.first->isTabVisible(step.first->indexOf(prior)))
+                step.first->setCurrentWidget(prior);
+            transitions.append(QJsonObject{{"from",before},{"to",step.first->currentIndex()}});
+        }
+        logEvent("panel.tab-path.restore",{{"panel",leaf ? leaf->property("groupPanel").toString() : QString()},
+            {"levels",path.size()},{"transitions",transitions}});
+    }
     void remember(QWidget *root)
     {
         auto items = root->findChildren<QSplitter *>();
@@ -40,6 +70,15 @@ public:
         }
     }
 private:
+    static QList<QPair<QTabWidget *,QWidget *>> tabPath(QWidget *leaf,QWidget *boundary)
+    {
+        QList<QPair<QTabWidget *,QWidget *>> result;
+        for (auto child=leaf; child && child->parentWidget() && child->parentWidget()!=boundary; child=child->parentWidget())
+            if (auto stack=qobject_cast<QStackedWidget *>(child->parentWidget()))
+                if (auto tabs=qobject_cast<QTabWidget *>(stack->parentWidget()))
+                    if (tabs->indexOf(child)>=0) result.append({tabs,child});
+        return result;
+    }
     static QString mask(QSplitter *splitter)
     {
         QString result;
