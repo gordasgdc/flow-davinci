@@ -28,7 +28,10 @@ public:
     }
     bool notify(QObject *receiver,QEvent *event) override {
         const bool sample=probing && depth==0;
-        const QString key=sample ? QString::fromLatin1(receiver->metaObject()->className())+":"+QString::number(int(event->type())) : QString();
+        // Object names here come only from this synthetic fixture, never from
+        // an editor's project, text fields or media names.
+        const QString key=sample ? QString::fromLatin1(receiver->metaObject()->className())+"["+
+            receiver->objectName()+"]:"+QString::number(int(event->type())) : QString();
         QElapsedTimer clock; if (sample) clock.start();
         ++depth;
         const bool result=QApplication::notify(receiver,event);
