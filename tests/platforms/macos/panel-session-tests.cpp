@@ -37,6 +37,19 @@ int main(int argc, char **argv)
     const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
     qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
     {
+        QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); outer->addWidget(page); auto row = new QHBoxLayout(page);
+        auto leaving = new QWidget(page); leaving->setMinimumSize(900,300); row->addWidget(leaving);
+        auto remaining = new QWidget(page); remaining->setMinimumSize(200,100); row->addWidget(remaining);
+        main.show(); settle(); const auto before = main.minimumSizeHint();
+        Unbound::MacPanelSession session;
+        check(session.undock(leaving,page,"Vacancy fixture").isEmpty(),"native panel detaches for vacancy check"); settle();
+        auto slot = page->findChild<QWidget *>("unboundVacatedSlot_");
+        check(slot && slot->isHidden() && slot->minimumSize() == QSize(0,0),"vacated native slot does not retain detached minimum dimensions");
+        check(main.minimumSizeHint().width() < before.width(),"native layout requirement decreases while remaining native content is retained");
+        check(session.dock().isEmpty() && leaving->minimumSize() == QSize(900,300),"redocking preserves the native panel's original constraints");
+    }
+    {
         Unbound::ArrangementStore store;
         QString first, copy;
         const QJsonObject workspace{{"panels", QJsonObject{{"Timeline", QJsonObject{{"floating", true}, {"x", -1200}}}}}};
