@@ -33,6 +33,12 @@
       "commit": "7895e9fb3bc7494f89287d8490f9cc8afcc83e6e"
     },
     {
+      "branch": "feature/macos-native-first-startup",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "4587bc9f99991bbc3a381f15c2fdbfc67c9974ad"
+    },
+    {
       "branch": "feature/macos-native-panel-drag",
       "scope": "implementation",
       "acceptance": "pending",
@@ -45,8 +51,14 @@
       "acceptance": "pending"
     },
     {
+      "branch": "feature/macos-nested-panel-doors",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "326b573e435ee18beb42aec4435bbeda8f4ddc17"
+    },
+    {
       "branch": "feature/macos-panel-containment",
-      "commit": "0606efe2e81d42007553272ddea4f26a1289f9be",
+      "commit": "2e8b146d4697defdd0c6d767d51421780ef96c89",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -55,6 +67,12 @@
       "commit": "4177f172c0e93541ec97af8e9c552b730c2995aa",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-overflow",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "3d84524f92b28a5fb15d8d027ef81aedc09a8a2e"
     },
     {
       "branch": "feature/macos-panel-placement",
@@ -66,11 +84,11 @@
       "branch": "feature/macos-responsive-command-discovery",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "66cd3bdd2bc537a4edb83690a270efb01ac83455"
+      "commit": "0e701b12b5af3a26e612116c62b08ffbdb5fce23"
     },
     {
       "branch": "feature/macos-viewer-commands",
-      "commit": "27ace95e808210db4c752dc9bfad7280b5de98d8",
+      "commit": "7817e4f022dcb99bcad5983cb138a6bf80cd3406",
       "scope": "implementation",
       "acceptance": "pending"
     }

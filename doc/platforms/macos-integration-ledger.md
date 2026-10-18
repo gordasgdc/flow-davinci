@@ -17,7 +17,10 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 | Native button drag | feature/macos-native-panel-drag | Drag threshold, readiness-based host capture, release/click separation, header callback cleanup | Native drag/drop and lifecycle fixture execution; delayed readiness/live behavior |
 | Placement semantics | feature/macos-panel-placement | Original-slot leasing separated from native-surface and floating-surface placement; headless state tests pass | Native-session fixture coverage; command and embedded-adapter wiring |
 | Shared layout surface | feature/macos-layout-surfaces | Split/tab renderer used by floating groups and usable in an ordinary embedded host; invalid-tree checks before ownership changes | Native fixtures; actual original-window slot adapter and embedded arrangement persistence |
-| Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; scrolling at narrow widths; divider/resize/input and GPU/playback checks |
+| Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; divider/resize/input and GPU/playback checks |
+| Narrow Inspector | feature/macos-panel-overflow | Retained native content in a reversible scroll viewport; original minima/policy/background retained; grouped door/recovery/scroll and maximize-offset fixture checks PASS | Live Resolve validation; other panels; independent UI scale remains separate |
+| Nested doors | feature/macos-nested-panel-doors | Reveal every enclosing tab; close restores prior outer selection; covered-panel hiding leaves current view unchanged; transition logs | Live command/shortcut checks and larger nested-layout matrix |
+| Native-first startup | feature/macos-native-first-startup | Manager initializes hidden; fresh defaults retain native background; stale launch requests consumed; explicit/legacy preferences retained; no key-window change in fixture | Fresh Resolve acceptance; original-window split/tab rearrangement is still open |
 | Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders; transferred empty containers collapse; scoped native outer sizing/restoration | Native fixture/live verification of shrinking and restoration; drag/split/tab rearrangement inside native surface; native recovery and focus |
 | Commands | feature/macos-command-registration | Read-only native keyboard-dialog interface inventory; native Keyboard Customization launch from headers/Workspace UI | Command registry; assignable maximize/reveal for every panel; collision/typing behavior; native keyboard registration and persistence; viewer command regression matrix |
 | Clip colors | experiment/macos-custom-clip-colors | Known native palette action inventory, type metadata only | Storage investigation on disposable project; bright Red, picker/name/edit/remove; saved color identity; native menu and shortcut commands; reopening/undo/redo |
@@ -89,6 +92,33 @@ removed at completion/cancellation/deadline, with a one-second bounded fallback.
 Feature and integration session fixtures PASS, including not-before-ready and
 exactly-once completion. Actual empty Source behavior in Resolve remains a live
 acceptance item; this does not prove lazy player creation in every Resolve state.
+
+## Continued native-first and interaction pass
+
+- Readiness observation also replaces the fixed 100 ms group-command delay.
+  A fixture verifies ready panels join through event processing without sleeping.
+- Native session, group, hidden-controls, reliability and instrumentation fixtures
+  passed during this pass. Later changes still require combined verification and
+  actual Resolve acceptance; none of the new candidates is installed.
+- Narrow Inspector keeps real control constraints and supplies horizontal/vertical
+  overflow, not UI scaling. The original rightmost button is the actual hit target
+  after scrolling. Magnetic grouping, door cycles, native reclamation and native
+  restoration pass. Temporary expansion can restore the prior overflow offset.
+- Nested tabs now select the complete containing path when revealing a panel,
+  then restore the preceding outer selection on close. Logs record level counts
+  and index transitions without copying user project text.
+- Startup no longer automatically opens Panel Manager. A fresh configuration
+  keeps the native workspace; explicit saved floating preferences remain valid.
+  Recent explicit launch requests still open the manager, stale ones are consumed.
+- A native-ancestor view-promotion experiment reduced some work but worsened viewer
+  timing in repeated measurements; reverted. This was internal rendering plumbing,
+  not removal of native Resolve surfaces or the native-first product goal.
+- Fixture timing now separates input dispatch and deferred event work, with bounded
+  outer-event attribution excluding scenario preparation and nested double counts.
+  The overall 16.667 ms p95 gate remains unchanged and unpassed. Do not infer smooth
+  presentation merely from short dispatch time, or sum separate p95 percentiles.
+- New feature branches are stacked on required integration dependencies. Inclusion
+  in the manifest does not make a branch independently merge-ready for master.
 
 ## Continued implementation
 

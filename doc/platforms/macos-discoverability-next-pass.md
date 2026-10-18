@@ -7,6 +7,12 @@ wholesale or change established features to simplify this pass.
 
 ## Requests captured
 
+- One native-feeling workspace on first open: preserve Resolve's real controls
+  and familiar initial arrangement, with added undock/rearrange/pin/minimize/
+  maximize behavior. Do not require opening Panel Manager or toggling a native
+  background checkbox. The original workspace adapts to the panels that remain;
+  no duplicate empty interface is part of the intended everyday workflow.
+  Restore Native UI remains permanent recovery, not a required workspace mode.
 - Fix Timeline/Inspector cross-boundary clipping and narrow-panel behavior.
   Inspector may need internal scrolling when native controls cannot fit.
 - Make undocking visible through a dedicated native-header symbol beside the
