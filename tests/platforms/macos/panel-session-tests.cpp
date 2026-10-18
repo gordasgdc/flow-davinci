@@ -43,7 +43,10 @@ int main(int argc, char **argv)
         auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
         auto contents=new QHBoxLayout(page); auto remaining=new QWidget(page); remaining->setMinimumSize(200,100); contents->addWidget(remaining);
         main.show(); settle(); const auto baseline=main.geometry(); const auto minimum=main.minimumSize(); const auto constraint=outer->sizeConstraint();
-        Unbound::NativeWorkspaceSizing sizing(nullptr); sizing.setPanels(&main,page,{"detached"}); settle();
+        Unbound::NativeWorkspaceSizing sizing(nullptr); bool expanding=true;
+        sizing.blocked=[&] { return expanding; }; sizing.setPanels(&main,page,{"detached"}); settle();
+        check(main.geometry()==baseline && main.minimumSize()==minimum,"temporary maximize does not resize the native workspace behind it");
+        expanding=false; sizing.setPanels(&main,page,{"detached"}); settle();
         check(main.minimumWidth()<minimum.width() && main.width()<baseline.width(),"native window can shrink below its old explicit minimum around remaining content");
         check(remaining->minimumSize()==QSize(200,100),"native outer sizing never relaxes remaining content constraints");
         sizing.restore(); settle();

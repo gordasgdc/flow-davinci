@@ -5,6 +5,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QTimer>
+#include <functional>
 #include "diagnostics.h"
 #include "cinemaviewer.h"
 namespace Unbound {
@@ -17,8 +18,9 @@ public:
         connect(&settle,&QTimer::timeout,this,[this] { apply(); });
     }
     ~NativeWorkspaceSizing() override { restore(); }
+    std::function<bool()> blocked = [] { return false; };
     void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids) {
-        if (window==main && nativePage==page && ids==detached) return;
+        if (window==main && nativePage==page && ids==detached) { if (!captured && !ids.isEmpty()) settle.start(0); return; }
         if (window!=main || nativePage!=page) {
             restore(); main=window; page=nativePage;
             if (main) originalGeometry=main->geometry();
@@ -42,7 +44,7 @@ protected:
     }
 private:
     void apply() {
-        if (!main || !page || !page->isVisible() || detached.isEmpty() || visibleCinemaViewer() ||
+        if ((blocked && blocked()) || !main || !page || !page->isVisible() || detached.isEmpty() || visibleCinemaViewer() ||
             QApplication::activeModalWidget() || QApplication::activePopupWidget()) return;
         auto layout=main->layout(); if (!layout) return;
         if (!captured) {
