@@ -37,6 +37,18 @@ int main(int argc, char **argv)
     const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
     qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
     {
+        QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); page->setObjectName("WStackPage_Conform"); outer->addWidget(page);
+        auto row = new QVBoxLayout(page); auto stack = new QStackedWidget(page);
+        stack->setObjectName("stackedEditSourceOfflinePlayers"); stack->addWidget(new QLabel("No clip loaded",stack)); row->addWidget(stack);
+        main.show(); settle();
+        auto surface = Unbound::panelSurface(page,"widgetEditSourcePlayer");
+        check(surface == stack,"empty Source resolves to its native offline stack before a player or clip exists");
+        Unbound::MacPanelSession session;
+        check(session.undock(surface,page,"Source Monitor",true).isEmpty(),"offline Source can detach without loading media");
+        check(session.dock().isEmpty() && stack->parentWidget() == page,"offline Source returns to its original native slot");
+    }
+    {
         Unbound::ArrangementStore store;
         QString first, copy;
         const QJsonObject workspace{{"panels", QJsonObject{{"Timeline", QJsonObject{{"floating", true}, {"x", -1200}}}}}};
