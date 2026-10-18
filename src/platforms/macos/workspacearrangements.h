@@ -24,6 +24,7 @@ public:
     std::function<QString()> selected;
     std::function<void(QString, QString)> invoke;
     std::function<void(QString)> nativeWorkspace;
+    std::function<void()> showPanelManager;
     std::function<QString()> currentPage = [] { return QStringLiteral("edit"); };
     std::function<bool()> nativeActive = [] { return false; };
     std::function<bool(QString)> supportedPage = [](const QString &page) { return page == "edit"; };
@@ -78,6 +79,11 @@ private:
                 const auto id = result->property("unboundArrangementId").toString();
                 const auto page = result->property("unboundWorkspacePage").toString();
                 QTimer::singleShot(0, this, [this, operation, id, page] {
+                    if (operation == "PanelManager") {
+                        logEvent("workspace.menu.command",{{"operation",operation},{"page",currentPage()}});
+                        if (showPanelManager) showPanelManager();
+                        return;
+                    }
                     if (currentPage() != page) { logEvent("workspace.menu.cancelled",{{"reason","page-changed"},{"page",page}}); return; }
                     if (operation != "Native" && !supportedPage(page)) { logEvent("workspace.menu.cancelled",{{"reason","unsupported-page"},{"page",page}}); return; }
                     logEvent(QStringLiteral("workspace.menu.command"), {{"operation", operation}, {"id", id},{"page",page}});
@@ -99,6 +105,8 @@ private:
     {
         const auto page = currentPage(); const auto label = workspacePageLabel(page);
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
+        auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("Unbound Panel Manager…"),"PanelManager");
+        manager->setEnabled(bool(showPanelManager));
         const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
         auto menu = root->findChild<QMenu *>("unboundWorkspaceArrangements", Qt::FindDirectChildrenOnly);
         bool created = !menu;
@@ -161,7 +169,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction());
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); topOrder.append(manager);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))

@@ -48,7 +48,7 @@ public:
     PanelControls() : QWidget(nullptr, Qt::Window)
     {
         setObjectName(QStringLiteral("unboundPanelTest"));
-        setWindowTitle(QStringLiteral("Unbound — Panels"));
+        setWindowTitle(QStringLiteral("Unbound Panel Manager"));
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
         auto layout = new QVBoxLayout(this);
@@ -276,6 +276,10 @@ public:
             }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        workspaceMenu->showPanelManager = [this] {
+            showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
+            Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
+        };
         workspaceMenu->entries = [this] { return presetsUi->list(); };
         workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
         workspaceMenu->nativeActive = [this] {

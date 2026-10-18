@@ -35,6 +35,7 @@ int main(int argc, char **argv)
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
     QMenu *root = nullptr;
+    int managerCalls = 0;
     int nativeCalls = 0, restores = 0; QString selected = first, activePage = "edit", nativePage;
     const auto configure = [&](Unbound::WorkspaceArrangements &menus) {
         menus.entries = [&] { return store.list(); }; menus.selected = [&] { return selected; };
@@ -55,6 +56,12 @@ int main(int argc, char **argv)
         auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements");
         auto preset = root->findChild<QMenu *>("unboundWorkspace_"+second);
         check(submenu && submenu->title() == "Manage Saved Workspaces" && preset && !root->isVisible(), "menu is populated before native display");
+        auto manager = root->findChild<QAction *>("unboundShowPanelManager");
+        check(manager && !manager->isEnabled(), "manager action is disabled without an owner callback");
+        menus.showPanelManager = [&] { ++managerCalls; };
+        menus.wire();
+        manager->trigger(); QApplication::processEvents();
+        check(managerCalls == 1, "Workspace UI opens the panel manager through its owner callback");
         check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
             "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
         check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
