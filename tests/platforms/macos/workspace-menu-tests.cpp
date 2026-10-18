@@ -44,6 +44,14 @@ int main(int argc, char **argv)
         check(nativePanel.findChildren<QToolButton *>("unboundNativeUndock_pool").size() == 1,"native header rewiring cannot duplicate the button");
         if (button) button->click();
         check(toggles == 1 && button->toolTip() == "Dock Media Pool","native header button dispatches once and reflects docking state");
+        int drags=0;
+        decoration.wire(&nativePanel,"pool","Media Pool",true,[&] { ++toggles; },[&](QPoint) { ++drags; });
+        QMouseEvent press(QEvent::MouseButtonPress,QPointF(4,4),QPointF(100,100),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+        const int distance=QApplication::startDragDistance()+10;
+        QMouseEvent move(QEvent::MouseMove,QPointF(4+distance,4),QPointF(100+distance,100),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
+        QMouseEvent release(QEvent::MouseButtonRelease,QPointF(4,4),QPointF(100,100),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+        QApplication::sendEvent(button,&press); QApplication::sendEvent(button,&move); QApplication::sendEvent(button,&release);
+        check(drags==1 && toggles==1,"native undock drag crosses threshold once and cannot become a dock click on release");
     }
     {
         QMenu nativeCommands; int opened=0;
@@ -55,6 +63,13 @@ int main(int argc, char **argv)
         keyboard->setEnabled(true);
         QMenu ambiguous; ambiguous.addAction("Keyboard Customization...");
         check(!Unbound::openNativeKeyboardCustomization() && opened==1,"ambiguous native keyboard actions are rejected");
+    }
+    {
+        QWidget panel; auto row=new QHBoxLayout(&panel); auto options=new QToolButton(&panel);
+        options->setObjectName("btnMediaPoolOptions"); row->addWidget(options);
+        { Unbound::NativePanelDecoration decoration(nullptr); decoration.wire(&panel,"lifetime","Media Pool",false,[] {}); }
+        check(panel.findChildren<QToolButton *>().size()==1 && options->parentWidget()==&panel,
+            "destroying header decoration removes owned buttons and stale drag callbacks while preserving native options");
     }
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");

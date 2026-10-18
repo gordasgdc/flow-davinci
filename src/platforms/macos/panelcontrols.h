@@ -22,6 +22,7 @@
 #include "panelmenus.h"
 #include "nativepaneldecoration.h"
 #include "nativeworkspacesizing.h"
+#include "nativepaneldrag.h"
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
@@ -247,7 +248,7 @@ public:
                 if (auto group = groupFor(i)) group->syncVisibility();
                 syncNativeToggle(i);
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
-                updateRow(i); updateNativeSizing(); if (!quitting) saveTimer.start();
+                updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
             };
             panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
@@ -272,6 +273,7 @@ public:
             });
         toolbarDecoration = new Unbound::ToolbarDecoration(this);
         nativeDecoration = new Unbound::NativePanelDecoration(this);
+        nativeDrag = new Unbound::NativePanelDrag(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
             [this, index] { return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
@@ -494,6 +496,11 @@ private:
             if (window->objectName() == QLatin1String("UiMainWindow"))
                 return window->findChild<QWidget *>(QStringLiteral("WStackPage_Conform"));
         return nullptr;
+    }
+    void readyNativeDrag(int i)
+    {
+        if (!nativeDrag || !panels[i].session->active() || panels[i].session->grouped()) return;
+        nativeDrag->ready(panels[i].name,static_cast<Unbound::MacFloatingHost *>(panels[i].session->window()));
     }
     void updateRow(int i)
     {
@@ -765,7 +772,13 @@ private:
         if (nativeDecoration && page()) for (int i=0; i<panels.size(); ++i) {
             auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
             nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->active(),
-                [this,i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); });
+                [this,i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); },
+                [this,i](QPoint) {
+                    nativeDrag->begin(panels[i].name);
+                    if (auto group=groupFor(i)) group->detachMember(panels[i].session);
+                    if (!panels[i].session->active()) requestUndock(i);
+                    readyNativeDrag(i);
+                });
         }
         if (workspaceMenu) workspaceMenu->wire();
         if (viewerMode && page()) viewerMode->refresh(page()->window());
@@ -857,6 +870,7 @@ private:
     Unbound::ViewerModeCommand *viewerMode = nullptr;
     Unbound::ToolbarDecoration *toolbarDecoration = nullptr;
     Unbound::NativePanelDecoration *nativeDecoration = nullptr;
+    Unbound::NativePanelDrag *nativeDrag = nullptr;
     Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
     QTimer saveTimer, restoreTimer;

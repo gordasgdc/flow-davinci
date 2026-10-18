@@ -6,6 +6,7 @@
 #include <QIconEngine>
 #include <QPainter>
 #include <QPointer>
+#include <QMouseEvent>
 #include <QToolButton>
 #include <functional>
 #include "diagnostics.h"
@@ -27,10 +28,40 @@ public:
         paint(&p,QRect(QPoint(),size),mode,state); return result;
     }
 };
+class NativeUndockButton : public QToolButton {
+public:
+    using QToolButton::QToolButton;
+    std::function<void(QPoint)> drag;
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        armed=event->button()==Qt::LeftButton; moved=false; press=event->globalPos();
+        QToolButton::mousePressEvent(event);
+    }
+    void mouseMoveEvent(QMouseEvent *event) override {
+        if (armed && drag && event->buttons().testFlag(Qt::LeftButton) &&
+            (event->globalPos()-press).manhattanLength()>=QApplication::startDragDistance()) {
+            armed=false; moved=true; setDown(false);
+            if (QWidget::mouseGrabber()==this) releaseMouse();
+            drag(event->globalPos()); event->accept(); return;
+        }
+        if (!moved) QToolButton::mouseMoveEvent(event);
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        armed=false;
+        if (moved) { setDown(false); event->accept(); return; }
+        QToolButton::mouseReleaseEvent(event);
+    }
+private:
+    QPoint press; bool armed=false,moved=false;
+};
 class NativePanelDecoration : public QObject {
 public:
     explicit NativePanelDecoration(QObject *owner) : QObject(owner) {}
-    void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle) {
+    ~NativePanelDecoration() override {
+        for (const auto &button : buttons) delete button.data();
+        for (const auto &keyboard : keyboards) delete keyboard.data();
+    }
+    void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
         auto button = buttons.value(id);
         if (!button) {
@@ -43,7 +74,7 @@ public:
                 if (row && row->direction() == QBoxLayout::LeftToRight && row->indexOf(candidate) >= 0) { anchor=candidate; layout=row; break; }
             }
             if (!anchor) return; // No fallback strip or guessed overlay over native input.
-            button = new QToolButton(anchor->parentWidget()); button->setObjectName("unboundNativeUndock_"+id);
+            button = new NativeUndockButton(anchor->parentWidget()); button->setObjectName("unboundNativeUndock_"+id);
             button->setIcon(QIcon(new PanelUndockGlyph)); button->setIconSize(QSize(20,20)); button->setFixedSize(24,24);
             button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
             button->setProperty("unboundPanelId",id);
@@ -53,16 +84,19 @@ public:
             keyboard->setToolTip("Keyboard Customization"); keyboard->setAccessibleName(keyboard->toolTip());
             keyboard->setAutoRaise(true); keyboard->setFocusPolicy(Qt::NoFocus); keyboard->setFixedSize(24,24);
             layout->insertWidget(layout->indexOf(anchor),keyboard,0,Qt::AlignVCenter);
+            keyboards.append(keyboard);
             connect(keyboard,&QToolButton::clicked,this,[] { openNativeKeyboardCustomization(); });
             connect(button,&QToolButton::clicked,this,[id,toggle] {
                 logEvent("panel.header.toggle",{{"panel",id},{"origin","native-header"}}); toggle();
             });
             buttons[id]=button;
         }
-        button->setToolTip((floating ? "Dock " : "Undock ")+title);
+        button->drag=std::move(drag);
+        button->setToolTip((floating ? "Dock " : "Undock ")+title+(button->drag ? "; drag to move or detach" : ""));
         button->setAccessibleName(button->toolTip()); button->show();
     }
 private:
-    QHash<QString,QPointer<QToolButton>> buttons;
+    QHash<QString,QPointer<NativeUndockButton>> buttons;
+    QList<QPointer<QToolButton>> keyboards;
 };
 }
