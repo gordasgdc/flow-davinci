@@ -30,6 +30,7 @@ public:
 class NativePanelDecoration : public QObject {
 public:
     explicit NativePanelDecoration(QObject *owner) : QObject(owner) {}
+    ~NativePanelDecoration() override { for (const auto &button : buttons) delete button.data(); }
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle) {
         if (!panel) return;
         auto button = buttons.value(id);
