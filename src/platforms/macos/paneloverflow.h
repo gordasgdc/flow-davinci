@@ -41,6 +41,10 @@ public:
         if (area->widget()==content) area->takeWidget();
         const bool fill=content->autoFillBackground();
         area->setWidget(content); content->setAutoFillBackground(fill);
+        // Reparenting can leave the real control layout at the old native
+        // parent's size even after QScrollArea resizes its content widget.
+        // Reconcile once at this ownership boundary, not on every drag frame.
+        if (content->layout()) { content->layout()->invalidate(); content->layout()->activate(); }
         logEvent("panel.overflow.recover",{{"panel",content->objectName()}});
         return true;
     }

@@ -47,9 +47,25 @@ int main(int argc, char **argv)
         inspector->setParent(page); layout->addWidget(inspector); inspector->show(); settle(); settle();
         check(viewport && viewport->widget()==inspector && inspector->parentWidget()==viewport->viewport(),
             "native content reclamation recovers into the retained overflow viewport without duplicating the panel");
+        check(native->geometry()==inspector->contentsRect(),
+            "reclaimed Inspector control layout matches its resized content before pointer input");
         if (viewport) viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->maximum());
         Unbound::activateNativeWindowForTest(session.window()); settle();
-        check(QApplication::widgetAt(right->mapToGlobal(right->rect().center()))==right,
+        const auto hitPoint=right->mapToGlobal(right->rect().center());
+        auto hit=QApplication::widgetAt(hitPoint);
+        if (hit!=right) {
+            const auto expected=right->geometry(); const auto frame=session.window()->frameGeometry();
+            std::fprintf(stderr,"Inspector hit diagnostic: point=%d,%d button=%d,%d,%d,%d host=%d,%d,%d,%d hit=%s/%s visible=%d scroll=%d/%d\n",
+                hitPoint.x(),hitPoint.y(),expected.x(),expected.y(),expected.width(),expected.height(),
+                frame.x(),frame.y(),frame.width(),frame.height(),hit ? hit->metaObject()->className() : "null",
+                hit ? qPrintable(hit->objectName()) : "null",right->isVisible(),
+                viewport ? viewport->horizontalScrollBar()->value() : -1,viewport ? viewport->horizontalScrollBar()->maximum() : -1);
+            std::fprintf(stderr,"Inspector layout diagnostic: content=%dx%d layout=%dx%d viewport=%dx%d button-global-right=%d host-right=%d\n",
+                inspector->width(),inspector->height(),native->geometry().width(),native->geometry().height(),
+                viewport ? viewport->viewport()->width() : -1,viewport ? viewport->viewport()->height() : -1,
+                right->mapToGlobal(right->rect().topRight()).x(),frame.right());
+        }
+        check(hit==right,
             "scrolling makes the original rightmost native button the real pointer target");
         auto neighbor=new QWidget(page); neighbor->setObjectName("OverflowNeighbor"); layout->addWidget(neighbor); neighbor->show(); settle();
         Unbound::MacPanelSession adjacent;
