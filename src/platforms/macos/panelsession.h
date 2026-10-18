@@ -15,6 +15,7 @@
 #include "viewport.h"
 #include "floatinghost.h"
 #include "panelwidth.h"
+#include "paneloverflow.h"
 #include "vacatedcontents.h"
 #include "panelplacement.h"
 #include "cinemaviewer.h"
@@ -122,6 +123,8 @@ public:
     void setPinned(bool value) { if (host) static_cast<MacFloatingHost *>(host.data())->setPinned(value); }
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     bool hiddenByUser() const { return userHidden; }
+    QPoint overflowOffset() const { return overflow.offset(); }
+    void restoreOverflowOffset(QPoint position) { overflow.restoreOffset(position); }
     void setConstrained(bool enabled) { constrain = enabled; if (enabled && window()) keepOnDisplay(window()->window()); }
     void bringOnScreen() { if (window()) keepOnDisplay(window()->window()); if (arrangementChanged) arrangementChanged(); }
     void centerOnCurrentDisplay()
@@ -283,11 +286,13 @@ public:
         host->resize(widget->size().expandedTo(QSize(320, 240)));
         auto box = new QVBoxLayout(host);
         box->setContentsMargins(0, 0, 0, 0);
-        box->addWidget(widget);
+        const bool scrollInspector = widget->objectName()==QLatin1String("widgetEditInspector");
+        box->addWidget(scrollInspector ? overflow.wrap(widget,host) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
             widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
-        if (relaxedWidth) widthAllowance.apply(widget);
+        if (relaxedWidth && !scrollInspector) widthAllowance.apply(widget);
+        if (scrollInspector) host->setProperty("unboundRelaxedWidth",true);
         // A detached tools row must not leave a second empty tools row in Timeline.
         marker->hide();
         logEvent("workspace.native-slot.vacated", {{"panel",widget->objectName()},
@@ -351,8 +356,16 @@ public:
         }
         if (!content || !originalParent || !placeholder)
             return QStringLiteral("Resolve changed the panel hierarchy; restoration was stopped.");
-        if (content->parentWidget() != host && content->parentWidget() != originalParent && !nativeOwner(content->parentWidget()))
+        if (content->parentWidget() != host && content->parentWidget() != originalParent && !overflow.owns(content) && !nativeOwner(content->parentWidget()))
             return QStringLiteral("This panel belongs to an unexpected window; restoration was stopped.");
+        if (overflow.owns(content)) {
+            // Validate the destination before removing the retained viewport.
+            if ((originalStack && originalStack->indexOf(placeholder)<0) ||
+                (originalSplitter && originalSplitter->indexOf(placeholder)<0) ||
+                (originalParent->layout() && !originalStack && !originalSplitter && originalParent->layout()->indexOf(placeholder)<0))
+                return QStringLiteral("The original panel slot changed.");
+            overflow.releaseInto(host);
+        }
         const bool reclaimed = content->parentWidget() == originalParent;
         QLayout *currentLayout = originalParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
@@ -468,11 +481,11 @@ private:
             QScopedValueRollback<bool> recovery(recovering, true);
             QWidget *surface = window();
             if (!transferredLayout && content) {
-                if (content->parentWidget() != surface) {
+                if (content->parentWidget() != surface && !overflow.owns(content)) {
                     if (!nativeOwner(content->parentWidget())) {
                         logEvent(QStringLiteral("panel.recover.rejected"), {{"widget", widgetState(content)}}); return;
                     }
-                    surface->layout()->addWidget(content);
+                    if (!overflow.reclaim(content)) surface->layout()->addWidget(content);
                 }
                 content->show();
             }
@@ -488,6 +501,7 @@ private:
     {
         if (releaseGroup) { auto release = releaseGroup; release(); }
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
+        overflow.forget();
         ++generation;
         if (content) content->removeEventFilter(this);
         host = nullptr; content = nullptr; placeholder = nullptr;
@@ -505,6 +519,7 @@ private:
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
     PanelWidthAllowance widthAllowance, groupWidth;
+    PanelOverflow overflow;
     VacatedContents vacatedContents;
     bool relaxedWidth = false;
     QPointer<QWidget> originalMain;
