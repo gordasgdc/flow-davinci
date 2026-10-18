@@ -1,6 +1,15 @@
 # Unbound - Floating panels for DaVinci Resolve
 
-## Experimental macOS branch status — October 17, 2026
+## Current integration work — October 18, 2026
+
+`macos-panel-discovery-and-layout` combines separate feature branches for ongoing
+work. It is **not a completed or newly installed release**. See the
+[integration ledger](doc/platforms/macos-integration-ledger.md) for each feature's
+implementation and verification status. Build manifests identify the exact
+included feature commits; they do not certify acceptance. The preserved installed
+snapshot is described below. Master and upstream have not been merged.
+
+## Preserved experimental macOS snapshot — October 17, 2026
 
 This branch, `macos-responsive-group-transfers`, is an experimental macOS build
 shared for ongoing development; it has not been merged into main. Arrangement
