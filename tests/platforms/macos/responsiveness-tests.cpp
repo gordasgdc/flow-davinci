@@ -63,12 +63,15 @@ int main(int argc,char **argv)
         Unbound::LatencyStats timing, dispatch, deferred;
         app.beginProbe();
         for (int i=0;i<count;++i) {
+            app.setProbeEnabled(false);
             if (prepare) prepare(i);
+            app.setProbeEnabled(true);
             QElapsedTimer turn; turn.start(); operation(i);
             const auto dispatched = turn.nsecsElapsed();
             QApplication::processEvents(QEventLoop::AllEvents,10);
             const auto completed = turn.nsecsElapsed();
             dispatch.add(dispatched); deferred.add(completed-dispatched); timing.add(completed);
+            app.setProbeEnabled(false);
             while (turn.elapsed() < 16) { QApplication::processEvents(); QThread::msleep(1); }
         }
         auto summary = timing.summary();
