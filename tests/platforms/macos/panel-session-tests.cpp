@@ -30,6 +30,7 @@ static void settleFor(int milliseconds)
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
     QTemporaryDir logs;
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
@@ -47,6 +48,19 @@ int main(int argc, char **argv)
         Unbound::MacPanelSession session;
         check(session.undock(surface,page,"Source Monitor",true).isEmpty(),"offline Source can detach without loading media");
         check(session.dock().isEmpty() && stack->parentWidget() == page,"offline Source returns to its original native slot");
+    }
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); auto outer = new QVBoxLayout(&main);
+        auto page = new QWidget(&main); outer->addWidget(page); auto row = new QHBoxLayout(page);
+        auto leaving = new QWidget(page); leaving->setMinimumSize(900,300); row->addWidget(leaving);
+        auto remaining = new QWidget(page); remaining->setMinimumSize(200,100); row->addWidget(remaining);
+        main.show(); settle(); const auto before = main.minimumSizeHint();
+        Unbound::MacPanelSession session;
+        check(session.undock(leaving,page,"Vacancy fixture").isEmpty(),"native panel detaches for vacancy check"); settle();
+        auto slot = page->findChild<QWidget *>("unboundVacatedSlot_");
+        check(slot && slot->isHidden() && slot->minimumSize() == QSize(0,0),"vacated native slot does not retain detached minimum dimensions");
+        check(main.minimumSizeHint().width() < before.width(),"native layout requirement decreases while remaining native content is retained");
+        check(session.dock().isEmpty() && leaving->minimumSize() == QSize(900,300),"redocking preserves the native panel's original constraints");
     }
     {
         Unbound::ArrangementStore store;
