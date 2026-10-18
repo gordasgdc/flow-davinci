@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QHash>
+#include <QJsonArray>
 #include <QMap>
 #include <QPointer>
 #include <QSplitter>
