@@ -16,6 +16,8 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "paneloverflow.h"
+#include "nativegroupslot.h"
+#include "nativerootlayout.h"
 #include "vacatedcontents.h"
 #include "panelplacement.h"
 #include "cinemaviewer.h"
@@ -58,7 +60,9 @@ public:
     QString attachToGroup(QWidget *container, bool deferHostHide = false)
     {
         UiWorkTiming timing("panel.attach-to-group",host);
-        if (!host || !host->layout() || grouped() || !container || container->layout() || container->window()->parentWidget() != originalMain)
+        const bool floatingContainer=container && container->window()->parentWidget()==originalMain;
+        const bool nativeContainer=container && container->window()==originalMain && NativeRootLayout::contains(originalPage,container);
+        if (!host || !host->layout() || grouped() || !container || container->layout() || (!floatingContainer && !nativeContainer))
             return QStringLiteral("Panel cannot join this group.");
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);
@@ -250,8 +254,7 @@ public:
         hidden = widget->isHidden();
         if (splitter) splitterSizes = splitter->sizes();
         // QSplitter automatically inserts new children; replaceWidget needs an outsider.
-        auto marker = new QLabel(title + QStringLiteral(" is floating."), (splitter || stack) ? nullptr : parent);
-        marker->setAlignment(Qt::AlignCenter);
+        auto marker = new NativePanelSlot((splitter || stack) ? nullptr : parent);
         // Retain a reversible slot identity, not the detached panel's footprint.
         // Hidden placeholders do not reserve splitter/layout space.
         marker->setObjectName("unboundVacatedSlot_" + widget->objectName());
