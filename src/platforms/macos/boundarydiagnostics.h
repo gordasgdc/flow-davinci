@@ -36,10 +36,14 @@ private:
             auto child=queue.takeLast(); ++checked;
             if (!child->isVisible() || child->isWindow()) continue;
             const QRect bounds(child->mapTo(cell,QPoint()),child->size());
+            QString scrollViewport;
+            for (auto parent=child->parentWidget(); parent && parent!=cell; parent=parent->parentWidget())
+                if (parent->objectName().startsWith("unboundPanelOverflow_")) { scrollViewport=parent->objectName(); break; }
             if (!cell->rect().contains(bounds) && overflow.size()<16)
                 overflow.append(QJsonObject{{"object",child->objectName()},{"class",child->metaObject()->className()},
                     {"x",bounds.x()},{"y",bounds.y()},{"width",bounds.width()},{"height",bounds.height()},
-                    {"native",child->testAttribute(Qt::WA_NativeWindow)},{"paint_on_screen",child->testAttribute(Qt::WA_PaintOnScreen)}});
+                    {"native",child->testAttribute(Qt::WA_NativeWindow)},{"paint_on_screen",child->testAttribute(Qt::WA_PaintOnScreen)},
+                    {"overflow_viewport",scrollViewport}});
             queue.append(child->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly));
         }
         logEvent("panel.boundary.audit",{{"cell",cell->objectName()},{"width",cell->width()},
