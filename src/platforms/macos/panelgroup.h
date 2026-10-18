@@ -188,6 +188,9 @@ public:
         UiWorkTiming timing("group.visibility",host);
         QScopedValueRollback<bool> guard(syncingVisibility, true);
         if (root) visibility.remember(root);
+        for (auto member : members) if (member && member->hiddenByUser() &&
+            (!visibilityState.contains(member) || !visibilityState.value(member)))
+            visibility.closePath(leaves.value(member),host);
         for (auto member : members) if (member) {
             auto wrapper = leaves.value(member); if (!wrapper) continue;
             const bool visible = !member->hiddenByUser();
@@ -198,6 +201,7 @@ public:
         }
         if (host->layout()) host->layout()->activate();
         if (root) visibility.restore(root);
+        if (select && !select->hiddenByUser()) visibility.selectPath(leaves.value(select),host);
         visibilityState.clear();
         for (auto member : members) if (member) visibilityState[member] = member->hiddenByUser();
         refresh();

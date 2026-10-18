@@ -477,6 +477,23 @@ int main(int argc, char **argv)
             "rebuilding a tabbed subtree cannot expose its inactive native panel over the selected page");
         group.dissolve(); settle();
         auto top = Unbound::splitGroupTree({{"panel", "MediaPool"}}, {{"panel", "Inspector"}}, Qt::Horizontal);
+        const auto innerTabs=Unbound::splitGroupTree({{"panel","MediaPool"}},{{"panel","Inspector"}},Qt::Orientation(0));
+        const auto nestedTabs=Unbound::splitGroupTree({{"panel","Source"}},innerTabs,Qt::Orientation(0));
+        check(group.initialize({&i,&m,&s},nestedTabs,QRect(50,50,900,700)).isEmpty(),"nested tab-door arrangement initializes"); settle();
+        const auto nestedFrame=group.window()->geometry();
+        check(group.selected(&s) && !group.selected(&i),"Inspector begins covered behind two tab levels");
+        group.syncVisibility(&i); settle();
+        check(group.selected(&i) && inspector->isVisible() && !source->isVisible(),
+            "revealing Inspector selects every enclosing tab without flattening the arrangement");
+        i.setHiddenByUser(true); group.syncVisibility(); settle();
+        check(group.selected(&s) && source->isVisible(),"closing a nested door returns to the previously selected outer panel");
+        i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+        check(group.selected(&i) && group.window()->geometry()==nestedFrame,"nested door restores its place without resizing the outer surface");
+        group.syncVisibility(&s); settle();
+        i.setHiddenByUser(true); group.syncVisibility(); settle();
+        check(group.selected(&s),"hiding a covered nested panel does not change the selected outer tab");
+        i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+        group.dissolve(); settle();
         auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);
         check(group.initialize({&i, &m, &s}, puzzle, QRect(50, 50, 900, 700)).isEmpty(), "screenshot arrangement has a side-by-side top row and spanning source below"); settle();
         auto leftColumn = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "Source"}}, Qt::Vertical);
