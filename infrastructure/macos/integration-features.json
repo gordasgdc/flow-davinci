@@ -36,11 +36,11 @@
       "branch": "feature/macos-native-panel-drag",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "12acb225cb2f3ab925b6e3c35fa69b6b37487ddc"
+      "commit": "c053b344d3d188423d5311d06b0ad7b5c6865652"
     },
     {
       "branch": "feature/macos-native-workspace-space",
-      "commit": "dead571f324b93820a1974d324ee1c5f39690897",
+      "commit": "c7c85e165f935968ced5c4b682df71a4025406c5",
       "scope": "implementation",
       "acceptance": "pending"
     },
