@@ -94,6 +94,7 @@ public:
         hierarchy = new Unbound::WindowHierarchy(this);
         groupReserve = new Unbound::GroupHostReserve(this);
         nativeSizing = new Unbound::NativeWorkspaceSizing(this);
+        nativeSizing->blocked = [this] { return quitting || expanded >= 0; };
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
         hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
@@ -809,7 +810,7 @@ private:
     }
     void updateNativeSizing()
     {
-        if (quitting || !nativeSizing) return;
+        if (quitting || expanded>=0 || !nativeSizing) return;
         QSet<QString> detached;
         for (const auto &panel : panels) if (panel.session->active()) detached.insert(panel.name);
         if (auto root=page()) nativeSizing->setPanels(root->window(),root,detached);
