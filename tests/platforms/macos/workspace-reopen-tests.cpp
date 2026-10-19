@@ -34,6 +34,9 @@ int main(int argc,char **argv) {
         auto pane=new QWidget(page); pane->setObjectName(names[i]); auto layout=new QVBoxLayout(pane);
         layout->addWidget(new QPushButton(names[i],pane)); native->addWidget(pane,i/3,i%3); panes.append(pane);
     }
+    auto footer=new QWidget(&main); footer->setObjectName("m_PageSwitcherContainer");
+    auto footerLayout=new QHBoxLayout(footer); footerLayout->addWidget(new QPushButton("Edit",footer)); outer->addWidget(footer);
+    auto showPanelMenu=new QMenu("Show Panel in Workspace",&main); showPanelMenu->setObjectName("workspaceShowPanel");
     QAction viewer("Single Viewer Mode",&main); viewer.setObjectName("workspaceSingleViewerModeToggle"); viewer.setCheckable(true);
     main.show(); auto controls=new PanelControls;
     const auto click=[&](const QString &name) { auto button=controls->findChild<QPushButton *>(name); check(button!=nullptr,"fixture control exists"); if (button) button->click(); };
@@ -54,16 +57,36 @@ int main(int argc,char **argv) {
         panes[1]->window()->setGeometry(100,160,760,440);
         auto inspector=dynamic_cast<Unbound::MacFloatingHost *>(panes[0]->window());
         if (inspector) { inspector->setGeometry(220,170,450,500); inspector->setPinned(true); }
+        click("floatPageNavigation");
+        check(waitFor([&] { return footer->window()!=&main; }),"Page Navigation floats before saving the last view");
+        if (auto host=dynamic_cast<Unbound::MacFloatingHost *>(footer->window())) {
+            host->setGeometry(120,110,700,host->height()); host->setPinned(true);
+        } else check(false,"footer has its own floating host");
+        auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
+        check(footerAction!=nullptr,"footer remains discoverable in native Show Panel menu");
+        if (footerAction) footerAction->trigger();
+        check(waitFor([&] { return !footer->isVisible(); }),"menu hides the pinned footer without docking it");
         click("hide_frameEditPageMediaPool"); click("show_widgetEditSourcePlayer"); settle(550);
         delete controls; controls=nullptr;
         const auto saved=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
+        check(saved["footer"].toObject()["floating"].toBool() && saved["footer"].toObject()["hidden"].toBool() &&
+            saved["footer"].toObject()["pinned"].toBool(),"last view records floating hidden pinned Page Navigation");
         check(saved["groups"].toArray().size()==1 && !saved["selected_arrangement"].toString().isEmpty(),"last view saved independently of selected preset contents");
         QFile expected(expectedPath); check(expected.open(QIODevice::WriteOnly),"open cross-process expectation"); expected.write(QJsonDocument(saved).toJson());
     } else {
         const auto expected=read(expectedPath); check(!expected.isEmpty(),"previous process wrote expectations");
         check(waitFor([&] { return panes[2]->window()!=&main && panes[2]->window()==panes[3]->window() && panes[2]->window()==panes[4]->window() && panes[0]->window()!=&main && panes[1]->window()!=&main; }),"fresh process restores groups and independent windows automatically");
+        check(waitFor([&] { return footer->window()!=&main; }),"fresh process restores detached Page Navigation");
         settle(650);
         const auto actual=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
+        check(actual["footer"]==expected["footer"] && !footer->isVisible(),
+            "fresh process restores footer frame, hidden door and pin state");
+        auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
+        check(footerAction!=nullptr,"restored hidden footer still has a native menu caller");
+        if (footerAction) footerAction->trigger();
+        check(waitFor([&] { return footer->isVisible(); }),"native menu retrieves hidden Page Navigation after restart");
+        if (auto host=dynamic_cast<Unbound::MacFloatingHost *>(footer->window()))
+            check(host->property("unboundPinned").toBool(),"retrieving footer retains its saved pin state");
         check(actual["groups"]==expected["groups"],"fresh process restores exact group frame, pin, nested tree, tabs and divider proportions");
         check(actual["selected_arrangement"]==expected["selected_arrangement"],"selected workspace identity survives restart");
         for (const auto &name : {names[0],names[1]}) {
