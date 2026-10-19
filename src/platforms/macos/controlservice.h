@@ -10,6 +10,7 @@
 #include "clipcolorprobe.h"
 #include "keyboardprobe.h"
 #include "boundarydiagnostics.h"
+#include "workflowcommandbridge.h"
 
 namespace Unbound {
 class ControlService : public QObject
@@ -59,6 +60,9 @@ public:
         // without putting a second UI in front of Resolve on every launch.
         controls = new PanelControls;
         logEvent("controls.ready",{{"visible",controls->isVisible()},{"startup","native-workspace"}});
+        new WorkflowCommandBridge(this,directory,[this](QString id) {
+            return controls && controls->invokeWorkflowCommand(id);
+        });
         consumeLaunchRequest(true);
     }
     ~ControlService() override { delete controls.data(); }

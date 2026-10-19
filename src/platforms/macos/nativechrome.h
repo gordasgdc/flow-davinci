@@ -19,6 +19,7 @@ QJsonObject nativeWindowGeometryState(QWidget *widget);
 QList<qint64> nativeOrderedWindowNumbers();
 double nativeInputAgeMilliseconds(quint64 timestamp);
 double nativeCurrentDragAgeMilliseconds();
+QObject *watchNativeCommandRequests(QObject *owner,std::function<void()> ready);
 QObject *watchNativePointerRelease(QObject *owner, std::function<void(QPoint, bool)> released);
 QObject *watchNativeWindowMove(QWidget *window, std::function<void()> begin,
     std::function<void(QPoint)> moved, std::function<void(QPoint, bool)> ended);
@@ -28,6 +29,7 @@ void setNativeExpansionPriority(QWidget *widget, bool expanded);
 int nativeVisibilityFlags(QWidget *widget);
 bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bool hidden);
 #ifdef UNBOUND_NATIVE_TESTS
+void postNativeCommandRequestForTest();
 qint64 nativeFrontmostProcessForTest();
 qint64 nativeWindowLevelForTest(QWidget *widget);
 void activateNativeWindowForTest(QWidget *widget);
