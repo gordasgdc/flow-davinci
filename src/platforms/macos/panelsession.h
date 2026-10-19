@@ -2,6 +2,7 @@
 #pragma once
 #include <QBoxLayout>
 #include <QCloseEvent>
+#include <QDynamicPropertyChangeEvent>
 #include <QGridLayout>
 #include <QLabel>
 #include <QPointer>
@@ -467,6 +468,9 @@ protected:
         if (object == expandedHost && event->type() == QEvent::Close) {
             if (expandedClosed) expandedClosed(); else endGroupedExpansion(); return true;
         }
+        if (object==host && event->type()==QEvent::DynamicPropertyChange &&
+            static_cast<QDynamicPropertyChangeEvent *>(event)->propertyName()=="unboundPinned" && arrangementChanged)
+            arrangementChanged();
         if (object == host && event->type() == QEvent::Close) {
             const QString error = dock();
             logEvent(QStringLiteral("panel.close.result"), {{"success", error.isEmpty()}, {"error", error}});
