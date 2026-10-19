@@ -6,7 +6,20 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <cstdio>
+#include <execinfo.h>
 #include "panelcontrols.h"
+static QtMessageHandler previousMessages=nullptr;
+static int nativeRecreationWarnings=0;
+static void traceNativeWarning(QtMsgType type,const QMessageLogContext &context,const QString &message) {
+    if (message.contains("active key-value observers")) {
+        ++nativeRecreationWarnings;
+        if (qEnvironmentVariableIsSet("UNBOUND_TRACE_NATIVE_WARNINGS")) {
+            void *frames[28]; const int count=backtrace(frames,28); backtrace_symbols_fd(frames,count,2);
+        }
+    }
+    if (previousMessages) previousMessages(type,context,message);
+    else std::fprintf(stderr,"%s\n",qPrintable(message));
+}
 class StandaloneShows : public QObject {
 public:
     int count=0;
@@ -23,6 +36,7 @@ static void settle(int duration=50) {
 }
 int main(int argc,char **argv) {
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false); QTemporaryDir files;
+    previousMessages=qInstallMessageHandler(traceNativeWarning);
     qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());
     qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());
     qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());
@@ -275,6 +289,7 @@ int main(int argc,char **argv) {
     check(trace.contains("workspace.native-transfer.request") && trace.contains("workspace.native-command.complete") &&
         trace.contains("workspace.native-plan.restore.request") && trace.contains("workspace.native-arrangement.presentation"),
         "connected native UI commands retain transfer, completion, restore and presentation diagnostics");
+    check(nativeRecreationWarnings==0,"Inspector transfers never recreate an observed native window");
     if (!failures) std::puts("PASS: native menu docking, panel doors, workspace saving, helper reopen and native undock commands");
     else { files.setAutoRemove(false); std::fprintf(stderr,"Native UI failure diagnostics retained: %s\n",qPrintable(files.path())); }
     return failures ? 1 : 0;

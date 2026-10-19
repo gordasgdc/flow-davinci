@@ -49,12 +49,19 @@ public:
         return true;
     }
     void releaseInto(QWidget *owner) {
-        if (!area) return;
-        auto retired=area.data(); auto content=retired->takeWidget();
+        if (!area || !owner || !owns(widget)) return;
+        auto retired=area.data(); auto content=widget.data();
+        // takeWidget() reparents to nullptr, briefly creating a top-level native
+        // Inspector window and recreating its observed NSWindow. Transfer the
+        // real child directly, then destroy the emptied wrapper before it can
+        // deliver another layout/scroll event against that child. Dock commands
+        // call this outside scroll-area event dispatch; the moved controls live.
+        retired->hide(); content->removeEventFilter(retired);
+        content->setParent(owner);
         if (auto parent=retired->parentWidget()) if (parent->layout()) parent->layout()->removeWidget(retired);
-        if (content && owner) { content->setParent(owner); if (owner->layout()) owner->layout()->addWidget(content); }
+        if (owner->layout()) owner->layout()->addWidget(content);
         logEvent("panel.overflow.release",{{"panel",content ? content->objectName() : QString()}});
-        forget(); retired->hide(); retired->deleteLater();
+        forget(); delete retired;
     }
     void forget() { area=nullptr; widget=nullptr; }
 private:
