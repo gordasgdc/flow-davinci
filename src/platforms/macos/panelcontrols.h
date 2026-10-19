@@ -42,6 +42,7 @@
 #include "nativeeditcommands.h"
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
+#include "editpagelifecycle.h"
 
 class PanelControls : public QWidget
 {
@@ -357,6 +358,24 @@ public:
         managerView->addFooter();
         connect(managerView->floatFooter,&QPushButton::clicked,this,[this] { status->setText(footer->floatPanel()); });
         connect(managerView->dockFooter,&QPushButton::clicked,this,[this] { footer->dock(); });
+        pageLifecycle=new Unbound::EditPageLifecycle(this);
+        pageLifecycle->running=[this] { return !quitting; };
+        pageLifecycle->checkpoint=[this] { restoreExpanded(); saveTimer.stop(); save(); };
+        pageLifecycle->suspend=[this] {
+            workspaceRestore->cancel();
+            for (auto &panel:panels) { ++panel.requestVersion; panel.pending=false; }
+            nativePresentation.restore(); nativeSizing->restore();
+            if (auto main=Unbound::resolveMainWindow()) if (main->property("unboundBackgroundHidden").toBool())
+                Unbound::setNativeBackgroundHidden(main,{},false);
+            if (footer) footer->syncAttachment();
+        };
+        pageLifecycle->resume=[this] {
+            for (auto group:groups) if (group->active()) group->syncVisibility();
+            for (auto &panel:panels) if (panel.session->active()) panel.session->resumePagePresentation();
+            if (footer) footer->restore();
+            updateNativeSizing();
+            if (background->isChecked()) applyBackgroundVisibility(true);
+        };
         saveTimer.setSingleShot(true); saveTimer.setInterval(250);
         connect(&saveTimer, &QTimer::timeout, this, [this] { save(); });
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
@@ -784,6 +803,7 @@ private:
     }
     void restore()
     {
+        if (pageLifecycle) pageLifecycle->observe(page());
         if (footer) footer->restore();
         if (callers) callers->wire();
         if (nativeMenus) nativeMenus->wire();
@@ -884,6 +904,7 @@ private:
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
+    Unbound::EditPageLifecycle *pageLifecycle=nullptr;
     Unbound::PanelManagerView *managerView=nullptr;
     Unbound::ControlScroll *optionsScroll = nullptr;
     QLabel *status = nullptr;

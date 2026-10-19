@@ -52,6 +52,7 @@ public:
     }
     bool floating() const { return placement()==PanelPlacement::FloatingSurface; }
     bool dockPending() const { return pendingDock; }
+    void resumePagePresentation() { queueRecovery(); }
     QWidget *window() const { return grouped() ? groupContainer.data() : host.data(); }
     std::function<void()> changed;
     std::function<void()> expandedClosed;
