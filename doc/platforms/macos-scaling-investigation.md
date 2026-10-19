@@ -25,3 +25,23 @@ Probe order:
 
 The current native clipping candidate changes owned group container views only;
 it does not scale Resolve widgets and must not be represented as a scale feature.
+
+## Native metrics candidate (2026-10-19)
+
+`feature/macos-independent-panel-metrics` implements a reversible per-session
+metric scale (70–150%). Group headers and the manager offer − / UI / +; panel
+options offer the same percentages. The UI labels this experimental because
+Resolve custom-painted constants are not covered by QWidget metrics.
+
+Font, explicit minimum/maximum sizes, fixed control dimensions, icon sizes and
+layout spacing/margins derive from captured baselines. No app font, stylesheet,
+render transform, viewer-image zoom or process-wide scale changes. Lazy child
+controls join on a coalesced child notification. Inherited fonts use their original
+parent baseline, avoiding double scaling. GPU rendering is left native; live
+coverage, sharpness, playback and pointer-hit verification remain required.
+
+`interface_scale` persists per panel. Group transfer/expansion restore before
+reparenting and reapply in the new host. Returning to Original Resolve UI restores
+original metrics and preserves the preference for the next detachment. The
+independent metric and actual session-transfer fixtures test both widget and
+content-layout paths. This is not a claim of universal geometric scaling.

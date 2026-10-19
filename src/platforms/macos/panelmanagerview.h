@@ -68,6 +68,7 @@ public:
         for (int i=0;i<buttons.size();++i) { buttons[i]->setObjectName(ids[i]+name); panelGrid->addWidget(buttons[i],index,i+1); }
         return row;
     }
+    void addScale(int row,QWidget *control) { panelGrid->addWidget(control,row,7); }
     void addFooter()
     {
         auto row=new QHBoxLayout; floatFooter=new QPushButton("Float Page Navigation",body);

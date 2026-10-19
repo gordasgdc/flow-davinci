@@ -218,19 +218,26 @@ public:
             panel.saved = savedPanels[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
+            panel.session->setInterfaceScale(panel.saved["interface_scale"].toDouble(1.0));
             nativeWorkspace->registerPanel(panel.name,panel.session,panel.label);
             panel.session->attachRequested = [this, i](QWidget *target, Qt::Edge edge) {
                 attachDrop(i, target, edge);
             };
             nativeMenus->add({panel.name, [this, i] { return panels[i].session->floating(); },
                 [this, i] { togglePanelPlacement(i); }, [this,i] { dockNative(i); },
-                [this,i] { return panels[i].session->floating(); }});
+                [this,i] { return panels[i].session->active(); },
+                [this,i] { return panels[i].session->interfaceScale(); },
+                [this,i](double factor) { panels[i].session->setInterfaceScale(factor); }});
             panel.session->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
             panel.session->setConstrained(constrain->isChecked());
             panel.session->setSnapping(snap->isChecked());
             const auto row=managerView->addPanel(i,panel.name,panel.label);
             panel.undock=row.undock; panel.dock=row.dock; panel.show=row.show;
             panel.hide=row.hide; panel.expand=row.expand; panel.center=row.center;
+            managerView->addScale(i,new Unbound::PanelScaleControls(this,
+                [this,i] { return panels[i].session->interfaceScale(); },
+                [this,i](double factor) { panels[i].session->setInterfaceScale(factor); },
+                [this,i] { return panels[i].session->active(); }));
             panel.session->changed = [this, i] {
                 if (!panels[i].session->active()) expansionController->sessionInactive(i);
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
@@ -488,6 +495,7 @@ private:
         const auto saved = value["panels"].toObject();
         for (auto &panel : panels) {
             panel.saved = saved[panel.name].toObject();
+            panel.session->setInterfaceScale(panel.saved["interface_scale"].toDouble(1.0));
             panel.desired = panel.saved["floating"].toBool() || nativeWorkspace->requiredPanels().contains(panel.name);
         }
         return {};
@@ -617,6 +625,7 @@ private:
             }
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
+            p.session->setInterfaceScale(p.saved["interface_scale"].toDouble(1.0));
             p.session->setPinned(p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
             if (background->isChecked()) QTimer::singleShot(0, this, [this] {
@@ -811,6 +820,7 @@ private:
             auto &p = panels[i];
             auto value=Unbound::WorkspaceSnapshot::panel(p.saved,p.desired,p.session->active(),
                 p.session->active() ? p.session->floatingGeometry() : QRect(),p.session->hiddenByUser(),p.session->pinned());
+            value["interface_scale"]=p.session->interfaceScale();
             value=expansionController->panelSnapshot(i,value);
             p.saved = value; saved[p.name] = value;
         }

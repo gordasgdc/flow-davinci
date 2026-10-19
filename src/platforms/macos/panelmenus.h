@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "panelscalecontrols.h"
 #include <QMenu>
 #include <QJsonArray>
 #include <QPushButton>
@@ -19,6 +20,8 @@ public:
         std::function<void()> toggle;
         std::function<void()> dockNative = {};
         std::function<bool()> canDockNative = {};
+        std::function<double()> interfaceScale = {};
+        std::function<void(double)> setInterfaceScale = {};
     };
     explicit PanelMenus(QObject *owner) : QObject(owner) { qApp->installEventFilter(this); }
     ~PanelMenus() override { qApp->removeEventFilter(this); }
@@ -100,6 +103,16 @@ private:
         if (native) {
             native->setProperty("unboundPanelIndex",index);
             native->setVisible(panel.dockNative && (!panel.canDockNative || panel.canDockNative()));
+        }
+        QMenu *scaleMenu=nullptr;
+        for (auto action:menu->actions()) if (action->objectName()=="openGateScaleMenu") scaleMenu=action->menu();
+        if (panel.interfaceScale && panel.setInterfaceScale && !scaleMenu) {
+            scaleMenu=menu->addMenu("Panel Interface Size (Experimental)"); scaleMenu->menuAction()->setObjectName("openGateScaleMenu");
+            scaleMenu->setProperty("unboundOwnMenu",true);
+        }
+        if (scaleMenu) {
+            scaleMenu->clear(); scaleMenu->setEnabled(panel.canDockNative && panel.canDockNative());
+            populatePanelScaleMenu(scaleMenu,this,panel.interfaceScale,panel.setInterfaceScale);
         }
         logEvent(QStringLiteral("panel.menu.ready"), {{"panel", panel.name}, {"floating", panel.floating()}});
     }

@@ -17,6 +17,7 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "paneloverflow.h"
+#include "panelmetricscale.h"
 #include "nativegroupslot.h"
 #include "nativepanelposition.h"
 #include "nativerootlayout.h"
@@ -85,6 +86,7 @@ public:
         const bool nativeContainer=container && container->window()==originalMain && NativeRootLayout::contains(originalPage,container);
         if (!host || !host->layout() || grouped() || !container || container->layout() || (!floatingContainer && !nativeContainer))
             return QStringLiteral("Panel cannot join this group.");
+        metricScale.restore();
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);
         {
@@ -99,6 +101,7 @@ public:
             UiWorkTiming hide("panel.group.hide-old-host",host);
             host->hide();
         }
+        refreshMetricScale();
         groupContainer->setVisible(!userHidden);
         return {};
     }
@@ -114,10 +117,12 @@ public:
         if (!grouped()) return;
         if (!host) return;
         QScopedValueRollback<bool> moving(recovering, true);
+        metricScale.restore();
         groupWidth.restore();
         if (groupContainer->layout()) host->setLayout(groupContainer->layout());
         groupContainer->removeEventFilter(this);
         groupContainer = nullptr;
+        refreshMetricScale();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         setFloatingGeometry(detachedGeometry);
         if (!deferHostShow) host->setVisible(!userHidden && originalPage && originalPage->isVisible());
@@ -127,6 +132,7 @@ public:
     {
         if (!grouped() || expandedHost || !groupContainer->layout()) return false;
         QScopedValueRollback<bool> moving(recovering, true);
+        metricScale.restore();
         expandedHost = new MacFloatingHost(originalMain);
         expandedHost->setObjectName(QStringLiteral("unboundFloating_expanded_") + groupContainer->objectName());
         expandedHost->setWindowTitle(groupContainer->windowTitle());
@@ -134,19 +140,29 @@ public:
         expandedHost->setLayout(groupContainer->layout());
         static_cast<MacFloatingHost *>(expandedHost.data())->setChrome(chrome);
         expandedHost->setGeometry(QRect(groupContainer->mapToGlobal(QPoint()), groupContainer->size()));
+        refreshMetricScale();
         expandedHost->installEventFilter(this); expandedHost->show(); return true;
     }
     void endGroupedExpansion()
     {
         if (!expandedHost) return;
+        metricScale.restore();
         QScopedValueRollback<bool> moving(recovering, true);
         if (groupContainer && expandedHost->layout()) groupContainer->setLayout(expandedHost->layout());
         expandedHost->removeEventFilter(this); expandedHost->hide(); expandedHost->deleteLater(); expandedHost = nullptr;
+        refreshMetricScale();
     }
     void setChrome(WindowChrome value) { chrome = value; if (host && !grouped()) static_cast<MacFloatingHost *>(host.data())->setChrome(value); }
     bool pinned() const { return host && host->property("unboundPinned").toBool(); }
     void setPinned(bool value) { if (host) static_cast<MacFloatingHost *>(host.data())->setPinned(value); }
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
+    double interfaceScale() const { return metricFactor; }
+    bool setInterfaceScale(double value) {
+        if (!qIsFinite(value) || value<0.7 || value>1.5) return false;
+        metricFactor=value; refreshMetricScale();
+        if (arrangementChanged) arrangementChanged();
+        return true;
+    }
     bool hiddenByUser() const { return userHidden; }
     QPoint overflowOffset() const { return overflow.offset(); }
     void restoreOverflowOffset(QPoint position) { overflow.restoreOffset(position); }
@@ -246,6 +262,7 @@ public:
         host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (constrain) keepOnDisplay(host);
+        refreshMetricScale();
         logEvent(QStringLiteral("panel.contents.undock"), {{"panel", title}, {"slot", widgetState(slot)}});
         if (changed) changed();
         return {};
@@ -341,6 +358,7 @@ public:
         if (!deferHostShow) host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (constrain) keepOnDisplay(host);
+        refreshMetricScale();
         logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
             {"original_parent", originalParent->objectName()},
             {"layout", originalLayout ? originalLayout->metaObject()->className() : "none"}});
@@ -371,6 +389,7 @@ public:
             if (!originalParent || !originalLayout || !placeholderLayout ||
                 originalParent->layout() != placeholderLayout || host->layout() != originalLayout)
                 return QStringLiteral("Resolve changed this panel's content layout.");
+            metricScale.restore();
             widthAllowance.restore();
             delete placeholderLayout.data();
             delete placeholder.data();
@@ -399,8 +418,10 @@ public:
                 (originalSplitter && originalSplitter->indexOf(placeholder)<0) ||
                 (destinationParent->layout() && !originalStack && !originalSplitter && destinationParent->layout()->indexOf(placeholder)<0))
                 return QStringLiteral("The original panel slot changed.");
+            metricScale.restore();
             overflow.releaseInto(host);
         }
+        metricScale.restore();
         const bool reclaimed = content->parentWidget() == destinationParent;
         QLayout *currentLayout = destinationParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
@@ -545,6 +566,7 @@ private:
     {
         releaseOriginalPosition={};
         if (releaseGroup) { auto release = releaseGroup; release(); }
+        metricScale.restore();
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         overflow.forget();
         ++generation;
@@ -564,6 +586,13 @@ private:
     }
     QPointer<QWidget> host, content, placeholder, originalParent, originalPage;
     PanelWidthAllowance widthAllowance, groupWidth;
+    void refreshMetricScale() {
+        if (!active() || qFuzzyCompare(metricFactor,1.0)) { metricScale.restore(); return; }
+        auto target=content ? content.data() : expandedHost ? expandedHost.data() : window();
+        metricScale.attach(target,metricFactor);
+    }
+    PanelMetricScale metricScale;
+    double metricFactor=1.0;
     PanelOverflow overflow;
     VacatedContents vacatedContents;
     bool relaxedWidth = false;
