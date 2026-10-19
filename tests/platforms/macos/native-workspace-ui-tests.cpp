@@ -243,6 +243,9 @@ int main(int argc,char **argv) {
         program.window()->setObjectName("unboundFloating_program");
         Unbound::NativeWorkspaceBinding binding(&nativeMain);
         binding.registerPanel("source",&source); binding.registerPanel("inspector",&inspector); binding.registerPanel("program",&program);
+        int nativeMounts=0; binding.beforeMount=[&] { ++nativeMounts; };
+        check(!binding.dock(nativePage,{{"source",&source}},{{"panel","source"}},"missing",Qt::Horizontal,false).isEmpty() && nativeMounts==0 &&
+            nativePage->layout()==original && source.floating(),"an unavailable first-drop target cannot silently become a whole-page arrangement");
         auto section=Unbound::splitGroupTree({{"panel","source"}},{{"panel","inspector"}},Qt::Vertical);
         section["sizes"]=QJsonArray{3,2};
         const auto tabs=Unbound::splitGroupTree(section,{{"panel","program"}},Qt::Orientation(0));
