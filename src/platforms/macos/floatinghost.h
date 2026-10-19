@@ -106,7 +106,6 @@ public:
         delete nativeMoveWatch.data();
         nativeMoveWatch = watchNativeWindowMove(this, [this] {
             if (dragging) return;
-            dockOrder.invalidate();
             dragTiming.begin();
             ++dragGeneration; nativeDragging = dragging = movedEnough = true; startGeometry = geometry();
             delete releaseWatch.data();
@@ -125,7 +124,6 @@ public:
     void beginPointerDrag(const QPoint &global, bool continuing = false)
     {
         if (dragging) return; // Native and custom events may report the same gesture.
-        dockOrder.invalidate();
         snapPosition = {}; attachmentTarget = nullptr;
         dragTiming.begin();
         ++dragGeneration;
@@ -172,7 +170,6 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         const auto type = event->type();
-        if (dragging) dockOrder.event(type);
         if (type != QEvent::MouseButtonPress && type != QEvent::MouseButtonRelease && type != QEvent::MouseMove &&
             type != QEvent::KeyPress && type != QEvent::ApplicationDeactivate && type != QEvent::WindowDeactivate) return false;
         if (!dragging && QWidget::mouseGrabber() == this &&
@@ -247,9 +244,6 @@ private:
     void finishPointerDrag(bool bypass, bool cancelled, const QString &reason)
     {
         if (!dragging) return;
-        if (!cancelled && movedEnough && !dragEdges && snapping && !bypass) {
-            dockOrder.invalidate(); previewSnap(geometry(),false);
-        }
         const auto target = attachmentTarget;
         const auto edge = attachmentEdge;
         const bool attach = !cancelled && movedEnough && !dragEdges && target && attachRequested && snapping && !bypass;
@@ -306,7 +300,7 @@ private:
         {
             DragTiming::Sample lookup(dragTiming,"destination_lookup");
             destination = resolveDockDestination(this, dragPointer,
-                {preview, dropMarker, compass, guideWidgets[0], guideWidgets[1]},&dockOrder);
+                {preview, dropMarker, compass, guideWidgets[0], guideWidgets[1]});
         }
         auto surface = destination.surface;
         const auto surfaceFrame = destination.frame;
@@ -366,7 +360,6 @@ private:
     static bool surfacesAreGrouped(QWidget *widget) { return widget && widget->objectName().startsWith("unboundFloating_group_"); }
     void hidePreviews() { if (compass) compass->hide(); hoverDestination = nullptr; previousPlacement = DropPlacement::None; if (preview) preview->hide(); if (dropMarker) dropMarker->hide(); for (auto guide : guideWidgets) if (guide) guide->hide(); }
     QToolButton *pinButton = nullptr;
-    DockOrderCache dockOrder;
     WindowChrome chrome = WindowChrome::Standard;
     bool chromeInitialized = false;
     DragTiming dragTiming;
