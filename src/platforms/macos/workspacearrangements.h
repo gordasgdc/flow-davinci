@@ -113,7 +113,7 @@ private:
     }
     void refresh(QMenu *root)
     {
-        auto commands=commandMenu->wire(root);
+        commandMenu->wire(root);
         const auto page = currentPage(); const auto label = workspacePageLabel(page);
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
@@ -186,7 +186,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(commands->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(keyboard); topOrder.append(about);
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(keyboard); topOrder.append(about);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))
