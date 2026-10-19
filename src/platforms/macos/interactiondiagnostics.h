@@ -19,6 +19,7 @@
 #include "diagnostics.h"
 #include "nativechrome.h"
 #include "viewerdiagnostics.h"
+#include "editcontrolinspection.h"
 
 namespace Unbound {
 inline bool textEditor(QWidget *widget)
@@ -55,6 +56,7 @@ protected:
         if (type != QEvent::ActionAdded && type != QEvent::Shortcut && type != QEvent::Show && type != QEvent::Polish &&
             type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate) return false;
         auto widget = qobject_cast<QWidget *>(object);
+        if (type == QEvent::Show) inspectTimelineOptions(qobject_cast<QMenu *>(widget));
         if (event->type() == QEvent::ActionAdded && related(widget)) {
             observe(static_cast<QActionEvent *>(event)->action());
         }
