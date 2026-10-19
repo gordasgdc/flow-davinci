@@ -16,7 +16,8 @@ static void settle(int duration=350) {
 static QJsonObject read(const QString &path) { QFile f(path); return f.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(f.readAll()).object() : QJsonObject(); }
 int main(int argc,char **argv) {
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
-    if (argc!=3) return 2;
+    if (argc!=3 && argc!=4) return 2;
+    const bool attached=argc==4 && QString::fromLocal8Bit(argv[3])=="attached";
     const bool writing=QString::fromLocal8Bit(argv[1])=="write";
     const auto expectedPath=QString::fromLocal8Bit(argv[2]);
     int failures=0; const auto check=[&](bool ok,const char *why) { if (!ok) { ++failures; std::fprintf(stderr,"FAIL: %s\n",why); } };
@@ -60,11 +61,15 @@ int main(int argc,char **argv) {
         panes[1]->window()->setGeometry(100,160,760,440);
         auto inspector=dynamic_cast<Unbound::MacFloatingHost *>(panes[0]->window());
         if (inspector) { inspector->setGeometry(220,170,450,500); inspector->setPinned(true); }
-        click("floatPageNavigation");
-        check(waitFor([&] { return footer->window()!=&main; }),"Page Navigation floats before saving the last view");
+        check(panes[1]->isAncestorOf(footer),"Timeline initially carries Page Navigation without a second window");
+        if (!attached) click("floatPageNavigation");
+        check(waitFor([&] { return footer->window()!=&main; }),"Page Navigation leaves the native background before saving");
         if (auto host=dynamic_cast<Unbound::MacFloatingHost *>(footer->window())) {
-            host->setGeometry(120,110,700,host->height()); host->setPinned(true);
-        } else check(false,"footer has its own floating host");
+            if (!attached) host->setGeometry(120,110,700,host->height());
+            host->setPinned(true);
+        } else check(false,"footer has a native floating owner");
+        check(attached ? panes[1]->isAncestorOf(footer) : !panes[1]->isAncestorOf(footer),
+            "explicit footer detachment changes ownership rather than moving a duplicate");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
         check(footerAction!=nullptr,"footer remains discoverable in native Show Panel menu");
         if (footerAction) footerAction->trigger();
@@ -72,8 +77,10 @@ int main(int argc,char **argv) {
         click("hide_frameEditPageMediaPool"); click("show_widgetEditSourcePlayer"); settle(550);
         delete controls; controls=nullptr;
         const auto saved=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
-        check(saved["footer"].toObject()["floating"].toBool() && saved["footer"].toObject()["hidden"].toBool() &&
-            saved["footer"].toObject()["pinned"].toBool(),"last view records floating hidden pinned Page Navigation");
+        const auto footerState=saved["footer"].toObject();
+        check(footerState["floating"].toBool()==!attached && footerState["hidden"].toBool() &&
+            (attached ? footerState["attachment"]=="timeline" : footerState["pinned"].toBool()),
+            "last view records independent or attached hidden Page Navigation");
         check(saved["groups"].toArray().size()==1 && !saved["selected_arrangement"].toString().isEmpty(),"last view saved independently of selected preset contents");
         QFile expected(expectedPath); check(expected.open(QIODevice::WriteOnly),"open cross-process expectation"); expected.write(QJsonDocument(saved).toJson());
     } else {
@@ -82,6 +89,7 @@ int main(int argc,char **argv) {
         check(waitFor([&] { return footer->window()!=&main; }),"fresh process restores detached Page Navigation");
         settle(650);
         const auto actual=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
+        check((panes[1]->isAncestorOf(footer))==attached,"fresh process restores explicit footer owner choice");
         check(actual["footer"]==expected["footer"] && !footer->isVisible(),
             "fresh process restores footer frame, hidden door and pin state");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");

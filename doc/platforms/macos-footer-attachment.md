@@ -1,0 +1,9 @@
+# Page Navigation attachment
+
+This feature branch is not integrated or installed. Page Navigation defaults to Timeline's bottom when Timeline is detached, unless saved placement explicitly chooses an independent floating window or the original native footer. It uses the real native widget, not duplicate page buttons. Explicit Float releases the attachment. The footer's own menu offers Attach to Timeline, Float, and Dock to Native Footer; the existing global menu/shortcut callers remain available.
+
+`PanelAccessoryLease` owns reversible native-slot acquisition and bottom-layout attachment. Parentage carries the footer through owner moves, grouping and temporary expansion without a geometry-follow timer. It supports vertical box layouts; unsupported layouts log a failure and preserve native content. A narrow owner uses horizontal overflow instead of being widened by the native footer's minimum width. This is not adaptive wrapping/vertical toolbar layout.
+
+Hidden tests pass ownership travel, reachable overflow, attached doors, original-slot/metric restoration, return on owner destruction, rejection after unexpected ownership changes, explicit native preference and saved attachment state. The owner-destruction path handles Qt deleting the layout before its children. The fixture never invokes the standalone-window fallback.
+
+The displayed group and two-process restart tests compile. Restart coverage now has independent-floating and Timeline-attached cases, each retaining a hidden footer and menu retrieval. Their execution, actual Resolve footer behavior, group tear-off, page switching, user input/playback and restart acceptance remain pending while Resolve is open. General toolbar-to-panel attachment, left/right positioning and adaptive toolbar orientation remain separate unfinished work.
