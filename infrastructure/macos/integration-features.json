@@ -121,12 +121,6 @@
       "commit": "ab8789403f04aae6d0d8ae89d9a1dac25129d3d9",
       "scope": "implementation",
       "acceptance": "pending"
-    },
-    {
-      "branch": "feature/macos-destination-order",
-      "commit": "370b166a36ee4e827c145b74d13991c98368d701",
-      "scope": "implementation",
-      "acceptance": "pending"
     }
   ]
 }
