@@ -2,9 +2,17 @@
 
 OpenGate is the CineWaltz macOS panel/workspace fork, built on **Unbound by Wolfgang Woehl**. Wolfgang created the foundation; his MIT copyright and license remain in [LICENSE](LICENSE). OpenGate is a separate project and should not be confused with the original Unbound. Historical Windows instructions and internal compatibility identifiers below retain the original name.
 
+## Download the prototype
+
+[CineWaltz OpenGate 0.0.1 Prototype](https://github.com/jordantetewsky/OpenGate/releases/tag/opengate-v0.0.1-prototype) includes a double-click macOS installer, Native Emulator and two example arrangements. This exact build requires **Apple Silicon, macOS 27+ and Resolve 21** (tested with Studio 21.1.1). Save and quit Resolve before installing. The package is unsigned and not notarized. Existing arrangements are preserved.
+
+**Custom hotkey execution is on the roadmap**, not a working feature of this release. Backtick maximize/restore is working in the local trial. Read the [release notes and limitations](doc/releases/opengate-0.0.1-prototype.md).
+
+The accepted prototype is the baseline for this fork. The [next pass](doc/platforms/opengate-post-prototype-pass.md) prioritizes macOS compatibility, custom hotkey execution and duplicate/inconsistent panel controls. Responsiveness comes last, beginning with a bounded investigation and discussion before optimization.
+
 See the explicit [OpenGate next-pass acceptance list](doc/platforms/opengate-next-pass.md), including **restoring the last view when Resolve reopens**.
 
-## Current integration work — October 18, 2026
+## Historical integration notes — October 18, 2026
 
 `macos-panel-discovery-and-layout` combines separate feature branches for ongoing
 work. It is **not a completed or newly installed release**. See the
