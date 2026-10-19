@@ -21,6 +21,12 @@
       "acceptance": "pending"
     },
     {
+      "branch": "feature/macos-group-signal-lifetimes",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "03c8596d2c955fe107fe2b3adadcccf07e9550af"
+    },
+    {
       "branch": "feature/macos-interaction-tracing",
       "commit": "14dd3b9d5fa9dffe91b2856935e5d4ff9c00b8f9",
       "scope": "implementation",

@@ -19,6 +19,7 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 | Shared layout surface | feature/macos-layout-surfaces | Split/tab renderer used by floating groups and usable in an ordinary embedded host; invalid-tree checks before ownership changes | Native fixtures; actual original-window slot adapter and embedded arrangement persistence |
 | Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; divider/resize/input and GPU/playback checks |
 | Narrow Inspector | feature/macos-panel-overflow | Retained native content in a reversible scroll viewport; original minima/policy/background retained; grouped door/recovery/scroll and maximize-offset fixture checks PASS | Live Resolve validation; other panels; independent UI scale remains separate |
+| Group signal lifetimes | feature/macos-group-signal-lifetimes | Group transfer disconnects only its own receivers; external callbacks and Qt accessibility destruction tracking survive; focused regression failed before and passes after the fix | Full integration and live Resolve validation; not a claim that all crashes share this cause |
 | Nested doors | feature/macos-nested-panel-doors | Reveal every enclosing tab; close restores prior outer selection; covered-panel hiding leaves current view unchanged; transition logs | Live command/shortcut checks and larger nested-layout matrix |
 | Native-first startup | feature/macos-native-first-startup | Manager initializes hidden; fresh defaults retain native background; stale launch requests consumed; explicit/legacy preferences retained; no key-window change in fixture | Fresh Resolve acceptance; original-window split/tab rearrangement is still open |
 | Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders; transferred empty containers collapse; scoped native outer sizing/restoration | Native fixture/live verification of shrinking and restoration; drag/split/tab rearrangement inside native surface; native recovery and focus |
@@ -131,6 +132,14 @@ it briefly creates native fixture windows. The script retains failures rather
 than reporting a partial selection of passing checks as full acceptance.
 
 ## Continued implementation
+
+The separate group-signal-lifetime correction (`03c8596`) is included. A full
+native-arrangement draft run exposed a Qt accessibility crash during group recall.
+The focused regression proved that broad Hide-button disconnection removed
+external observers and left a deleted button's interface cached. The fix preserves
+Qt's own receivers and removes only old/new group handlers. Native test builds
+retain source symbols. See `macos-group-signal-lifetimes.md`; actual Resolve crash
+acceptance is still open.
 
 Inspector overflow recovery follow-up (`feature/macos-panel-overflow`, `d2a1334`):
 the group fixture reproduced a 700-pixel content widget retaining a 936-pixel
