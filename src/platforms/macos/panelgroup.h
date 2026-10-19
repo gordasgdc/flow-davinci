@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "panelscalecontrols.h"
+#include "grouppanelheader.h"
 #include "compacttoolbar.h"
 #include <QHash>
 #include <QPushButton>
@@ -97,6 +98,7 @@ public:
             host->parentWidget() != other->host->parentWidget()) return "These groups cannot be merged.";
         if (!target.isEmpty() && !names().contains(target)) return "Dock target no longer exists.";
         const auto tree = insertGroupTree(treeSnapshot(root), other->treeSnapshot(other->root), target, orientation, before);
+        parkHeaders();other->parkHeaders();
         QScopedValueRollback<bool> moving(other->releasing, true);
         for (auto member : other->members) if (member) {
             auto wrapper = other->leaves.value(member);
@@ -104,9 +106,9 @@ public:
             for (auto label : wrapper->findChildren<QLabel *>("unboundGroupHeader")) label->removeEventFilter(other);
             for (auto button : wrapper->findChildren<QPushButton *>("unboundDetachPanel")) QObject::disconnect(button, nullptr, other, nullptr);
             for (auto button : wrapper->findChildren<QPushButton *>("unboundHidePanel")) QObject::disconnect(button, nullptr, other, nullptr);
-            wrapper->setParent(host); members.append(member); leaves[member] = wrapper; wireMember(member);
+            wrapper->setParent(host); members.append(member); leaves[member] = wrapper;headers[member]=other->headers.take(member); wireMember(member);
         }
-        other->members.clear(); other->leaves.clear(); other->retireHost();
+        other->members.clear(); other->leaves.clear();other->headers.clear(); other->retireHost();
         rebuild(tree); refresh(); if (other->changed) other->changed(); report("group.merge"); return {};
     }
     // Transfer a tab containing a split subtree without flattening its panels.
@@ -140,6 +142,7 @@ public:
     void dissolve(bool dockMembers = false,bool deferMemberShow = false)
     {
         if (releasing || (!host && members.isEmpty())) return;
+        parkHeaders();
         QScopedValueRollback<bool> guard(releasing, true);
         QList<MacPanelSession *> current;
         for (auto member : members) if (member) {
@@ -147,7 +150,7 @@ public:
             if (member->window()) member->window()->removeEventFilter(this);
             member->detachFromGroup(dockMembers || deferMemberShow);
         }
-        members.clear(); leaves.clear(); retireHost();
+        members.clear(); leaves.clear();headers.clear(); retireHost();
         if (dockMembers) for (auto member : current) if (member->active()) {
             const auto error = member->dock(); if (!error.isEmpty()) logEvent(QStringLiteral("group.dock.failed"), {{"error", error}});
         }
@@ -233,6 +236,7 @@ public:
     }
     void detachMember(MacPanelSession *member,bool deferHostShow = false)
     {
+        parkHeaders();
         if (!contains(member) || releasing) return;
         const QRect groupFrame = host->frameGeometry(); auto wrapper = leaves.value(member);
         if (!wrapper || !member->window()) { dissolve(); return; }
@@ -241,7 +245,7 @@ public:
         const auto tree = removeGroupLeaf(treeSnapshot(root), panelName(member));
         member->releaseGroup = {}; member->window()->removeEventFilter(this);
         QObject::disconnect(member->window(), nullptr, this, nullptr);
-        member->detachFromGroup(deferHostShow); members.removeAll(member); leaves.remove(member); wrapper->hide(); wrapper->deleteLater();
+        member->detachFromGroup(deferHostShow); members.removeAll(member); leaves.remove(member); headers.remove(member); wrapper->hide(); wrapper->deleteLater();
         if (members.size() == 1) {
             auto remaining = members.first(); remaining->releaseGroup = {}; remaining->window()->removeEventFilter(this);
             remaining->detachFromGroup(); place(remaining, groupFrame); members.clear(); leaves.clear(); retireHost();
@@ -292,29 +296,20 @@ private:
         const auto name = panelName(member), title = member->panelTitle();
         auto wrapper = new QWidget(host); wrapper->setProperty("groupPanel", name);
         auto layout = new QVBoxLayout(wrapper); layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0);
-        auto bar = new QWidget(wrapper); auto row = new QHBoxLayout(bar); row->setContentsMargins(6, 2, 4, 2);
-        auto label = new QLabel(title, bar); label->setObjectName("unboundGroupHeader"); label->setProperty("groupPanel", name);
-        label->setMinimumWidth(0); label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-        label->setProperty("groupMember", members.size()); label->setToolTip("Drag to detach this panel"); label->installEventFilter(this);
-        auto detach = new QPushButton(QStringLiteral("Detach"), bar); detach->setObjectName(QStringLiteral("unboundDetachPanel"));
-        auto hide = new QPushButton(QStringLiteral("Hide"), bar); hide->setObjectName("unboundHidePanel");
-        for (auto button : {hide,detach}) {
-            button->setFixedWidth(button->fontMetrics().horizontalAdvance(button->text()) + 16);
-            button->setToolTip(button == hide ? "Hide this panel" : "Detach this panel into its own window");
-        }
-        hide->setToolTip("Hide this panel; reopen it from Workspace > Show Panel in Workspace");
-        row->addWidget(label, 1);
-        row->addWidget(new PanelScaleControls(bar,[member] { return member->interfaceScale(); },
-            [member](double factor) { member->setInterfaceScale(factor); }));
-        row->addWidget(hide); row->addWidget(detach);
-        auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
-        layout->addWidget(bar); layout->addWidget(content, 1);
-        if (name=="unboundWorkspaceToolbar") bar->hide();
+        auto header=new GroupPanelHeader(wrapper,title,[member] { return member->interfaceScale(); },
+            [member](double factor) { member->setInterfaceScale(factor); },
+            [this,member] { detachMember(member); },[this,member] { member->setHiddenByUser(true);syncVisibility(); },
+            [this](QMenu *menu) { hiddenCallers->populate(menu); });
+        header->label->setProperty("groupPanel",name);header->label->setProperty("groupMember",members.size());header->label->installEventFilter(this);
+        auto content = new QWidget(wrapper);content->setObjectName(QStringLiteral("unboundGroupCell_")+name);content->setWindowTitle(title);
+        layout->addWidget(header->bar);layout->addWidget(content,1);headers[member]=header;
+        if (name=="unboundWorkspaceToolbar") header->bar->hide();
         const bool clips = setNativeGroupSurfaceClipping(content);
         logEvent("panel.boundary.native-clip",{{"panel",name},{"enabled",clips}});
         // Keep old hosts until the destination is ready. Hiding the active host
         // earlier makes Cocoa activate another window in the middle of transfer.
         const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
+        for (auto child:content->findChildren<QWidget *>()) if (child->objectName()=="unboundTimelineHeader" || child->objectName().startsWith("unboundNativeUndock_") || child->objectName().startsWith("unboundNativeKeyboard_")) child->hide();
         if (name=="unboundWorkspaceToolbar") new CompactToolbar(wrapper,content->findChild<QStackedWidget *>() ? content->findChild<QStackedWidget *>() : content);
         members.append(member); leaves[member] = wrapper; wireMember(member); return {};
     }
@@ -322,23 +317,24 @@ private:
     {
         member->releaseGroup = [this, member] { detachMember(member,true); }; member->window()->installEventFilter(this);
         const auto wrapper = leaves.value(member);
-        for (auto old : wrapper->findChildren<QToolButton *>("unboundHiddenPanelCaller")) delete old;
-        if (auto header = wrapper->findChild<QLabel *>("unboundGroupHeader")) {
-            if (auto row = qobject_cast<QBoxLayout *>(header->parentWidget()->layout()))
-                row->insertWidget(1,hiddenCallers->add(header->parentWidget()));
-        }
         for (auto label : wrapper->findChildren<QLabel *>("unboundGroupHeader")) label->installEventFilter(this);
-        for (auto button : wrapper->findChildren<QPushButton *>("unboundDetachPanel")) {
-            QObject::disconnect(button, nullptr, this, nullptr);
-            connect(button, &QPushButton::clicked, this, [this, member] { detachMember(member); });
-        }
-        for (auto button : wrapper->findChildren<QPushButton *>("unboundHidePanel")) {
-            // Preserve native/accessibility destruction tracking and observers.
-            // Only replace callbacks owned by this group.
-            QObject::disconnect(button, nullptr, this, nullptr);
-            connect(button, &QPushButton::clicked, this, [this, member] { member->setHiddenByUser(true); syncVisibility(); });
+        if (auto header=headers.value(member)) {
+            header->detachAction=[this,member] { detachMember(member); };
+            header->hideAction=[this,member] { member->setHiddenByUser(true);syncVisibility(); };
+            header->extrasAction=[this](QMenu *menu) { hiddenCallers->populate(menu); };
+            auto button=header->button;
+            button->drag=[this,member](QPoint pointer) { detachMember(member);if (auto window=dynamic_cast<MacFloatingHost *>(member->window())) { window->move(pointer-QPoint(80,12));window->beginPointerDrag(pointer,true); } };
         }
         connect(member->window(), &QObject::destroyed, this, [this] { if (!releasing && !rebuilding) dissolve(); });
+    }
+    void parkHeaders() { for (auto header:headers) if (header) header->park(); }
+    void syncHeaders() {
+        parkHeaders();
+        for (auto member:members) if (member && headers.value(member)) {
+            auto wrapper=leaves.value(member);auto stack=wrapper ? qobject_cast<QStackedWidget *>(wrapper->parentWidget()) : nullptr;
+            auto tabs=stack ? qobject_cast<QTabWidget *>(stack->parentWidget()) : nullptr;
+            headers.value(member)->present(tabs,tabs && tabs->currentWidget()==wrapper,panelName(member)=="unboundWorkspaceToolbar");
+        }
     }
     QJsonObject treeSnapshot(QWidget *widget) const
     {
@@ -355,7 +351,7 @@ private:
             for (auto member : members) if (member && panelName(member)==id) return member->panelTitle();
             return QString();
         };
-        callbacks.changed = [this] { if (!rebuilding) timer.start(); };
+        callbacks.changed = [this] { if (!rebuilding) { syncHeaders();timer.start(); } };
         callbacks.tearOff = [this](QWidget *leaf,QPoint pointer) {
             QPointer<MacPanelSession> member;
             for (auto candidate : members) if (leaves.value(candidate)==leaf) member=candidate;
@@ -373,6 +369,7 @@ private:
     {
         UiWorkTiming timing("group.rebuild",host);
         QScopedValueRollback<bool> guard(rebuilding, true);
+        parkHeaders();
         visibility.reset();
         visibilityState.clear();
         for (auto member : members) if (member) leaves.value(member)->setParent(host);
@@ -393,7 +390,7 @@ private:
             } else wrapper->setVisible(visible);
             member->window()->setVisible(visible);
         }
-        root->show(); host->layout()->activate();
+        root->show();syncHeaders(); host->layout()->activate();
         auto splitters = root->findChildren<QSplitter *>(); if (auto splitter = qobject_cast<QSplitter *>(root.data())) splitters.prepend(splitter);
         for (auto splitter : splitters) {
             QList<int> sizes; for (auto size : splitter->property("savedSizes").toList()) sizes.append(qMax(1, size.toInt()));
@@ -449,6 +446,7 @@ private:
     }
     GroupVisibility visibility;
     QHash<MacPanelSession *,bool> visibilityState;
+    QHash<MacPanelSession *,QPointer<GroupPanelHeader>> headers;
     HiddenPanelCallers *hiddenCallers = nullptr;
     QPointer<GroupHostReserve> reserve;
     QPointer<MacFloatingHost> host;

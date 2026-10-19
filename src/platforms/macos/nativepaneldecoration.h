@@ -10,24 +10,11 @@
 #include <QToolButton>
 #include <functional>
 #include "diagnostics.h"
+#include "panelplacementcontrol.h"
 #include "keyboardlauncher.h"
 namespace Unbound {
 // Dedicated native-header button; never replaces or overlays Resolve's options.
-class PanelUndockGlyph : public QIconEngine {
-public:
-    QIconEngine *clone() const override { return new PanelUndockGlyph; }
-    void paint(QPainter *p,const QRect &r,QIcon::Mode mode,QIcon::State) override {
-        p->save(); p->setRenderHint(QPainter::Antialiasing);
-        p->translate(r.topLeft()); p->scale(r.width()/20.,r.height()/20.);
-        p->setPen(QPen(mode == QIcon::Active ? QColor(220,220,220) : QColor(132,132,132),1.5));
-        p->setBrush(Qt::NoBrush); p->drawRoundedRect(QRectF(2.5,3.5,13,13),1,1);
-        p->drawRoundedRect(QRectF(12.5,7,6,6),.75,.75); p->restore();
-    }
-    QPixmap pixmap(const QSize &size,QIcon::Mode mode,QIcon::State state) override {
-        QPixmap result(size); result.fill(Qt::transparent); QPainter p(&result);
-        paint(&p,QRect(QPoint(),size),mode,state); return result;
-    }
-};
+using PanelUndockGlyph = PanelPlacementGlyph;
 class NativeUndockButton : public QToolButton {
 public:
     using QToolButton::QToolButton;
@@ -63,6 +50,7 @@ public:
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
         auto button = buttons.value(id);
+        if (panel->window()->objectName().startsWith("unboundFloating_group_")) { if (button) button->hide();return; }
         if (!button) {
             const QStringList anchors{"btnMediaPoolOptions","btnTitleOptions","btnAudioMixerOptions", "btnOptions",
                 "m_BtnDisplayOptions","btnEdlOptions","tbtnPlayerOptions","metadataSelectionMenuBtn","btnCurveSettingsOptions"};
@@ -78,20 +66,13 @@ public:
             button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
             button->setProperty("unboundPanelId",id);
             layout->insertWidget(layout->indexOf(anchor),button,0,Qt::AlignVCenter);
-            auto keyboard = new QToolButton(anchor->parentWidget());
-            keyboard->setObjectName("unboundNativeKeyboard_"+id); keyboard->setText(QString::fromUtf8("⌨"));
-            keyboard->setToolTip("Keyboard Customization"); keyboard->setAccessibleName(keyboard->toolTip());
-            keyboard->setAutoRaise(true); keyboard->setFocusPolicy(Qt::NoFocus); keyboard->setFixedSize(24,24);
-            layout->insertWidget(layout->indexOf(anchor),keyboard,0,Qt::AlignVCenter);
-            connect(button,&QObject::destroyed,keyboard,[keyboard] { delete keyboard; });
-            connect(keyboard,&QToolButton::clicked,this,[] { openNativeKeyboardCustomization(); });
             connect(button,&QToolButton::clicked,this,[id,toggle] {
                 logEvent("panel.header.toggle",{{"panel",id},{"origin","native-header"}}); toggle();
             });
             buttons[id]=button;
         }
         button->drag=std::move(drag);
-        button->setToolTip((floating ? "Dock " : "Undock ")+title+(button->drag ? "; drag to move or detach" : ""));
+        setPlacementControl(button,floating,(floating ? "Attach " : "Float ")+title+(button->drag ? "; drag to place" : ""));
         button->setAccessibleName(button->toolTip()); button->show();
     }
 private:

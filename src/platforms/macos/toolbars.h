@@ -7,6 +7,7 @@
 #include <QToolButton>
 #include <QTimer>
 #include "diagnostics.h"
+#include "panelplacementcontrol.h"
 namespace Unbound {
 inline QWidget *panelSurface(QWidget *page, const QString &name)
 {
@@ -59,6 +60,7 @@ public:
                 button->setText(standalone ? QStringLiteral("↙") : QStringLiteral("↗"));
                 button->setToolTip(standalone ? "Attach toolbar above Timeline; drag to place elsewhere" : "Float toolbar separately");
             }
+            setPlacementControl(button,panel=="unboundWorkspaceToolbar" ? surface->window()->property("unboundToolbarStrip").toBool() : floating,button->toolTip());
             if (wired.contains(button)) continue;
             wired.insert(button);
             connect(button, &QObject::destroyed, this, [this, button] { wired.remove(button); });
