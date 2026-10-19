@@ -29,6 +29,7 @@ public:
     std::function<void(QString)> nativeWorkspace;
     std::function<void()> showPanelManager;
     std::function<void()> showPanelShortcuts;
+    std::function<QMenu *(QMenu *)> panelMenu;
     std::function<QString()> currentPage = [] { return QStringLiteral("edit"); };
     std::function<bool()> nativeActive = [] { return false; };
     std::function<bool(QString)> supportedPage = [](const QString &page) { return page == "edit"; };
@@ -43,10 +44,11 @@ public:
                 if (index < 0) continue;
                 auto menu = bar->findChild<QMenu *>("unboundWorkspaceUI",Qt::FindDirectChildrenOnly);
                 if (!menu) {
-                    menu = new QMenu("Workspace UI",bar); menu->setObjectName("unboundWorkspaceUI");
+                    menu = new QMenu("OpenGate UI",bar); menu->setObjectName("unboundWorkspaceUI");
                     menu->setProperty("unboundOwnMenu",true); menu->menuAction()->setMenuRole(QAction::NoRole);
-                    logEvent("workspace.menu.attached",{{"placement","menubar"},{"label","Workspace UI"},{"page",currentPage()}});
+                    logEvent("workspace.menu.attached",{{"placement","menubar"},{"label","OpenGate UI"},{"page",currentPage()}});
                 }
+                menu->setTitle("OpenGate UI");
                 const auto current = bar->actions();
                 if (current.indexOf(menu->menuAction()) != current.indexOf(workspace->menuAction())+1)
                     bar->insertMenu(index+1 < actions.size() ? actions[index+1] : nullptr,menu);
@@ -111,11 +113,13 @@ private:
     void refresh(QMenu *root)
     {
         const auto page = currentPage(); const auto label = workspacePageLabel(page);
+        auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
         auto about=action(root,"openGateAbout","About OpenGate…","About");
         auto keyboard = action(root,"unboundKeyboardCustomization",QString::fromUtf8("Keyboard Customization…"),"Keyboard");
         auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8("OpenGate Panel Shortcuts…"),"PanelShortcuts");
         shortcuts->setEnabled(bool(showPanelShortcuts));
+        shortcuts->setToolTip("Assign OpenGate panel and Edit UI commands here; separate from Resolve Keyboard Customization");
         auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("OpenGate Panel Manager…"),"PanelManager");
         manager->setEnabled(bool(showPanelManager));
         const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
@@ -136,7 +140,7 @@ private:
             const auto entry = value.toObject(); labels.append(QJsonObject{{"id",entry["id"]},{"name",entry["name"]}});
         }
         const QJsonObject model{{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
-        if (!created && rendered.value(root) == model) return;
+        if (!created && rendered.value(root) == model && (!callers || root->actions().contains(callers->menuAction()))) return;
         action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Current Workspace As…"), QString::fromUtf8("Save As…"))->setEnabled(supported);
         bool currentExists = false; QSet<QString> ids;
         for (const auto &value : saved) if (value.toObject()["id"].toString() == current) currentExists = true;
@@ -180,7 +184,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(keyboard); topOrder.append(about);
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(keyboard); topOrder.append(about);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))

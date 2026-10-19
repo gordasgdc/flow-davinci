@@ -37,6 +37,7 @@
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
+#include "panelcallermenu.h"
 #include "panelcommandcatalog.h"
 #include "nativeeditcommands.h"
 #include "nativepaneltoggles.h"
@@ -312,6 +313,21 @@ public:
         editCommands->addTo(commands);
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
         workspaceMenu->showPanelShortcuts=[this] { commands->showEditor(); };
+        auto panelCallers=new Unbound::PanelCallerMenu(this);
+        panelCallers->currentPage=[] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
+        for (int i=0;i<panels.size();++i) panelCallers->add({panels[i].name,panels[i].label,"edit",
+            [this] { return !quitting && page() && page()->isVisible(); },
+            [this,i] {
+                if (nativeWorkspace->contains(panels[i].name)) return nativeWorkspace->selected(panels[i].name);
+                auto session=panels[i].session;
+                if (session->active()) return !session->hiddenByUser() && session->window() && session->window()->isVisible();
+                auto surface=Unbound::panelSurface(page(),panels[i].name); return surface && surface->isVisible();
+            },
+            [this,i] { if (panels[i].session->active()) showPanel(i,true); else requestUndock(i); }});
+        panelCallers->add({"page-navigation","Page Navigation","edit",[this] { return !quitting && bool(footer); },
+            [this] { return footer && !footer->snapshot()["hidden"].toBool(); },
+            [this] { const auto error=footer->showPanel(); if (!error.isEmpty()) status->setText(error); }});
+        workspaceMenu->panelMenu=[panelCallers](QMenu *root) { return panelCallers->wire(root); };
         workspaceMenu->showPanelManager = [this] {
             showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
             Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
