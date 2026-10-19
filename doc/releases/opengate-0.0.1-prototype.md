@@ -11,7 +11,7 @@ This prerelease captures the combined build Jordan has been trying. Arranging st
 3. Double-click the package and follow macOS Installer. Administrator authentication is required. This prototype installer is unsigned and not notarized; macOS may require you to explicitly allow it.
 4. Open Resolve and an Edit project. Use **OpenGate UI** in the menu bar. The optional **OpenGate** app in Applications opens the panel manager.
 
-**Requirements:** Apple Silicon, **macOS 27 or later**, and Resolve 21 in its standard `/Applications/DaVinci Resolve/DaVinci Resolve.app` location. Tested locally with Resolve Studio **21.1.1 / Qt 5.15.2** on macOS 27. Intel, older macOS, other Resolve versions and nonstandard installation locations are not supported by this package. Resolve supplies Qt; Python, Xcode and source builds are not required for installation. Individual native Workflow Integration command execution remains experimental.
+**Requirements:** Apple Silicon, **macOS 27 or later**, and Resolve 21 in its standard `/Applications/DaVinci Resolve/DaVinci Resolve.app` location. Tested locally with Resolve Studio **21.1.1 / Qt 5.15.2** on macOS 27. Intel, older macOS, other Resolve versions and nonstandard installation locations are not supported by this package. Resolve supplies Qt; Python, Xcode and source builds are not required for installation. Custom hotkey execution is on the roadmap, not a working feature of this release.
 
 On an untouched user profile, the installer seeds **Native Emulator**, using real modular panels in a familiar Edit arrangement. It also includes **Jordan Arrangmement** and **Jordan Source Monitor below Media Pool**. Native Emulator is a starter, not a claim of pixel-for-pixel native equivalence. Existing profiles and saved arrangements are preserved, not reset. **Native Edit UI** remains available in the menu. Subsequent launches restore the last saved arrangement rather than forcing the starter each time.
 
@@ -32,7 +32,7 @@ The installer backs up previous OpenGate/Unbound helper files and user settings 
 
 ## Known issues and validation limits
 
-- Custom/native keyboard assignments are not yet reliably firing or synchronized end to end. Backtick works in Jordan's trial; native shortcut enumeration alone does not establish execution. Stabilize and Fixed Playhead targets remain experimental.
+- **Custom hotkey execution is on the roadmap.** Commands may appear in Keyboard Customization, but assigning a key does not establish that they execute. Backtick maximize/restore works in Jordan's trial. Do not rely on the other custom panel, Stabilize or Fixed Playhead hotkeys in this release. Existing Resolve shortcuts are retained.
 - Arranging, native-background interaction, panel focus/stacking, occasional viewer readiness and drag/drop behavior still need broader testing. Pinning or native recovery may be needed in some flows.
 - Scaling adjusts supported native fonts/control/layout metrics, not every custom-painted timeline track or GPU surface. Toolbar appearance and overflow need feedback on other displays.
 - Custom layouts are currently focused on Edit. Footer placement remains more restricted than ordinary group panels.
@@ -41,7 +41,7 @@ The installer backs up previous OpenGate/Unbound helper files and user settings 
 
 ## Next targets
 
-1. Reliable, discoverable custom hotkeys using existing native assignments where appropriate; verify command execution and avoid duplicate assignment stores.
+1. **Implement reliable custom hotkey execution**, with discoverable assignments, use of existing native shortcuts where appropriate, and verified execution without duplicate assignment stores.
 2. Faster, more natural arranging and panel calling, fewer refresh flashes, and measured responsiveness improvements.
 3. Further unify the native-background experience; eliminate panel lockouts and improve placement/overflow across displays.
 4. Broader macOS support, signing/notarization and a more polished first-install experience.
