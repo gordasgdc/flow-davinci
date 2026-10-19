@@ -74,6 +74,16 @@ public:
         if (changed) changed();
         return {};
     }
+    QString showPanel() {
+        syncAttachment();
+        if (accessory.active()) {
+            if (revealAttachmentOwner) revealAttachmentOwner();
+            accessory.setHidden(false); state["hidden"]=false;
+            logEvent("footer.visibility",{{"placement","timeline"},{"hidden",false},{"origin","show-panel"}});
+            if (changed) changed(); return {};
+        }
+        return floatPanel();
+    }
     QString toggleVisibility()
     {
         syncAttachment();

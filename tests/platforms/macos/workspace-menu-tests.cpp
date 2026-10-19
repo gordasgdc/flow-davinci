@@ -3,6 +3,7 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "workspacearrangements.h"
+#include "panelcallermenu.h"
 #include "nativepaneldecoration.h"
 #include "arrangementcontrols.h"
 #include "pagecontext.h"
@@ -108,6 +109,22 @@ int main(int argc, char **argv)
         check(root && bar.actions().indexOf(root->menuAction()) == bar.actions().indexOf(workspace.menuAction())+1,
             "Workspace UI is a separate top-level menu beside Workspace");
         if (!root) return 1;
+        check(root->title()=="OpenGate UI","top-level product menu is named OpenGate UI");
+        Unbound::PanelCallerMenu callers; int panelShows=0; bool visible=false;
+        callers.currentPage=[&] { return activePage; };
+        callers.add({"source","Source Monitor","edit",[] { return true; },[&] { return visible; },[&] { visible=true; ++panelShows; }});
+        menus.panelMenu=[&](QMenu *menu) { return callers.wire(menu); }; menus.wire(); menus.wire();
+        auto show=root->findChild<QMenu *>("openGateShowPanel");
+        auto edit=show ? show->findChild<QMenu *>("openGatePanelPage_edit") : nullptr;
+        auto source=edit ? edit->findChild<QAction *>("openGateShowPanel_source") : nullptr;
+        check(show && edit && edit->title()=="Edit" && source && source->isEnabled(),"Show Panel groups Edit callers by native page");
+        if (source) { source->trigger(); QApplication::processEvents(); menus.wire(); source->trigger(); QApplication::processEvents(); menus.wire(); }
+        check(panelShows==2 && visible && source && source->isChecked(),"repeated show calls reveal rather than toggle-hide and do not duplicate dispatch");
+        activePage="color"; menus.wire();
+        check(source && !source->isEnabled(),"Edit-only callers are disabled on other pages");
+        activePage="edit"; menus.wire(); if (source) source->trigger(); activePage="color"; QApplication::processEvents();
+        check(panelShows==2,"queued panel request is cancelled after page change");
+        activePage="edit"; menus.wire();
         auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements");
         auto preset = root->findChild<QMenu *>("unboundWorkspace_"+second);
         check(submenu && submenu->title() == "Manage Saved Workspaces" && preset && !root->isVisible(), "menu is populated before native display");
