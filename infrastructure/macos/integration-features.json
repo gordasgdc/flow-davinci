@@ -72,7 +72,7 @@
       "branch": "feature/macos-panel-overflow",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "3d84524f92b28a5fb15d8d027ef81aedc09a8a2e"
+      "commit": "d2a1334fc6f8c61786f2a2cf1f7d651f0981adfd"
     },
     {
       "branch": "feature/macos-panel-placement",
