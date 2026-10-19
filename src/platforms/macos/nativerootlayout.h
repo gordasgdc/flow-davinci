@@ -41,6 +41,8 @@ public:
             clear(); logEvent("workspace.native-root.owner-destroyed");
         });
         minimum=page->minimumSize(); policy=page->sizePolicy();
+        for (auto child : page->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly))
+            if (child!=surface && !child->isWindow()) baselineVisibility.append({child,child->isHidden(),child->geometry()});
         const auto margins=nativeLayout->contentsMargins();
         stash=new QWidget(main); stash->setObjectName("unboundNativeLayoutStash"); stash->hide();
         stash->setLayout(nativeLayout);
@@ -90,6 +92,12 @@ public:
         // Park our tree before returning the original layout. Never delete a
         // native control merely because its presentation container is retiring.
         auto parking=new QWidget(main); parking->hide(); parking->setLayout(customLayout);
+        auto nativeVisibility=baselineVisibility;
+        if (remainder) {
+            nativeVisibility.clear();
+            for (auto child : stash->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly))
+                if (!child->isWindow()) nativeVisibility.append({child,child->isHidden(),child->geometry()});
+        }
         page->setLayout(nativeLayout);
         if (page->layout()!=nativeLayout) {
             if (!page->layout()) page->setLayout(customLayout);
@@ -108,6 +116,10 @@ public:
             surface->setParent(main); surface->hide();
         }
         page->setMinimumSize(minimum); page->setSizePolicy(policy);
+        // QLayout defers showing reparented children. Apply logical visibility
+        // now so an immediate command can find a just-restored native panel.
+        for (const auto &item : nativeVisibility)
+            if (item.widget && item.widget->parentWidget()==page) item.widget->setVisible(!item.hidden);
         for (const auto &item : visibility)
             if (item.widget) {
                 if (item.widget->parentWidget()==stash) { item.widget->setParent(page); item.widget->setGeometry(item.geometry); }
@@ -121,12 +133,13 @@ public:
 private:
     void clear() {
         disconnect(pageDestroyed); pageDestroyed={};
-        page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; remainder=nullptr; nativeLayout=nullptr; customLayout=nullptr; visibility.clear();
+        page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; remainder=nullptr; nativeLayout=nullptr; customLayout=nullptr;
+        visibility.clear(); baselineVisibility.clear();
     }
     QPointer<QWidget> page,main,surface,stash,remainder;
     QPointer<QLayout> nativeLayout,customLayout;
     struct NativeVisibility { QPointer<QWidget> widget; bool hidden; QRect geometry; };
-    QList<NativeVisibility> visibility;
+    QList<NativeVisibility> visibility,baselineVisibility;
     QMetaObject::Connection pageDestroyed;
     QSize minimum; QSizePolicy policy;
     QVariant rootProperty;

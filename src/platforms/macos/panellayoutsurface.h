@@ -67,6 +67,12 @@ inline QWidget *buildPanelLayoutSurfaceNode(const QJsonObject &node,QWidget *par
         splitter->addWidget(widget);
     }
     splitter->setProperty("savedSizes",node["sizes"].toArray().toVariantList());
+    QList<int> initialSizes;
+    for (const auto &size : node["sizes"].toArray()) initialSizes.append(qMax(1,size.toInt()));
+    if (initialSizes.size()!=splitter->count()) {
+        initialSizes.clear(); for (int i=0;i<splitter->count();++i) initialSizes.append(1);
+    }
+    splitter->setProperty("unboundVisibleSizes",QVariant::fromValue(initialSizes));
     QObject::connect(splitter,&QSplitter::splitterMoved,owner,[callbacks] { if (callbacks.changed) callbacks.changed(); });
     return splitter;
 }

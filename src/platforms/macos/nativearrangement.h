@@ -7,6 +7,7 @@
 #include "panellayoutsurface.h"
 #include "panelsession.h"
 #include "nativedocksurfaces.h"
+#include "nativearrangementplan.h"
 namespace Unbound {
 // Page-level ownership, independent of floating host chrome and drop detection.
 // The retained native layout is always represented explicitly in the tree.
@@ -18,10 +19,30 @@ public:
             session->releaseGroup={}; session->detachFromGroup();
         }
     }
-    static QString nativeLeaf() { return QStringLiteral("unbound.native-remainder"); }
+    static QString nativeLeaf() { return nativeRemainderId(); }
     bool active() const { return lease.active(); }
     QWidget *surface() const { return host; }
     QJsonObject snapshot() const { return panelLayoutSnapshot(root); }
+    QJsonObject savedPlan(const QString &pageKey) const {
+        if (!active()) return {};
+        NativeArrangementPlan plan; plan.page=pageKey; plan.tree=snapshot();
+        for (auto it=sessions.begin();it!=sessions.end();++it) if (it.value() && it.value()->hiddenByUser()) plan.hidden.insert(it.key());
+        return plan.json();
+    }
+    QString initializeSaved(QWidget *page,const QHash<QString,MacPanelSession *> &panels,const QJsonObject &saved,const QString &pageKey) {
+        QSet<QString> available; for (auto it=panels.begin();it!=panels.end();++it) available.insert(it.key());
+        NativeArrangementPlan plan; auto error=NativeArrangementPlan::parse(saved,pageKey,available,plan);
+        if (!error.isEmpty()) return error;
+        error=initialize(page,panels,plan.tree); if (!error.isEmpty()) return error;
+        QScopedValueRollback<bool> guard(changing,true);
+        for (auto it=panels.begin();it!=panels.end();++it) {
+            if (!active()) return QStringLiteral("The native page changed during restoration.");
+            it.value()->setHiddenByUser(plan.hidden.contains(it.key()),false);
+        }
+        if (!rebuild(plan.tree)) { restoreOwned(false); return QStringLiteral("Could not restore the saved native arrangement."); }
+        logEvent("workspace.native-arrangement.restore-plan",{{"page",pageKey}});
+        return {};
+    }
     bool setPanelVisible(const QString &id,bool visible) {
         auto session=sessions.value(id); auto cell=cells.value(id);
         if (changing || !active() || !root || !session || !cell) return false;

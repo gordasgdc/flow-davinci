@@ -253,6 +253,10 @@ int main(int argc,char **argv) {
         check(Unbound::groupTreeNames(arrangement.snapshot(),mergedNames) && mergedNames.size()==5 &&
             m.placement()==Unbound::PanelPlacement::NativeSurface && e.placement()==Unbound::PanelPlacement::NativeSurface,
             "merging preserves the native remainder and all four independent panel leases");
+        check(arrangement.setPanelVisible("effects",false),"native split panel can close before saving a preset");
+        const auto saved=arrangement.savedPlan("edit"); Unbound::NativeArrangementPlan savedPlan;
+        check(Unbound::NativeArrangementPlan::parse(saved,"edit",{"source","inspector","media","effects"},savedPlan).isEmpty() &&
+            savedPlan.hidden.contains("effects"),"closed native split panels retain valid reopen proportions in the saved plan");
         check(arrangement.detach("source") && s.floating() && arrangement.active(),"one panel can float while the other panel and native remainder remain arranged");
         check(s.dock().isEmpty() && remaining->isVisible() && arrangement.active(),"a detached panel can return to its retained native slot without destroying the arrangement");
         check(arrangement.restore(true) && !i.active() && !m.active() && !e.active() && page->layout()==original &&
@@ -260,6 +264,20 @@ int main(int argc,char **argv) {
             media->parentWidget()==page && effects->parentWidget()==page,
             "coordinator restores native root before docking every remaining owned session");
         check(Unbound::nativeDockSurfaces(&main).isEmpty(),"native recovery removes all custom drop destinations");
+        const auto prepare=[&](Unbound::MacPanelSession &session,QWidget *panel,const QString &title) {
+            const auto error=session.undock(panel,page,title);
+            if (!error.isEmpty()) std::fprintf(stderr,"Saved plan prepare %s: %s visible=%d hidden=%d page=%d active=%d\n",
+                qPrintable(title),qPrintable(error),panel->isVisible(),panel->isHidden(),page->isVisible(),session.active());
+            return error.isEmpty();
+        };
+        const bool preparedSource=prepare(s,source,"Source"),preparedInspector=prepare(i,inspector,"Inspector"),
+            preparedMedia=prepare(m,media,"Media Pool"),preparedEffects=prepare(e,effects,"Effects");
+        check(preparedSource && preparedInspector && preparedMedia && preparedEffects,"saved native plan session preparation");
+        check(arrangement.initializeSaved(page,{{"source",&s},{"inspector",&i},{"media",&m},{"effects",&e}},saved,"edit").isEmpty() &&
+            e.hiddenByUser() && !effects->isVisible() && i.placement()==Unbound::PanelPlacement::NativeSurface,
+            "saved native plans restore nested placement and closed panels without selecting every revealed tab");
+        check(arrangement.restore(true) && page->layout()==original && effects->parentWidget()==page,
+            "saved-plan restoration remains reversible to the same native slots");
     }
     {
         QWidget main; auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);

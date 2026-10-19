@@ -6,6 +6,7 @@
 #include "viewport.h"
 #include "droppolicy.h"
 #include "dockfeedback.h"
+#include "nativearrangementplan.h"
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -120,6 +121,28 @@ int main(int argc, char **argv)
     const auto recovered = Unbound::keepGripReachable(QRect(4000, -3000, 2400, 1500), {desktop});
     check(recovered.size() == QSize(2400, 1500) && recovered.top() >= 0 && recovered.left() <= desktop.right() - 95,
         "lost windows retain size while a draggable strip is rescued");
+    {
+        Unbound::NativeArrangementPlan saved; saved.page="edit";
+        auto tabs=Unbound::splitGroupTree({{"panel","source"}},{{"panel","inspector"}},Qt::Orientation(0)); tabs["selected"]=1;
+        saved.tree=Unbound::splitGroupTree({{"panel",Unbound::nativeRemainderId()}},tabs,Qt::Horizontal); saved.hidden.insert("source");
+        Unbound::NativeArrangementPlan restored;
+        check(Unbound::NativeArrangementPlan::parse(saved.json(),"edit",{"source","inspector"},restored).isEmpty() && restored.json()==saved.json(),
+            "native saved plans preserve nested tabs, split ratios, page identity and hidden panels exactly");
+        const auto baseline=restored.json();
+        auto reject=[&](QJsonObject bad,const QString &page=QStringLiteral("edit")) {
+            check(!Unbound::NativeArrangementPlan::parse(bad,page,{"source","inspector"},restored).isEmpty() && restored.json()==baseline,
+                "invalid native plans reject atomically without changing the last valid plan");
+        };
+        reject(saved.json(),"color"); auto bad=saved.json(); bad["version"]=99; reject(bad);
+        bad=saved.json(); bad["panels"]=QJsonObject{{"source",QJsonObject{{"hidden","yes"}}}}; reject(bad);
+        bad=saved.json(); auto tree=saved.tree; tree["sizes"]=QJsonArray{-1,2}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; tree["sizes"]=QJsonArray{1.5,2}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; tree["sizes"]=QJsonArray{1}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; auto children=tree["children"].toArray(); auto invalidTabs=tabs; invalidTabs["selected"]=5;
+        children[1]=invalidTabs; tree["children"]=children; bad["tree"]=tree; reject(bad);
+        bad=saved.json(); bad["tree"]=tabs; reject(bad);
+        bad=saved.json(); bad["tree"]=Unbound::splitGroupTree({{"panel",Unbound::nativeRemainderId()}},{{"panel","unavailable"}},Qt::Horizontal); reject(bad);
+    }
     if (!failures) std::puts("PASS: regional drop policy, recursive 24-panel merges/tear-offs, legacy geometry and viewport recovery (no GUI windows)");
     return failures ? 1 : 0;
 }

@@ -32,6 +32,11 @@ second floating workspace requiring the user to hide the original background.
 - Floating/native groups share `panelLayoutSnapshot`; covered-tab recovery no
   longer re-shows a session through an inactive tab. Transaction callbacks cannot
   reenter an unfinished coordinator operation.
+- `NativeArrangementPlan` validates page-scoped saved trees and per-panel hidden
+  states before adoption. Saved-plan initialization preserves selected tabs;
+  divider snapshots retain usable proportions while a split panel is closed.
+  Root recovery applies managed-control visibility immediately, so a subsequent
+  reopen command does not depend on Qt's deferred show event.
 
 ## Verification
 
@@ -42,6 +47,17 @@ transfer into/out of the native surface.
 It also exercises multi-panel subtree addition, rejected targets without mutation,
 native remainder preservation, logical parent restoration, project replacement,
 door tab return, scoped drop bounds and operation diagnostics.
+The saved-plan round trip now includes a closed split panel and immediate reuse of
+the native slots. Headless layout-plan tests reject malformed geometry, unknown
+panels, page mismatches and bad visibility without changing the last valid plan.
+
+The full 13-suite run at `19bd6a8` was incomplete: Resolve opened after the five
+headless suites passed. Eight native-window suites compiled but were NOT RUN by
+their safety checks. Receipt:
+`build/macos/verification/19bd6a8177-20261019T004732Z/receipt.json`.
+The signed widget library and IO helper built at that commit; nothing was
+installed. Subsequent saved-plan changes passed their individual native fixture
+after Resolve closed; consolidated verification must be rerun on the new commit.
 
 `bash infrastructure/macos/test-panel-sessions.sh` passed after the scoped session
 adoption change. Fixture evidence does not establish real Resolve/GPU behavior.

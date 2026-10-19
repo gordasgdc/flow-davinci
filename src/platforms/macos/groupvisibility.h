@@ -52,7 +52,10 @@ public:
     {
         auto items = root->findChildren<QSplitter *>();
         if (auto splitter = qobject_cast<QSplitter *>(root)) items.prepend(splitter);
-        for (auto splitter : items) splitters[splitter][mask(splitter)] = splitter->sizes();
+        for (auto splitter : items) {
+            const auto sizes=splitter->sizes(); splitters[splitter][mask(splitter)]=sizes;
+            if (sizes.size()==splitter->count() && !sizes.contains(0)) splitter->setProperty("unboundVisibleSizes",QVariant::fromValue(sizes));
+        }
     }
     void restore(QWidget *root)
     {

@@ -18,7 +18,7 @@ inline QJsonObject panelLayoutSnapshot(QWidget *widget) {
         auto measured=splitter->sizes();
         const auto remembered=splitter->property("unboundVisibleSizes").value<QList<int>>();
         if (measured.contains(0) && remembered.size()==measured.size()) measured=remembered;
-        for (int size : measured) sizes.append(size);
+        for (int size : measured) sizes.append(qMax(1,size));
         return {{"orientation",splitter->orientation()==Qt::Horizontal ? "horizontal" : "vertical"},
             {"children",children},{"sizes",sizes}};
     }
