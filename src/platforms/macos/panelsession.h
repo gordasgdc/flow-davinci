@@ -62,6 +62,7 @@ public:
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
+    QWidget *nativeVacancy() const { return transferredLayout ? originalParent.data() : placeholder.data(); }
     bool adoptOriginalPosition(NativePanelPosition &position) {
         if (!active() || transferredLayout || !placeholder || content!=position.content() ||
             originalParent!=position.contentParking() || originalLayout || originalSplitter || originalStack) return false;
