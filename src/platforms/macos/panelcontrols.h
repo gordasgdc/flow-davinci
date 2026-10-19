@@ -302,6 +302,11 @@ public:
             return nullptr;
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
+        footer->attachmentOwner=[this]() -> QWidget * {
+            return page() && page()->isVisible() && panels[1].session->active() ?
+                Unbound::panelSurface(page(),panels[1].name) : nullptr;
+        };
+        footer->revealAttachmentOwner=[this] { showPanel(1,true); };
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
@@ -685,12 +690,16 @@ private:
                 if (!quitting && background->isChecked()) applyBackgroundVisibility(true);
             });
         }
+        if (error.isEmpty() && p.name=="frameConformTimelines" && footer) footer->syncAttachment();
         outcome("undock", i, error); updateRow(i); updateNativeSizing(); save();
     }
     void dockOne(int i)
     {
         if (expansionController->index() == i) restoreExpanded();
         auto &p = panels[i];
+        if (p.name=="frameConformTimelines" && footer && !footer->releaseAttachment()) {
+            status->setText("Could not release attached Page Navigation safely."); return;
+        }
         ++p.requestVersion; p.pending = false;
         const QString error = p.session->active() ? p.session->dock() : QString();
         if (error.isEmpty()) p.desired = false;
@@ -908,6 +917,7 @@ private:
     {
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
+        if (footer) footer->releaseAttachment();
         groupReserve->clear();
         if (nativeWorkspace) nativeWorkspace->release(true);
         if (nativeSizing) nativeSizing->restore();

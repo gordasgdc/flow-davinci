@@ -6,13 +6,14 @@
 #include <QSet>
 #include "panelsession.h"
 #include "workspacesettings.h"
+#include "panelaccessorylease.h"
 namespace Unbound {
 // Global navigation belongs to the main window, not to a particular Resolve page.
 class FooterPanel : public QObject
 {
 public:
     FooterPanel(QObject *owner, std::function<QWidget *()> mainWindow, QJsonObject saved)
-        : QObject(owner), root(std::move(mainWindow)), state(std::move(saved)), session(this)
+        : QObject(owner), root(std::move(mainWindow)), state(std::move(saved)), session(this), accessory(this)
     {
         qApp->installEventFilter(this);
         QTimer::singleShot(0, this, [this] { wireMenu(); });
@@ -21,9 +22,37 @@ public:
     }
     ~FooterPanel() override { qApp->removeEventFilter(this); session.changed = {}; session.arrangementChanged = {}; }
     std::function<void()> changed;
+    std::function<QWidget *()> attachmentOwner;
+    std::function<void()> revealAttachmentOwner;
+    bool releaseAttachment() { return accessory.release(); }
+    void syncAttachment()
+    {
+        const bool wantsOwner=!state["floating"].toBool() && state["attachment"].toString()!="native";
+        auto owner=wantsOwner && attachmentOwner ? attachmentOwner() : nullptr;
+        if (!owner) { if (accessory.active()) accessory.release(); return; }
+        if (accessory.active() || session.active()) return;
+        auto main=root(); auto footer=main ? main->findChild<QWidget *>("m_PageSwitcherContainer") : nullptr;
+        const auto error=accessory.attach(footer,main,owner);
+        if (!error.isEmpty()) {
+            if (error!=attachmentError) logEvent("footer.attach.failed",{{"error",error}});
+            attachmentError=error; return;
+        }
+        attachmentError.clear(); accessory.setHidden(state["hidden"].toBool());
+        if (changed) changed();
+    }
+    QString attachToTimeline()
+    {
+        if (!attachmentOwner || !attachmentOwner()) return QStringLiteral("Undock Timeline before attaching Page Navigation.");
+        if (session.active()) {
+            const auto error=session.dock(); if (!error.isEmpty()) return error;
+        }
+        state["floating"]=false; state["attachment"]="timeline";
+        syncAttachment(); if (changed) changed(); return attachmentError;
+    }
     QString floatPanel()
     {
         if (session.active()) { session.setHiddenByUser(false); return {}; }
+        if (!accessory.release()) return QStringLiteral("Could not release Page Navigation from its owner.");
         auto main = root();
         auto footer = main ? main->findChild<QWidget *>("m_PageSwitcherContainer") : nullptr;
         if (!footer) return QStringLiteral("Native page navigation is not available yet.");
@@ -40,36 +69,62 @@ public:
         session.setFloatingGeometry(QRect(saved.isValid() ? saved.topLeft() : position,
             QSize(saved.isValid() ? saved.width() : 900, compactHeight)));
         session.setPinned(state["pinned"].toBool());
-        state["floating"] = true;
+        state["floating"] = true; state["attachment"]="floating";
         logEvent(QStringLiteral("footer.undock"));
         if (changed) changed();
         return {};
     }
     QString toggleVisibility()
     {
+        syncAttachment();
+        if (accessory.active()) {
+            if (accessory.ownerSurface() && !accessory.ownerSurface()->isVisible()) {
+                if (revealAttachmentOwner) revealAttachmentOwner();
+                accessory.setHidden(false);
+            } else accessory.setHidden(!accessory.hidden());
+            state["hidden"]=accessory.hidden();
+            logEvent("footer.visibility",{{"placement","timeline"},{"hidden",accessory.hidden()}});
+            if (changed) changed(); return {};
+        }
         if (session.active()) { session.setHiddenByUser(!session.hiddenByUser()); return {}; }
         return floatPanel();
     }
     void dock()
     {
-        state = snapshot(); state["floating"] = false;
-        session.dock();
+        auto next=snapshot();
+        if (!accessory.release()) { logEvent("footer.dock.failed",{{"reason","attachment-ownership-changed"}}); return; }
+        if (session.active()) {
+            const auto error=session.dock();
+            if (!error.isEmpty()) { logEvent("footer.dock.failed",{{"error",error}}); return; }
+        }
+        state=next; state["floating"] = false; state["attachment"]="native";
         if (changed) changed();
     }
     void restore()
     {
-        wireMenu();
+        wireMenu(); syncAttachment();
         if (!state["floating"].toBool() || session.active()) return;
         const bool hidden = state["hidden"].toBool();
         if (floatPanel().isEmpty()) session.setHiddenByUser(hidden);
     }
-    void setState(const QJsonObject &value) { state = value; restore(); }
+    void setState(const QJsonObject &value)
+    {
+        if (!accessory.release()) { logEvent("footer.restore.failed",{{"reason","attachment-ownership-changed"}}); return; }
+        if (session.active()) {
+            const auto error=session.dock();
+            if (!error.isEmpty()) { logEvent("footer.restore.failed",{{"error",error}}); return; }
+        }
+        state=value; restore();
+    }
     QJsonObject snapshot() const
     {
         auto value = state;
         if (session.active()) {
             value = WorkspaceSettings::rectangle(session.floatingGeometry());
             value["floating"] = true; value["hidden"] = session.hiddenByUser(); value["pinned"] = session.pinned();
+        }
+        if (accessory.active()) {
+            value["floating"]=false; value["attachment"]="timeline"; value["hidden"]=accessory.hidden();
         }
         return value;
     }
@@ -82,7 +137,10 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
-        if (event->type() != QEvent::Show && event->type() != QEvent::Resize) return false;
+        if (event->type() != QEvent::Show && event->type() != QEvent::Hide && event->type() != QEvent::Resize) return false;
+        auto widget=qobject_cast<QWidget *>(object);
+        if (widget && widget->objectName()=="WStackPage_Conform")
+            QTimer::singleShot(0,this,[this] { syncAttachment(); });
         auto menu = qobject_cast<QMenu *>(object);
         if (menu && event->type() == QEvent::Show && menu->objectName() == QLatin1String("workspaceShowPanel")) refreshMenu(menu);
         if (object == decoratedFooter && event->type() == QEvent::Resize) positionButton();
@@ -111,6 +169,23 @@ private:
             nativeButton = button;
             if (button->menu()) button->menu()->deleteLater();
             auto menu = new QMenu(button); button->setMenu(menu); button->setPopupMode(QToolButton::InstantPopup);
+            auto attach=menu->addAction("Attach Page Navigation to Timeline");
+            attach->setObjectName("unboundAttachFooterTimeline");
+            connect(menu,&QMenu::aboutToShow,this,[this,attach] { attach->setEnabled(bool(attachmentOwner && attachmentOwner())); });
+            connect(attach,&QAction::triggered,this,[this] {
+                logEvent("footer.attach.request",{{"origin","footer-menu"}});
+                QTimer::singleShot(0,this,[this] {
+                    const auto error=attachToTimeline();
+                    logEvent("footer.attach.result",{{"success",error.isEmpty()},{"error",error}});
+                });
+            });
+            auto native=menu->addAction("Dock Page Navigation to Native Footer");
+            native->setObjectName("unboundDockFooterNative");
+            connect(menu,&QMenu::aboutToShow,this,[this,native] { native->setVisible(accessory.active()); });
+            connect(native,&QAction::triggered,this,[this] {
+                logEvent("footer.native-dock.request",{{"origin","footer-menu"}});
+                QTimer::singleShot(0,this,[this] { dock(); });
+            });
             auto toggle = menu->addAction(QString());
             connect(menu, &QMenu::aboutToShow, this, [this, toggle] {
                 toggle->setText(session.active() ? "Dock Page Navigation to Native Footer" : "Float Page Navigation");
@@ -148,7 +223,8 @@ private:
                 });
             });
         }
-        entry->setChecked(session.active() && !session.hiddenByUser());
+        entry->setChecked(accessory.active() ? accessory.ownerSurface() && accessory.ownerSurface()->isVisible() && !accessory.hidden() :
+            session.active() && !session.hiddenByUser());
     }
 private:
     QPointer<QToolButton> nativeButton;
@@ -157,5 +233,7 @@ private:
     std::function<QWidget *()> root;
     QJsonObject state;
     MacPanelSession session;
+    PanelAccessoryLease accessory;
+    QString attachmentError;
 };
 }
