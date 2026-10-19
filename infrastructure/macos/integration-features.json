@@ -4,7 +4,7 @@
   "features": [
     {
       "branch": "experiment/macos-custom-clip-colors",
-      "commit": "0eaacd197a21e29d085fe0d0547a2754f1725508",
+      "commit": "67cdac4b3ad1d7c324ae5d68ec81d5612a303b62",
       "scope": "research",
       "acceptance": "pending"
     },
