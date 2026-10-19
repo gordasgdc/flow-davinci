@@ -163,12 +163,15 @@ int main(int argc, char **argv)
         check(footer.snapshot()["hidden"].toBool(), "submenu caller hides the floating footer");
         if (caller) caller->trigger(); settle();
         check(!footer.snapshot()["hidden"].toBool(), "submenu caller reopens the same footer");
+        auto footerHost=static_cast<Unbound::MacFloatingHost *>(nativeFooter->window()); footerHost->setPinned(true); settle();
+        check(footer.snapshot()["pinned"].toBool(),"Page Navigation snapshot retains its pin state");
         const auto saved = footer.snapshot(); footer.dock(); settle();
         check(nativeFooter->parentWidget() == &main && layout->indexOf(nativeFooter) >= 0,
             "footer docking restores the original native layout slot");
         footer.setState(saved); settle();
         check(nativeFooter->window() != &main && footer.snapshot()["floating"].toBool(),
             "saved footer arrangement restores independently of the hidden page");
+        check(static_cast<Unbound::MacFloatingHost *>(nativeFooter->window())->pinned(),"Page Navigation pin restores with its floating view");
         footer.dock();
     }
     {

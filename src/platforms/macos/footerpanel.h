@@ -39,6 +39,7 @@ public:
         window->setMaximumHeight(compactHeight);
         session.setFloatingGeometry(QRect(saved.isValid() ? saved.topLeft() : position,
             QSize(saved.isValid() ? saved.width() : 900, compactHeight)));
+        session.setPinned(state["pinned"].toBool());
         state["floating"] = true;
         logEvent(QStringLiteral("footer.undock"));
         if (changed) changed();
@@ -63,7 +64,7 @@ public:
         auto value = state;
         if (session.active()) {
             value = WorkspaceSettings::rectangle(session.floatingGeometry());
-            value["floating"] = true; value["hidden"] = session.hiddenByUser();
+            value["floating"] = true; value["hidden"] = session.hiddenByUser(); value["pinned"] = session.pinned();
         }
         return value;
     }
