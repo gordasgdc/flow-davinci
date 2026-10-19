@@ -38,6 +38,7 @@
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
 #include "panelcommandcatalog.h"
+#include "nativeeditcommands.h"
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
 
@@ -306,6 +307,9 @@ public:
             if (!error.isEmpty()) status->setText(error);
             return error;
         });
+        auto editCommands=new Unbound::NativeEditCommands(this,[this] { return page(); });
+        editCommands->report=[this](QString message) { status->setText(message); };
+        editCommands->addTo(commands);
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
         workspaceMenu->showPanelShortcuts=[this] { commands->showEditor(); };
         workspaceMenu->showPanelManager = [this] {
