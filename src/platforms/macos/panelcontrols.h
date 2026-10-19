@@ -36,6 +36,7 @@
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
+#include "panelshortcuteditor.h"
 #include "pagecontext.h"
 #include <QGroupBox>
 
@@ -310,7 +311,26 @@ public:
                 else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
             }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
+        commands=new Unbound::PanelCommands(this);
+        commands->context=[this] {
+            auto window=QApplication::activeWindow();
+            return !quitting && page() && page()->isVisible() && window &&
+                (window->objectName()=="UiMainWindow" || window->objectName().startsWith("unboundFloating_"));
+        };
+        for (int i=0;i<panels.size();++i) {
+            commands->add({"panel.toggle."+panels[i].name,"Show / Hide "+panels[i].label,
+                [this] { return page() && page()->isVisible(); },[this,i] {
+                    if (panels[i].session->active()) queuePanelDoor(i);
+                    else requestUndock(i);
+                }});
+            commands->add({"panel.expand."+panels[i].name,"Maximize / Restore "+panels[i].label,
+                [this] { return page() && page()->isVisible(); },[this,i] { toggleExpanded(i); }});
+        }
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        workspaceMenu->showPanelShortcuts=[this] {
+            if (!shortcutEditor) shortcutEditor=Unbound::createPanelShortcutEditor(commands,this);
+            shortcutEditor->show(); shortcutEditor->raise(); shortcutEditor->activateWindow();
+        };
         workspaceMenu->showPanelManager = [this] {
             showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
             Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
@@ -970,6 +990,8 @@ private:
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
     Unbound::ArrangementControls *presetsUi = nullptr;
+    Unbound::PanelCommands *commands=nullptr;
+    QPointer<QDialog> shortcutEditor;
     Unbound::WorkspaceArrangements *workspaceMenu = nullptr;
     QComboBox *presets = nullptr;
     Unbound::PanelExpansion expansion;
