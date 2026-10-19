@@ -93,6 +93,17 @@ Neither was installed. Later native-tab and nested-section tear-off changes
 passed the focused UI fixture; that does not replace full-matrix or actual
 Resolve acceptance.
 
+The clean `f9f4129` full matrix retained three failures: session tab-preview
+visibility, prepared-group readiness, and responsiveness (dock commit p95
+17.379 ms; viewer command p95 18.959 ms). Receipt:
+`build/macos/verification/f9f4129400-20261019T024620Z/receipt.json`.
+Native ownership and connected native UI suites passed in that run. A focused
+session rerun passed without a product change, so the preview failure remains
+unresolved. Failure output now includes actual/requested cursor coordinates and
+drag/selection records. The reserve fixture waits for actual host readiness with
+a 1.5-second deadline instead of assuming readiness after 300 ms; its focused
+rerun passed. This fixture correction is not evidence of a product latency fix.
+
 The full 13-suite run at `19bd6a8` was incomplete: Resolve opened after the five
 headless suites passed. Eight native-window suites compiled but were NOT RUN by
 their safety checks. Receipt:

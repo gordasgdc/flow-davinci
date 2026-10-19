@@ -520,6 +520,16 @@ int main(int argc, char **argv)
         QMouseEvent hoverMove(QEvent::MouseMove, QPointF(), QPointF(hover), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(draggedSource, &hoverMove); settleFor(230);
         auto compass = draggedSource->findChild<QWidget *>("unboundDockCompass");
+        if (!attachmentPreview || !attachmentPreview->isVisible()) {
+            const auto cursor=QCursor::pos();
+            std::fprintf(stderr,"Tab preview diagnostic requested=%d,%d cursor=%d,%d sourceVisible=%d targetVisible=%d buttons=%d grabber=%s popup=%s\n",
+                hover.x(),hover.y(),cursor.x(),cursor.y(),int(draggedSource->isVisible()),int(targetProgram->isVisible()),int(QApplication::mouseButtons()),
+                qPrintable(QWidget::mouseGrabber() ? QWidget::mouseGrabber()->objectName() : QString()),
+                qPrintable(QApplication::activePopupWidget() ? QApplication::activePopupWidget()->objectName() : QString()));
+            Unbound::flushDiagnostics(); QFile trace(logs.path()+"/events.jsonl");
+            if (trace.open(QIODevice::ReadOnly)) for (const auto &line : trace.readAll().split('\n'))
+                if (line.contains("dock.target.selection") || line.contains("drag.end")) std::fprintf(stderr,"%s\n",line.constData());
+        }
         check((!compass || !compass->isVisible()) && attachmentPreview && attachmentPreview->isVisible(), "moving into the panel selects a regional tab preview without a delayed compass");
         QApplication::sendEvent(draggedSource, &move);
         QWidget covering;
