@@ -9,16 +9,9 @@
 #include "nativechrome.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
+#include "windowstackpolicy.h"
 
 namespace Unbound {
-inline int floatingTier(const QString &name)
-{
-    if (name == QLatin1String("unboundFloating_frameConformTimelines")) return 0;
-    if (name == QLatin1String("unboundFloating_widgetEditSourcePlayer") ||
-        name == QLatin1String("unboundFloating_widgetEditTimelinePlayer")) return 2;
-    return 1;
-}
-
 class WindowHierarchy : public QObject
 {
 public:
@@ -51,8 +44,8 @@ public:
         const bool pinned = controls && controls->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
         if (controls && !pinned) floating.append(controls);
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
-            const int left = a->property("unboundPinned").toBool() ? 4 : a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : floatingTier(a->objectName());
-            const int right = b->property("unboundPinned").toBool() ? 4 : b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : floatingTier(b->objectName());
+            const int left = a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : workspaceWindowTier(a);
+            const int right = b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : workspaceWindowTier(b);
             return left != right ? left < right : activation.value(a) < activation.value(b);
         });
         QList<QWidget *> windows;
@@ -65,9 +58,13 @@ public:
         }
         const qint64 key = nativeKeyWindowNumber();
         ordering = true; orderNativeWindows(windows); ordering = false;
-        QJsonArray names;
-        for (auto widget : windows) names.append(widget->objectName());
-        logEvent(QStringLiteral("window.order"), {{"bottom_to_top", names}, {"key_before", key},
+        QJsonArray names,identities;
+        for (auto widget : windows) {
+            names.append(widget->objectName());
+            identities.append(QJsonObject{{"name",widget->objectName()},{"native_id",nativeWindowNumber(widget)},
+                {"tier",workspaceWindowTier(widget)},{"pinned",widget->property("unboundPinned").toBool()}});
+        }
+        logEvent(QStringLiteral("window.order"), {{"bottom_to_top", names}, {"identities",identities}, {"key_before", key},
             {"key_after", nativeKeyWindowNumber()}, {"focus_preserved", key == nativeKeyWindowNumber()}});
     }
 protected:
