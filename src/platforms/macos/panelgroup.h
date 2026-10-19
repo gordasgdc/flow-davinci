@@ -207,6 +207,14 @@ public:
         visibilityState.clear();
         for (auto member : members) if (member) visibilityState[member] = member->hiddenByUser();
         refresh();
+        QJsonArray states;
+        for (auto member : members) if (member) states.append(QJsonObject{{"panel",panelName(member)},
+            {"hidden",member->hiddenByUser()},{"selected",selected(member)},
+            {"surface_visible",member->window() && member->window()->isVisible()}});
+        logEvent("group.door.complete",{{"window",host->objectName()},
+            {"native_id",host->testAttribute(Qt::WA_WState_Created) ? nativeWindowNumber(host) : 0},
+            {"pinned",host->pinned()},{"visible",host->isVisible()},{"panels",states},
+            {"frame",WorkspaceSettings::rectangle(host->geometry())}});
     }
     void detachMember(MacPanelSession *member,bool deferHostShow = false)
     {
@@ -403,7 +411,10 @@ private:
             host->setAttribute(Qt::WA_ShowWithoutActivating); host->setVisible(visible);
         }
     }
-    void report(const QString &event) { logEvent(event, snapshot()); if (changed) changed(); }
+    void report(const QString &event) {
+        auto record=snapshot(); record["native_id"]=host && host->testAttribute(Qt::WA_WState_Created) ? nativeWindowNumber(host) : 0;
+        logEvent(event,record); if (changed) changed();
+    }
     static void place(MacPanelSession *session, const QRect &frame)
     {
         if (!session || !session->window()) return; auto window = session->window();
