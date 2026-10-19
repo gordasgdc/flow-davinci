@@ -117,7 +117,7 @@ int main(int argc, char **argv)
         auto show=root->findChild<QMenu *>("openGateShowPanel");
         auto edit=show ? show->findChild<QMenu *>("openGatePanelPage_edit") : nullptr;
         auto source=edit ? edit->findChild<QAction *>("openGateShowPanel_source") : nullptr;
-        check(show && edit && edit->title()=="Edit" && source && source->isEnabled(),"Show Panel groups Edit callers by native page");
+        check(show && show->title()=="Show Panel in Workspace" && edit && edit->title()=="Edit" && source && source->isEnabled(),"Show Panel groups Edit callers by native page");
         if (source) { source->trigger(); QApplication::processEvents(); menus.wire(); source->trigger(); QApplication::processEvents(); menus.wire(); }
         check(panelShows==2 && visible && source && source->isChecked(),"repeated show calls reveal rather than toggle-hide and do not duplicate dispatch");
         activePage="color"; menus.wire();
