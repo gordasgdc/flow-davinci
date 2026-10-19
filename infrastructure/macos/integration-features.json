@@ -313,6 +313,12 @@
       "commit": "cb3c794991598e6c31c4925688c981af44e33b31",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-compact-workspace-header",
+      "commit": "4e22886a2aa97ff977b2fdf367b406241a06b922",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
