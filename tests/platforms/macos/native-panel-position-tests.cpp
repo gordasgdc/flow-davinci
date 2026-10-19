@@ -4,6 +4,7 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "nativepanelposition.h"
+#include "panelsession.h"
 int main(int argc,char **argv) {
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
     QTemporaryDir files; qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());
@@ -56,6 +57,26 @@ int main(int argc,char **argv) {
             if (split) check(split->sizes()==splitSizes,"native splitter proportions restore exactly");
             if (stack) check(stack->currentWidget()==panel && stack->indexOf(panel)==1,"native stack selection and index restore exactly");
         }
+        {
+            Unbound::NativePanelPosition position; Unbound::MacPanelSession session;
+            check(position.acquire(panel,page).isEmpty() && session.undock(panel,page,"Native Inspector",true).isEmpty(),
+                "a scoped native panel can enter an ordinary floating session");
+            auto embedded=new QWidget(&main); auto children=new QVBoxLayout(embedded); children->addWidget(new QPushButton("Remaining group member",embedded));
+            Unbound::NativeGroupSlot group;
+            check(group.mount(position.surface(),embedded,&main).isEmpty(),"a second member can occupy the independent native position");
+            check(!session.adoptOriginalPosition(position) && position.active() && session.active(),
+                "a session cannot reclaim a native position occupied by other group members");
+            group.release(); delete embedded;
+            QPointer<QWidget> floating=session.window();
+            check(session.adoptOriginalPosition(position) && !position.active() && session.active() && floating,
+                "restoration handoff removes temporary parking without deleting the floating session");
+            check(session.dock().isEmpty(),"the floating session docks through its adopted original native position");
+            QApplication::processEvents();
+            check(panel->parentWidget()==owner && panel->isVisible() && panel->minimumSize()==minimum && panel->sizePolicy()==policy,
+                "native slot handoff restores the original panel parent, visibility and constraints");
+            if (split) check(split->sizes()==splitSizes,"session handoff preserves native splitter proportions");
+            if (stack) check(stack->indexOf(panel)==1 && stack->currentWidget()==panel,"session handoff preserves native stack selection");
+        }
     }
     {
         QWidget main; auto page=new QWidget(&main); auto layout=new QHBoxLayout(page);
@@ -64,6 +85,17 @@ int main(int argc,char **argv) {
         check(position.acquire(panel,page).isEmpty(),"position lifetime preparation");
         QPointer<QWidget> marker=position.surface(); delete page;
         check(!original && !marker && !position.active() && position.restore(),"page destruction owns both original and leased native trees");
+    }
+    {
+        QWidget main; auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);
+        auto layout=new QHBoxLayout(page); QPointer<QWidget> panel=new QPushButton("Rebound lifetime",page); layout->addWidget(panel);
+        main.show(); QApplication::processEvents();
+        Unbound::NativePanelPosition position; Unbound::MacPanelSession session;
+        check(position.acquire(panel,page).isEmpty() && session.undock(panel,page,"Rebound",true).isEmpty() && session.adoptOriginalPosition(position),
+            "native position lifetime can transfer to the session");
+        QPointer<QWidget> floating=session.window(); delete page;
+        QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        check(!session.active() && !floating && !panel,"the adopted native parent owns session cleanup after parking is deleted");
     }
     {
         QWidget main; auto outer=new QVBoxLayout(&main); auto page=new QWidget(&main); outer->addWidget(page);

@@ -25,6 +25,15 @@ for all four layout types, real button signals inside an embedded two-panel
 surface, occupied-slot rejection, foreign-layout replacement/retry and page
 destruction. This establishes synthetic Qt ownership behavior only.
 
+`MacPanelSession::adoptOriginalPosition` now accepts a released position after
+its embedded group has unmounted. It moves the session's restoration marker into
+the real native slot, replaces its original-parent lifetime observer before the
+temporary parking owner is deleted, and adopts the original geometry/visibility
+and splitter/stack state. The content may remain floating and later dock through
+that native position. Occupied positions reject handoff without changing session
+ownership. Tests cover every supported layout type and native-parent destruction
+after handoff. This is session plumbing, not connected first-drop UI yet.
+
 Required integration before exposing initial drop targets:
 
 - Connect the position lease to session content adoption and original docking.

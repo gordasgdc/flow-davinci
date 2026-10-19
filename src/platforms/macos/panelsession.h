@@ -17,6 +17,7 @@
 #include "panelwidth.h"
 #include "paneloverflow.h"
 #include "nativegroupslot.h"
+#include "nativepanelposition.h"
 #include "nativerootlayout.h"
 #include "vacatedcontents.h"
 #include "panelplacement.h"
@@ -58,6 +59,23 @@ public:
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
+    bool adoptOriginalPosition(NativePanelPosition &position) {
+        if (!active() || grouped() || transferredLayout || !placeholder || content!=position.content() ||
+            originalParent!=position.contentParking() || originalLayout || originalSplitter || originalStack) return false;
+        return position.handoff(placeholder,[this](const NativePanelPosition::Destination &destination) {
+            disconnect(parentDestroyed);
+            originalParent=destination.parent; originalLayout=destination.layout;
+            originalSplitter=destination.splitter; originalStack=destination.stack;
+            splitterSizes=destination.sizes; stackIndex=destination.stackIndex;
+            geometry=destination.geometry; flags=destination.flags; hidden=destination.hidden;
+            parentDestroyed=connect(originalParent,&QObject::destroyed,this,[this] {
+                if (originalPage) originalPage->removeEventFilter(this);
+                if (host) host->deleteLater(); clear();
+            });
+            logEvent("panel.native-position.adopt",{{"panel",content ? content->objectName() : QString()},
+                {"parent",originalParent ? originalParent->objectName() : QString()}});
+        });
+    }
     QString attachToGroup(QWidget *container, bool deferHostHide = false)
     {
         UiWorkTiming timing("panel.attach-to-group",host);
