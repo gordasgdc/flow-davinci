@@ -30,6 +30,11 @@ int main(int argc,char **argv) {
     Unbound::PanelCommands reopened(nullptr); check(reopened.assigned().value("program")=="F18","bindings survive reopening after failed edit");
     QAction native(&main); native.setShortcut(Qt::Key_F19); main.addAction(&native);
     check(!commands.save({{"source","F19"}}).isEmpty(),"native shortcut conflicts rejected");
+    native.setShortcut(Qt::Key_F17); QApplication::processEvents();
+    send(Qt::Key_F17); check(source==1,"a newly assigned native collision blocks only that Unbound binding");
+    send(Qt::Key_F18); check(program==2,"one native collision cannot disable unrelated panel commands");
+    native.setShortcut(Qt::Key_F19); QApplication::processEvents();
+    send(Qt::Key_F17); check(source==2,"removing a native collision restores the saved Unbound binding");
     auto dialog=Unbound::createPanelShortcutEditor(&commands,&main); dialog->setAttribute(Qt::WA_DontShowOnScreen);
     check(dialog->findChild<QKeySequenceEdit *>("binding_source")!=nullptr,"every command has a discoverable editable binding"); delete dialog;
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly);

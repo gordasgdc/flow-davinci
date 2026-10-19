@@ -23,7 +23,7 @@ public:
         QDir::homePath()+"/Library/Application Support/Unbound/Shortcuts.json")) {
         QFile f(path); if (f.open(QIODevice::ReadOnly)) bindings=QJsonDocument::fromJson(f.readAll()).object();
         refresh.setSingleShot(true);
-        connect(&refresh,&QTimer::timeout,this,[this] { conflicts=validate(bindings); });
+        connect(&refresh,&QTimer::timeout,this,[this] { conflicts=bindingErrors(bindings); });
         refresh.start(0); qApp->installEventFilter(this);
     }
     ~PanelCommands() override { if (qApp) qApp->removeEventFilter(this); }
@@ -31,24 +31,8 @@ public:
     const QList<Command> &entries() const { return commands; }
     QJsonObject assigned() const { return bindings; }
     QString validate(const QJsonObject &proposed) const {
-        QSet<QString> seen;
-        for (const auto &command : commands) {
-            const auto text=proposed.value(command.id).toString(); if (text.isEmpty()) continue;
-            const auto key=QKeySequence::fromString(text,QKeySequence::PortableText);
-            if (key.isEmpty() || key.count()!=1) return "Use one key combination per command.";
-            const auto normalized=key.toString(QKeySequence::PortableText);
-            if (seen.contains(normalized)) return "Two Unbound commands use "+normalized+".";
-            seen.insert(normalized);
-            // The existing expansion key remains reserved until it joins this registry.
-            if (key[0]==Qt::Key_QuoteLeft || key[0]==Qt::Key_AsciiTilde) return "Backtick is currently reserved for hovered-panel maximize.";
-            for (auto widget : QApplication::allWidgets()) {
-                for (auto action : widget->actions()) for (const auto &native : action->shortcuts())
-                    if (!native.isEmpty() && (key.matches(native)!=QKeySequence::NoMatch || native.matches(key)!=QKeySequence::NoMatch))
-                        return normalized+" is already assigned to a native action.";
-                for (auto shortcut : widget->findChildren<QShortcut *>(QString(),Qt::FindDirectChildrenOnly))
-                    if (shortcut->key()==key) return normalized+" is already assigned to a native shortcut.";
-            }
-        }
+        const auto errors=bindingErrors(proposed);
+        for (const auto &command : commands) if (errors.contains(command.id)) return errors.value(command.id);
         return {};
     }
     QString save(const QJsonObject &proposed) {
@@ -74,7 +58,7 @@ protected:
             const auto configured=QKeySequence::fromString(bindings.value(command.id).toString(),QKeySequence::PortableText);
             if (configured.isEmpty() || configured!=pressed || !command.available || !command.available()) continue;
             // Recheck native conflicts after loading a different Resolve keyboard preset.
-            if (refresh.isActive() || !conflicts.isEmpty()) { logEvent("command.binding.conflict",{{"command",command.id}}); return false; }
+            if (refresh.isActive() || conflicts.contains(command.id)) { logEvent("command.binding.conflict",{{"command",command.id}}); return false; }
             event->accept();
             if (event->type()==QEvent::KeyPress && !key->isAutoRepeat()) {
                 const auto id=command.id; const auto available=command.available; const auto invoke=command.invoke;
@@ -95,7 +79,41 @@ protected:
 private:
     QList<Command> commands;
     QJsonObject bindings;
-    QString path,conflicts;
+    QString path;
+    QHash<QString,QString> conflicts;
     QTimer refresh;
+    QHash<QString,QString> bindingErrors(const QJsonObject &proposed) const {
+        QHash<QString,QString> errors,seen;
+        bool assigned=false;
+        for (const auto &command : commands) assigned |= !proposed.value(command.id).toString().isEmpty();
+        if (!assigned) return errors;
+        // One native inventory per refresh/save, never one scan per command/key.
+        QList<QKeySequence> nativeKeys; QSet<QAction *> visited;
+        for (auto widget : QApplication::allWidgets()) {
+            for (auto action : widget->actions()) if (!visited.contains(action)) {
+                visited.insert(action); nativeKeys.append(action->shortcuts());
+            }
+            for (auto shortcut : widget->findChildren<QShortcut *>(QString(),Qt::FindDirectChildrenOnly))
+                nativeKeys.append(shortcut->key());
+        }
+        for (const auto &command : commands) {
+            const auto text=proposed.value(command.id).toString(); if (text.isEmpty()) continue;
+            const auto key=QKeySequence::fromString(text,QKeySequence::PortableText);
+            if (key.isEmpty() || key.count()!=1) { errors[command.id]="Use one key combination per command."; continue; }
+            const auto normalized=key.toString(QKeySequence::PortableText);
+            if (seen.contains(normalized)) {
+                const auto message="Two Unbound commands use "+normalized+".";
+                errors[command.id]=message; errors[seen.value(normalized)]=message;
+            }
+            seen[normalized]=command.id;
+            if (key[0]==Qt::Key_QuoteLeft || key[0]==Qt::Key_AsciiTilde)
+                errors[command.id]="Backtick is currently reserved for hovered-panel maximize.";
+            for (const auto &native : nativeKeys)
+                if (!native.isEmpty() && (key.matches(native)!=QKeySequence::NoMatch || native.matches(key)!=QKeySequence::NoMatch)) {
+                    errors[command.id]=normalized+" is already assigned to a native action or shortcut."; break;
+                }
+        }
+        return errors;
+    }
 };
 }
