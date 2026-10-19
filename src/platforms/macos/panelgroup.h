@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "panelscalecontrols.h"
 #include <QHash>
 #include <QPushButton>
 #include <QTabWidget>
@@ -288,7 +289,10 @@ private:
             button->setToolTip(button == hide ? "Hide this panel" : "Detach this panel into its own window");
         }
         hide->setToolTip("Hide this panel; reopen it from Workspace > Show Panel in Workspace");
-        row->addWidget(label, 1); row->addWidget(hide); row->addWidget(detach);
+        row->addWidget(label, 1);
+        row->addWidget(new PanelScaleControls(bar,[member] { return member->interfaceScale(); },
+            [member](double factor) { member->setInterfaceScale(factor); }));
+        row->addWidget(hide); row->addWidget(detach);
         auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
         layout->addWidget(bar); layout->addWidget(content, 1);
         const bool clips = setNativeGroupSurfaceClipping(content);

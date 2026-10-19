@@ -103,6 +103,37 @@ int main(int argc, char **argv)
         check(session.dock().isEmpty() && leaving->minimumSize() == QSize(900,300),"redocking preserves the native panel's original constraints");
     }
     {
+        QWidget main; auto layout=new QVBoxLayout(&main); auto panel=new QWidget(&main); layout->addWidget(panel);
+        auto content=new QVBoxLayout(panel); auto button=new QPushButton("Native control",panel); button->setFixedSize(100,40); content->addWidget(button);
+        main.show(); settle(); const auto font=button->font();
+        Unbound::MacPanelSession session; session.setInterfaceScale(0.8);
+        check(session.undock(panel,&main,"Scaled panel").isEmpty(),"scaled native widget detaches"); settle();
+        check(button->minimumSize()==QSize(80,32),"saved panel scale applies on detachment");
+        QWidget group(&main,Qt::Tool); group.setObjectName("unboundFloating_scaleGroup");
+        check(session.attachToGroup(&group).isEmpty(),"scaled widget joins group"); settle();
+        check(button->minimumSize()==QSize(80,32),"group transfer does not compound panel scale");
+        session.detachFromGroup(); settle();
+        check(button->minimumSize()==QSize(80,32),"scaled panel detaches from group without compounding");
+        check(session.dock().isEmpty(),"scaled panel returns to native workspace"); settle();
+        check(button->minimumSize()==QSize(100,40) && button->font()==font && qAbs(session.interfaceScale()-0.8)<0.001,
+            "native docking restores original metrics while retaining independent next-detach preference");
+    }
+    {
+        QWidget main; auto layout=new QVBoxLayout(&main); auto slot=new QWidget(&main); layout->addWidget(slot);
+        auto content=new QVBoxLayout(slot); auto button=new QPushButton("Native transferred control",slot); button->setFixedSize(120,50); content->addWidget(button);
+        main.show(); settle(); const auto font=button->font();
+        Unbound::MacPanelSession session; session.setInterfaceScale(1.2);
+        check(session.undockContents(slot,&main,"Scaled contents").isEmpty(),"content-layout panel detaches with independent scale"); settle();
+        check(button->minimumSize()==QSize(144,60),"transferred layout receives native metric scale");
+        QWidget group(&main,Qt::Tool); group.setObjectName("unboundFloating_scaleContentsGroup");
+        check(session.attachToGroup(&group).isEmpty(),"scaled content layout transfers into group"); settle();
+        check(button->minimumSize()==QSize(144,60),"content-layout group keeps independent scale");
+        session.detachFromGroup();
+        check(session.dock().isEmpty(),"scaled content layout restores original slot"); settle();
+        check(slot->layout()==content && button->minimumSize()==QSize(120,50) && button->font()==font,
+            "content-layout restoration returns exact native control metrics and ownership");
+    }
+    {
         Unbound::ArrangementStore store;
         QString first, copy;
         const QJsonObject workspace{{"panels", QJsonObject{{"Timeline", QJsonObject{{"floating", true}, {"x", -1200}}}}}};
