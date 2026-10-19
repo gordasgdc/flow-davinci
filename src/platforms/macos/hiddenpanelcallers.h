@@ -32,6 +32,12 @@ public:
         });
         buttons.append(button); updateButton(button); return button;
     }
+    void populate(QMenu *menu) {
+        if (hidden.isEmpty()) return;
+        auto group=menu->addMenu("Show Hidden Panels");group->setProperty("unboundOwnMenu",true);
+        for (const auto &entry:hidden) { auto action=group->addAction(entry.title);action->setProperty("unboundPanelId",entry.id);
+            connect(action,&QAction::triggered,this,[this,entry] { QTimer::singleShot(0,this,[entry] { if (entry.reveal) entry.reveal(); }); }); }
+    }
     void setHidden(QList<Entry> entries) {
         hidden = std::move(entries);
         for (int i=buttons.size()-1; i>=0; --i) {

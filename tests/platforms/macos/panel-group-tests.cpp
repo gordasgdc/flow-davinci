@@ -201,13 +201,15 @@ int main(int argc, char **argv)
             "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
         a.setHiddenByUser(true); group.syncVisibility(); settle();
         QToolButton *reveal = nullptr;
-        for (auto candidate : group.window()->findChildren<QToolButton *>("unboundHiddenPanelCaller"))
+        for (auto candidate : group.window()->findChildren<QToolButton *>("unboundDetachPanel"))
             if (candidate->isVisible()) { reveal=candidate; break; }
         check(reveal && reveal->menu(),"hiding a group panel leaves a discoverable caller in its remaining header");
         if (reveal) {
             QMetaObject::invokeMethod(reveal->menu(),"aboutToShow",Qt::DirectConnection);
-            check(reveal->menu()->actions().size() == 1,"hidden-panel menu lists precisely the hidden member");
-            if (!reveal->menu()->actions().isEmpty()) reveal->menu()->actions().first()->trigger();
+            QMenu *hidden=nullptr;
+            for (auto action:reveal->menu()->actions()) if (action->menu() && action->text()=="Show Hidden Panels") hidden=action->menu();
+            check(hidden && hidden->actions().size() == 1,"hidden-panel submenu lists precisely the hidden member");
+            if (hidden && !hidden->actions().isEmpty()) hidden->actions().first()->trigger();
         }
         settle();
         check(!a.hiddenByUser() && group.contains(&a) && group.window()->geometry() == frame,

@@ -3,6 +3,9 @@
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QToolButton>
+#include <QSlider>
+#include <QLabel>
+#include <QWidgetAction>
 #include <functional>
 namespace Unbound {
 inline void populatePanelScaleMenu(QMenu *menu,QObject *owner,std::function<double()> value,std::function<void(double)> set) {
@@ -27,18 +30,19 @@ public:
                        std::function<bool()> available=[] { return true; }) : QWidget(parent) {
         setObjectName("openGatePanelScale"); setProperty("openGateChrome",true);
         auto row=new QHBoxLayout(this); row->setContentsMargins(0,0,0,0); row->setSpacing(0);
-        auto minus=new QToolButton(this),plus=new QToolButton(this),reset=new QToolButton(this);
-        minus->setText(QString::fromUtf8("−")); plus->setText("+"); reset->setText("UI");
-        minus->setToolTip("Smaller panel interface"); plus->setToolTip("Larger panel interface"); reset->setToolTip("Panel interface size (experimental); reset to 100%");
-        for (auto button:{minus,reset,plus}) { button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus); row->addWidget(button); }
-        connect(minus,&QToolButton::clicked,this,[value,set,available] { if (available()) set(qMax(0.7,qRound((value()-0.1)*10)/10.)); });
-        connect(plus,&QToolButton::clicked,this,[value,set,available] { if (available()) set(qMin(1.5,qRound((value()+0.1)*10)/10.)); });
-        connect(reset,&QToolButton::clicked,this,[set,available] { if (available()) set(1.0); });
-        auto menu=new QMenu(reset); menu->setProperty("unboundOwnMenu",true);
-        connect(menu,&QMenu::aboutToShow,this,[menu,this,value,set,available] {
-            menu->clear(); populatePanelScaleMenu(menu,this,value,[set,available](double factor) { if (available()) set(factor); });
+        auto button=new QToolButton(this);button->setObjectName("openGatePanelScaleButton");
+        button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);button->setPopupMode(QToolButton::InstantPopup);
+        button->setToolTip("Panel interface size; custom-painted timeline tracks are not scaled");row->addWidget(button);
+        auto update=[button,value] { button->setText(QString::number(qRound(value()*100))+"%"); };update();
+        auto menu=new QMenu(button);menu->setProperty("unboundOwnMenu",true);button->setMenu(menu);
+        connect(menu,&QMenu::aboutToShow,this,[menu,this,value,set,available,update] {
+            update();menu->clear();menu->addSection("Panel interface size");
+            auto holder=new QWidget(menu);auto layout=new QHBoxLayout(holder);auto slider=new QSlider(Qt::Horizontal,holder);
+            slider->setRange(70,150);slider->setSingleStep(10);slider->setValue(qRound(value()*100));slider->setMinimumWidth(150);layout->addWidget(slider);
+            auto action=new QWidgetAction(menu);action->setDefaultWidget(holder);menu->addAction(action);
+            connect(slider,&QSlider::valueChanged,this,[set,available,update](int percent) { if (available()) { set(percent/100.);update(); } });
+            populatePanelScaleMenu(menu,this,value,[set,available,update](double factor) { if (available()) { set(factor);update(); } });
         });
-        reset->setMenu(menu); reset->setPopupMode(QToolButton::MenuButtonPopup);
     }
 };
 }
