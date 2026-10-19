@@ -379,7 +379,7 @@ private:
             logEvent(QStringLiteral("group.rebuild.failed"), {{"tree", tree}, {"panels", QJsonArray::fromStringList(names())}, {"root", !root.isNull()}, {"layout", host->layout() != nullptr}});
             return;
         }
-        host->layout()->addWidget(root);
+        static_cast<QVBoxLayout *>(host->layout())->insertWidget(0,root);
         for (auto member : members) if (member) {
             auto wrapper = leaves.value(member);
             // QStackedWidget owns tab-page visibility. Showing an inactive page
