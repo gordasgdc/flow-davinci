@@ -22,3 +22,10 @@ Installed rollback: `00bef62`. The `2650fb3` candidate passed 18 functional suit
 Priority update 2026-10-19: scaling and unified workspace take precedence over custom colors and further responsiveness experiments. The native-metric scaling candidate is explicitly experimental; custom-painted Resolve controls are not claimed covered. Fixed Playhead and Stabilize assignable UI dispatch routes have bounded lazy-target preconditions documented in opengate-edit-ui-commands.md. Performance gate remains open.
 
 Installed candidate: **c9d6b1e**, 2026-10-19. All 24 functional suites passed on clean, unchanged source. Helper/bootstrap/launcher builds passed; installed signatures and byte hashes match the candidate. Original installation and settings archived in `build/macos/checkpoints/pre-c9d6b1ef-20261019T121831Z`. Resolve left closed for user acceptance. Main remains untouched. See `opengate-candidate-c9d6b1e.md` for exact test scope and limits.
+
+Latest installation supersedes the above c9d6b1e record: **9def8a6**, installed
+2026-10-19 after 28 clean-source functional suites passed. Includes OpenGate UI
+panel callers, retained Edit page lifecycle, selected Source-page readiness
+candidate, assignable hovered expansion and thirty native Workflow Integration
+shortcut targets. Native keyboard-editor enumeration and actual Resolve page/
+viewer acceptance remain pending. See `opengate-candidate-9def8a6.md`.
