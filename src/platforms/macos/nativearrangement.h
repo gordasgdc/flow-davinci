@@ -115,7 +115,7 @@ public:
         auto layout=new QVBoxLayout(host); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
         for (const auto &name : names) {
             auto cell=new QWidget(host); cell->setObjectName("unboundGroupCell_"+name); cell->setProperty("groupPanel",name);
-            if (auto session=panels.value(name)) cell->setWindowTitle(session->window()->windowTitle());
+            if (auto session=panels.value(name)) cell->setWindowTitle(session->panelTitle());
             cells[name]=cell;
         }
         if (!rebuild(tree)) { retire(); return QStringLiteral("Could not render the native arrangement."); }
@@ -173,7 +173,7 @@ public:
         UiWorkTiming timing("workspace.native-arrangement.add",host->window());
         for (auto it=panels.begin();it!=panels.end();++it) {
             auto cell=new QWidget(host); cell->setObjectName("unboundGroupCell_"+it.key()); cell->setProperty("groupPanel",it.key());
-            cell->setWindowTitle(it.value()->window()->windowTitle()); cells[it.key()]=cell;
+            cell->setWindowTitle(it.value()->panelTitle()); cells[it.key()]=cell;
         }
         QString error;
         if (!rebuild(insertGroupTree(previous,addition,target,direction,before))) error=QStringLiteral("Could not render the docked panels.");
@@ -249,7 +249,7 @@ private:
         callbacks.leaf=[this](const QString &id) { return cells.value(id).data(); };
         callbacks.title=[this](const QString &id) {
             auto session=sessions.value(id);
-            return session && session->window() ? session->window()->windowTitle() : id==nativeLeaf() ? QStringLiteral("Native workspace") : id;
+            return session && session->window() ? session->panelTitle() : id==nativeLeaf() ? QStringLiteral("Native workspace") : id;
         };
         // Validate before moving any live cells out of their current surface.
         QSet<QString> ids; QList<QPointer<QWidget>> leaves;

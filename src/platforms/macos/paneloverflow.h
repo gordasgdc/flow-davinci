@@ -11,10 +11,11 @@ namespace Unbound {
 // intact; a narrow floating Inspector can scroll to controls outside its width.
 class PanelOverflow {
 public:
-    QWidget *wrap(QWidget *content,QWidget *owner) {
+    QWidget *wrap(QWidget *content,QWidget *owner,bool horizontalOnly=false) {
         if (!content || !owner || area) return nullptr;
         area=new QScrollArea(owner); area->setObjectName("unboundPanelOverflow_"+content->objectName());
         area->setFrameShape(QFrame::NoFrame); area->setWidgetResizable(true);
+        if (horizontalOnly) area->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         area->setMinimumSize(0,0); area->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Expanding);
         const bool fill=content->autoFillBackground();
         area->setWidget(content); content->setAutoFillBackground(fill); widget=content;

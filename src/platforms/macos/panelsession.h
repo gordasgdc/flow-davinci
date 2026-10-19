@@ -62,6 +62,7 @@ public:
     std::function<void()> releaseGroup;
     std::function<QString()> releaseOriginalPosition;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
+    QString panelTitle() const { return host ? host->property("unboundPanelTitle").toString() : QString(); }
     bool grouped() const { return !groupContainer.isNull(); }
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
@@ -245,7 +246,7 @@ public:
         static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
-        host->setWindowTitle(title);
+        host->setWindowTitle(title); host->setProperty("unboundPanelTitle",title);
         host->resize(slot->size().expandedTo(QSize(320, 240)));
         host->setLayout(originalLayout);
         if (slot->layout() || host->layout() != originalLayout) {
@@ -337,18 +338,19 @@ public:
         static_cast<MacFloatingHost *>(host.data())->attachRequested = [this](QWidget *target, Qt::Edge edge) { if (attachRequested) attachRequested(target, edge); };
         static_cast<MacFloatingHost *>(host.data())->setSnapping(snapping);
         host->setAttribute(Qt::WA_QuitOnClose, false);
-        host->setWindowTitle(title);
+        host->setWindowTitle(title); host->setProperty("unboundPanelTitle",title);
         host->setObjectName(QStringLiteral("unboundFloating_") + widget->objectName());
         host->resize(widget->size().expandedTo(QSize(320, 240)));
         auto box = new QVBoxLayout(host);
         box->setContentsMargins(0, 0, 0, 0);
         const bool scrollInspector = widget->objectName()==QLatin1String("widgetEditInspector");
-        box->addWidget(scrollInspector ? overflow.wrap(widget,host) : widget);
+        const bool scrollToolbar=widget->findChild<QWidget *>("pageSingleScreenModeTools");
+        box->addWidget(scrollInspector || scrollToolbar ? overflow.wrap(widget,host,scrollToolbar) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
             widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
         if (relaxedWidth && !scrollInspector) widthAllowance.apply(widget);
-        if (scrollInspector) host->setProperty("unboundRelaxedWidth",true);
+        if (scrollInspector || scrollToolbar) host->setProperty("unboundRelaxedWidth",true);
         // A detached tools row must not leave a second empty tools row in Timeline.
         marker->hide();
         logEvent("workspace.native-slot.vacated", {{"panel",widget->objectName()},

@@ -186,8 +186,12 @@ int main(int argc, char **argv)
         Unbound::MacPanelSession a, b;
         check(a.undock(timeline,page,"Timeline").isEmpty() && b.undock(inspector,page,"Inspector").isEmpty(),
             "wide native panels detach for narrow-group regression");
+        a.window()->setWindowTitle("Project — Timeline");b.window()->setWindowTitle("Project — Inspector");
         Unbound::PanelGroup group(nullptr);
         check(group.join(&a,&b,Qt::Horizontal).isEmpty(), "wide native panels join one magnetic surface");
+        for (auto label:group.window()->findChildren<QLabel *>("unboundGroupHeader"))
+            check(!label->text().contains("Project") && (label->text()=="Timeline" || label->text()=="Inspector"),
+                "group leaf labels use stable panel names instead of project-bearing window titles");
         group.window()->resize(620,400); settle();
         const auto frame = group.window()->geometry();
         auto splitter = group.window()->findChild<QSplitter *>();

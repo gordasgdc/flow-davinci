@@ -53,7 +53,12 @@ public:
             row->installEventFilter(this); position(row, button); button->show(); button->raise();
             const bool floating = surface->window()->objectName().startsWith("unboundFloating_");
             button->setText(floating ? QStringLiteral("↙") : QStringLiteral("↗"));
-            button->setToolTip(floating ? (panel == "frameEditToolbarTop" ? "Attach tools to Timeline" : "Dock toolbar to native workspace") : "Float this toolbar");
+            button->setToolTip(floating ? (panel == "frameEditToolbarTop" ? "Attach tools to Timeline" : "Attach toolbar above Timeline; drag to place elsewhere") : "Float this toolbar");
+            if (panel=="unboundWorkspaceToolbar") {
+                const bool standalone=surface->window()->property("unboundToolbarStrip").toBool();
+                button->setText(standalone ? QStringLiteral("↙") : QStringLiteral("↗"));
+                button->setToolTip(standalone ? "Attach toolbar above Timeline; drag to place elsewhere" : "Float toolbar separately");
+            }
             if (wired.contains(button)) continue;
             wired.insert(button);
             connect(button, &QObject::destroyed, this, [this, button] { wired.remove(button); });

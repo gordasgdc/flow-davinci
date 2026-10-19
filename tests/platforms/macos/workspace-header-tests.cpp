@@ -3,6 +3,8 @@
 #include <QPushButton>
 #include "floatinghost.h"
 #include "compacttoolbar.h"
+#include "toolbardoors.h"
+#include "paneloverflow.h"
 #include <QElapsedTimer>
 #include <QThread>
 #include <QTemporaryDir>
@@ -52,6 +54,20 @@ int main(int argc,char **argv) {
     strip.setChrome(Unbound::WindowChrome::Standard);strip.show();settle();
     ok &= strip.contentsMargins().top()==0 && strip.contentsMargins().left()>=100;
     ok &= Unbound::setNativeHeaderMenu(&strip,true,[] {});
+    QWidget doorSurface;QWidget doorRow(&doorSurface);doorRow.setObjectName("frameEditTopBarLeftInSSM");new QHBoxLayout(&doorRow);
+    bool doorShown=false;int doorCalls=0;Unbound::ToolbarDoors doors(nullptr);
+    doors.add({"source","Source Monitor",[&] { return doorShown; },[&] { doorShown=!doorShown;++doorCalls; }});
+    doors.wire(&doorSurface);doors.wire(&doorSurface);auto door=doorRow.findChild<QToolButton *>("openGateToolbarDoor_source");
+    ok &= door && doorRow.findChildren<QToolButton *>().size()==1;if (door) door->click();settle();doors.wire(&doorSurface);
+    ok &= doorShown && doorCalls==1 && door->isChecked();
+    QWidget scrollOwner;scrollOwner.setAttribute(Qt::WA_DontShowOnScreen);scrollOwner.resize(300,65);
+    auto rowContent=new QWidget;rowContent->setMinimumWidth(900);rowContent->setFixedHeight(30);
+    auto last=new QPushButton("Last",rowContent);auto contentLayout=new QHBoxLayout(rowContent);contentLayout->addStretch();contentLayout->addWidget(last);
+    Unbound::PanelOverflow overflow;auto scroll=qobject_cast<QScrollArea *>(overflow.wrap(rowContent,&scrollOwner,true));
+    (new QVBoxLayout(&scrollOwner))->addWidget(scroll);scrollOwner.show();settle();
+    ok &= scroll->horizontalScrollBar()->maximum()>0 && scroll->verticalScrollBarPolicy()==Qt::ScrollBarAlwaysOff && scrollOwner.width()==300;
+    scroll->horizontalScrollBar()->setValue(scroll->horizontalScrollBar()->maximum());settle();
+    ok &= scroll->viewport()->rect().contains(last->mapTo(scroll->viewport(),last->rect().center()));
     int clicked=0;Unbound::setNativePin(&first,false,[](bool) {});
     ok &= Unbound::setNativeHeaderMenu(&first,true,[&] { ++clicked; });
     auto button=Unbound::nativeHeaderMenuFrameForTest(&first);auto traffic=Unbound::nativeTrafficFramesForTest(&first);

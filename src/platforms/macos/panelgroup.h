@@ -289,7 +289,7 @@ private:
     QStringList names() const { QStringList result; for (auto member : members) if (member) result.append(panelName(member)); return result; }
     QString addMember(MacPanelSession *member)
     {
-        const auto name = panelName(member), title = member->window()->windowTitle();
+        const auto name = panelName(member), title = member->panelTitle();
         auto wrapper = new QWidget(host); wrapper->setProperty("groupPanel", name);
         auto layout = new QVBoxLayout(wrapper); layout->setContentsMargins(0, 0, 0, 0); layout->setSpacing(0);
         auto bar = new QWidget(wrapper); auto row = new QHBoxLayout(bar); row->setContentsMargins(6, 2, 4, 2);
@@ -352,7 +352,7 @@ private:
             return nullptr;
         };
         callbacks.title = [this](const QString &id) {
-            for (auto member : members) if (member && panelName(member)==id) return member->window()->windowTitle();
+            for (auto member : members) if (member && panelName(member)==id) return member->panelTitle();
             return QString();
         };
         callbacks.changed = [this] { if (!rebuilding) timer.start(); };
@@ -403,7 +403,7 @@ private:
             for (auto member:members) if (member && panelName(member)==id) return !member->hiddenByUser();
             return false;
         });
-        QStringList titles; for (auto member : members) if (member && member->window()) titles.append(member->window()->windowTitle());
+        QStringList titles; for (auto member : members) if (member && member->window()) titles.append(member->panelTitle());
         host->setWindowTitle(titles.join(QStringLiteral(" + ")));
         QList<QWidget *> surfaces;
         for (auto member : members) if (member) surfaces.append(member->window());
@@ -423,7 +423,7 @@ private:
         QList<HiddenPanelCallers::Entry> hiddenEntries;
         for (auto member : members) if (member && member->hiddenByUser()) {
             QPointer<MacPanelSession> alive(member);
-            hiddenEntries.append({panelName(member),member->window()->windowTitle(),[this,alive] {
+            hiddenEntries.append({panelName(member),member->panelTitle(),[this,alive] {
                 if (!alive || !contains(alive)) return;
                 alive->setHiddenByUser(false); syncVisibility(alive); report("group.hidden.reveal");
             }});
