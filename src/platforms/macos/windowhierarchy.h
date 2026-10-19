@@ -44,8 +44,8 @@ public:
         const bool pinned = controls && controls->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
         if (controls && !pinned) floating.append(controls);
         std::stable_sort(floating.begin(), floating.end(), [this](QWidget *a, QWidget *b) {
-            const int left = a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 3 : workspaceWindowTier(a);
-            const int right = b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 3 : workspaceWindowTier(b);
+            const int left = a->objectName() == "unboundPanelTest" && QApplication::activeWindow() == a ? 4 : workspaceWindowTier(a);
+            const int right = b->objectName() == "unboundPanelTest" && QApplication::activeWindow() == b ? 4 : workspaceWindowTier(b);
             return left != right ? left < right : activation.value(a) < activation.value(b);
         });
         QList<QWidget *> windows;
