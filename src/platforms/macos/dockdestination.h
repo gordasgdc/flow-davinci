@@ -5,9 +5,10 @@
 #include "nativechrome.h"
 #include "docksurfaces.h"
 #include "nativedocksurfaces.h"
+#include "dockordercache.h"
 namespace Unbound {
 struct DockDestination { QWidget *surface = nullptr; QRect frame; };
-inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, const QList<QWidget *> &overlays)
+inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, const QList<QWidget *> &overlays,DockOrderCache *order=nullptr)
 {
     QWidget *destination = nullptr;
     QHash<qint64, QWidget *> windows;
@@ -21,12 +22,8 @@ inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, c
     // still use the current native stack, including non-dockable occluders.
     if (!possible) return {};
     for (auto candidate : underPointer) windows.insert(nativeWindowNumber(candidate),candidate);
-    for (auto number : nativeOrderedWindowNumbers()) {
-        auto hit = windows.value(number);
-        if (!hit || !hit->frameGeometry().contains(pointer)) continue;
-        if (hit->objectName().startsWith("unboundFloating_") || !nativeDockSurfaces(hit).isEmpty()) destination = hit;
-        break;
-    }
+    auto hit=windows.value(order ? order->front(windows.keys()) : nativeFrontmostWindowNumber(windows.keys()));
+    if (hit && (hit->objectName().startsWith("unboundFloating_") || !nativeDockSurfaces(hit).isEmpty())) destination=hit;
     if (!destination) return {};
     if (!destination->objectName().startsWith("unboundFloating_")) {
         DockDestination result;

@@ -15,6 +15,8 @@ void orderNativeWindows(const QList<QWidget *> &bottomToTop);
 qint64 nativeKeyWindowNumber();
 qint64 nativeWindowNumber(QWidget *widget);
 QList<qint64> nativeOrderedWindowNumbers();
+qint64 nativeFrontmostWindowNumber(const QList<qint64> &candidates);
+quint64 nativeWindowOrderRevision();
 double nativeInputAgeMilliseconds(quint64 timestamp);
 double nativeCurrentDragAgeMilliseconds();
 QObject *watchNativePointerRelease(QObject *owner, std::function<void(QPoint, bool)> released);
