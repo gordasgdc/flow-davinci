@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "settingsprofile.h"
+#include "starterworkspacegeometry.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -13,10 +15,11 @@ class WorkspaceSettings
 {
 public:
     WorkspaceSettings() : path(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE",
-        QDir::homePath() + QStringLiteral("/Library/Application Support/Unbound/Workspace.json")))
+        settingsProfilePath("Workspace.json")))
     {
         QFile file(path);
         if (file.open(QIODevice::ReadOnly)) data = QJsonDocument::fromJson(file.readAll()).object();
+        data=fitStarterWorkspace(data);
     }
     bool save() const
     {

@@ -1,0 +1,9 @@
+# Native Emulator first-install preview
+
+The bundled Native Emulator preset assembles the real native Edit panels into a movable group: Workspace Toolbar; Media Pool/Index tabs; Source and Program side by side above Timeline; Inspector on the right; Page Navigation tethered to Timeline's bottom. Its first group frame adapts to the current display and uses normal panel metric scales. The two original Jordan presets are included separately. Existing normal-profile presets, including Emulating native, are never overwritten.
+
+`first-install-profile.py preview` initializes and selects a separate first-install-preview settings directory while Resolve is closed. `normal` selects the original directory again. Profile selection changes Workspace, Arrangements and legacy Shortcuts paths together; Resolve's own keyboard preset is never edited. The script refuses to reseed an existing profile and backs up an existing profile marker before changing it. `seed` is the fresh-install initializer and refuses an existing workspace or arrangement file.
+
+Tests establish profile isolation/path validation, display fitting, first preset selection, bundled preset identities and non-overwrite behavior. This does not establish visual equivalence to native Edit or live panel readiness. Before release, compare Native Emulator against the true native layout, test panel hide/reveal/float/dock and page return, then let Jordan try the first-install profile. Return to the normal profile afterward if requested.
+
+The exact previously installed prototype 1f73bf6 remains a recoverable milestone. Publication of CineWaltz OpenGate 0.0.1 Prototype remains pending these fixes and the first-install trial. Custom hotkey reliability, workflow responsiveness, command label clipping and drawer handles remain roadmap topics.

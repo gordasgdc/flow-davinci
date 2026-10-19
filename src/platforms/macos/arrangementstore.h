@@ -12,7 +12,7 @@ class ArrangementStore
 {
 public:
     ArrangementStore() : path(qEnvironmentVariable("UNBOUND_ARRANGEMENTS_FILE",
-        QDir::homePath() + QStringLiteral("/Library/Application Support/Unbound/Arrangements.json")))
+        settingsProfilePath("Arrangements.json")))
     {
         QFile file(path);
         if (!file.exists()) return;

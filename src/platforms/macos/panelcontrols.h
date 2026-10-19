@@ -515,8 +515,9 @@ private:
     {
         workspaceRestore->preset(presetsUi->find(presets->currentData().toString()),page() && page()->isVisible());
     }
-    QString applyWorkspace(const QJsonObject &value)
+    QString applyWorkspace(QJsonObject value)
     {
+        value=Unbound::fitStarterWorkspace(value);
         if (footer) footer->setState(value["footer"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
         pendingGroups = value["groups"].toArray();
