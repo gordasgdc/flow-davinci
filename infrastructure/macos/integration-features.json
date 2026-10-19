@@ -319,6 +319,12 @@
       "commit": "9eb3ec18f54ba0fd84f21dff7942debf44a63b39",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-toolbar-doors-and-labels",
+      "commit": "94d5f023797b5916bd04b4648d0f34e5f2606915",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
