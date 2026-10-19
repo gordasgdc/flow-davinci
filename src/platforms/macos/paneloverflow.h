@@ -8,7 +8,7 @@
 #include "diagnostics.h"
 namespace Unbound {
 // A presentation wrapper, not a scale transform. Native control constraints stay
-// intact; a narrow floating Inspector can scroll to controls outside its width.
+// intact; narrow floating sidebars can scroll to controls outside their width.
 class PanelOverflow {
 public:
     QWidget *wrap(QWidget *content,QWidget *owner,bool horizontalOnly=false) {
@@ -20,10 +20,15 @@ public:
         const bool fill=content->autoFillBackground();
         area->setWidget(content); content->setAutoFillBackground(fill); widget=content;
         const auto id=content->objectName();
-        for (auto bar : {area->horizontalScrollBar(),area->verticalScrollBar()})
+        for (auto bar : {area->horizontalScrollBar(),area->verticalScrollBar()}) {
             QObject::connect(bar,&QScrollBar::valueChanged,area,[id,bar](int offset) {
                 logEvent("panel.overflow.scroll",{{"panel",id},{"axis",bar->orientation()==Qt::Horizontal ? "horizontal" : "vertical"},{"offset",offset}});
             });
+            QObject::connect(bar,&QScrollBar::rangeChanged,area,[id,bar](int minimum,int maximum) {
+                logEvent("panel.overflow.range",{{"panel",id},{"axis",bar->orientation()==Qt::Horizontal ? "horizontal" : "vertical"},
+                    {"minimum",minimum},{"maximum",maximum},{"overflow",maximum>minimum}});
+            });
+        }
         logEvent("panel.overflow.attach",{{"panel",id},{"native_minimum_width",content->minimumWidth()}});
         return area;
     }
