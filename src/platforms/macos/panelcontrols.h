@@ -21,6 +21,7 @@
 #include "arrangementstore.h"
 #include "panelmenus.h"
 #include "nativepaneldecoration.h"
+#include "timelinecontrol.h"
 #include "nativeworkspacesizing.h"
 #include "nativepaneldrag.h"
 #include "nativeworkspacebinding.h"
@@ -302,6 +303,7 @@ public:
             });
         toolbarDecoration = new Unbound::ToolbarDecoration(this);
         nativeDecoration = new Unbound::NativePanelDecoration(this);
+        timelineControl = new Unbound::TimelineControl(this);
         nativeDrag = new Unbound::NativePanelDrag(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
@@ -880,6 +882,16 @@ private:
         if (nativeMenus) nativeMenus->wire();
         if (nativeDecoration && page()) for (int i=0; i<panels.size(); ++i) {
             auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
+            if (panels[i].name=="frameConformTimelines") {
+                timelineControl->wire(surface,[this,i] { togglePanelPlacement(i); },[this,i](QPoint) {
+                    nativeDrag->begin(panels[i].name);
+                    if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name);
+                    else if (auto group=groupFor(i)) group->detachMember(panels[i].session);
+                    if (!panels[i].session->active()) requestUndock(i);
+                    readyNativeDrag(i);
+                });
+                continue;
+            }
             nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->floating(),
                 [this,i] { togglePanelPlacement(i); },
                 [this,i](QPoint) {
@@ -998,6 +1010,7 @@ private:
     Unbound::ViewerModeCommand *viewerMode = nullptr;
     Unbound::ToolbarDecoration *toolbarDecoration = nullptr;
     Unbound::NativePanelDecoration *nativeDecoration = nullptr;
+    Unbound::TimelineControl *timelineControl = nullptr;
     Unbound::NativePanelDrag *nativeDrag = nullptr;
     Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
