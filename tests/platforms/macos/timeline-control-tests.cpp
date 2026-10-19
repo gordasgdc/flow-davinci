@@ -24,6 +24,16 @@ int main(int argc,char **argv) {
         layout->insertWidget(1,toolbar); check(timeline->isAncestorOf(toolbar),"reattached toolbar remains inside Timeline transfer subtree");
     }
     check(!timeline->findChild<QWidget *>("unboundTimelineHeader"),"controller teardown removes its own chrome");
+    {
+        QWidget alternate; auto horizontal=new QHBoxLayout(&alternate); horizontal->addWidget(new QLabel("Native content",&alternate));
+        {
+            Unbound::TimelineControl controls(nullptr); controls.wire(&alternate,[] {},[](QPoint) {});
+            check(alternate.findChild<QToolButton *>("unboundTimelineUndock") && horizontal->direction()==QBoxLayout::TopToBottom,
+                "single-content native horizontal container can expose the Timeline control");
+        }
+        check(horizontal->direction()==QBoxLayout::LeftToRight && horizontal->count()==1,
+            "native layout direction and content count restore exactly on teardown");
+    }
     if (!failures) std::puts("PASS: independent Timeline control, toolbar attachment, click dispatch and teardown");
     return failures ? 1 : 0;
 }
