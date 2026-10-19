@@ -340,7 +340,13 @@
     },
     {
       "branch": "feature/macos-panel-header-cleanup",
-      "commit": "5fb14ba521591fdfb395ba4b0175d954f6d32dc7",
+      "commit": "1a827aa70bf79cbda6f26fdb15e722f707785578",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-workspace-footer",
+      "commit": "ae47749734582b54bd1fa13700d8d7c12f405773",
       "scope": "implementation",
       "acceptance": "pending"
     }
