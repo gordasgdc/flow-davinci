@@ -45,6 +45,11 @@ public:
         if (changed) changed();
         return {};
     }
+    QString toggleVisibility()
+    {
+        if (session.active()) { session.setHiddenByUser(!session.hiddenByUser()); return {}; }
+        return floatPanel();
+    }
     void dock()
     {
         state = snapshot(); state["floating"] = false;
@@ -138,11 +143,8 @@ private:
             connect(menu, &QMenu::aboutToShow, this, [this, menu] { refreshMenu(menu); });
             connect(entry, &QAction::triggered, this, [this] {
                 QTimer::singleShot(0, this, [this] {
-                    if (session.active()) session.setHiddenByUser(!session.hiddenByUser());
-                    else {
-                        const auto error = floatPanel();
-                        logEvent(QStringLiteral("footer.open.result"), {{"success", error.isEmpty()}, {"error", error}});
-                    }
+                    const auto error=toggleVisibility();
+                    logEvent(QStringLiteral("footer.open.result"), {{"success",error.isEmpty()},{"error",error}});
                 });
             });
         }

@@ -317,8 +317,8 @@ public:
         commands=new Unbound::PanelCommands(this);
         commands->context=[this] {
             auto window=QApplication::activeWindow();
-            return !quitting && page() && page()->isVisible() && window &&
-                (window->objectName()=="UiMainWindow" || window->objectName().startsWith("unboundFloating_"));
+            return !quitting && window &&
+                (window->objectName()=="UiMainWindow" || window==this || window->objectName().startsWith("unboundFloating_"));
         };
         for (int i=0;i<panels.size();++i) {
             commands->add({"panel.toggle."+panels[i].name,"Show / Hide "+panels[i].label,
@@ -329,6 +329,12 @@ public:
             commands->add({"panel.expand."+panels[i].name,"Maximize / Restore "+panels[i].label,
                 [this] { return page() && page()->isVisible(); },[this,i] { toggleExpanded(i); }});
         }
+        commands->add({"panel.toggle.page-navigation","Show / Hide Page Navigation",
+            [this] { return footer && Unbound::resolveMainWindow(); },[this] {
+                const auto error=footer->toggleVisibility();
+                if (!error.isEmpty()) status->setText(error);
+                Unbound::logEvent("command.footer.result",{{"success",error.isEmpty()},{"error",error}});
+            }});
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
         workspaceMenu->showPanelShortcuts=[this] {
             if (!shortcutEditor) shortcutEditor=Unbound::createPanelShortcutEditor(commands,this);
