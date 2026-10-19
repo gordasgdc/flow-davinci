@@ -16,7 +16,7 @@
     },
     {
       "branch": "feature/macos-command-registration",
-      "commit": "b1d1be5722b40a4d263aca301879e51cedb75747",
+      "commit": "a0e95eec92df572d86fb126626df6da4ea93d369",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -126,7 +126,7 @@
       "branch": "feature/macos-timeline-undock-control",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "f5728befa117f38aaa59b6a2e9c4c6fb702dd847"
+      "commit": "79b47a8edcb1352ba69b323949fe86a76c61175b"
     },
     {
       "branch": "fix/macos-group-window-stacking",
