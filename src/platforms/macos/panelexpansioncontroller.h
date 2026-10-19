@@ -51,7 +51,11 @@ public:
             [this,request](bool ready) {
                 if (current!=target.index || request!=version) return;
                 auto window=host();
-                if (!ready || !window) { current=-1; update(target.index); save(); return; }
+                if (!ready || !window) {
+                    logEvent("panel.expand.failed",{{"panel",target.name},{"reason","surface-not-ready"}});
+                    restore(); report(QStringLiteral("Could not expand the panel; its previous arrangement was restored."));
+                    return;
+                }
                 auto screen=window->screen(); if (!screen) screen=QApplication::primaryScreen();
                 const auto margins=window->windowHandle() ? window->windowHandle()->frameMargins() : QMargins();
                 window->setGeometry(screen->availableGeometry().adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom()));

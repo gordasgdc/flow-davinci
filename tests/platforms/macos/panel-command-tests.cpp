@@ -113,6 +113,10 @@ int main(int argc,char **argv) {
             "restoring before readiness cancels pending work and restores exactly once");
         expansion.restore(); QApplication::processEvents();
         check(cancelled==1 && saved==1,"stale readiness and repeated restore cannot replay a completed expansion");
+        int readinessErrors=0; expansion.report=[&](QString error) { if (!error.isEmpty()) ++readinessErrors; };
+        expansion.begin(target,nullptr); QApplication::processEvents();
+        check(expansion.index()==-1 && cancelled==2 && restored==2 && nativeRestored==2 && saved==2 && readinessErrors==1,
+            "unavailable expansion surface rolls back original presentation instead of saving temporary state");
     }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly);
     check(events.readAll().contains("command.invoke"),"command origin and acceptance logged");
