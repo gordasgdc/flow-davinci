@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Run the complete fixture matrix; retain failures and exact source provenance."""
+import argparse
+import os
 import datetime
 import hashlib
 import json
@@ -13,22 +15,27 @@ root = Path(__file__).resolve().parents[2]
 def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--hidden-only',action='store_true',help='Run only reviewed hidden fixtures; never native window/drag tests.')
+args=parser.parse_args()
 resolve = subprocess.run(['pgrep', '-x', 'Resolve'], capture_output=True, text=True)
-if resolve.returncode != 1:
+if not args.hidden_only and resolve.returncode != 1:
     print('NOT RUN: Resolve must be closed and its process state verifiable.', flush=True)
     sys.exit(2)
 
 commit = git('rev-parse', 'HEAD')
-stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+stamp = ('hidden-' if args.hidden_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
 tests = ['panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
          'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
-receipt = {'commit': commit, 'branch': git('branch', '--show-current'),
+if args.hidden_only:
+    tests=['panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
+receipt = {'matrix': 'hidden' if args.hidden_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),
-           'scope': 'Fixtures only; does not establish live Resolve or GPU/playback acceptance',
+           'scope': ('Hidden fixtures only; displayed/native-window and responsiveness checks excluded' if args.hidden_only else 'Fixtures only; does not establish live Resolve or GPU/playback acceptance'),
            'tests': [], 'all_passed': False}
 def save():
     temporary = output / 'receipt.tmp'
@@ -45,7 +52,9 @@ for name in tests:
     log = output / (name + '.log')
     with log.open('w') as stream:
         try:
-            result = subprocess.run(command, cwd=root, stdout=stream, stderr=subprocess.STDOUT, timeout=180)
+            environment=os.environ.copy()
+            if args.hidden_only and name=='workspace-menu': environment['UNBOUND_TEST_HEADLESS']='1'
+            result = subprocess.run(command, cwd=root, env=environment, stdout=stream, stderr=subprocess.STDOUT, timeout=180)
             code = result.returncode
         except subprocess.TimeoutExpired:
             stream.write('\nFixture exceeded its 180-second deadline.\n')

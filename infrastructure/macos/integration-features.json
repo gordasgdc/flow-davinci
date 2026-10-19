@@ -132,7 +132,7 @@
       "branch": "fix/macos-group-window-stacking",
       "scope": "implementation",
       "acceptance": "pending",
-      "commit": "0fd5df617520d511d448f1d0b0a74d55554492bf"
+      "commit": "7395f08f1cbfeb50f74c63eaaf3a1ae8ecca30c2"
     },
     {
       "branch": "fix/macos-idempotent-window-chrome",
