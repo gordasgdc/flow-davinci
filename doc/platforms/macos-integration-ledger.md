@@ -242,3 +242,9 @@ All six hidden suites pass on clean unchanged feature source: `../OpenGate-featu
 Footer attachment at `1469ca2` passes displayed groups and both fresh-process variants (`floating.Gry3Kv`, `attached.V3kxD0` under the footer feature build directory). Workspace restoration at `f8f8a1c` passes its six hidden suites. Both branches are now combined for full verification; actual Resolve input/playback/reopen acceptance remains pending. Merge resolution retains both shutdown cancellation and native footer release, and both new regression suites.
 
 ID-only destination query at `cc51558` passed displayed panel-session/destination-order assertions but did not establish a latency improvement (approach 17.485 ms, commit 26.978 ms, viewer 19.411 ms p95; functional assertions pass). It remains excluded. No frame budget or diagnostics was relaxed.
+
+### Manager presentation and stress result — 2026-10-19
+
+`refactor/macos-panel-manager-view` at `06d6fc7` passes seven hidden suites, displayed manager-hidden behavior, displayed groups and both footer restart variants. Widget construction now belongs to `PanelManagerView`; manager remains under 900 lines with transition/policy and group coordination still present.
+
+Combined footer/restoration receipt `build/macos/verification/b66d3fb7a9-20261019T064840Z/receipt.json` passes all 21 dedicated non-performance suites. Responsiveness stress also catches the intermittent one-pixel free-drag failure (seen in installed source) as well as budget failures: commit 32.442 ms and viewer 19.237 ms p95. Do not describe this as only a budget failure or close smoothness acceptance. A separate read-only geometry trace is being used to distinguish Qt state, requested geometry and the Cocoa frame before any correction. Installation has not changed.
