@@ -115,6 +115,13 @@ int main(int argc, char **argv)
         menus.wire();
         manager->trigger(); QApplication::processEvents();
         check(managerCalls == 1, "Workspace UI opens the panel manager through its owner callback");
+        int shortcutsCalls=0;
+        menus.showPanelShortcuts=[&] { ++shortcutsCalls; }; menus.wire(); menus.wire();
+        auto panelShortcuts=root->findChild<QAction *>("unboundPanelShortcuts");
+        check(panelShortcuts && panelShortcuts->isEnabled(),"Unbound shortcut settings are discoverable beside native keyboard customization");
+        if (panelShortcuts) panelShortcuts->trigger(); QApplication::processEvents();
+        check(shortcutsCalls==1,"shortcut editor menu dispatches once after repeated synchronization");
+
         check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
             "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
         check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
