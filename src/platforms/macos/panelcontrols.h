@@ -275,10 +275,17 @@ public:
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
         footer->attachmentOwner=[this]() -> QWidget * {
-            return page() && page()->isVisible() && panels[1].session->active() ?
-                Unbound::panelSurface(page(),panels[1].name) : nullptr;
+            if (!page() || !page()->isVisible()) return nullptr;
+            QWidget *best=nullptr;
+            for (int i=0;i<panels.size();++i) if (panels[i].session->active() && panels[i].name!="unboundWorkspaceToolbar") {
+                auto host=panels[i].session->window()->window();
+                if (host==page()->window() || !host->isVisible()) continue;
+                if (i==1) return host;
+                if (!best || host->width()*host->height()>best->width()*best->height()) best=host;
+            }
+            return best;
         };
-        footer->revealAttachmentOwner=[this] { showPanel(1,true); };
+        footer->revealAttachmentOwner=[this] { if (auto owner=footer->attachmentOwner()) { owner->show();owner->raise(); } };
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
