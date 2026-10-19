@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "productidentity.h"
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QHeaderView>
@@ -12,9 +13,9 @@ namespace Unbound {
 inline QDialog *createPanelShortcutEditor(PanelCommands *registry,QWidget *owner) {
     auto dialog=new QDialog(owner); dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setObjectName("unboundPanelShortcuts"); dialog->setProperty("unboundShortcutEditor",true);
-    dialog->setWindowTitle("Unbound Panel Shortcuts"); dialog->resize(590,520);
+    dialog->setWindowTitle("OpenGate Panel Shortcuts"); dialog->resize(590,520);
     auto layout=new QVBoxLayout(dialog);
-    auto note=new QLabel("Unbound bindings are saved separately from Resolve’s Keyboard Customization. Click a shortcut to assign it; Backspace clears it. Existing native bindings are retained.",dialog);
+    auto note=new QLabel("OpenGate bindings are saved separately from Resolve’s Keyboard Customization. Click a shortcut to assign it; Backspace clears it. Existing native bindings are retained.",dialog);
     note->setWordWrap(true); layout->addWidget(note);
     auto table=new QTableWidget(registry->entries().size(),2,dialog); table->setHorizontalHeaderLabels({"Command","Shortcut"});
     table->verticalHeader()->hide(); table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::Stretch);

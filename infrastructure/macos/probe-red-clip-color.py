@@ -13,7 +13,7 @@ MODULES = '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Develo
 
 def run(resolve, output, execute=False):
     manager = resolve.GetProjectManager()
-    receipt = {'schema': 1, 'component': 'Unbound', 'experiment': 'red-clip-color',
+    receipt = {'schema': 1, 'component': 'OpenGate', 'experiment': 'red-clip-color',
                'time': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                'mutated_existing_project': False, 'status': 'not-run'}
     output.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,7 @@ def run(resolve, output, execute=False):
     if manager.GetCurrentProject():
         receipt['reason'] = 'An existing project is open. Refusing to switch, save or mutate it.'
         record(); return receipt
-    name = 'Unbound Red Storage Probe '+uuid.uuid4().hex[:10]
+    name = 'OpenGate Red Storage Probe '+uuid.uuid4().hex[:10]
     receipt['disposable_project'] = name
     project = None
     try:
@@ -86,7 +86,7 @@ if __name__ == '__main__':
             sys.exit(completed.returncode)
         except subprocess.TimeoutExpired:
             args.output.mkdir(parents=True, exist_ok=True)
-            (args.output/'timeout.json').write_text(json.dumps({'component':'Unbound','experiment':'red-clip-color','status':'timeout','storage_verified':False})+'\n')
+            (args.output/'timeout.json').write_text(json.dumps({'component':'OpenGate','experiment':'red-clip-color','status':'timeout','storage_verified':False})+'\n')
             sys.exit('Color probe timed out; no storage success claimed. See timeout.json.')
     sys.path.insert(0, MODULES)
     import DaVinciResolveScript

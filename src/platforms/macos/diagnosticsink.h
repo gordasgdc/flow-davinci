@@ -61,7 +61,7 @@ private:
         // A full disk must not turn telemetry into an unbounded GUI allocation.
         // Keep a component-named warning in Qt/Resolve's own diagnostic stream.
         buffer.clear(); timer.stop(); file.close();
-        if (!warned) qWarning("Unbound diagnostics: %s; buffered telemetry dropped. Retrying on the next record.",reason);
+        if (!warned) qWarning("OpenGate diagnostics: %s; buffered telemetry dropped. Retrying on the next record.",reason);
         warned = true;
     }
     QFile file;

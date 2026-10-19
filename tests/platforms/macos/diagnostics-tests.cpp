@@ -39,7 +39,7 @@ int main(int argc,char **argv)
         const auto data = read(path+(part ? QString(".%1").arg(part) : QString()));
         for (const auto &line : data.split('\n')) if (!line.isEmpty()) {
             const auto entry = QJsonDocument::fromJson(line).object();
-            check(entry["component"] == "Unbound" && entry["module"] == "UnboundWidgetProbe.dylib","each rotated record retains plugin identity");
+            check(entry["component"] == "OpenGate" && entry["module"] == "UnboundWidgetProbe.dylib","each rotated record retains plugin identity");
             if (entry["event"] == "rotation.fixture") sequences.insert(entry["sequence"].toInt());
         }
     }
@@ -55,7 +55,7 @@ int main(int argc,char **argv)
         const auto handler = qInstallMessageHandler(captureStorageWarning);
         FailingSink sink; const auto failurePath = files.path()+"/write-failure";
         for (int i=0;i<64;++i) sink.append(failurePath,QByteArray(65536,'x')+'\n',true);
-        check(storageWarnings.size() == 1 && storageWarnings.first().startsWith("Unbound diagnostics:"),
+        check(storageWarnings.size() == 1 && storageWarnings.first().startsWith("OpenGate diagnostics:"),
             "persistent storage failure identifies the plugin without flooding Resolve's log");
         sink.failure = 1; sink.append(failurePath,"recovered\n",true);
         check(read(failurePath+"/events.jsonl") == "recovered\n",

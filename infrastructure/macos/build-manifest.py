@@ -17,7 +17,7 @@ if lock.exists():
         item['included'] = result.returncode == 0
         item['ancestry_verified'] = result.returncode in (0, 1)
         features.append(item)
-manifest = {'schema': 1, 'branch': git('branch', '--show-current'), 'commit': git('rev-parse', 'HEAD'),
+manifest = {'schema': 1, 'product': 'OpenGate', 'vendor': 'CineWaltz', 'foundation': 'Unbound by Wolfgang Woehl (MIT)', 'branch': git('branch', '--show-current'), 'commit': git('rev-parse', 'HEAD'),
             'dirty': bool(git('status', '--porcelain')), 'features': features,
             'meaning': 'Included means present in source ancestry, not acceptance-tested or complete.'}
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)

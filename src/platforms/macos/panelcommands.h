@@ -102,7 +102,7 @@ private:
             if (key.isEmpty() || key.count()!=1) { errors[command.id]="Use one key combination per command."; continue; }
             const auto normalized=key.toString(QKeySequence::PortableText);
             if (seen.contains(normalized)) {
-                const auto message="Two Unbound commands use "+normalized+".";
+                const auto message="Two OpenGate commands use "+normalized+".";
                 errors[command.id]=message; errors[seen.value(normalized)]=message;
             }
             seen[normalized]=command.id;

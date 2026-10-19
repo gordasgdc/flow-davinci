@@ -45,6 +45,8 @@ int main(int argc, char **argv)
         main.hide();
         check(Unbound::currentWorkspacePage(&main).isEmpty(),"hidden or unavailable pages are not guessed to be Edit");
     }
+    check(Unbound::productName()=="OpenGate" && Unbound::productVendor()=="CineWaltz" &&
+        Unbound::productCredit().contains("Wolfgang Woehl"),"OpenGate identity preserves explicit foundation credit");
     Unbound::ArrangementStore store; QString first,second;
     check(store.create("Edit & Review",{{"version",1}},first).isEmpty() && store.create("Audio",{{"version",1}},second).isEmpty(), "create stable saved workspace identities");
     {
@@ -109,6 +111,8 @@ int main(int argc, char **argv)
         auto submenu = root->findChild<QMenu *>("unboundWorkspaceArrangements");
         auto preset = root->findChild<QMenu *>("unboundWorkspace_"+second);
         check(submenu && submenu->title() == "Manage Saved Workspaces" && preset && !root->isVisible(), "menu is populated before native display");
+        auto about=root->findChild<QAction *>("openGateAbout");
+        check(about && about->text().contains("OpenGate"),"product attribution is discoverable from Workspace UI");
         auto manager = root->findChild<QAction *>("unboundShowPanelManager");
         check(manager && !manager->isEnabled(), "manager action is disabled without an owner callback");
         menus.showPanelManager = [&] { ++managerCalls; };
