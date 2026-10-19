@@ -3,6 +3,7 @@
 #include <QFileSystemWatcher>
 #include <QSaveFile>
 #include "panelcontrols.h"
+#include "crashsession.h"
 #include "interactiondiagnostics.h"
 #include "activationbridge.h"
 #include "responsiveness.h"
@@ -19,6 +20,7 @@ public:
     explicit ControlService(QObject *parent) : QObject(parent), watcher(this)
     {
         setObjectName(QStringLiteral("unboundControlService"));
+        journal=new CrashSession(this);
         new InteractionDiagnostics(this);
         new ResolveActivationBridge(this);
         new ResponsivenessProbe(this);
@@ -31,31 +33,10 @@ public:
         QDir().mkpath(directory);
         watcher.addPath(directory);
         connect(&watcher, &QFileSystemWatcher::directoryChanged, this, [this] { consumeLaunchRequest(false); });
-        const QString logDirectory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
-            QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
-        QDir().mkpath(logDirectory);
-        const QString markerPath = logDirectory + QStringLiteral("/active-session.json");
-        QFile previous(markerPath);
-        if (previous.open(QIODevice::ReadOnly)) {
-            const auto session = QJsonDocument::fromJson(previous.readAll()).object();
-            logEvent(QStringLiteral("helper.previous-session.unclean"), {{"previous", session},
-                {"meaning", "No clean shutdown was recorded; this does not establish crash cause."}});
-            previous.close();
-        }
-        QSaveFile marker(markerPath);
-        if (marker.open(QIODevice::WriteOnly)) {
-            marker.write(QJsonDocument(QJsonObject{{"component", "OpenGate"}, {"build", UNBOUND_BUILD_ID},
-                {"pid", QCoreApplication::applicationPid()},
-                {"started", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}}).toJson());
-            marker.commit();
-        }
         #ifdef UNBOUND_FEATURE_MANIFEST
         logEvent("helper.feature-manifest", {{"manifest", QJsonDocument::fromJson(QByteArray(UNBOUND_FEATURE_MANIFEST)).object()}});
 #endif
         logEvent(QStringLiteral("helper.start"), {{"executable", QCoreApplication::applicationFilePath()}});
-        connect(qApp, &QCoreApplication::aboutToQuit, this, [markerPath] {
-            logEvent(QStringLiteral("helper.stop")); QFile::remove(markerPath);
-        });
         // Initialize menus, native decorations and saved workspace restoration
         // without putting a second UI in front of Resolve on every launch.
         controls = new PanelControls;
@@ -64,6 +45,7 @@ public:
             return controls && controls->invokeWorkflowCommand(id);
         });
         consumeLaunchRequest(true);
+        connect(qApp,&QCoreApplication::aboutToQuit,this,[this] { journal->markClean(); });
     }
     ~ControlService() override { delete controls.data(); }
     void showControls()
@@ -93,6 +75,7 @@ private:
         logEvent("controls.launch.request",{{"request",QString::fromUtf8(token)},{"startup",startup}});
         showControls();
     }
+    CrashSession *journal=nullptr;
     QFileSystemWatcher watcher;
     QPointer<PanelControls> controls;
     QString directory;

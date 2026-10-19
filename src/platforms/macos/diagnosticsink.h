@@ -78,7 +78,7 @@ inline QPointer<DiagnosticSink> &diagnosticSink()
 }
 inline bool immediateDiagnostic(const QString &event)
 {
-    return event.startsWith("input.click") || event.startsWith("input.button") || event == "input.action.triggered" ||
+    return event.startsWith("workspace.edit.") || event.startsWith("crash.") || event.startsWith("input.click") || event.startsWith("input.button") || event == "input.action.triggered" ||
         event.startsWith("button.") || event.startsWith("helper.") || event.startsWith("workspace.menu") ||
         event.contains("request") || event.contains("complete") || event.contains("failed") || event.contains("error") ||
         event == "drag.begin" || event == "drag.end" || event == "arrangement.result" || event == "group.drop.result";
