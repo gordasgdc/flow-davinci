@@ -547,7 +547,7 @@ private:
         if (!session->active() || !page() || !page()->isVisible()) return;
         if (expansionController->index() >= 0) restoreExpanded();
         auto group = groupFor(i);
-        const bool reveal = session->hiddenByUser() || (group && !group->selected(session)) ||
+        const bool reveal = session->hiddenByUser() || (group && (group->windowHidden() || !group->selected(session))) ||
             (nativeWorkspace->contains(panels[i].name) && !nativeWorkspace->selected(panels[i].name));
         showPanel(i,reveal);
         syncNativeToggle(i);
