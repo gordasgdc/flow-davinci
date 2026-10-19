@@ -226,9 +226,27 @@
     },
     {
       "branch": "feature/macos-opengate-ui-panel-menu",
-      "commit": "c101484e4978579467599de8ad099e969ad209c7",
+      "commit": "0a36406e5702f3c230524d77ded3edbe74801f70",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-source-content-readiness",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "9e21f3da54e7229e25ed370e3c45df1336a6e1c5"
+    },
+    {
+      "branch": "feature/macos-edit-page-lifecycle",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "fc5040872d2c383c8a0a861c391463a469b5683d"
+    },
+    {
+      "branch": "feature/macos-native-workflow-commands",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "c588968b6cc838b495aea5110d70391bdd345e80"
     }
   ]
 }
