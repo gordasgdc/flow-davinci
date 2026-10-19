@@ -74,7 +74,8 @@ protected:
             const auto configured=QKeySequence::fromString(bindings.value(command.id).toString(),QKeySequence::PortableText);
             if (configured.isEmpty() || configured!=pressed || !command.available || !command.available()) continue;
             // Recheck native conflicts after loading a different Resolve keyboard preset.
-            if (refresh.isActive() || conflicts.contains(command.id)) { logEvent("command.binding.conflict",{{"command",command.id}}); return false; }
+            if (refresh.isActive()) { refresh.stop(); conflicts=bindingErrors(bindings); }
+            if (conflicts.contains(command.id)) { logEvent("command.binding.conflict",{{"command",command.id},{"key",pressed.toString()},{"reason",conflicts.value(command.id)}}); return false; }
             event->accept();
             if (event->type()==QEvent::KeyPress && !key->isAutoRepeat()) {
                 const auto id=command.id; const auto available=command.available; const auto invoke=command.invoke;
@@ -107,10 +108,10 @@ private:
         QList<QKeySequence> nativeKeys; QSet<QAction *> visited;
         for (auto widget : QApplication::allWidgets()) {
             for (auto action : widget->actions()) if (!visited.contains(action)) {
-                visited.insert(action); nativeKeys.append(action->shortcuts());
+                visited.insert(action); if (action->isEnabled() && action->isVisible()) nativeKeys.append(action->shortcuts());
             }
             for (auto shortcut : widget->findChildren<QShortcut *>(QString(),Qt::FindDirectChildrenOnly))
-                nativeKeys.append(shortcut->key());
+                if (shortcut->isEnabled()) nativeKeys.append(shortcut->key());
         }
         for (const auto &command : commands) {
             const auto text=proposed.value(command.id).toString(); if (text.isEmpty()) continue;

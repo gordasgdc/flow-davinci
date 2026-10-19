@@ -4,6 +4,7 @@
 #include <QMenu>
 #include <QSet>
 #include "diagnostics.h"
+#include "workflowcommandmenu.h"
 namespace Unbound {
 // Invoke Resolve's own command; never synthesize its key binding or dialog.
 inline bool openNativeKeyboardCustomization() {
@@ -20,6 +21,7 @@ inline bool openNativeKeyboardCustomization() {
         logEvent("keyboard.launch.unavailable",{{"matching_actions",matches.size()}}); return false;
     }
     auto action=*matches.begin();
+    WorkflowCommandMenu::prepareKeyboardEditor();
     logEvent("keyboard.launch.request",{{"action",action->objectName()},{"origin","unbound"}});
     action->trigger(); return true;
 }

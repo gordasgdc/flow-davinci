@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QTimer>
 #include "keyboardlauncher.h"
+#include "nativekeyboardinspection.h"
 namespace Unbound {
 // Navigate Resolve's real editor rather than edit a second shortcut database.
 // Only its command search is changed; bindings/preset/conflict/save stay native.
@@ -45,6 +46,8 @@ private:
         }
         const bool filtered=filterNativeKeyboardCommands(commands,query);
         logEvent("keyboard.native.search",{{"query",query},{"filtered",filtered},{"binding_store","resolve-native"}});
+        QPointer<QWidget> alive=dialog;
+        QTimer::singleShot(0,this,[alive] { if (alive && alive->isVisible()) inspectNativeKeyboardCommands(alive); });
     }
 };
 }

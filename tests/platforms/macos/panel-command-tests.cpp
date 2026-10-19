@@ -49,7 +49,13 @@ int main(int argc,char **argv) {
         Unbound::PanelCommands hover(nullptr); hover.context=[] { return true; }; int expansions=0;
         hover.add({"panel.expand.hovered","Maximize / Restore Panel Under Pointer",[] { return true; },[&] { ++expansions; }});
         hover.defaultBinding("panel.expand.hovered","`");
+        QShortcut disabledNative(QKeySequence("`"),&main); disabledNative.setEnabled(false);
         check(hover.save(hover.assigned()).isEmpty(),"hovered-panel backtick is an editable default rather than an unassignable reservation");
+        QApplication::processEvents(); send(Qt::Key_QuoteLeft);
+        check(expansions==1,"disabled native backtick shortcut does not block maximize dispatch");
+        disabledNative.setEnabled(true);
+        check(!hover.validate(hover.assigned()).isEmpty(),"enabled native backtick shortcut still conflicts");
+        disabledNative.setEnabled(false); expansions=0;
         check(hover.save({{"panel.expand.hovered","F24"}}).isEmpty(),"hovered panel maximize can be reassigned");
         QApplication::setActiveWindow(&main); edit.clearFocus(); QApplication::processEvents();
         check(hover.invoke("panel.expand.hovered","native-workflow-fixture") && expansions==1,"native workflow invokes the same registered expansion route");
