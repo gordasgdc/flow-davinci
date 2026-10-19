@@ -17,6 +17,8 @@ with tempfile.TemporaryDirectory() as temporary:
     result=probe.run(Resolve(),output,execute=True)
     assert result['status']=='not-run' and result['mutated_existing_project'] is False
     assert set(p.name for p in output.iterdir())=={'receipt.json'}
+    result=probe.run(Resolve(),output,execute=True,metadata=True)
+    assert result['status']=='not-run' and result['mutated_existing_project'] is False
     result=probe.run(Resolve(),output,execute=False)
     assert result['project_open'] and result['status']=='not-run'
 print('PASS: Red probe refuses all mutations when an existing project is open')
