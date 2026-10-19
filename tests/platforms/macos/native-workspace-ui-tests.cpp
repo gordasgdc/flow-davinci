@@ -123,6 +123,23 @@ int main(int argc,char **argv) {
         check(mediaControl->window()==&main && inspectorControl->window()==&main && page->findChild<QWidget *>("unboundNativeArrangement"),
             "a native menu action retained across helper reopening reconnects to the new helper");
         check(standalone.count==0,"floating group transfer never shows intermediate standalone member windows");
+        auto nativeTabs=page->findChild<QTabWidget *>("unboundPanelTabs");
+        check(nativeTabs && nativeTabs->count()==2,"native group retains draggable panel tabs");
+        if (nativeTabs) {
+            auto bar=nativeTabs->tabBar(); const auto start=bar->tabRect(0).center();
+            const auto end=QPoint(start.x(),bar->height()+40);
+            QMouseEvent press(QEvent::MouseButtonPress,start,bar->mapToGlobal(start),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+            QMouseEvent move(QEvent::MouseMove,end,bar->mapToGlobal(end),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
+            QApplication::sendEvent(bar,&press); QApplication::sendEvent(bar,&move); settle();
+            const bool mediaFloating=mediaControl->window()!=&main;
+            const bool inspectorFloating=inspectorControl->window()!=&main;
+            check(mediaFloating!=inspectorFloating,"dragging a native tab outside its strip floats only that panel");
+            if (auto host=dynamic_cast<Unbound::MacFloatingHost *>((mediaFloating ? mediaControl : inspectorControl)->window())) {
+                QMouseEvent release(QEvent::MouseButtonRelease,QPoint(80,12),host->mapToGlobal(QPoint(80,12)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+                QApplication::sendEvent(host,&release);
+            }
+            settle();
+        }
     }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly); const auto trace=events.readAll();
     check(trace.contains("workspace.native-transfer.request") && trace.contains("workspace.native-command.complete") &&

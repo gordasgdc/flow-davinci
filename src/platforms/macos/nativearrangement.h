@@ -23,6 +23,7 @@ public:
     static QString nativeLeaf() { return nativeRemainderId(); }
     bool active() const { return lease.active(); }
     QWidget *surface() const { return host; }
+    std::function<void(const QString &,QPoint)> tearOff;
     bool contains(const QString &id) const { return active() && sessions.value(id); }
     bool selected(const QString &id) const {
         auto session=sessions.value(id); auto cell=cells.value(id);
@@ -199,6 +200,15 @@ private:
     }
     bool rebuild(const QJsonObject &tree) {
         PanelLayoutCallbacks callbacks;
+        callbacks.tearOff=[this](QWidget *leaf,QPoint pointer) {
+            for (auto it=cells.begin();it!=cells.end();++it) if (it.value()==leaf && sessions.value(it.key())) {
+                const auto id=it.key();
+                logEvent("workspace.native-tab.tear-off",{{"panel",id},{"x",pointer.x()},{"y",pointer.y()}});
+                if (tearOff) tearOff(id,pointer);
+                return;
+            }
+            logEvent("workspace.native-tab.tear-off-rejected",{{"reason","nested-section-or-native-remainder"}});
+        };
         callbacks.leaf=[this](const QString &id) { return cells.value(id).data(); };
         callbacks.title=[this](const QString &id) {
             auto session=sessions.value(id);

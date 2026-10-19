@@ -7,7 +7,15 @@ namespace Unbound {
 // controls and native menus call this same route; it owns no window chrome.
 class NativeWorkspaceBinding : public QObject {
 public:
-    explicit NativeWorkspaceBinding(QObject *owner) : QObject(owner),arrangement(this) {}
+    explicit NativeWorkspaceBinding(QObject *owner) : QObject(owner),arrangement(this) {
+        arrangement.tearOff=[this](const QString &id,QPoint pointer) {
+            QPointer<MacPanelSession> session=registry.value(id);
+            if (!detach(id) || !session || !session->floating()) return;
+            auto floating=static_cast<MacFloatingHost *>(session->window());
+            floating->move(pointer-QPoint(80,12)); floating->raise(); floating->activateWindow();
+            floating->beginPointerDrag(pointer,true);
+        };
+    }
     std::function<void()> changed;
     std::function<void()> beforeMount;
     std::function<void(const QString &)> failed;
