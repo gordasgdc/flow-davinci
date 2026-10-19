@@ -46,3 +46,9 @@ This is an acceptance requirement, not a claim that custom-color storage works.
 No custom-color operation may call timeline/clip deletion or replacement as a
 fallback. If compatibility cannot be demonstrated, leave the feature unavailable
 and preserve Resolve's existing native palette.
+
+## Executable probe
+
+`infrastructure/macos/probe-red-clip-color.py --output <directory>` checks connectivity only. `--run` additionally requires **no existing project open**, generates silent audio in a uniquely named disposable project, tries Red/hex/lowercase names, saves/reopens each attempt, compares clip identity/ranges/media identity/count, restores a native Orange control and exports the scratch DRP. It never deletes or replaces clips and refuses to switch away from a working project. Calls have a process deadline; a timeout is not a successful storage test.
+
+Native executable inventory contains `Sm2ClipColor`, `SM2_CLIP_COLOR_LAST` bounds assertions and 16 named clip palette resources, with no Red resource among them. That supports an enum-backed palette hypothesis, not proof of every possible internal storage path. No Red option is exposed until a storage/rendering implementation is verified. The current live read-only probe stalled and was stopped; no project writes were requested.
