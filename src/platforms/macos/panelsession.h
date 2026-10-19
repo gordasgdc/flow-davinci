@@ -193,7 +193,13 @@ public:
                 }
             }
         }
-        logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)}, {"placement",panelPlacementName(placement())}});
+        auto actualSurface=window(); auto actualHost=actualSurface ? actualSurface->window() : nullptr;
+        logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)},
+            {"placement",panelPlacementName(placement())},{"stage","session-state"},{"requested_hidden",userHidden},
+            {"actual_surface",actualSurface ? actualSurface->objectName() : QString()},
+            {"surface_visible",actualSurface && actualSurface->isVisible()},{"actual_host",actualHost ? actualHost->objectName() : QString()},
+            {"native_id",actualHost && actualHost->testAttribute(Qt::WA_WState_Created) ? nativeWindowNumber(actualHost) : 0},
+            {"host_pinned",actualHost && actualHost->property("unboundPinned").toBool()}});
         if (changed) changed();
         if (arrangementChanged) arrangementChanged();
     }

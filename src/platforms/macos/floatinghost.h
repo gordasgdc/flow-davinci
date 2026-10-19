@@ -69,7 +69,8 @@ public:
         pinButton->setFocusPolicy(Qt::NoFocus); pinButton->setToolTip("Keep this window above the Resolve workspace");
         connect(pinButton, &QToolButton::toggled, this, [this](bool pinned) {
             setProperty("unboundPinned", pinned); pinButton->update(); updatePin();
-            logEvent(QStringLiteral("window.pin"), {{"window", objectName()}, {"pinned", pinned}});
+            logEvent(QStringLiteral("window.pin"), {{"window", objectName()}, {"pinned", pinned},
+                {"native_id",testAttribute(Qt::WA_WState_Created) ? nativeWindowNumber(this) : 0}});
         });
     }
     void setPinned(bool pinned) { pinButton->setChecked(pinned); }
