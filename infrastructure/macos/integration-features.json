@@ -277,6 +277,18 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "33290ef212e86cabbe3ede8075aba6c101cd39ca"
+    },
+    {
+      "branch": "fix/macos-modular-layout-recovery",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "f4ac5dc9d094394519bfcde0181f04128da0b598"
+    },
+    {
+      "branch": "feature/macos-native-emulator-preset",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "b6ab382dac700fa1fd923e652a3f2af14d08bffd"
     }
   ]
 }
