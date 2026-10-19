@@ -8,6 +8,7 @@
 #include <functional>
 #include "diagnostics.h"
 #include "cinemaviewer.h"
+#include "nativevacancycollapse.h"
 namespace Unbound {
 // Scoped to a native page with managed panels. Never changes content constraints
 // or floating group sizes, and never raises/activates the native window.
@@ -30,22 +31,23 @@ public:
             originalConstraint=originalLayout->sizeConstraint(); captured=true;
         }
     }
-    void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids) {
+    void setPanels(QWidget *window,QWidget *nativePage,const QSet<QString> &ids,const QList<QWidget *> &vacancies={}) {
         if (ids.isEmpty()) { restore(); return; }
         const bool unchanged=window==main && nativePage==page && ids==managedPanels;
         prepare(window,nativePage);
+        collapse.update(nativePage,vacancies);
         if (unchanged && applied) return;
         managedPanels=ids; settle.start(0);
     }
     void restore() {
-        settle.stop(); restoreConstraints(true);
+        settle.stop(); collapse.restore(); restoreConstraints(true);
         if (page) page->removeEventFilter(this);
         page=nullptr; main=nullptr; managedPanels.clear();
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
         if (object!=page) return false;
-        if (event->type()==QEvent::Hide) { settle.stop(); restoreConstraints(false); }
+        if (event->type()==QEvent::Hide) { settle.stop(); collapse.restore(); restoreConstraints(false); }
         if (event->type()==QEvent::Show && !managedPanels.isEmpty()) settle.start(0);
         return false;
     }
@@ -92,6 +94,7 @@ private:
         }
         captured=false; applied=false; automaticGeometry=false; originalLayout=nullptr;
     }
+    NativeVacancyCollapse collapse;
     QPointer<QWidget> main,page; QPointer<QLayout> originalLayout;
     QSet<QString> managedPanels; QTimer settle; QSize originalMinimum;
     QRect originalGeometry,lastAutomaticGeometry;

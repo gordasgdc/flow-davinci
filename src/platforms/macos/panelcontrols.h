@@ -22,6 +22,7 @@
 #include "nativepaneldecoration.h"
 #include "timelinecontrol.h"
 #include "nativeworkspacesizing.h"
+#include "nativeworkspacepresentation.h"
 #include "nativepaneldrag.h"
 #include "nativeworkspacebinding.h"
 #include "panelgroup.h"
@@ -641,6 +642,8 @@ private:
     void dockAll() {
         if (workspaceRestore) workspaceRestore->cancel();
         if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
+        nativePresentation.restore();
+        if (nativeSizing) nativeSizing->restore();
         if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {};
         for (int i = panels.size() - 1; i >= 0; --i) dockOne(i);
     }
@@ -783,6 +786,7 @@ private:
             if (panels[i].name == QLatin1String("frameEditToolbarTop") || panels[i].name == QLatin1String("unboundWorkspaceToolbar"))
                 toolbarDecoration->wire(page(), panels[i].name, [this, i] { togglePanelPlacement(i); });
         QWidget *root = page();
+        updateNativeSizing();
         if (!root || !root->isVisible()) return;
         QList<Unbound::WorkspaceRestoration::Panel> restoring;
         for (const auto &panel:panels) restoring.append({panel.name,panel.saved,panel.desired,panel.session});
@@ -833,10 +837,10 @@ private:
     void updateNativeSizing()
     {
         if (quitting || expansionController->index()>=0 || !nativeSizing) return;
-        if (nativeWorkspace && nativeWorkspace->active()) return;
-        QSet<QString> managed;
-        for (const auto &panel : panels) if (panel.session->active()) managed.insert(panel.name);
-        if (auto root=page()) nativeSizing->setPanels(root->window(),root,managed);
+        auto root=page();
+        QList<Unbound::NativeWorkspacePresentation::Surface> surfaces;
+        for (const auto &panel:panels) surfaces.append({panel.name,Unbound::panelSurface(root,panel.name),panel.session,panel.label.endsWith("Toolbar")});
+        nativePresentation.reconcile(Unbound::resolveMainWindow(),root,nativeSizing,nativeWorkspace && nativeWorkspace->active(),surfaces,background->isChecked());
     }
     void shutdown()
     {
@@ -861,6 +865,7 @@ private:
     Unbound::WindowHierarchy *hierarchy = nullptr;
     Unbound::GroupHostReserve *groupReserve = nullptr;
     Unbound::NativeWorkspaceSizing *nativeSizing = nullptr;
+    Unbound::NativeWorkspacePresentation nativePresentation;
     Unbound::NativeWorkspaceBinding *nativeWorkspace = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
