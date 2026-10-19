@@ -32,7 +32,10 @@ int main(int argc,char **argv) {
     QList<QWidget *> panes;
     for (int i=0;i<names.size();++i) {
         auto pane=new QWidget(page); pane->setObjectName(names[i]); auto layout=new QVBoxLayout(pane);
-        layout->addWidget(new QPushButton(names[i],pane)); native->addWidget(pane,i/3,i%3); panes.append(pane);
+        auto content=new QPushButton(names[i],pane); layout->addWidget(content); native->addWidget(pane,i/3,i%3);
+        // Media Pool transfers its content layout; its original slot stays in
+        // Resolve as a vacated placeholder. Observe real content, not that slot.
+        panes.append(i==4 ? static_cast<QWidget *>(content) : pane);
     }
     auto footer=new QWidget(&main); footer->setObjectName("m_PageSwitcherContainer");
     auto footerLayout=new QHBoxLayout(footer); footerLayout->addWidget(new QPushButton("Edit",footer)); outer->addWidget(footer);
