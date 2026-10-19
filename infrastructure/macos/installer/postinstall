@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eu
+resources='/Library/Application Support/CineWaltz/OpenGate'
+backup=$(/bin/cat "$resources/last-install-backup.txt")
+user=$(/usr/bin/stat -f '%Su' /dev/console)
+home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | /usr/bin/cut -d ' ' -f 2-)
+# Seed only an untouched profile using bundled JSON; no Python dependency.
+/bin/bash "$resources/seed-profile.sh" "$home" "$user" "$resources"
+# Retire duplicate legacy entry points after the new app and scripts are present.
+if [[ -d "$home/Applications/OpenGate.app" ]]; then /bin/mv "$home/Applications/OpenGate.app" "$backup/retired-user-OpenGate.app"; fi
+legacy='/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/Unbound.py'
+if [[ -f "$legacy" ]]; then /bin/mv "$legacy" "$backup/retired-Unbound.py"; fi
+/usr/sbin/chown -R "$user" "$backup"
+echo 'OpenGate installed. Open Resolve and an Edit project. Use the OpenGate UI menu.'
+echo "Existing settings preserved. Backup: $backup"

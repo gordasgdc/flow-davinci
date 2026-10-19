@@ -1,7 +1,6 @@
 # macOS infrastructure
 
-Experimental build and test scripts live here. No macOS release command,
-notarization workflow or distribution package is implemented yet.
+Experimental build and test scripts live here. `package-prototype.py` packages the verified installed runtime as the OpenGate 0.0.1 Prototype installer. It requires an exact installed-artifact/verification match and does not rebuild native features. Signing/notarization and broader deployment targets remain unfinished.
 Use `build/macos/` for development output and `release/mac/` for future immutable
 releases. See [platform status](../../doc/platforms/macos.md).
 
