@@ -14,13 +14,14 @@
 #include <QTimer>
 #include <functional>
 #include "interactiondiagnostics.h"
+#include "settingsprofile.h"
 namespace Unbound {
 // Unbound-owned bindings. This is not registration in Resolve's command database.
 class PanelCommands : public QObject {
 public:
     struct Command { QString id,label; std::function<bool()> available; std::function<void()> invoke; };
     explicit PanelCommands(QObject *owner) : QObject(owner),path(qEnvironmentVariable("UNBOUND_SHORTCUTS_FILE",
-        QDir::homePath()+"/Library/Application Support/Unbound/Shortcuts.json")) {
+        settingsProfilePath("Shortcuts.json"))) {
         QFile f(path); if (f.open(QIODevice::ReadOnly)) bindings=QJsonDocument::fromJson(f.readAll()).object();
         refresh.setSingleShot(true);
         connect(&refresh,&QTimer::timeout,this,[this] { conflicts=bindingErrors(bindings); });
