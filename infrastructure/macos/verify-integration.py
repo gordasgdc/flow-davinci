@@ -3,6 +3,7 @@
 import datetime
 import hashlib
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -40,6 +41,7 @@ for name in tests:
     command = [sys.executable, str(script)] if script.suffix == '.py' else ['bash', str(script)]
     print('RUN: ' + name, flush=True)
     start = time.monotonic()
+    started_ns = time.time_ns()
     log = output / (name + '.log')
     with log.open('w') as stream:
         try:
@@ -49,8 +51,16 @@ for name in tests:
             stream.write('\nFixture exceeded its 180-second deadline.\n')
             code = 124
     status = 'PASS' if code == 0 else 'NOT RUN' if code == 2 else 'FAIL'
-    receipt['tests'].append({'name': name, 'status': status, 'exit_code': code,
-                             'elapsed_seconds': round(time.monotonic()-start, 3), 'log': log.name})
+    entry = {'name': name, 'status': status, 'exit_code': code,
+             'elapsed_seconds': round(time.monotonic()-start, 3), 'log': log.name}
+    if name == 'responsiveness':
+        report = root / 'build/macos/responsiveness-report.json'
+        if report.is_file() and report.stat().st_mtime_ns >= started_ns:
+            artifact = output / report.name
+            shutil.copyfile(report, artifact)
+            entry['report'] = artifact.name
+            entry['report_sha256'] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    receipt['tests'].append(entry)
     save()
     print(status + ': ' + name + ' (' + str(log) + ')', flush=True)
 

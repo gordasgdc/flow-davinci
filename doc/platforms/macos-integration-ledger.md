@@ -5,6 +5,15 @@ Integration: `macos-panel-discovery-and-layout`. Preserved public baseline:
 The new integration has NOT been installed. Resolve was closed for the native
 fixture runs recorded below. Actual Resolve acceptance remains separate.
 
+Latest combined candidate: 19 provenance entries, including scoped initial native
+drop positions and the separate Inspector transfer fix. Source and tests match
+`68b7f5f`; all 15 functional suites passed at that commit. Responsiveness remains
+FAIL, and all feature acceptance entries remain pending. Detailed evidence:
+`../unbound-features/native-arrangements/build/macos/verification/68b7f5f41f-20261019T034539Z/receipt.json`.
+See `macos-native-panel-positions.md`, `macos-inspector-native-transfers.md` and
+the newest workspace-checklist entry for current implementation and limits.
+Older draft-status paragraphs below describe earlier checkpoints.
+
 A feature tip in the build manifest means its source is included, not that its
 acceptance requirements are complete. Worktrees live beside the main repository
 under `../unbound-features/`. Merge feature branches into integration; do not move

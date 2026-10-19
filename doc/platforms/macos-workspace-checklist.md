@@ -566,3 +566,22 @@ Lifecycle follow-up: native toolbar buttons, footer controls and workspace actio
 2026-10-17 continued pass on macos-tethered-timeline-and-viewers: fe6e347 adds reversible narrower Timeline/Inspector/Media Pool containers and compact Page Navigation. Follow-up addresses custom parented Mixer/Timeline menus, pre-display population, detached Single Viewer command discovery, hidden empty Source detachment, Cinema recovery suspension, inline toolbar controls and collapsed tools placeholders. Geometry logging and Show-event scans coalesce during interaction. See macos-next-pass-status.md for exact fixture evidence and remaining live checks. Independent full-panel scaling remains unimplemented; intermittent preview/order misses remain open rather than being dismissed after a passing rerun.
 
 Custom workspace follow-up: native Workspace > Custom Workspace Presets and controls share the same CRUD owner and stable IDs. Inline grip ordering persists to Arrangements.json and updates both entry points. The separate permanent Restore Native Workspace command survives deleting all presets. New hidden menu tests cover synchronization, lifecycle and persistence; displayed tests cover actual recovery plus twenty viewer-command and door cycles retaining the exact outer group frame. Fresh-process native menu appearance and viewer rendering remain live acceptance items.
+
+2026-10-18 scoped native follow-up: the combined candidate now supports the first
+split/tab drop at a supported native panel's original position, preserving the
+other native panels and page layout. Anchor identity, nested placement and hidden
+states persist. Fixtures cover save/reopen, independent anchor detachment,
+temporary maximize, tab return and native recovery. One-leaf rebuild preserves
+the retained native cell instead of deleting it. Native-panel-position ownership
+is separate from a session's disposable placeholder. One scoped native position
+is supported at a time; multiple independently anchored native surfaces remain open.
+
+The isolated Inspector transfer fix avoids the temporary top-level window created
+by QScrollArea::takeWidget during release. Its native UI fixture asserts zero KVO
+recreation warnings while retaining warning output. At `68b7f5f`, all 15 functional
+suites passed; responsiveness failed for approach (17.466 ms p95), commit
+(27.865 ms) and viewer commands (19.633 ms), against the unchanged 16.667 ms budget.
+The integration source/tests match that verified commit; feature provenance and
+documentation are updated separately. These passes do not close actual Resolve,
+GPU/playback, Single/Cinema Viewer, independent scaling or custom-color storage
+acceptance. Nothing in this follow-up is installed or merged to master.

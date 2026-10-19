@@ -4,7 +4,7 @@
   "features": [
     {
       "branch": "experiment/macos-custom-clip-colors",
-      "commit": "8563a37ccf75a1402eb5e52eba3df65e44989a87",
+      "commit": "6cfc157252048dfdf0ad20e2bd26f190c1c4a310",
       "scope": "research",
       "acceptance": "pending"
     },
@@ -95,6 +95,24 @@
     {
       "branch": "feature/macos-viewer-commands",
       "commit": "7817e4f022dcb99bcad5983cb138a6bf80cd3406",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-native-arrangement-surfaces",
+      "commit": "f9f4129400e8bc046e7a3f74358f61345a01c138",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-native-panel-positions",
+      "commit": "f9308711ad9e779107bfc1b87c39b006a3ec39d7",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-inspector-native-transfers",
+      "commit": "68b7f5f41fe6e3c4a5c95254b9fc6f35f3a50947",
       "scope": "implementation",
       "acceptance": "pending"
     }
