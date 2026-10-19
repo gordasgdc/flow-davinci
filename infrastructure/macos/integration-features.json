@@ -199,6 +199,12 @@
       "commit": "06d6fc7eca92ac1f4e9b5425e4f0d2b102ce695b",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "diagnose/macos-drag-geometry",
+      "commit": "b0832338d73c985b909f6f858f09206d6bac7236",
+      "scope": "diagnostics",
+      "acceptance": "pending"
     }
   ]
 }
