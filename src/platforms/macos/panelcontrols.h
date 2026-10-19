@@ -45,6 +45,7 @@
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
 #include "editpagelifecycle.h"
+#include "workspaceheaders.h"
 
 class PanelControls : public QWidget
 {
@@ -365,6 +366,43 @@ public:
             }
         };
         workspaceMenu->wire();
+        headers=new Unbound::WorkspaceHeaders(this);
+        for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
+            [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
+            [this,i] { return !panels[i].session->hiddenByUser(); },
+            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggle(i);save(); }});
+        headers->add({"page-navigation","Page Navigation",[this] { return footer->floatingWindow(); },
+            [this] { return !footer->snapshot()["hidden"].toBool(); },
+            [this](bool visible) { if (!quitting) status->setText(visible ? footer->showPanel() : footer->hidePanel()); }});
+        headers->projectSurface=[this] { return Unbound::panelSurface(page(),"unboundWorkspaceToolbar"); };
+        headers->primary=[this]() -> QWidget * {
+            if (panels[1].session->active() && panels[1].session->window()->window()->isVisible()) return panels[1].session->window()->window();
+            QWidget *best=nullptr;for (const auto &panel:panels) if (panel.session->active()) {
+                auto host=panel.session->window()->window();if (host->isVisible() && (!best || host->width()*host->height()>best->width()*best->height())) best=host;
+            }
+            return best;
+        };
+        headers->allPanels=[panelCallers]() -> QMenu * {
+            for (auto widget:QApplication::allWidgets()) if (auto menu=qobject_cast<QMenu *>(widget)) if (menu->objectName()=="unboundWorkspaceUI")
+                return panelCallers->wire(menu)->findChild<QMenu *>("openGatePanelPage_edit",Qt::FindDirectChildrenOnly);
+            return nullptr;
+        };
+        headers->windows=[this] {
+            QList<Unbound::WorkspaceHeaders::Window> result;
+            for (auto group:groups) if (group->active()) {
+                QPointer<Unbound::PanelGroup> alive=group;const auto names=group->snapshot()["panels"].toArray();
+                QString label;for (const auto &panel:panels) if (!names.isEmpty() && panel.name==names.first().toString()) label=panel.label;
+                if (names.size()>1) label+=QString(" +%1 panels").arg(names.size()-1);
+                result.append({label,[alive] { return alive && alive->window() && alive->window()->isVisible(); },[this,alive](bool visible) {
+                    if (quitting || !alive) return;alive->setWindowHidden(!visible);
+                    if (visible && !alive->window()->isVisible()) for (int i=0;i<panels.size();++i) if (alive->contains(panels[i].session)) { showPanel(i,true);break; }save();
+                }});
+            }
+            for (int i=0;i<panels.size();++i) if (panels[i].session->active() && !panels[i].session->grouped())
+                result.append({panels[i].label,[this,i] { return !panels[i].session->hiddenByUser(); },[this,i](bool visible) { if (!quitting) { showPanel(i,visible);save(); } }});
+            return result;
+        };
+        headers->schedule();
         managerView->addFooter();
         connect(managerView->floatFooter,&QPushButton::clicked,this,[this] { status->setText(footer->floatPanel()); });
         connect(managerView->dockFooter,&QPushButton::clicked,this,[this] { footer->dock(); });
@@ -458,6 +496,7 @@ private:
     }
     void showPanel(int i,bool visible)
     {
+        if (visible) if (auto group=groupFor(i)) if (group->windowHidden()) group->setWindowHidden(false);
         if (!panels[i].session->active()) {
             bool handled=Unbound::setNativePanelVisibility(Unbound::resolveMainWindow(),panels[i].toggle,visible);
             auto target=Unbound::panelSurface(page(),panels[i].name);
@@ -913,6 +952,7 @@ private:
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
         Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success}});
         updatePresetState();
+        if (headers) headers->schedule();
     }
     void updateNativeSizing()
     {
@@ -935,6 +975,7 @@ private:
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
     Unbound::EditPageLifecycle *pageLifecycle=nullptr;
+    Unbound::WorkspaceHeaders *headers=nullptr;
     Unbound::PanelManagerView *managerView=nullptr;
     Unbound::ControlScroll *optionsScroll = nullptr;
     QLabel *status = nullptr;

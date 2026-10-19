@@ -11,6 +11,7 @@ class QObject;
 namespace Unbound {
 void applyNativeChrome(QWidget *widget, bool compact);
 bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> &changed);
+bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()> &opened);
 int nativeChromeFlags(QWidget *widget);
 void orderNativeWindows(const QList<QWidget *> &bottomToTop);
 qint64 nativeKeyWindowNumber();
@@ -29,6 +30,8 @@ void setNativeExpansionPriority(QWidget *widget, bool expanded);
 int nativeVisibilityFlags(QWidget *widget);
 bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bool hidden);
 #ifdef UNBOUND_NATIVE_TESTS
+QRect nativeHeaderMenuFrameForTest(QWidget *widget);
+void clickNativeHeaderMenuForTest(QWidget *widget);
 void postNativeCommandRequestForTest();
 qint64 nativeFrontmostProcessForTest();
 qint64 nativeWindowLevelForTest(QWidget *widget);

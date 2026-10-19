@@ -30,6 +30,12 @@ public:
     ~PanelGroup() override { changed = {}; dissolve(); }
     bool active() const { return host; }
     QWidget *window() const { return host; }
+    bool windowHidden() const { return host && host->property("unboundGroupDoorHidden").toBool(); }
+    void setWindowHidden(bool hidden) {
+        if (!host) return;host->setProperty("unboundGroupDoorHidden",hidden);refresh();
+        if (!hidden) { host->raise();host->activateWindow(); }
+        report("group.window.visibility");
+    }
     bool contains(MacPanelSession *session) const { return host && members.contains(session); }
     void setChrome(WindowChrome value) { if (host) host->setChrome(value); }
     void setSnapping(bool value) { if (host) host->setSnapping(value); }
@@ -151,6 +157,7 @@ public:
         if (!host) return {};
         auto value = WorkspaceSettings::rectangle(host->geometry()); const auto tree = treeSnapshot(root);
         value["pinned"] = host->pinned();
+        value["hidden"] = windowHidden();
         value["tree"] = tree; value["panels"] = QJsonArray::fromStringList(names());
         value["orientation"] = tree["orientation"]; value["sizes"] = tree["sizes"]; return value;
     }
@@ -169,6 +176,7 @@ public:
         auto current = names(); current.sort(); expected.sort(); if (current != expected) return false;
         const auto position = WorkspaceSettings::rectangle(value); if (position.isValid()) host->setGeometry(position);
         host->setPinned(value["pinned"].toBool());
+        host->setProperty("unboundGroupDoorHidden",value["hidden"].toBool());
         rebuild(tree); refresh(); keepOnDisplay(host); return true;
     }
     bool selected(MacPanelSession *member) const
@@ -300,6 +308,7 @@ private:
         row->addWidget(hide); row->addWidget(detach);
         auto content = new QWidget(wrapper); content->setObjectName(QStringLiteral("unboundGroupCell_") + name); content->setWindowTitle(title);
         layout->addWidget(bar); layout->addWidget(content, 1);
+        if (name=="unboundWorkspaceToolbar") bar->hide();
         const bool clips = setNativeGroupSurfaceClipping(content);
         logEvent("panel.boundary.native-clip",{{"panel",name},{"enabled",clips}});
         // Keep old hosts until the destination is ready. Hiding the active host
@@ -420,7 +429,7 @@ private:
         hiddenCallers->setHidden(hiddenEntries);
         bool visible = false;
         for (auto member : members) { if (!member || !member->active()) { dissolve(); return; } visible |= !member->hiddenByUser(); }
-        visible &= page && page->isVisible();
+        visible &= page && page->isVisible() && !windowHidden();
         if (host->isVisible() != visible) {
             UiWorkTiming timing("group.host.visibility",host);
             host->setAttribute(Qt::WA_ShowWithoutActivating); host->setVisible(visible);

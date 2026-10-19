@@ -74,6 +74,7 @@ private:
             auto group = saved.toObject(); const auto tree = Unbound::PanelGroup::savedTree(group);
             QStringList names; Unbound::groupTreeNames(tree, names);
             group["pinned"] = group.value("pinned").toBool();
+            group["hidden"] = group.value("hidden").toBool();
             group["tree"] = tree; group["panels"] = QJsonArray::fromStringList(names);
             group.remove("orientation"); group.remove("sizes"); layouts.append(group);
         }

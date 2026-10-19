@@ -24,6 +24,7 @@ public:
     std::function<void()> changed;
     std::function<QWidget *()> attachmentOwner;
     std::function<void()> revealAttachmentOwner;
+    QWidget *floatingWindow() const { return session.active() && session.window() ? session.window()->window() : nullptr; }
     bool releaseAttachment() { return accessory.release(); }
     void syncAttachment()
     {

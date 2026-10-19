@@ -10,6 +10,16 @@
 #include <QTimer>
 #include <QVariant>
 #include "nativechrome.h"
+@interface OpenGateHeaderControl : NSButton {
+    std::function<void()> callback;
+}
+- (void)setOpenCallback:(std::function<void()>)value;
+- (void)openPanels:(id)sender;
+@end
+@implementation OpenGateHeaderControl
+- (void)setOpenCallback:(std::function<void()>)value { callback=std::move(value); }
+- (void)openPanels:(id)sender { (void)sender; if (callback) callback(); }
+@end
 @interface UnboundPinLight : NSButton {
     std::function<void(bool)> callback;
 }
@@ -64,7 +74,7 @@ double nativeCurrentDragAgeMilliseconds()
     if (!event || event.type != NSEventTypeLeftMouseDragged) return -1;
     return nativeInputAgeMilliseconds(quint64(event.timestamp * 1000.0));
 }
-static char pinKey, titleKey, expansionLevelKey;
+static char pinKey, titleKey, expansionLevelKey, headerMenuKey;
 class PointerReleaseWatch : public QObject
 {
 public:
@@ -215,7 +225,9 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
     if (!compact) {
         if (window.titleVisibility != NSWindowTitleHidden) window.titleVisibility = NSWindowTitleHidden;
         const CGFloat left = NSMaxX(frame) + 12;
-        const auto titleFrame = NSMakeRect(left, NSMidY(frame)-9, MAX(0, NSWidth(green.superview.bounds)-left-12), 18);
+        auto header=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
+        const CGFloat right=header && !header.hidden ? NSMinX(header.frame)-8 : NSWidth(green.superview.bounds)-12;
+        const auto titleFrame = NSMakeRect(left, NSMidY(frame)-9, MAX(0, right-left), 18);
         if (!NSEqualRects(title.frame,titleFrame)) title.frame = titleFrame;
         NSString *text = window.title ?: @"";
         if (![title.stringValue isEqualToString:text]) title.stringValue = text;
@@ -224,12 +236,47 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
     if (stateChanged) [button setNeedsDisplay:YES];
     return true;
 }
+bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()> &opened)
+{
+    if (!widget || !widget->testAttribute(Qt::WA_WState_Created)) return false;
+    NSWindow *window=reinterpret_cast<NSView *>(widget->winId()).window;
+    if (!window) return false;
+    auto button=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
+    NSButton *green=[window standardWindowButton:NSWindowZoomButton];
+    if (!enabled || !green || !green.superview || green.hidden || (window.styleMask & NSWindowStyleMaskFullSizeContentView)) {
+        if (button) { button.hidden=YES; [button setOpenCallback:{}]; } return false;
+    }
+    if (!button) {
+        button=[[OpenGateHeaderControl alloc] initWithFrame:NSZeroRect];button.title=@"Panels ▾";
+        button.bezelStyle=NSBezelStyleRounded;button.font=[NSFont systemFontOfSize:11];
+        button.target=button;button.action=@selector(openPanels:);button.toolTip=@"Panel doors and floating windows";
+        [button setAccessibilityLabel:@"OpenGate Panels"];
+        objc_setAssociatedObject(window,&headerMenuKey,button,OBJC_ASSOCIATION_RETAIN_NONATOMIC);[button release];
+    }
+    if (button.superview!=green.superview) { [button removeFromSuperview];[green.superview addSubview:button]; }
+    button.frame=NSMakeRect(MAX(NSMaxX(green.frame)+48,NSWidth(green.superview.bounds)-80),NSMidY(green.frame)-9,70,18);
+    button.hidden=NO;[button setOpenCallback:opened];
+    auto title=(NSTextField *)objc_getAssociatedObject(window,&titleKey);
+    if (title && !title.hidden) { auto frame=title.frame;frame.size.width=MAX(0,NSMinX(button.frame)-8-frame.origin.x);title.frame=frame; }
+    return true;
+}
 #ifdef UNBOUND_NATIVE_TESTS
 QString nativeTitleTextForTest(QWidget *widget)
 {
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
     auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
     return title ? QString::fromUtf8(title.stringValue.UTF8String) : QString();
+}
+QRect nativeHeaderMenuFrameForTest(QWidget *widget) {
+    NSWindow *window=reinterpret_cast<NSView *>(widget->winId()).window;
+    auto button=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
+    if (!button || button.hidden) return {};
+    auto frame=button.frame;return QRect(frame.origin.x,frame.origin.y,frame.size.width,frame.size.height);
+}
+void clickNativeHeaderMenuForTest(QWidget *widget) {
+    NSWindow *window=reinterpret_cast<NSView *>(widget->winId()).window;
+    auto button=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
+    if (button) [button performClick:nil];
 }
 QRect nativeTitleFrameForTest(QWidget *widget)
 {

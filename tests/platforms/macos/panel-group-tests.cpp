@@ -600,6 +600,12 @@ int main(int argc, char **argv)
             check(column->sizes() == openColumn && outerSplit->sizes() == openOuter,
                 "nested door cycling preserves user-dragged dividers and neighboring column widths");
         } else check(false, "reported layout exposes its vertical column splitter");
+        const bool inspectorDoor=i.hiddenByUser(),mediaDoor=m.hiddenByUser(),sourceDoor=s.hiddenByUser();
+        group.setWindowHidden(true);settle();
+        check(!group.window()->isVisible() && group.snapshot()["hidden"].toBool(),"whole-group door hides its window and persists separately");
+        group.setWindowHidden(false);settle();
+        check(group.window()->isVisible() && i.hiddenByUser()==inspectorDoor && m.hiddenByUser()==mediaDoor && s.hiddenByUser()==sourceDoor,
+            "whole-group door preserves every internal panel door");
         auto beforeHide = group.snapshot(); i.setHiddenByUser(true); group.syncVisibility(); settle();
         check(!i.window()->parentWidget()->isVisible() && m.window()->isVisible(), "split door collapses the wrapper rather than leaving empty content space");
         i.setHiddenByUser(false); group.syncVisibility(&i); settle();
