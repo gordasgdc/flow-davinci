@@ -110,8 +110,14 @@ int main(int argc, char **argv)
         QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
         Unbound::activateNativeWindowForTest(&main); settle();
         const auto key = Unbound::nativeKeyWindowNumber();
-        Unbound::GroupHostReserve reserve(&main); reserve.request(&main); settle(300);
+        Unbound::GroupHostReserve reserve(&main); reserve.request(&main);
+        QElapsedTimer readiness; readiness.start();
+        while (!main.findChild<QWidget *>("unboundPreparedGroupHost") && readiness.elapsed()<1500) settle(10);
         QPointer<QWidget> prepared = main.findChild<QWidget *>("unboundPreparedGroupHost");
+        if (!prepared) std::fprintf(stderr,"Reserve readiness timed out: buttons=%d grabber=%s popup=%s modal=%s\n",int(QApplication::mouseButtons()),
+            qPrintable(QWidget::mouseGrabber() ? QWidget::mouseGrabber()->objectName() : QString()),
+            qPrintable(QApplication::activePopupWidget() ? QApplication::activePopupWidget()->objectName() : QString()),
+            qPrintable(QApplication::activeModalWidget() ? QApplication::activeModalWidget()->objectName() : QString()));
         check(prepared && !prepared->isVisible() && !(Unbound::nativeVisibilityFlags(prepared) & 1),
             "preparing an empty group never exposes another native window");
         check(Unbound::nativeKeyWindowNumber() == key,
