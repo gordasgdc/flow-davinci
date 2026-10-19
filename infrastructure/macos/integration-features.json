@@ -265,6 +265,18 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "966d8a6a79d375c21ca9c279da0cbb5876a54b89"
+    },
+    {
+      "branch": "fix/macos-shortcut-editor-recovery",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "db5bde913fe768f8bc43cc2204f2a55e4aeb9862"
+    },
+    {
+      "branch": "fix/macos-attached-toolbar-reveal",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "33290ef212e86cabbe3ede8075aba6c101cd39ca"
     }
   ]
 }
