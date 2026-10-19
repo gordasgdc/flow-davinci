@@ -166,7 +166,7 @@
     },
     {
       "branch": "test/macos-footer-reopen",
-      "commit": "8f0dc6898cd6bb481aae85c3f2abb995ffd6501b",
+      "commit": "dc1dc527ed4f8961c3df2489bb7adc6dabcc39af",
       "scope": "verification",
       "acceptance": "pending"
     },

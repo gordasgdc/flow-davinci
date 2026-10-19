@@ -212,3 +212,21 @@ Active checkouts are now `Developer/OpenGate` and sibling `Developer/OpenGate-fe
 `refactor/macos-panel-control-modules` extracts command catalog/editor lifetime, native toggle observation, workspace serialization and expansion transactions. Manager size changes from 1,039 to 952 lines; UI construction, grouping and restore orchestration remain there. See `macos-control-modules.md` for boundaries. Hidden tests passed native signal blocking/rebinding, separate command dispatch, shutdown context, snapshot preservation and expansion cancellation. Group/reopen suites compile; displayed execution is pending while Resolve runs.
 
 `fix/macos-expansion-readiness-rollback` restores original panel/native presentation when a requested expansion surface is unavailable, with `panel.expand.failed` diagnostics and a hidden rollback regression check. `test/macos-footer-reopen` extends fresh-process restoration coverage to hidden/pinned Page Navigation and native-menu retrieval. Compilation does not establish live restart acceptance. Footer attachment, adaptive toolbar layout and independent scaling remain open.
+
+### Displayed verification and installed-source comparison — 2026-10-19
+
+Full clean-source receipt: `build/macos/verification/b4277d05dd-20261019T061022Z/receipt.json`. Eighteen non-performance suites passed. The initial reopen fixture failed because it observed Media Pool's native placeholder rather than the transferred content. Correcting that observation on `test/macos-footer-reopen` retained the assertions and passed both processes, including hidden/pinned footer retrieval: `build/macos/reopen-fixture.zetYyQ`. This establishes fixture behavior, not actual Resolve restart/GPU acceptance.
+
+The unchanged responsiveness harness ran against installed source `00bef62` and candidate `b4277d0`, with all features and diagnostics enabled. Candidate functional assertions passed; its 16.667 ms p95 gate failed for dock commit. Baseline also had a one-pixel free-drag assertion failure and exceeded the gate for dock commit and doors. Single runs are not a causal speed claim.
+
+| Scenario p95, ms | Installed source | Candidate |
+| --- | ---: | ---: |
+| Free drag | 0.649 | 2.208 |
+| Dock approach | 13.208 | 15.616 |
+| Dock commit | 26.287 | 26.276 |
+| Divider | 9.333 | 7.768 |
+| Door | 17.056 | 14.106 |
+| Viewer command | 15.186 | 13.518 |
+| Button | 0.853 | 0.984 |
+
+Baseline report: `build/macos/verification/installed-00bef62-responsiveness.json`; candidate report is retained with the full receipt. Dock commit remains dominated by deferred group transfer/exposure; approach spends time in mouse-move destination resolution. The separate, unintegrated `experiment/macos-destination-id-query` replaces metadata enumeration with a current ID-only candidate query. It compiles; correctness/occlusion/timing execution remains pending. No cached stack, relaxed thresholds or removed diagnostics are used. Installed helper remains `00bef62`; Resolve may stay open for source/hidden work.
