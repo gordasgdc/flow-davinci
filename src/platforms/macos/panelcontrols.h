@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "productidentity.h"
 #include <QApplication>
 #include <QAction>
 #include <QAbstractButton>
@@ -55,7 +56,7 @@ public:
     PanelControls() : QWidget(nullptr, Qt::Window)
     {
         setObjectName(QStringLiteral("unboundPanelTest"));
-        setWindowTitle(QStringLiteral("Unbound Panel Manager"));
+        setWindowTitle(QStringLiteral("OpenGate Panel Manager"));
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
         auto layout = new QVBoxLayout(this);
@@ -367,6 +368,8 @@ public:
         connect(floatFooter, &QPushButton::clicked, this, [this] { status->setText(footer->floatPanel()); });
         connect(dockFooter, &QPushButton::clicked, this, [this] { footer->dock(); });
         bodyLayout->addLayout(footerRow);
+        auto credit=new QLabel(Unbound::productCredit(),body); credit->setWordWrap(true);
+        credit->setObjectName("openGateFoundationCredit"); bodyLayout->addWidget(credit);
         bodyLayout->addStretch();
         setMinimumSize(280, 200);
         saveTimer.setSingleShot(true); saveTimer.setInterval(250);

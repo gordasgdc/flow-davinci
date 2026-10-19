@@ -1,4 +1,8 @@
-# Unbound - Floating panels for DaVinci Resolve
+# OpenGate — by CineWaltz
+
+OpenGate is the CineWaltz macOS panel/workspace fork, built on **Unbound by Wolfgang Woehl**. Wolfgang created the foundation; his MIT copyright and license remain in [LICENSE](LICENSE). OpenGate is a separate project and should not be confused with the original Unbound. Historical Windows instructions and internal compatibility identifiers below retain the original name.
+
+See the explicit [OpenGate next-pass acceptance list](doc/platforms/opengate-next-pass.md), including **restoring the last view when Resolve reopens**.
 
 ## Current integration work — October 18, 2026
 

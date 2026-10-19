@@ -30,7 +30,7 @@ static StatusCode handleMessage(MessageID message, ...)
         static const uint8_t uuid[] = {0x34,0x9e,0xb2,0xa0,0x68,0x29,0x4f,0x45,0xaf,0x6d,0xba,0xf9,0x93,0x7e,0x11,0x2c};
         StatusCode status = hostAPI.pHandleMessage(msgPropSet, properties, pIOPropUUID, propTypeUInt8, uuid, 16);
         if (status != errNone) return status;
-        const char *name = "Unbound experimental panel helper";
+        const char *name = "OpenGate by CineWaltz — experimental panel helper";
         return hostAPI.pHandleMessage(msgPropSet, properties, pIOPropName, propTypeString, name, int(std::strlen(name)));
     }
     default:

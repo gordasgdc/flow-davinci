@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "productidentity.h"
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -20,7 +21,8 @@ inline void logEvent(const QString &event, QJsonObject details = {})
 {
     const QString directory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
         QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
-    details.insert(QStringLiteral("component"), QStringLiteral("Unbound"));
+    details.insert(QStringLiteral("component"), productName());
+    details.insert(QStringLiteral("vendor"), productVendor());
     details.insert(QStringLiteral("module"), QStringLiteral("UnboundWidgetProbe.dylib"));
     details.insert(QStringLiteral("event"), event);
     details.insert(QStringLiteral("time"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));

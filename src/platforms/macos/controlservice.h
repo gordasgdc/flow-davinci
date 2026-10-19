@@ -43,7 +43,7 @@ public:
         }
         QSaveFile marker(markerPath);
         if (marker.open(QIODevice::WriteOnly)) {
-            marker.write(QJsonDocument(QJsonObject{{"component", "Unbound"}, {"build", UNBOUND_BUILD_ID},
+            marker.write(QJsonDocument(QJsonObject{{"component", "OpenGate"}, {"build", UNBOUND_BUILD_ID},
                 {"pid", QCoreApplication::applicationPid()},
                 {"started", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}}).toJson());
             marker.commit();

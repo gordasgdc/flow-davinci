@@ -8,6 +8,7 @@ func record(_ event: String, details: [String: Any] = [:]) {
     do {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var row = details
+        row["component"] = "OpenGate"; row["vendor"] = "CineWaltz"
         row["event"] = event
         row["time"] = ISO8601DateFormatter().string(from: Date())
         row["pid"] = ProcessInfo.processInfo.processIdentifier
@@ -17,7 +18,7 @@ func record(_ event: String, details: [String: Any] = [:]) {
         defer { try? file.close() }
         try file.seekToEnd()
         try file.write(contentsOf: JSONSerialization.data(withJSONObject: row) + Data([10]))
-    } catch { NSLog("Unbound logging: %@", error.localizedDescription) }
+    } catch { NSLog("OpenGate logging: %@", error.localizedDescription) }
 }
 
 @discardableResult func requestControls() throws -> String {
@@ -44,13 +45,14 @@ final class Launcher: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         record("app.launch")
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 180),
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 240),
                           styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "Unbound"
+        window.title = "OpenGate"
         window.isReleasedWhenClosed = false
         let show = NSButton(title: "Show Panel Controls", target: self, action: #selector(showControls))
         let logs = NSButton(title: "Open Diagnostic Logs", target: self, action: #selector(openLogs))
-        let stack = NSStackView(views: [status, show, logs])
+        let credit = NSTextField(wrappingLabelWithString: "OpenGate by CineWaltz. Built on Unbound by Wolfgang Woehl (MIT).")
+        let stack = NSStackView(views: [status, show, logs, credit])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 16

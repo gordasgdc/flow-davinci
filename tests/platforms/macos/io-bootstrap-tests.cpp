@@ -21,7 +21,8 @@ static StatusCode hostMessage(MessageID message, ...)
     va_end(args);
     if (!object || !value) return errInvalidParam;
     if ((!std::strcmp(key, pIOPropUUID) && type == propTypeUInt8 && count == 16) ||
-        (!std::strcmp(key, pIOPropName) && type == propTypeString && count > 0)) ++properties;
+        (!std::strcmp(key, pIOPropName) && type == propTypeString && count > 0 &&
+         !std::strncmp(static_cast<const char *>(value), "OpenGate by CineWaltz", 20))) ++properties;
     else return errInvalidParam;
     return errNone;
 }
