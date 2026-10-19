@@ -202,7 +202,7 @@
     },
     {
       "branch": "diagnose/macos-drag-geometry",
-      "commit": "b0832338d73c985b909f6f858f09206d6bac7236",
+      "commit": "4e2c5dc2ab1a61211ccbeca408c18aaf183ff9ae",
       "scope": "diagnostics",
       "acceptance": "pending"
     }
