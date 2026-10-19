@@ -22,7 +22,7 @@ public:
     QMenu *wire(QMenu *root) {
         auto menu=root->findChild<QMenu *>("openGateShowPanel",Qt::FindDirectChildrenOnly);
         if (!menu) {
-            menu=new QMenu("Show Panel",root); menu->setObjectName("openGateShowPanel"); menu->setProperty("unboundOwnMenu",true);
+            menu=new QMenu("Show Panel in Workspace",root); menu->setObjectName("openGateShowPanel"); menu->setProperty("unboundOwnMenu",true);
             root->addMenu(menu);
         }
         for (int i=0;i<panels.size();++i) {

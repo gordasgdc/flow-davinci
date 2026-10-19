@@ -1,7 +1,7 @@
 # OpenGate UI menu pass
 
 Rename the top-level Workspace UI menu to OpenGate UI, preserving its internal
-identity and saved workspace data. Add Show Panel → Edit, listing all registered
+identity and saved workspace data. Add Show Panel in Workspace → Edit, listing all registered
 Edit panels including Source Monitor, Program Monitor, Timeline, both toolbars,
 Mixer and Page Navigation. Callers reveal existing groups/tabs without hiding an
 already visible panel; an unmanaged panel uses the existing detachment route.
