@@ -247,6 +247,24 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "c588968b6cc838b495aea5110d70391bdd345e80"
+    },
+    {
+      "branch": "fix/macos-native-shortcut-authority",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "d684fa4c35ba13e415ed2d01a52ff28e0307cd4e"
+    },
+    {
+      "branch": "fix/macos-edit-target-discovery",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "061a454b4fc9733e2462c1e7ac3e2fc48ecd4db8"
+    },
+    {
+      "branch": "fix/macos-workflow-menu-presentation",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "966d8a6a79d375c21ca9c279da0cbb5876a54b89"
     }
   ]
 }

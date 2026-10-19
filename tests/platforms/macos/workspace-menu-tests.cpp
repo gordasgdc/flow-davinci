@@ -139,7 +139,8 @@ int main(int argc, char **argv)
         int shortcutsCalls=0;
         menus.showPanelShortcuts=[&] { ++shortcutsCalls; }; menus.wire(); menus.wire();
         auto panelShortcuts=root->findChild<QAction *>("unboundPanelShortcuts");
-        check(panelShortcuts && panelShortcuts->isEnabled(),"Unbound shortcut settings are discoverable beside native keyboard customization");
+        check(panelShortcuts && panelShortcuts->isEnabled() && panelShortcuts->text()==QString::fromUtf8("OpenGate Panel Shortcuts…"),"single shortcut entry retains its familiar label");
+        check(!root->findChild<QAction *>("unboundKeyboardCustomization") && !root->findChild<QMenu *>("openGateNativeCommands"),"no duplicate keyboard entry or Commands submenu");
         if (panelShortcuts) panelShortcuts->trigger(); QApplication::processEvents();
         check(shortcutsCalls==1,"shortcut editor menu dispatches once after repeated synchronization");
 

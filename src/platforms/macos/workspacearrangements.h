@@ -118,8 +118,7 @@ private:
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
         auto about=action(root,"openGateAbout","About OpenGate…","About");
-        auto keyboard = action(root,"unboundKeyboardCustomization",QString::fromUtf8("Keyboard Customization…"),"Keyboard");
-        auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8("OpenGate Commands in Keyboard Customization…"),"PanelShortcuts");
+        auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8("OpenGate Panel Shortcuts…"),"PanelShortcuts");
         shortcuts->setEnabled(bool(showPanelShortcuts));
         shortcuts->setToolTip("Open Resolve’s native Keyboard Customization, filtered to OpenGate commands; native presets and assignments are authoritative");
         auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("OpenGate Panel Manager…"),"PanelManager");
@@ -186,7 +185,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(keyboard); topOrder.append(about);
+        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(shortcuts); topOrder.append(about);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))
