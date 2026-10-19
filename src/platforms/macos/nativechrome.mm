@@ -8,6 +8,8 @@
 #include <QPointer>
 #include <QTimer>
 #include <QVariant>
+#include <QSet>
+#include <cstdint>
 #include "nativechrome.h"
 @interface UnboundPinLight : NSButton {
     std::function<void(bool)> callback;
@@ -324,6 +326,22 @@ qint64 nativeWindowNumber(QWidget *widget)
 {
     NSView *view = reinterpret_cast<NSView *>(widget->winId());
     return view.window ? view.window.windowNumber : 0;
+}
+QList<qint64> nativeOrderedWindowCandidates(const QList<qint64> &candidates)
+{
+    if (candidates.isEmpty()) return {};
+    const QSet<qint64> wanted(candidates.begin(),candidates.end());
+    QList<qint64> result;
+    // CGWindowListCreate contains raw CGWindowID values, not CFNumber objects.
+    // Query the current stack each time; never cache occlusion during a drag.
+    const auto ids=CGWindowListCreate(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,kCGNullWindowID);
+    if (!ids) return result;
+    for (CFIndex i=0;i<CFArrayGetCount(ids);++i) {
+        const auto number=qint64(reinterpret_cast<std::uintptr_t>(CFArrayGetValueAtIndex(ids,i)));
+        if (wanted.contains(number)) result.append(number);
+    }
+    CFRelease(ids);
+    return result;
 }
 QList<qint64> nativeOrderedWindowNumbers()
 {

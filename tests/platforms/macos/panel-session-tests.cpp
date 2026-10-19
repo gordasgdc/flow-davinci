@@ -497,6 +497,12 @@ int main(int argc, char **argv)
             if (!presented) { settle(); QThread::msleep(2); }
         } while (!presented && presentation.elapsed() < 500);
         check(presented, "native drag fixture windows reach the on-screen stack before pointer input");
+        const QList<qint64> candidates{Unbound::nativeWindowNumber(targetProgram),Unbound::nativeWindowNumber(draggedSource)};
+        QList<qint64> reference;
+        for (auto number:Unbound::nativeOrderedWindowNumbers()) if (candidates.contains(number)) reference.append(number);
+        check(Unbound::nativeOrderedWindowCandidates(candidates)==reference && reference.size()==2,
+            "ID-only query preserves the current native candidate stacking order");
+        check(Unbound::nativeOrderedWindowCandidates({}).isEmpty(),"empty candidate lookup needs no window stack");
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;

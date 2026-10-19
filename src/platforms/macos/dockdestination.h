@@ -21,7 +21,7 @@ inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, c
     // still use the current native stack, including non-dockable occluders.
     if (!possible) return {};
     for (auto candidate : underPointer) windows.insert(nativeWindowNumber(candidate),candidate);
-    for (auto number : nativeOrderedWindowNumbers()) {
+    for (auto number : nativeOrderedWindowCandidates(windows.keys())) {
         auto hit = windows.value(number);
         if (!hit || !hit->frameGeometry().contains(pointer)) continue;
         if (hit->objectName().startsWith("unboundFloating_") || !nativeDockSurfaces(hit).isEmpty()) destination = hit;
