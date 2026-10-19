@@ -497,6 +497,19 @@ int main(int argc, char **argv)
             if (!presented) { settle(); QThread::msleep(2); }
         } while (!presented && presentation.elapsed() < 500);
         check(presented, "native drag fixture windows reach the on-screen stack before pointer input");
+        const QList<qint64> candidates{Unbound::nativeWindowNumber(targetProgram),Unbound::nativeWindowNumber(draggedSource)};
+        qint64 expectedFront=0;
+        for (auto number : Unbound::nativeOrderedWindowNumbers()) if (candidates.contains(number)) { expectedFront=number; break; }
+        check(expectedFront && Unbound::nativeFrontmostWindowNumber(candidates)==expectedFront,
+            "ID-only destination lookup preserves actual on-screen ordering");
+        Unbound::DockOrderCache orderCache;
+        check(orderCache.front(candidates)==expectedFront,"drag snapshot starts with fresh native order");
+        Unbound::orderNativeWindows({targetProgram,draggedSource});
+        check(orderCache.front(candidates)==Unbound::nativeFrontmostWindowNumber(candidates),
+            "native ordering changes invalidate a drag snapshot with unchanged candidates");
+        orderCache.event(QEvent::ZOrderChange);
+        check(orderCache.front(candidates)==Unbound::nativeFrontmostWindowNumber(candidates),
+            "Qt ordering changes refresh the native drag snapshot");
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;

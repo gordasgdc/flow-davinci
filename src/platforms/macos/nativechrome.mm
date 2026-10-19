@@ -8,6 +8,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QVariant>
+#include <QSet>
 #include "nativechrome.h"
 @interface UnboundPinLight : NSButton {
     std::function<void(bool)> callback;
@@ -33,6 +34,8 @@
 @end
 
 namespace Unbound {
+static quint64 windowOrderRevision=0;
+quint64 nativeWindowOrderRevision() { return windowOrderRevision; }
 double nativeInputAgeMilliseconds(quint64 timestamp)
 {
     if (!timestamp) return -1;
@@ -121,6 +124,7 @@ QObject *watchNativeWindowMove(QWidget *window, std::function<void()> begin,
 
 void setNativeExpansionPriority(QWidget *widget, bool expanded)
 {
+    ++windowOrderRevision;
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
     if (!window) return;
     auto prior = (NSNumber *)objc_getAssociatedObject(window, &expansionLevelKey);
@@ -160,6 +164,7 @@ void applyNativeChrome(QWidget *widget, bool compact)
 }
 bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> &changed)
 {
+    ++windowOrderRevision;
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
     NSButton *green = [window standardWindowButton:NSWindowZoomButton];
     NSButton *yellow = [window standardWindowButton:NSWindowMiniaturizeButton];
@@ -264,6 +269,7 @@ int nativeChromeFlags(QWidget *widget)
 }
 void orderNativeWindows(const QList<QWidget *> &bottomToTop)
 {
+    ++windowOrderRevision;
     NSWindow *anchor = NSApp.keyWindow;
     for (auto widget : bottomToTop) if (widget && nativeWindowNumber(widget) == anchor.windowNumber) anchor = nil;
     NSWindow *previous = nil;
@@ -304,6 +310,7 @@ int nativeVisibilityFlags(QWidget *widget)
 }
 bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bool hidden)
 {
+    ++windowOrderRevision;
     if (!main) return false;
     NSWindow *background = reinterpret_cast<NSView *>(main->winId()).window;
     if (hidden) {
@@ -336,5 +343,20 @@ QList<qint64> nativeOrderedWindowNumbers()
     }
     if (info) CFRelease(info);
     return result;
+}
+qint64 nativeFrontmostWindowNumber(const QList<qint64> &candidates)
+{
+    if (candidates.isEmpty()) return 0;
+    const QSet<qint64> wanted(candidates.begin(),candidates.end());
+    // Window IDs alone preserve the current WindowServer order. Do not request
+    // dictionaries/owner metadata for every system window on each drag frame.
+    CFArrayRef windows=CGWindowListCreate(kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,kCGNullWindowID);
+    if (!windows) return 0;
+    qint64 result=0;
+    for (CFIndex i=0;i<CFArrayGetCount(windows);++i) {
+        const auto number=qint64(reinterpret_cast<uintptr_t>(CFArrayGetValueAtIndex(windows,i)));
+        if (wanted.contains(number)) { result=number; break; }
+    }
+    CFRelease(windows); return result;
 }
 }
