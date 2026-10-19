@@ -1,18 +1,12 @@
-# macOS integration ledger — October 18, 2026
+# OpenGate macOS integration ledger
 
-Integration: `macos-panel-discovery-and-layout`. Preserved public baseline:
-`fbe835c` / `macos-responsive-group-transfers`. No changes to master or upstream.
-The new integration has NOT been installed. Resolve was closed for the native
-fixture runs recorded below. Actual Resolve acceptance remains separate.
+**OpenGate by CineWaltz**, built on **Unbound by Wolfgang Woehl (MIT)**.
 
-Latest combined candidate: 19 provenance entries, including scoped initial native
-drop positions and the separate Inspector transfer fix. Source and tests match
-`68b7f5f`; all 15 functional suites passed at that commit. Responsiveness remains
-FAIL, and all feature acceptance entries remain pending. Detailed evidence:
-`../unbound-features/native-arrangements/build/macos/verification/68b7f5f41f-20261019T034539Z/receipt.json`.
-See `macos-native-panel-positions.md`, `macos-inspector-native-transfers.md` and
-the newest workspace-checklist entry for current implementation and limits.
-Older draft-status paragraphs below describe earlier checkpoints.
+Integration: `macos-panel-discovery-and-layout`. Installed rollback: `00bef62`. Main/master and upstream remain unchanged. The explicit current [acceptance list](opengate-next-pass.md) includes **restoring the last modified view on reopening Resolve**, separate from named preset recall.
+
+The last displayed candidate `2650fb3` passed all 18 functional suites, including pinned-door cycling; responsiveness failed only the unchanged frame-budget assertions (dock commit 27.032 ms p95; viewer command 19.795 ms). Functional success does not establish smoothness or full live Resolve acceptance.
+
+Current source additionally includes OpenGate labels/attribution and the compiled two-process last-view restoration fixture. These additions are not installed. Displayed phases are pending while Resolve is open. Detailed older receipts and development history follow below.
 
 A feature tip in the build manifest means its source is included, not that its
 acceptance requirements are complete. Worktrees live beside the main repository
@@ -32,7 +26,7 @@ master until reviewed acceptance evidence justifies it. Each branch starts from
 | Nested doors | feature/macos-nested-panel-doors | Reveal every enclosing tab; close restores prior outer selection; covered-panel hiding leaves current view unchanged; transition logs | Live command/shortcut checks and larger nested-layout matrix |
 | Native-first startup | feature/macos-native-first-startup | Manager initializes hidden; fresh defaults retain native background; stale launch requests consumed; explicit/legacy preferences retained; no key-window change in fixture | Fresh Resolve acceptance; original-window split/tab rearrangement is still open |
 | Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders; transferred empty containers collapse; scoped native outer sizing/restoration | Native fixture/live verification of shrinking and restoration; drag/split/tab rearrangement inside native surface; native recovery and focus |
-| Commands | feature/macos-command-registration | Read-only native keyboard-dialog interface inventory; native Keyboard Customization launch from headers/Workspace UI | Command registry; assignable maximize/reveal for every panel; collision/typing behavior; native keyboard registration and persistence; viewer command regression matrix |
+| Commands | feature/macos-command-registration | OpenGate-owned persisted panel door/maximize bindings and editor; conflict, typing, page, repeat and menu fixtures pass | Native keyboard-editor registration; live command/group matrix |
 | Clip colors | experiment/macos-custom-clip-colors | Known native palette action inventory, type metadata only | Storage investigation on disposable project; bright Red, picker/name/edit/remove; saved color identity; native menu and shortcut commands; reopening/undo/redo |
 | Tracing/performance | feature/macos-interaction-tracing | Bounded pointer position/speed samples; receipt-to-next-turn records; existing action and latency logs retained | Runtime tests for new records; hook new command outcomes; repeated performance matrix with all features; actual playback/paint limitations documented |
 | Empty Source/viewers | feature/macos-viewer-commands | Offline Source stack discovery without a loaded player; regression fixture | Live empty/loaded Source tests; Single Viewer and Cinema command matrix; maximize restoration |
@@ -202,3 +196,7 @@ Red probe connects through the scripting API but a later read-only request stall
 Follow-up hidden verification: native workspace-menu regression passes with the Unbound shortcut editor callback and repeated wire calls. Native keymap changes now block only the colliding Unbound binding; unrelated commands keep working and removing the collision restores the stored binding. Native action inventory is collected once per validation rather than once per command. Timeline header tests cover a single-content horizontal layout and exact direction restoration. A live guarded Red request returned `not-run` because an existing project is open; no project switch/save/color write occurred. Displayed regressions remain pending with Resolve open.
 
 Hidden-only receipt `build/macos/verification/5e80cde9d3-hidden-20261019T051238Z/receipt.json` records all five reviewed hidden suites passing on clean, unchanged source: panel commands, Timeline control, stacking policy, workspace menu, build manifest. Red probe open-project guards also pass separately. `verify-integration.py --hidden-only` deliberately excludes displayed native/group/drag/responsiveness suites and labels its scope in the receipt. It can run while Resolve is open; default full verification still requires Resolve closed. Installed helper remains `00bef62`.
+
+## Current additions
+
+OpenGate by CineWaltz branding preserves Wolfgang foundation credit, MIT license, existing data paths and stable internal IDs. Last-view reopening has its own `feature/macos-reopen-workspace-contract` and two-process fixture; it is not conflated with named workspace recall. The footer/Page Navigation attachment contract is recorded explicitly: default Timeline-bottom attachment, travels until explicitly detached, independently callable, and persistent on reopen. This attachment behavior and adaptive toolbar/scaling work are not yet delivered.

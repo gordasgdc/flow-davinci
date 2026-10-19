@@ -29,7 +29,7 @@ output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
 tests = ['panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
-         'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
+         'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'workspace-reopen', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
 if args.hidden_only:
     tests=['panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
 receipt = {'matrix': 'hidden' if args.hidden_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),

@@ -139,6 +139,18 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "9b6fc9b769ab29147f977cec76c9eabafa885767"
+    },
+    {
+      "branch": "feature/macos-opengate-branding",
+      "commit": "cb85a223b84e31c64c10791fbc466e4a2ee6955d",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-reopen-workspace-contract",
+      "commit": "4d55e8cdb3364107cdf922c543cd713a46f5b195",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
