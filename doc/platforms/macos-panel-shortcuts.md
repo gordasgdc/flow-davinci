@@ -7,3 +7,5 @@ Panel callers reuse the existing queued door path for managed panels, preserving
 Read-only native tracing found UiActionManager, ActionDefinitions, scoped connectors and UiActionsEditorController. It did not establish a callable, persistent native registration interface. These bindings do **not** appear in Resolve's native keyboard editor.
 
 Hidden fixture passes independent Source/Program dispatch, persistence, rejection without overwriting existing assignments, native conflicts, typing, page scope, repeats and editor discovery. Combined native-window/group command acceptance remains pending.
+
+Page Navigation has its own global Show/Hide command. Individual Edit panel bindings yield outside Edit; the navigation command remains available on other Resolve pages and from the panel manager. Its menu and shortcut share the same visibility method.

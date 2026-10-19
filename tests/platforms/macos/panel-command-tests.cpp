@@ -10,11 +10,12 @@ int main(int argc,char **argv) {
     qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());
     int failures=0; auto check=[&](bool ok,const char *why) { if (!ok) { ++failures; std::fprintf(stderr,"FAIL: %s\n",why); } };
     QWidget main; main.setAttribute(Qt::WA_DontShowOnScreen); main.show(); QApplication::setActiveWindow(&main);
-    bool ready=true; int source=0,program=0;
+    bool ready=true,editVisible=true; int source=0,program=0,navigation=0;
     Unbound::PanelCommands commands(nullptr); commands.context=[&] { return ready; };
-    commands.add({"source","Show / Hide Source",[] { return true; },[&] { ++source; }});
-    commands.add({"program","Show / Hide Program",[] { return true; },[&] { ++program; }});
-    check(commands.save({{"source","F17"},{"program","F18"}}).isEmpty(),"save independent bindings");
+    commands.add({"source","Show / Hide Source",[&] { return editVisible; },[&] { ++source; }});
+    commands.add({"program","Show / Hide Program",[&] { return editVisible; },[&] { ++program; }});
+    commands.add({"navigation","Show / Hide Page Navigation",[] { return true; },[&] { ++navigation; }});
+    check(commands.save({{"source","F17"},{"program","F18"},{"navigation","F20"}}).isEmpty(),"save independent bindings");
     const auto send=[&](int key,bool repeat=false) {
         QKeyEvent over(QEvent::ShortcutOverride,key,Qt::NoModifier); QApplication::sendEvent(&main,&over);
         QKeyEvent press(QEvent::KeyPress,key,Qt::NoModifier,QString(),repeat); QApplication::sendEvent(&main,&press);
@@ -35,6 +36,8 @@ int main(int argc,char **argv) {
     send(Qt::Key_F18); check(program==2,"one native collision cannot disable unrelated panel commands");
     native.setShortcut(Qt::Key_F19); QApplication::processEvents();
     send(Qt::Key_F17); check(source==2,"removing a native collision restores the saved Unbound binding");
+    editVisible=false; send(Qt::Key_F17); send(Qt::Key_F20);
+    check(source==2 && navigation==1,"global Page Navigation remains callable while Edit panel commands are unavailable");
     auto dialog=Unbound::createPanelShortcutEditor(&commands,&main); dialog->setAttribute(Qt::WA_DontShowOnScreen);
     check(dialog->findChild<QKeySequenceEdit *>("binding_source")!=nullptr,"every command has a discoverable editable binding"); delete dialog;
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly);
