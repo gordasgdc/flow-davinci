@@ -236,3 +236,9 @@ Baseline report: `build/macos/verification/installed-00bef62-responsiveness.json
 `feature/macos-footer-timeline-attachment` at `1469ca2` is pushed but not integrated or installed. `PanelAccessoryLease` owns reversible native placement and Qt-parented bottom attachment, including safe return before owner children are deleted and rejection on foreign ownership. Footer controls persist native/attached/floating choices and hidden doors. Native footer menu exposes attach/float/native recovery without requiring the manager. Wide native contents use horizontal overflow without forcing owner width; this does not deliver wrapping/vertical toolbar layout.
 
 All six hidden suites pass on clean unchanged feature source: `../OpenGate-features/footer-attachment/build/macos/verification/1469ca24cf-hidden-20261019T063520Z/receipt.json`. Group tests and restart variants (independent footer and attached footer) compile. Displayed grouping/tear-off, page changes, restart, actual Resolve input and playback remain required before integration/installation. No displayed fixture or helper replacement is run while the user works in Resolve.
+
+### Combined footer/restoration candidate — 2026-10-19
+
+Footer attachment at `1469ca2` passes displayed groups and both fresh-process variants (`floating.Gry3Kv`, `attached.V3kxD0` under the footer feature build directory). Workspace restoration at `f8f8a1c` passes its six hidden suites. Both branches are now combined for full verification; actual Resolve input/playback/reopen acceptance remains pending. Merge resolution retains both shutdown cancellation and native footer release, and both new regression suites.
+
+ID-only destination query at `cc51558` passed displayed panel-session/destination-order assertions but did not establish a latency improvement (approach 17.485 ms, commit 26.978 ms, viewer 19.411 ms p95; functional assertions pass). It remains excluded. No frame budget or diagnostics was relaxed.

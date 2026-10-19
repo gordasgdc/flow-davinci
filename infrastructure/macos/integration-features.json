@@ -181,6 +181,18 @@
       "commit": "fc043ad3fa75e42724b4d25ba87d137c52625571",
       "scope": "research",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-footer-timeline-attachment",
+      "commit": "1469ca24cf93b071679fbc9007607dc13663abc6",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "refactor/macos-workspace-restoration",
+      "commit": "f8f8a1c3d12160413e82171cbb5fc9370eec23b1",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
