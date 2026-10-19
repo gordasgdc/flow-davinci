@@ -206,3 +206,9 @@ Pin persistence follow-up: standalone/group pin changes now schedule bounded lay
 ### Local checkout rename — 2026-10-19
 
 Active checkouts are now `Developer/OpenGate` and sibling `Developer/OpenGate-features` (separate Git worktrees, not nested source modules). Full pre-rename copies are preserved in `Developer/OpenGate-backups/pre-rename-20261019T054646Z`. All 26 checkout HEADs and working statuses were verified unchanged; Git worktree links and 46 absolute build symlinks were repaired. Historical receipt paths retain their original names. Remote repository, internal settings IDs and installed plugin are unchanged. Page Navigation now shares one visibility operation between its menu and independent shortcut, with Edit-only commands still yielding outside Edit.
+
+### Responsibility extraction and expansion rollback — 2026-10-19
+
+`refactor/macos-panel-control-modules` extracts command catalog/editor lifetime, native toggle observation, workspace serialization and expansion transactions. Manager size changes from 1,039 to 952 lines; UI construction, grouping and restore orchestration remain there. See `macos-control-modules.md` for boundaries. Hidden tests passed native signal blocking/rebinding, separate command dispatch, shutdown context, snapshot preservation and expansion cancellation. Group/reopen suites compile; displayed execution is pending while Resolve runs.
+
+`fix/macos-expansion-readiness-rollback` restores original panel/native presentation when a requested expansion surface is unavailable, with `panel.expand.failed` diagnostics and a hidden rollback regression check. `test/macos-footer-reopen` extends fresh-process restoration coverage to hidden/pinned Page Navigation and native-menu retrieval. Compilation does not establish live restart acceptance. Footer attachment, adaptive toolbar layout and independent scaling remain open.

@@ -157,6 +157,24 @@
       "commit": "cba88d9a1f1c346d9d8f46ef0308f82e90e7422b",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "refactor/macos-panel-control-modules",
+      "commit": "a9fe3d7bf6b851628a1be144a65dd0997b3f947b",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "test/macos-footer-reopen",
+      "commit": "8f0dc6898cd6bb481aae85c3f2abb995ffd6501b",
+      "scope": "verification",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-expansion-readiness-rollback",
+      "commit": "00dec6f7106f7acd3d50d96d64fc56094091eeb6",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
