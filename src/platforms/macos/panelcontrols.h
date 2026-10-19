@@ -34,6 +34,7 @@
 #include "panelexpansioncontroller.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
+#include "attachedtoolbarreveal.h"
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
@@ -600,6 +601,12 @@ private:
         if (!restoring) p.saved["hidden"] = false;
         QWidget *root = page();
         QWidget *target = Unbound::panelSurface(root, p.name);
+        if (!restoring && p.name=="frameEditToolbarTop" && panels[1].session->active() && target && !target->isVisible()) {
+            showPanel(1,true);
+            if (Unbound::revealAttachedTimelineToolbar(root,target,Unbound::panelSurface(root,"frameConformTimelines"))) {
+                updateRow(i); save(); return;
+            }
+        }
         if (nativeSizing && expansionController->index()<0 && root && root->isVisible()) nativeSizing->prepare(root->window(),root);
         if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
             Unbound::prepareSourceViewer(root, target)) {
