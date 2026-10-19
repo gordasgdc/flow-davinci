@@ -8,6 +8,7 @@
 #include "panelsession.h"
 #include "nativedocksurfaces.h"
 #include "nativearrangementplan.h"
+#include "panellayoutvisibility.h"
 namespace Unbound {
 // Page-level ownership, independent of floating host chrome and drop detection.
 // The retained native layout is always represented explicitly in the tree.
@@ -22,12 +23,26 @@ public:
     static QString nativeLeaf() { return nativeRemainderId(); }
     bool active() const { return lease.active(); }
     QWidget *surface() const { return host; }
+    bool contains(const QString &id) const { return active() && sessions.value(id); }
+    bool selected(const QString &id) const {
+        auto session=sessions.value(id); auto cell=cells.value(id);
+        return active() && session && cell && !session->hiddenByUser() && !panelCoveredByTab(cell);
+    }
     QJsonObject snapshot() const { return panelLayoutSnapshot(root); }
     QJsonObject savedPlan(const QString &pageKey) const {
         if (!active()) return {};
         NativeArrangementPlan plan; plan.page=pageKey; plan.tree=snapshot();
         for (auto it=sessions.begin();it!=sessions.end();++it) if (it.value() && it.value()->hiddenByUser()) plan.hidden.insert(it.key());
         return plan.json();
+    }
+    QString restorePresentation(const QJsonObject &saved) {
+        if (changing || !active()) return QStringLiteral("The native workspace is not available.");
+        QSet<QString> available; for (auto it=sessions.begin();it!=sessions.end();++it) available.insert(it.key());
+        NativeArrangementPlan plan; const auto error=NativeArrangementPlan::parse(saved,"edit",available,plan);
+        if (!error.isEmpty() || saved["panels"].toObject().size()!=sessions.size()) return error.isEmpty() ? QStringLiteral("The native panel set changed.") : error;
+        QScopedValueRollback<bool> guard(changing,true); UiWorkTiming timing("workspace.native-arrangement.presentation",host->window());
+        for (auto it=sessions.begin();it!=sessions.end();++it) if (it.value()) it.value()->setHiddenByUser(plan.hidden.contains(it.key()),false);
+        return rebuild(plan.tree) ? QString() : QStringLiteral("Could not restore native tab selection and proportions.");
     }
     QString initializeSaved(QWidget *page,const QHash<QString,MacPanelSession *> &panels,const QJsonObject &saved,const QString &pageKey) {
         QSet<QString> available; for (auto it=panels.begin();it!=panels.end();++it) available.insert(it.key());
@@ -52,9 +67,7 @@ public:
         if (!visible) visibility.closePath(cell,host);
         session->setHiddenByUser(!visible,false);
         if (!active() || !root || !host || !cell) return false;
-        if (auto stack=qobject_cast<QStackedWidget *>(cell->parentWidget())) {
-            if (auto tabs=qobject_cast<QTabWidget *>(stack->parentWidget())) visibility.tabVisibility(tabs,cell,visible,false);
-        } else cell->setVisible(visible);
+        syncCellVisibility();
         if (visible) visibility.selectPath(cell,host);
         host->layout()->activate(); visibility.restore(root);
         logEvent("workspace.native-arrangement.visibility",{{"panel",id},{"visible",visible}});
@@ -97,20 +110,20 @@ public:
             auto session=it.value(); error=session->attachToGroup(cells.value(it.key()),true);
             if (!error.isEmpty()) { restoreOwned(false); return error; }
             sessions[it.key()]=session;
-            const auto id=it.key(); session->releaseGroup=[this,id] { detach(id); };
+            const auto id=it.key(); session->releaseGroup=[this,id] { detach(id,true); };
         }
         for (auto session : sessions) if (session) session->finishGroupTransfer();
         syncCellVisibility();
         logEvent("workspace.native-arrangement.create",{{"panels",QJsonArray::fromStringList(names)}});
         return {};
     }
-    bool detach(const QString &id) {
+    bool detach(const QString &id,bool deferHostShow = false) {
         auto session=sessions.value(id); auto cell=cells.value(id);
         if (changing || !active() || !session || !cell) return false;
         QScopedValueRollback<bool> guard(changing,true);
         UiWorkTiming timing("workspace.native-arrangement.detach",host->window());
         const auto next=removeGroupLeaf(snapshot(),id);
-        session->releaseGroup={}; session->detachFromGroup(); sessions.remove(id); cells.remove(id);
+        session->releaseGroup={}; session->detachFromGroup(deferHostShow); sessions.remove(id); cells.remove(id);
         cell->hide(); cell->deleteLater();
         const bool result=sessions.isEmpty() ? restoreOwned(false) : rebuild(next);
         logEvent("workspace.native-arrangement.detach",{{"panel",id},{"success",result}});
@@ -155,7 +168,7 @@ public:
         }
         for (const auto &id : added) {
             auto session=sessions.value(id);
-            session->releaseGroup=[this,id] { detach(id); }; session->finishGroupTransfer();
+            session->releaseGroup=[this,id] { detach(id,true); }; session->finishGroupTransfer();
         }
         syncCellVisibility();
         logEvent("workspace.native-arrangement.add",{{"panels",QJsonArray::fromStringList(added)},{"target",target}});
@@ -176,7 +189,7 @@ private:
         const auto current=sessions.values(); sessions.clear();
         for (auto session : current) if (session) session->releaseGroup={};
         for (auto session : current) if (session) {
-            session->releaseGroup={}; session->detachFromGroup();
+            session->releaseGroup={}; session->detachFromGroup(dockPanels);
             if (dockPanels && session->active()) {
                 const auto error=session->dock(); result &= error.isEmpty();
                 if (!error.isEmpty()) logEvent("workspace.native-arrangement.dock-failed",{{"error",error}});
@@ -213,13 +226,9 @@ private:
         return true;
     }
     void syncCellVisibility() {
-        for (auto it=cells.begin();it!=cells.end();++it) if (auto cell=it.value()) {
-            auto session=sessions.value(it.key()); const bool visible=!session || !session->hiddenByUser();
-            if (auto stack=qobject_cast<QStackedWidget *>(cell->parentWidget())) {
-                if (auto tabs=qobject_cast<QTabWidget *>(stack->parentWidget())) visibility.tabVisibility(tabs,cell,visible,false);
-                cell->setVisible(visible && stack->currentWidget()==cell);
-            } else cell->setVisible(visible);
-        }
+        applyPanelLayoutVisibility(root,visibility,[this](const QString &id) {
+            auto session=sessions.value(id); return !session || !session->hiddenByUser();
+        });
     }
     void retire() {
         unregisterNativeDockSurfaces(host);

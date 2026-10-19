@@ -70,6 +70,20 @@ int main(int argc, char **argv)
     names.clear(); check(Unbound::groupTreeNames(split, names) && names.size() == 4, "tab stacks coexist with split groups");
     auto removed = Unbound::removeGroupLeaf(split, "Timeline");
     check(removed["orientation"] == "tabs", "removing a split neighbor preserves its tab stack");
+    {
+        const auto inserted=Unbound::insertGroupTree({{"panel","media"}},{{"panel","inspector"}},"media",Qt::Orientation(0),false);
+        check(inserted["selected"]==1,"dropping a panel as a new tab selects the newly inserted panel");
+        QJsonObject tabs{{"orientation","tabs"},{"selected",2},{"children",QJsonArray{
+            QJsonObject{{"panel","a"}},QJsonObject{{"panel","b"}},QJsonObject{{"panel","c"}},QJsonObject{{"panel","d"}}}}};
+        const auto earlier=Unbound::removeGroupLeaf(tabs,"a");
+        check(earlier["selected"]==1 && earlier["children"].toArray()[1].toObject()["panel"]=="c",
+            "detaching an earlier tab preserves the selected panel after indexes shift");
+        const auto selected=Unbound::removeGroupLeaf(tabs,"c");
+        check(selected["selected"]==2 && selected["children"].toArray()[2].toObject()["panel"]=="d",
+            "detaching the selected tab selects its surviving next neighbor");
+        tabs["selected"]=3; const auto last=Unbound::removeGroupLeaf(tabs,"d");
+        check(last["selected"]==2,"detaching the last selected tab leaves a valid previous selection");
+    }
     auto top = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "MediaPool"}}, Qt::Horizontal);
     auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);
     names.clear(); check(Unbound::groupTreeNames(puzzle, names) && names.size() == 3 &&

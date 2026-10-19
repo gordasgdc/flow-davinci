@@ -88,7 +88,7 @@ public:
         UiWorkTiming hide("panel.group.hide-old-host",host);
         host->hide();
     }
-    void detachFromGroup()
+    void detachFromGroup(bool deferHostShow = false)
     {
         endGroupedExpansion();
         if (!grouped()) return;
@@ -100,7 +100,7 @@ public:
         groupContainer = nullptr;
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         setFloatingGeometry(detachedGeometry);
-        host->setVisible(!userHidden && originalPage && originalPage->isVisible());
+        if (!deferHostShow) host->setVisible(!userHidden && originalPage && originalPage->isVisible());
     }
     QWidget *expandedWindow() const { return expandedHost; }
     bool beginGroupedExpansion()
@@ -152,7 +152,7 @@ public:
     {
         userHidden = hide;
         if (host) {
-            auto surface = window();
+            auto surface = expandedHost ? expandedHost.data() : window();
             if (hide) surface->hide();
             else if (originalPage && originalPage->isVisible()) {
                 if (activate) {

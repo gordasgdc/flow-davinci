@@ -35,7 +35,11 @@ inline QJsonObject insertGroupTree(QJsonObject node, const QJsonObject &addition
             node["children"] = children; node["selected"] = selected; return node;
         }
     }
-    if (target.isEmpty() || node.value("panel") == target) return splitGroupTree(node, addition, orientation, before);
+    if (target.isEmpty() || node.value("panel") == target) {
+        auto result=splitGroupTree(node,addition,orientation,before);
+        if (orientation==Qt::Orientation(0)) result["selected"]=before ? 0 : 1;
+        return result;
+    }
     if (node.contains("panel")) return node;
     auto children = node["children"].toArray();
     for (int i = 0; i < children.size(); ++i) children[i] = insertGroupTree(children[i].toObject(), addition, target, orientation, before);
@@ -46,12 +50,20 @@ inline QJsonObject removeGroupLeaf(QJsonObject node, const QString &name)
     if (node.contains("panel")) return node["panel"] == name ? QJsonObject() : node;
     QJsonArray children, sizes;
     const auto old = node["children"].toArray(), oldSizes = node["sizes"].toArray();
+    const int previousSelection=qBound(0,node.value("selected").toInt(),qMax(0,old.size()-1));
+    int retainedSelection=-1,survivingBefore=0;
     for (int i = 0; i < old.size(); ++i) {
         const auto child = removeGroupLeaf(old[i].toObject(), name);
-        if (!child.isEmpty()) { children.append(child); sizes.append(i < oldSizes.size() ? oldSizes[i] : QJsonValue(1)); }
+        if (!child.isEmpty()) {
+            if (i==previousSelection) retainedSelection=children.size();
+            if (i<previousSelection) ++survivingBefore;
+            children.append(child); sizes.append(i < oldSizes.size() ? oldSizes[i] : QJsonValue(1));
+        }
     }
     if (children.isEmpty()) return {};
     if (children.size() == 1) return children[0].toObject();
-    node["children"] = children; node["sizes"] = sizes; return node;
+    node["children"] = children; node["sizes"] = sizes;
+    if (node["orientation"]=="tabs") node["selected"]=retainedSelection>=0 ? retainedSelection : qMin(survivingBefore,children.size()-1);
+    return node;
 }
 }

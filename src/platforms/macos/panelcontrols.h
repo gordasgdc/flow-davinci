@@ -23,6 +23,7 @@
 #include "nativepaneldecoration.h"
 #include "nativeworkspacesizing.h"
 #include "nativepaneldrag.h"
+#include "nativeworkspacebinding.h"
 #include "panelgroup.h"
 #include "interactiondiagnostics.h"
 #include "controlscroll.h"
@@ -141,6 +142,7 @@ public:
                 action(QStringLiteral("bulk-%1").arg(i));
                 const unsigned command = ++bulkVersion;
                 if (i == 0) {
+                    if (nativeWorkspace && !nativeWorkspace->release()) { status->setText("Could not release the native arrangement safely."); return; }
                     for (int j = 0; j < panels.size(); ++j)
                         QTimer::singleShot(j * 80, this, [this, j, command] { if (command == bulkVersion) requestUndock(j); });
                     QTimer::singleShot(panels.size() * 80 + 200, this, [this, command] {
@@ -157,9 +159,9 @@ public:
                     });
                 } else if (i == 1) dockAll();
                 else if (i == 5) quickExport();
-                else for (auto &panel : panels) if (panel.session->active()) {
-                    if (i == 2 || i == 3) panel.session->setHiddenByUser(i == 3);
-                    else panel.session->centerOnCurrentDisplay();
+                else for (int j=0;j<panels.size();++j) if (panels[j].session->active()) {
+                    if (i == 2 || i == 3) showPanel(j,i==2);
+                    else if (panels[j].session->floating()) panels[j].session->centerOnCurrentDisplay();
                 }
                 save();
             });
@@ -183,6 +185,16 @@ public:
         const QJsonObject savedPanels = settings.data["panels"].toObject();
         pendingGroups = settings.data["groups"].toArray();
         nativeMenus = new Unbound::PanelMenus(this);
+        nativeWorkspace = new Unbound::NativeWorkspaceBinding(this);
+        nativeWorkspace->beforeMount = [this] {
+            if (nativeSizing) nativeSizing->restore();
+            const QSignalBlocker block(background); background->setChecked(false); applyBackgroundVisibility(false);
+        };
+        nativeWorkspace->changed = [this] {
+            for (int i=0;i<panels.size();++i) updateRow(i);
+            if (!quitting) saveTimer.start();
+        };
+        nativeWorkspace->failed = [this](const QString &error) { status->setText(error); };
         auto groupBox = new QGroupBox(QStringLiteral("Join panels or their groups"), body);
         auto groupLayout = new QGridLayout(groupBox);
         auto firstPanel = new QComboBox(groupBox), secondPanel = new QComboBox(groupBox);
@@ -223,11 +235,13 @@ public:
             panel.saved = savedPanels[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
+            nativeWorkspace->registerPanel(panel.name,panel.session);
             panel.session->attachRequested = [this, i](QWidget *target, Qt::Edge edge) {
                 attachDrop(i, target, edge);
             };
-            nativeMenus->add({panel.name, [this, i] { return panels[i].session->active(); },
-                [this, i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); }});
+            nativeMenus->add({panel.name, [this, i] { return panels[i].session->floating(); },
+                [this, i] { togglePanelPlacement(i); }, [this,i] { dockNative(i); },
+                [this,i] { return panels[i].session->floating(); }});
             panel.session->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
             panel.session->setConstrained(constrain->isChecked());
             panel.session->setSnapping(snap->isChecked());
@@ -252,20 +266,24 @@ public:
                 if (expanded == i && !panels[i].session->active()) expanded = -1;
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
+                nativeWorkspace->queueRestore(page());
                 syncNativeToggle(i);
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
             };
             panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
-            connect(panel.undock, &QPushButton::clicked, this, [this, i] { action("undock", panels[i].label); requestUndock(i); });
+            connect(panel.undock, &QPushButton::clicked, this, [this, i] { action("undock", panels[i].label); if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name); else requestUndock(i); });
             connect(panel.dock, &QPushButton::clicked, this, [this, i] { action("dock", panels[i].label); dockOne(i); });
-            connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); panels[i].session->setHiddenByUser(false); if (auto group = groupFor(i)) group->syncVisibility(panels[i].session); });
-            connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); panels[i].session->setHiddenByUser(true); });
+            connect(panel.show, &QPushButton::clicked, this, [this, i] { action("show", panels[i].label); showPanel(i,true); });
+            connect(panel.hide, &QPushButton::clicked, this, [this, i] { action("hide", panels[i].label); showPanel(i,false); });
             connect(panel.expand, &QPushButton::clicked, this, [this, i] { toggleExpanded(i); });
             connect(panel.center, &QPushButton::clicked, this, [this, i] { action("center", panels[i].label); panels[i].session->centerOnCurrentDisplay(); });
             updateRow(i);
         }
+        const auto nativePlanError=nativeWorkspace->setPending(settings.data["native_arrangement"].toObject(),pendingGroups);
+        if (!nativePlanError.isEmpty()) status->setText(nativePlanError);
+        for (auto &panel : panels) if (nativeWorkspace->requiredPanels().contains(panel.name)) panel.desired=true;
         footer = new Unbound::FooterPanel(this, []() -> QWidget * {
             for (auto window : QApplication::topLevelWidgets()) if (window->objectName() == QLatin1String("UiMainWindow")) return window;
             return nullptr;
@@ -274,6 +292,7 @@ public:
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
+                if (nativeWorkspace->contains(panels[2].name)) { nativeWorkspace->setVisible(panels[2].name,!single); return; }
                 panels[2].session->setHiddenByUser(single, false);
                 if (auto group = groupFor(2)) group->syncVisibility(single ? nullptr : panels[2].session);
             });
@@ -402,15 +421,44 @@ protected:
         return false;
     }
 private:
+    void showPanel(int i,bool visible)
+    {
+        if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
+        else {
+            panels[i].session->setHiddenByUser(!visible);
+            if (auto group=groupFor(i)) group->syncVisibility(visible ? panels[i].session : nullptr);
+        }
+    }
+    void togglePanelPlacement(int i)
+    {
+        if (nativeWorkspace->contains(panels[i].name)) { nativeWorkspace->detach(panels[i].name); readyNativeDrag(i); save(); }
+        else if (panels[i].session->active()) dockOne(i);
+        else requestUndock(i);
+    }
+    void dockNative(int i,QWidget *target=nullptr,Qt::Edge edge=Qt::RightEdge)
+    {
+        if (quitting || QApplication::activeModalWidget() || !page() || !page()->isVisible()) return;
+        restoreExpanded(); auto group=groupFor(i);
+        const auto direction=edge==Qt::Edge(0) ? Qt::Orientation(0) : edge==Qt::TopEdge || edge==Qt::BottomEdge ? Qt::Vertical : Qt::Horizontal;
+        const auto error=nativeWorkspace->dockSelection(page(),panels[i].name,group,
+            target ? target->property("groupPanel").toString() : Unbound::nativeRemainderId(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
+        if (!error.isEmpty() && group && group->active()) {
+            group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex())); group->setSnapping(snap->isChecked());
+        }
+        status->setText(error.isEmpty() ? QStringLiteral("Panel arrangement docked in the native workspace.") : error);
+        Unbound::logEvent("workspace.native-command.complete",{{"panel",panels[i].name},{"success",error.isEmpty()},{"error",error}});
+        for (int j=0;j<panels.size();++j) updateRow(j);
+        save();
+    }
     void togglePanelDoor(int i)
     {
         auto session = panels[i].session;
         if (!session->active() || !page() || !page()->isVisible()) return;
         if (expanded >= 0) restoreExpanded();
         auto group = groupFor(i);
-        const bool reveal = session->hiddenByUser() || (group && !group->selected(session));
-        session->setHiddenByUser(!reveal);
-        if (group) group->syncVisibility(reveal ? session : nullptr);
+        const bool reveal = session->hiddenByUser() || (group && !group->selected(session)) ||
+            (nativeWorkspace->contains(panels[i].name) && !nativeWorkspace->selected(panels[i].name));
+        showPanel(i,reveal);
         syncNativeToggle(i);
         Unbound::logEvent(QStringLiteral("panel.visibility.native-toggle"), {{"panel", panels[i].name}, {"visible", reveal}});
     }
@@ -466,6 +514,9 @@ private:
         const auto entry = presetsUi->find(presets->currentData().toString());
         if (entry.isEmpty()) { status->setText(QStringLiteral("Select a saved arrangement first.")); return; }
         if (!page() || !page()->isVisible()) { status->setText(QStringLiteral("Open the Edit page to restore an arrangement.")); return; }
+        const auto value = entry["workspace"].toObject();
+        const auto validation=nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
+        if (!validation.isEmpty()) { status->setText(validation); Unbound::logEvent("workspace.native-plan.failed",{{"error",validation},{"stage","preset-preflight"}}); return; }
         ++bulkVersion;
         ++groupVersion;
         restoreExpanded();
@@ -474,10 +525,11 @@ private:
             status->setText(QStringLiteral("Could not restore: a panel could not be docked safely."));
             Unbound::logEvent(QStringLiteral("arrangement.restore.failed"), {{"panel", panel.name}}); return;
         }
-        const auto value = entry["workspace"].toObject();
         if (footer) footer->setState(value["footer"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
         pendingGroups = value["groups"].toArray();
+        const auto nativeError=nativeWorkspace->setPending(value["native_arrangement"].toObject(),pendingGroups);
+        if (!nativeError.isEmpty()) { status->setText(nativeError); return; }
         pin->setChecked(value["pin_controls"].toBool());
         constrain->setChecked(value["keep_on_screen"].toBool(true));
         snap->setChecked(value["snap_windows"].toBool(true));
@@ -486,7 +538,7 @@ private:
         const auto saved = value["panels"].toObject();
         for (auto &panel : panels) {
             panel.saved = saved[panel.name].toObject();
-            panel.desired = panel.saved["floating"].toBool();
+            panel.desired = panel.saved["floating"].toBool() || nativeWorkspace->requiredPanels().contains(panel.name);
         }
         restore(); save();
         QStringList missing;
@@ -512,13 +564,13 @@ private:
     {
         auto &p = panels[i]; const bool active = p.session->active();
         optionsScroll->preservePosition([&] {
-            p.undock->setEnabled(!active && !p.pending);
+            p.undock->setEnabled((!active || p.session->placement()==Unbound::PanelPlacement::NativeSurface) && !p.pending);
             p.dock->setEnabled(active && !p.session->dockPending());
             p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
             p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
             p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
             p.expand->setEnabled(true);
-            p.center->setEnabled(active);
+            p.center->setEnabled(p.session->floating());
         });
     }
     void toggleExpanded(int i)
@@ -532,6 +584,7 @@ private:
         save();
         auto &panel = panels[i];
         beforeExpanded = panel.saved;
+        beforeExpandedNative = nativeWorkspace->contains(panel.name) ? nativeWorkspace->saved() : QJsonObject();
         beforeOverflowOffset = panel.session->overflowOffset();
         expandedWasFloating = panel.session->active();
         expandedWasGrouped = panel.session->grouped();
@@ -541,10 +594,14 @@ private:
         expanded = i;
         const unsigned request = ++expandVersion;
         if (!expandedWasFloating) requestUndock(i, true);
-        QTimer::singleShot(100, this, [this, i, request] {
+        new Unbound::SurfaceReadiness(this,page(),
+            [this,i,request] { return expanded==i && request==expandVersion && !quitting; },
+            [this,i] { return panels[i].session->active() && !panels[i].pending &&
+                (expandedWasGrouped ? panels[i].session->expandedWindow() : panels[i].session->window()); },
+            [this, i, request](bool ready) {
             if (expanded != i || request != expandVersion) return;
             auto host = expandedWasGrouped ? panels[i].session->expandedWindow() : panels[i].session->window();
-            if (!host) { expanded = -1; updateRow(i); save(); return; }
+            if (!ready || !host) { expanded = -1; updateRow(i); save(); return; }
             auto screen = host->screen();
             if (!screen) screen = QApplication::primaryScreen();
             const auto margins = host->windowHandle() ? host->windowHandle()->frameMargins() : QMargins();
@@ -577,6 +634,11 @@ private:
             if (!expandedWasFloating) error = panel.session->dock();
         }
         panel.saved = beforeExpanded;
+        if (!beforeExpandedNative.isEmpty()) {
+            const auto nativeError=nativeWorkspace->restorePresentation(beforeExpandedNative);
+            if (!nativeError.isEmpty()) error=nativeError;
+            beforeExpandedNative={};
+        }
         panel.session->restoreOverflowOffset(beforeOverflowOffset);
         panel.desired = panel.session->active() && !panel.session->dockPending();
         updateRow(i); save();
@@ -676,7 +738,11 @@ private:
         if (error.isEmpty()) p.desired = false;
         outcome("dock", i, error); updateRow(i); save();
     }
-    void dockAll() { if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {}; for (int i = panels.size() - 1; i >= 0; --i) dockOne(i); }
+    void dockAll() {
+        if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
+        if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {};
+        for (int i = panels.size() - 1; i >= 0; --i) dockOne(i);
+    }
     bool applyBackgroundVisibility(bool hidden)
     {
         auto root = page(); if (!root) return !hidden;
@@ -728,6 +794,7 @@ private:
     {
         Unbound::UiWorkTiming timing("group.drop",target ? target->window() : nullptr);
         if (quitting || QApplication::activeModalWidget() || expanded >= 0 || !panels[source].session->active()) return;
+        if (nativeWorkspace->ownsTarget(target)) { dockNative(source,target,edge); return; }
         for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
             (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
             if (groupFor(source) && groupFor(source) == groupFor(j)) return;
@@ -743,6 +810,7 @@ private:
     void releaseGroups()
     {
         ++groupVersion; pendingGroups = {};
+        if (nativeWorkspace) nativeWorkspace->release();
         for (auto group : groups) group->dissolve();
     }
     void restoreGroups()
@@ -788,11 +856,12 @@ private:
         if (nativeMenus) nativeMenus->wire();
         if (nativeDecoration && page()) for (int i=0; i<panels.size(); ++i) {
             auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
-            nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->active(),
-                [this,i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); },
+            nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->floating(),
+                [this,i] { togglePanelPlacement(i); },
                 [this,i](QPoint) {
                     nativeDrag->begin(panels[i].name);
-                    if (auto group=groupFor(i)) group->detachMember(panels[i].session);
+                    if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name);
+                    else if (auto group=groupFor(i)) group->detachMember(panels[i].session);
                     if (!panels[i].session->active()) requestUndock(i);
                     readyNativeDrag(i);
                 });
@@ -801,11 +870,13 @@ private:
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         if (toolbarDecoration) for (int i = 0; i < panels.size(); ++i)
             if (panels[i].name == QLatin1String("frameEditToolbarTop") || panels[i].name == QLatin1String("unboundWorkspaceToolbar"))
-                toolbarDecoration->wire(page(), panels[i].name, [this, i] { if (panels[i].session->active()) dockOne(i); else requestUndock(i); });
+                toolbarDecoration->wire(page(), panels[i].name, [this, i] { togglePanelPlacement(i); });
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
         for (int i = 0; i < panels.size(); ++i)
             if (panels[i].desired && !panels[i].session->active()) requestUndock(i, true);
+        const auto nativeError=nativeWorkspace->restoreReady(root);
+        if (!nativeError.isEmpty()) status->setText(nativeError);
         if (!pendingGroups.isEmpty()) QTimer::singleShot(120, this, [this] { restoreGroups(); });
         if (background->isChecked()) QTimer::singleShot(200, this, [this] { if (!quitting && background->isChecked()) applyBackgroundVisibility(true); });
     }
@@ -838,6 +909,7 @@ private:
         QJsonArray savedGroups = pendingGroups;
         for (auto group : groups) if (group->active()) savedGroups.append(expanded >= 0 && group == expandedGroup ? beforeExpandedGroup : group->snapshot());
         settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
+            {"native_arrangement",expanded>=0 && !beforeExpandedNative.isEmpty() ? beforeExpandedNative : nativeWorkspace ? nativeWorkspace->saved() : QJsonObject()},
             {"hide_background", background->isChecked()}, {"native_workspace_mode", background->isChecked() ? "floating" : "native"}, {"footer", footer ? footer->snapshot() : QJsonObject{}},
             {"selected_arrangement", presets->currentData().toString()},
             {"window_chrome", style->currentIndex()},
@@ -852,6 +924,7 @@ private:
     void updateNativeSizing()
     {
         if (quitting || expanded>=0 || !nativeSizing) return;
+        if (nativeWorkspace && nativeWorkspace->active()) return;
         QSet<QString> managed;
         for (const auto &panel : panels) if (panel.session->active()) managed.insert(panel.name);
         if (auto root=page()) nativeSizing->setPanels(root->window(),root,managed);
@@ -861,6 +934,7 @@ private:
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
         groupReserve->clear();
+        if (nativeWorkspace) nativeWorkspace->release(true);
         if (nativeSizing) nativeSizing->restore();
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
@@ -875,6 +949,7 @@ private:
     Unbound::WindowHierarchy *hierarchy = nullptr;
     Unbound::GroupHostReserve *groupReserve = nullptr;
     Unbound::NativeWorkspaceSizing *nativeSizing = nullptr;
+    Unbound::NativeWorkspaceBinding *nativeWorkspace = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
     QSet<QAbstractButton *> observedToggles;
@@ -897,7 +972,7 @@ private:
     unsigned expandVersion = 0;
     int expanded = -1;
     bool expandedWasFloating = false, expandedWasGrouped = false;
-    QJsonObject beforeExpanded, beforeExpandedGroup;
+    QJsonObject beforeExpanded, beforeExpandedGroup, beforeExpandedNative;
     QPoint beforeOverflowOffset;
     QPointer<Unbound::PanelGroup> expandedGroup;
     QList<Unbound::PanelGroup *> groups;

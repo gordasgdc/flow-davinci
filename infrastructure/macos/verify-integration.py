@@ -23,7 +23,7 @@ output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
 tests = ['build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
-         'native-arrangements', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
+         'native-arrangements', 'native-workspace-ui', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
 receipt = {'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),

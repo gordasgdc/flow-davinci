@@ -17,6 +17,8 @@ public:
         QString name;
         std::function<bool()> floating;
         std::function<void()> toggle;
+        std::function<void()> dockNative = {};
+        std::function<bool()> canDockNative = {};
     };
     explicit PanelMenus(QObject *owner) : QObject(owner) { qApp->installEventFilter(this); }
     ~PanelMenus() override { qApp->removeEventFilter(this); }
@@ -47,7 +49,8 @@ private:
         }
         const int index = ownerOf(menu);
         if (index < 0) {
-            for (auto command : menu->actions()) if (command->objectName() == QLatin1String("unboundDockPanel")) command->setVisible(false);
+            for (auto command : menu->actions()) if (command->objectName() == QLatin1String("unboundDockPanel") ||
+                command->objectName()==QLatin1String("unboundDockNativeWorkspace")) command->setVisible(false);
             QJsonArray parents;
             for (QObject *parent = menu->parent(); parent && parents.size() < 8; parent = parent->parent())
                 parents.append(QJsonObject{{"name", parent->objectName()}, {"class", parent->metaObject()->className()}});
@@ -78,6 +81,26 @@ private:
         command->setProperty("unboundPanelIndex", index);
         command->setVisible(true);
         command->setText(panel.floating() ? QStringLiteral("Dock Panel") : QStringLiteral("Undock Panel"));
+        QAction *native=nullptr;
+        for (auto action : menu->actions()) if (action->objectName()==QLatin1String("unboundDockNativeWorkspace")) native=action;
+        if (panel.dockNative && !native) {
+            native=menu->addAction(QStringLiteral("Dock in Native Workspace")); native->setObjectName("unboundDockNativeWorkspace");
+        }
+        if (native && !wired.contains(native)) {
+            wired.insert(native);
+            connect(native,&QObject::destroyed,this,[this,native] { wired.remove(native); });
+            connect(native,&QAction::triggered,this,[this,native] {
+                const int index=native->property("unboundPanelIndex").toInt();
+                QTimer::singleShot(0,this,[this,index] {
+                    if (index<0 || index>=panels.size() || !panels[index].dockNative) return;
+                    logEvent("panel.menu.dock-native",{{"panel",panels[index].name}}); panels[index].dockNative();
+                });
+            });
+        }
+        if (native) {
+            native->setProperty("unboundPanelIndex",index);
+            native->setVisible(panel.dockNative && (!panel.canDockNative || panel.canDockNative()));
+        }
         logEvent(QStringLiteral("panel.menu.ready"), {{"panel", panel.name}, {"floating", panel.floating()}});
     }
     static bool optionsButton(QWidget *button)
