@@ -304,6 +304,10 @@ public:
                 [this] { return page() && page()->isVisible(); },
                 [this,i] { if (panels[i].session->active()) queuePanelDoor(i); else requestUndock(i); },
                 [this,i] { toggleExpanded(i); });
+        commands->add({"panel.expand.hovered","Maximize / Restore Panel Under Pointer (Backtick)",
+            [this] { return page() && page()->isVisible() && hoveredExpansionTarget()>=0; },
+            [this] { const int target=hoveredExpansionTarget(); if (target>=0) toggleExpanded(target); }});
+        commands->defaultBinding("panel.expand.hovered","`");
         commands->addNavigation([this] { return footer && Unbound::resolveMainWindow(); },[this] {
             const auto error=footer->toggleVisibility();
             if (!error.isEmpty()) status->setText(error);
@@ -394,6 +398,7 @@ public:
         restoreTimer.start();
         wireNativeToggles();
     }
+    bool invokeWorkflowCommand(const QString &id) { return !quitting && commands && commands->invoke(id,"resolve-workflow-shortcut"); }
     ~PanelControls() override
     {
         shutdown();
@@ -410,28 +415,6 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (quitting) return false;
-        if ((event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) &&
-            !QApplication::activeModalWidget() && !QApplication::activePopupWidget() &&
-            !Unbound::textEditor(QApplication::focusWidget())) {
-            auto key = static_cast<QKeyEvent *>(event);
-            if ((key->key() == Qt::Key_QuoteLeft || key->key() == Qt::Key_AsciiTilde) &&
-                !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
-                int target = expansionController->index();
-                auto hovered = QApplication::widgetAt(QCursor::pos());
-                if (target < 0) for (int i = 0; i < panels.size(); ++i) {
-                    QWidget *surface = panels[i].session->active() ? panels[i].session->window() : page() ? page()->findChild<QWidget *>(panels[i].name) : nullptr;
-                    bool headerMatch = false;
-                    for (auto ancestor = hovered; ancestor; ancestor = ancestor->parentWidget())
-                        headerMatch |= ancestor->property("groupPanel").toString() == panels[i].name;
-                    if (surface && surface->isVisible() && hovered && (surface == hovered || surface->isAncestorOf(hovered) || headerMatch)) { target = i; break; }
-                }
-                if (target >= 0) {
-                    event->accept();
-                    if (event->type() == QEvent::KeyPress && !key->isAutoRepeat()) toggleExpanded(target);
-                    return true;
-                }
-            }
-        }
         if (expansionController->index() >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
@@ -453,6 +436,17 @@ protected:
         return false;
     }
 private:
+    int hoveredExpansionTarget() const {
+        if (expansionController->index()>=0) return expansionController->index();
+        auto hovered=QApplication::widgetAt(QCursor::pos());
+        for (int i=0;i<panels.size();++i) {
+            auto surface=panels[i].session->active() ? panels[i].session->window() : Unbound::panelSurface(page(),panels[i].name);
+            bool header=false;
+            for (auto ancestor=hovered;ancestor;ancestor=ancestor->parentWidget()) header |= ancestor->property("groupPanel").toString()==panels[i].name;
+            if (surface && surface->isVisible() && hovered && (surface==hovered || surface->isAncestorOf(hovered) || header)) return i;
+        }
+        return -1;
+    }
     void showPanel(int i,bool visible)
     {
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);

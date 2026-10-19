@@ -45,6 +45,17 @@ int main(int argc,char **argv) {
     auto dialog=Unbound::createPanelShortcutEditor(&commands,&main); dialog->setAttribute(Qt::WA_DontShowOnScreen);
     check(dialog->findChild<QKeySequenceEdit *>("binding_source")!=nullptr,"every command has a discoverable editable binding"); delete dialog;
     {
+        qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Hover.json").toUtf8());
+        Unbound::PanelCommands hover(nullptr); hover.context=[] { return true; }; int expansions=0;
+        hover.add({"panel.expand.hovered","Maximize / Restore Panel Under Pointer",[] { return true; },[&] { ++expansions; }});
+        hover.defaultBinding("panel.expand.hovered","`");
+        check(hover.save(hover.assigned()).isEmpty(),"hovered-panel backtick is an editable default rather than an unassignable reservation");
+        check(hover.save({{"panel.expand.hovered","F24"}}).isEmpty(),"hovered panel maximize can be reassigned");
+        QApplication::setActiveWindow(&main); edit.clearFocus(); QApplication::processEvents();
+        check(hover.invoke("panel.expand.hovered","native-workflow-fixture") && expansions==1,"native workflow invokes the same registered expansion route");
+        check(!hover.invoke("unknown","native-workflow-fixture") && expansions==1,"native workflow cannot invoke arbitrary IDs");
+    }
+    {
         qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Catalog.json").toUtf8());
         Unbound::PanelCommandCatalog catalog(&main,[&] { return ready; });
         int calls=0,expansions=0,footerCalls=0;

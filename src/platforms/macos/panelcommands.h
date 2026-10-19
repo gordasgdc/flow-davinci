@@ -28,6 +28,22 @@ public:
     }
     ~PanelCommands() override { if (qApp) qApp->removeEventFilter(this); }
     void add(Command value) { commands.append(std::move(value)); }
+    void defaultBinding(const QString &id,const QString &sequence) {
+        if (!bindings.contains(id)) bindings[id]=sequence;
+        refresh.start(0);
+    }
+    bool invoke(const QString &id,const QString &origin) {
+        auto active=QApplication::activeWindow();
+        const bool eligible=active && !qobject_cast<QDialog *>(active) && !QApplication::activeModalWidget() &&
+            !QApplication::activePopupWidget() && !textEditor(QApplication::focusWidget()) && context && context();
+        for (const auto &command:commands) if (command.id==id) {
+            const bool accepted=eligible && command.available && command.available();
+            logEvent("command.invoke",{{"command",id},{"origin",origin},{"accepted",accepted}});
+            if (accepted && command.invoke) command.invoke();
+            return accepted;
+        }
+        logEvent("command.invoke.unknown",{{"command",id},{"origin",origin}}); return false;
+    }
     const QList<Command> &entries() const { return commands; }
     QJsonObject assigned() const { return bindings; }
     QString validate(const QJsonObject &proposed) const {
@@ -106,8 +122,6 @@ private:
                 errors[command.id]=message; errors[seen.value(normalized)]=message;
             }
             seen[normalized]=command.id;
-            if (key[0]==Qt::Key_QuoteLeft || key[0]==Qt::Key_AsciiTilde)
-                errors[command.id]="Backtick is currently reserved for hovered-panel maximize.";
             for (const auto &native : nativeKeys)
                 if (!native.isEmpty() && (key.matches(native)!=QKeySequence::NoMatch || native.matches(key)!=QKeySequence::NoMatch)) {
                     errors[command.id]=normalized+" is already assigned to a native action or shortcut."; break;
