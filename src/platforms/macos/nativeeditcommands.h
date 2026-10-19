@@ -4,6 +4,8 @@
 #include <QMenu>
 #include <QSet>
 #include "panelcommands.h"
+#include "nativeeditmenutarget.h"
+#include "editcontrolinspection.h"
 namespace Unbound {
 // Dispatch the actual native action/signal; never hardcode an internal address,
 // mouse coordinate, keyboard mapping or a second implementation of stabilization.
@@ -18,11 +20,8 @@ public:
     bool fixedPlayhead() {
         QSet<QAction *> matches;
         if (ready()) for (auto widget:QApplication::allWidgets()) if (auto menu=qobject_cast<QMenu *>(widget)) {
-            if (menu->property("unboundOwnMenu").toBool()) continue;
-            bool timelineOptions=false;
-            for (auto action:menu->actions()) timelineOptions |= label(action->text())=="Display Stacked Timelines";
-            if (!timelineOptions) continue;
-            for (auto action:menu->actions()) if (label(action->text())=="Fixed Playhead") matches.insert(action);
+            if (!nativeTimelineOptionsMenu(menu)) continue;
+            for (auto action:menu->actions()) if (nativeEditActionLabel(action,"Fixed Playhead")) matches.insert(action);
         }
         if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("fixed-playhead",matches.size(),"Open Timeline View Options once so Resolve creates its Fixed Playhead action.");
         auto action=*matches.begin();
@@ -33,12 +32,15 @@ public:
     bool stabilize() {
         QSet<QAbstractButton *> matches;
         if (ready()) for (auto top:QApplication::topLevelWidgets()) for (auto button:top->findChildren<QAbstractButton *>()) {
-            if (!button->isVisible() || label(button->text())!="Stabilize") continue;
+            if (!button->isVisible() || (label(button->text())!="Stabilize" && button->objectName()!="btnStabilize")) continue;
             bool inspector=false;
             for (auto parent=button->parentWidget();parent;parent=parent->parentWidget()) inspector |= parent->objectName()=="widgetEditInspector";
             if (inspector) matches.insert(button);
         }
-        if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("stabilize",matches.size(),"Show the Inspector Stabilization section for a video clip; its native Stabilize button must be enabled.");
+        if (matches.size()!=1 || !(*matches.begin())->isEnabled()) {
+            inspectStabilizationControls();
+            return unavailable("stabilize",matches.size(),"Show the Inspector Stabilization section for a video clip; its native Stabilize button must be enabled.");
+        }
         auto button=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","stabilize"},{"object",button->objectName()},{"method","native-button-click"}});
         button->click(); return true;
