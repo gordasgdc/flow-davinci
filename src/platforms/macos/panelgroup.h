@@ -5,6 +5,7 @@
 #include <QTabWidget>
 #include "grouplayout.h"
 #include "panellayoutsurface.h"
+#include "panellayoutsnapshot.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "tabtearoff.h"
@@ -127,7 +128,7 @@ public:
         return detached;
     }
     std::function<void(PanelGroup *)> sectionDetached;
-    void dissolve(bool dockMembers = false)
+    void dissolve(bool dockMembers = false,bool deferMemberShow = false)
     {
         if (releasing || (!host && members.isEmpty())) return;
         QScopedValueRollback<bool> guard(releasing, true);
@@ -135,7 +136,7 @@ public:
         for (auto member : members) if (member) {
             current.append(member); member->releaseGroup = {};
             if (member->window()) member->window()->removeEventFilter(this);
-            member->detachFromGroup();
+            member->detachFromGroup(dockMembers || deferMemberShow);
         }
         members.clear(); leaves.clear(); retireHost();
         if (dockMembers) for (auto member : current) if (member->active()) {
@@ -207,7 +208,7 @@ public:
         for (auto member : members) if (member) visibilityState[member] = member->hiddenByUser();
         refresh();
     }
-    void detachMember(MacPanelSession *member)
+    void detachMember(MacPanelSession *member,bool deferHostShow = false)
     {
         if (!contains(member) || releasing) return;
         const QRect groupFrame = host->frameGeometry(); auto wrapper = leaves.value(member);
@@ -217,7 +218,7 @@ public:
         const auto tree = removeGroupLeaf(treeSnapshot(root), panelName(member));
         member->releaseGroup = {}; member->window()->removeEventFilter(this);
         QObject::disconnect(member->window(), nullptr, this, nullptr);
-        member->detachFromGroup(); members.removeAll(member); leaves.remove(member); wrapper->hide(); wrapper->deleteLater();
+        member->detachFromGroup(deferHostShow); members.removeAll(member); leaves.remove(member); wrapper->hide(); wrapper->deleteLater();
         if (members.size() == 1) {
             auto remaining = members.first(); remaining->releaseGroup = {}; remaining->window()->removeEventFilter(this);
             remaining->detachFromGroup(); place(remaining, groupFrame); members.clear(); leaves.clear(); retireHost();
@@ -289,7 +290,7 @@ private:
     }
     void wireMember(MacPanelSession *member)
     {
-        member->releaseGroup = [this, member] { detachMember(member); }; member->window()->installEventFilter(this);
+        member->releaseGroup = [this, member] { detachMember(member,true); }; member->window()->installEventFilter(this);
         const auto wrapper = leaves.value(member);
         for (auto old : wrapper->findChildren<QToolButton *>("unboundHiddenPanelCaller")) delete old;
         if (auto header = wrapper->findChild<QLabel *>("unboundGroupHeader")) {
@@ -311,20 +312,7 @@ private:
     }
     QJsonObject treeSnapshot(QWidget *widget) const
     {
-        if (!widget) return {};
-        if (auto tabs = qobject_cast<QTabWidget *>(widget)) {
-            QJsonArray children;
-            for (int i = 0; i < tabs->count(); ++i) children.append(treeSnapshot(tabs->widget(i)));
-            return {{"orientation", "tabs"}, {"children", children}, {"selected", tabs->currentIndex()}};
-        }
-        auto splitter = qobject_cast<QSplitter *>(widget); if (!splitter) return {{"panel", widget->property("groupPanel").toString()}};
-        QJsonArray children, sizes;
-        for (int i = 0; i < splitter->count(); ++i) children.append(treeSnapshot(splitter->widget(i)));
-        auto measured = splitter->sizes();
-        const auto remembered = splitter->property("unboundVisibleSizes").value<QList<int>>();
-        if (measured.contains(0) && remembered.size() == measured.size()) measured = remembered;
-        for (int size : measured) sizes.append(size);
-        return {{"orientation", splitter->orientation() == Qt::Horizontal ? "horizontal" : "vertical"}, {"children", children}, {"sizes", sizes}};
+        return panelLayoutSnapshot(widget);
     }
     QWidget *buildTree(const QJsonObject &node)
     {

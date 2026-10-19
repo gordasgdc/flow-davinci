@@ -16,8 +16,12 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "paneloverflow.h"
+#include "nativegroupslot.h"
+#include "nativepanelposition.h"
+#include "nativerootlayout.h"
 #include "vacatedcontents.h"
 #include "panelplacement.h"
+#include "groupvisibility.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
 
@@ -50,15 +54,35 @@ public:
     std::function<void()> expandedClosed;
     std::function<void()> arrangementChanged;
     std::function<void()> releaseGroup;
+    std::function<QString()> releaseOriginalPosition;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
     bool grouped() const { return !groupContainer.isNull(); }
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
+    bool adoptOriginalPosition(NativePanelPosition &position) {
+        if (!active() || transferredLayout || !placeholder || content!=position.content() ||
+            originalParent!=position.contentParking() || originalLayout || originalSplitter || originalStack) return false;
+        return position.handoff(placeholder,[this](const NativePanelPosition::Destination &destination) {
+            disconnect(parentDestroyed);
+            originalParent=destination.parent; originalLayout=destination.layout;
+            originalSplitter=destination.splitter; originalStack=destination.stack;
+            splitterSizes=destination.sizes; stackIndex=destination.stackIndex;
+            geometry=destination.geometry; flags=destination.flags; hidden=destination.hidden;
+            parentDestroyed=connect(originalParent,&QObject::destroyed,this,[this] {
+                if (originalPage) originalPage->removeEventFilter(this);
+                if (host) host->deleteLater(); clear();
+            });
+            logEvent("panel.native-position.adopt",{{"panel",content ? content->objectName() : QString()},
+                {"parent",originalParent ? originalParent->objectName() : QString()}});
+        });
+    }
     QString attachToGroup(QWidget *container, bool deferHostHide = false)
     {
         UiWorkTiming timing("panel.attach-to-group",host);
-        if (!host || !host->layout() || grouped() || !container || container->layout() || container->window()->parentWidget() != originalMain)
+        const bool floatingContainer=container && container->window()->parentWidget()==originalMain;
+        const bool nativeContainer=container && container->window()==originalMain && NativeRootLayout::contains(originalPage,container);
+        if (!host || !host->layout() || grouped() || !container || container->layout() || (!floatingContainer && !nativeContainer))
             return QStringLiteral("Panel cannot join this group.");
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);
@@ -83,7 +107,7 @@ public:
         UiWorkTiming hide("panel.group.hide-old-host",host);
         host->hide();
     }
-    void detachFromGroup()
+    void detachFromGroup(bool deferHostShow = false)
     {
         endGroupedExpansion();
         if (!grouped()) return;
@@ -95,7 +119,7 @@ public:
         groupContainer = nullptr;
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         setFloatingGeometry(detachedGeometry);
-        host->setVisible(!userHidden && originalPage && originalPage->isVisible());
+        if (!deferHostShow) host->setVisible(!userHidden && originalPage && originalPage->isVisible());
     }
     QWidget *expandedWindow() const { return expandedHost; }
     bool beginGroupedExpansion()
@@ -147,7 +171,7 @@ public:
     {
         userHidden = hide;
         if (host) {
-            auto surface = window();
+            auto surface = expandedHost ? expandedHost.data() : window();
             if (hide) surface->hide();
             else if (originalPage && originalPage->isVisible()) {
                 if (activate) {
@@ -220,7 +244,7 @@ public:
         return {};
     }
 
-    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false)
+    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false,bool deferHostShow = false)
     {
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
@@ -238,7 +262,7 @@ public:
             return QStringLiteral("The panel is not in its expected layout.");
 
         content = widget;
-        originalParent = parent;
+        originalParent = NativeRootLayout::logicalParent(page,parent);
         originalLayout = layout;
         originalSplitter = splitter;
         originalStack = stack;
@@ -250,8 +274,7 @@ public:
         hidden = widget->isHidden();
         if (splitter) splitterSizes = splitter->sizes();
         // QSplitter automatically inserts new children; replaceWidget needs an outsider.
-        auto marker = new QLabel(title + QStringLiteral(" is floating."), (splitter || stack) ? nullptr : parent);
-        marker->setAlignment(Qt::AlignCenter);
+        auto marker = new NativePanelSlot((splitter || stack) ? nullptr : parent);
         // Retain a reversible slot identity, not the detached panel's footprint.
         // Hidden placeholders do not reserve splitter/layout space.
         marker->setObjectName("unboundVacatedSlot_" + widget->objectName());
@@ -302,13 +325,13 @@ public:
         widget->installEventFilter(this);
         host->installEventFilter(this);
         page->installEventFilter(this);
-        parentDestroyed = connect(parent, &QObject::destroyed, this, [this] {
+        parentDestroyed = connect(originalParent, &QObject::destroyed, this, [this] {
             // The original owner is gone; its displaced content ends with it.
             if (originalPage) originalPage->removeEventFilter(this);
             if (host) host->deleteLater();
             clear();
         });
-        host->show();
+        if (!deferHostShow) host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (constrain) keepOnDisplay(host);
         logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
@@ -320,6 +343,10 @@ public:
 
     QString dock()
     {
+        if (releaseOriginalPosition) {
+            const auto release=releaseOriginalPosition; const auto error=release();
+            if (!error.isEmpty()) return error;
+        }
         endGroupedExpansion();
         if (releaseGroup) { auto release = releaseGroup; release(); }
         logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
@@ -356,18 +383,19 @@ public:
         }
         if (!content || !originalParent || !placeholder)
             return QStringLiteral("Resolve changed the panel hierarchy; restoration was stopped.");
+        auto destinationParent=NativeRootLayout::restorationParent(originalPage,originalParent,originalLayout);
         if (content->parentWidget() != host && content->parentWidget() != originalParent && !overflow.owns(content) && !nativeOwner(content->parentWidget()))
             return QStringLiteral("This panel belongs to an unexpected window; restoration was stopped.");
         if (overflow.owns(content)) {
             // Validate the destination before removing the retained viewport.
             if ((originalStack && originalStack->indexOf(placeholder)<0) ||
                 (originalSplitter && originalSplitter->indexOf(placeholder)<0) ||
-                (originalParent->layout() && !originalStack && !originalSplitter && originalParent->layout()->indexOf(placeholder)<0))
+                (destinationParent->layout() && !originalStack && !originalSplitter && destinationParent->layout()->indexOf(placeholder)<0))
                 return QStringLiteral("The original panel slot changed.");
             overflow.releaseInto(host);
         }
-        const bool reclaimed = content->parentWidget() == originalParent;
-        QLayout *currentLayout = originalParent->layout();
+        const bool reclaimed = content->parentWidget() == destinationParent;
+        QLayout *currentLayout = destinationParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
             if (currentLayout) currentLayout->removeWidget(placeholder);
             logEvent(QStringLiteral("panel.dock.native-reclaimed"), {{"widget", widgetState(content)}});
@@ -389,12 +417,12 @@ public:
             auto item = currentLayout->replaceWidget(placeholder, content, Qt::FindDirectChildrenOnly);
             if (!item) return QStringLiteral("Could not restore the panel slot.");
             delete item;
-            content->setParent(originalParent, flags);
+            content->setParent(destinationParent, flags);
         } else {
-            if (originalParent->layout()) return QStringLiteral("Resolve added a layout to this panel slot.");
-            content->setParent(originalParent, flags);
+            if (destinationParent->layout()) return QStringLiteral("Resolve added a layout to this panel slot.");
+            content->setParent(destinationParent, flags);
         }
-        if (content->parentWidget() != originalParent || content->isWindow())
+        if (content->parentWidget() != destinationParent || content->isWindow())
             return QStringLiteral("Resolve did not retain the restored panel in its original parent.");
         widthAllowance.restore();
         content->setGeometry(geometry);
@@ -409,14 +437,20 @@ public:
         oldHost->removeEventFilter(this);
         delete placeholder.data();
         const auto restored = content;
-        const auto destination = originalParent;
+        const QPointer<QWidget> destination = destinationParent;
+        const auto nativeDestination=originalParent;
+        const auto nativeDestinationLayout=originalLayout;
+        const bool retainedNativeSlot=destinationParent!=originalParent;
         logEvent(QStringLiteral("panel.dock.complete"), {{"widget", widgetState(content)}});
         clear();
         oldHost->hide();
         oldHost->deleteLater();
-        QTimer::singleShot(0, this, [restored, destination] {
+        QTimer::singleShot(0, this, [restored, destination,nativeDestination,nativeDestinationLayout,retainedNativeSlot] {
+            const bool nativeRootRestored=retainedNativeSlot && nativeDestination && nativeDestinationLayout &&
+                nativeDestination->layout()==nativeDestinationLayout && restored && restored->parentWidget()==nativeDestination;
             logEvent(QStringLiteral("panel.dock.verify"), {{"widget", widgetState(restored)},
-                {"passed", restored && destination && restored->parentWidget() == destination && !restored->isWindow()}});
+                {"native_root_restored",nativeRootRestored},
+                {"passed", restored && !restored->isWindow() && ((destination && restored->parentWidget()==destination) || nativeRootRestored)}});
         });
         if (changed) changed();
         return {};
@@ -489,7 +523,7 @@ private:
                 }
                 content->show();
             }
-            if (!userHidden && !surface->isVisible()) {
+            if (!userHidden && !surface->isVisible() && !panelCoveredByTab(surface)) {
                 const bool previous = surface->testAttribute(Qt::WA_ShowWithoutActivating);
                 surface->setAttribute(Qt::WA_ShowWithoutActivating, true);
                 surface->show(); surface->setAttribute(Qt::WA_ShowWithoutActivating, previous);
@@ -499,6 +533,7 @@ private:
     }
     void clear()
     {
+        releaseOriginalPosition={};
         if (releaseGroup) { auto release = releaseGroup; release(); }
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         overflow.forget();

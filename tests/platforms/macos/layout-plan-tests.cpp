@@ -6,6 +6,7 @@
 #include "viewport.h"
 #include "droppolicy.h"
 #include "dockfeedback.h"
+#include "nativearrangementplan.h"
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -69,6 +70,20 @@ int main(int argc, char **argv)
     names.clear(); check(Unbound::groupTreeNames(split, names) && names.size() == 4, "tab stacks coexist with split groups");
     auto removed = Unbound::removeGroupLeaf(split, "Timeline");
     check(removed["orientation"] == "tabs", "removing a split neighbor preserves its tab stack");
+    {
+        const auto inserted=Unbound::insertGroupTree({{"panel","media"}},{{"panel","inspector"}},"media",Qt::Orientation(0),false);
+        check(inserted["selected"]==1,"dropping a panel as a new tab selects the newly inserted panel");
+        QJsonObject tabs{{"orientation","tabs"},{"selected",2},{"children",QJsonArray{
+            QJsonObject{{"panel","a"}},QJsonObject{{"panel","b"}},QJsonObject{{"panel","c"}},QJsonObject{{"panel","d"}}}}};
+        const auto earlier=Unbound::removeGroupLeaf(tabs,"a");
+        check(earlier["selected"]==1 && earlier["children"].toArray()[1].toObject()["panel"]=="c",
+            "detaching an earlier tab preserves the selected panel after indexes shift");
+        const auto selected=Unbound::removeGroupLeaf(tabs,"c");
+        check(selected["selected"]==2 && selected["children"].toArray()[2].toObject()["panel"]=="d",
+            "detaching the selected tab selects its surviving next neighbor");
+        tabs["selected"]=3; const auto last=Unbound::removeGroupLeaf(tabs,"d");
+        check(last["selected"]==2,"detaching the last selected tab leaves a valid previous selection");
+    }
     auto top = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "MediaPool"}}, Qt::Horizontal);
     auto puzzle = Unbound::splitGroupTree(top, {{"panel", "Source"}}, Qt::Vertical);
     names.clear(); check(Unbound::groupTreeNames(puzzle, names) && names.size() == 3 &&
@@ -120,6 +135,43 @@ int main(int argc, char **argv)
     const auto recovered = Unbound::keepGripReachable(QRect(4000, -3000, 2400, 1500), {desktop});
     check(recovered.size() == QSize(2400, 1500) && recovered.top() >= 0 && recovered.left() <= desktop.right() - 95,
         "lost windows retain size while a draggable strip is rescued");
+    {
+        Unbound::NativeArrangementPlan saved; saved.page="edit";
+        auto tabs=Unbound::splitGroupTree({{"panel","source"}},{{"panel","inspector"}},Qt::Orientation(0)); tabs["selected"]=1;
+        saved.tree=Unbound::splitGroupTree({{"panel",Unbound::nativeRemainderId()}},tabs,Qt::Horizontal); saved.hidden.insert("source");
+        Unbound::NativeArrangementPlan restored;
+        check(Unbound::NativeArrangementPlan::parse(saved.json(),"edit",{"source","inspector"},restored).isEmpty() && restored.json()==saved.json(),
+            "native saved plans preserve nested tabs, split ratios, page identity and hidden panels exactly");
+        const auto baseline=restored.json();
+        auto reject=[&](QJsonObject bad,const QString &page=QStringLiteral("edit")) {
+            check(!Unbound::NativeArrangementPlan::parse(bad,page,{"source","inspector"},restored).isEmpty() && restored.json()==baseline,
+                "invalid native plans reject atomically without changing the last valid plan");
+        };
+        reject(saved.json(),"color"); auto bad=saved.json(); bad["version"]=99; reject(bad);
+        bad=saved.json(); bad["panels"]=QJsonObject{{"source",QJsonObject{{"hidden","yes"}}}}; reject(bad);
+        bad=saved.json(); auto tree=saved.tree; tree["sizes"]=QJsonArray{-1,2}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; tree["sizes"]=QJsonArray{1.5,2}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; tree["sizes"]=QJsonArray{1}; bad["tree"]=tree; reject(bad);
+        tree=saved.tree; auto children=tree["children"].toArray(); auto invalidTabs=tabs; invalidTabs["selected"]=5;
+        children[1]=invalidTabs; tree["children"]=children; bad["tree"]=tree; reject(bad);
+        bad=saved.json(); bad["tree"]=tabs; reject(bad);
+        bad=saved.json(); bad["tree"]=Unbound::splitGroupTree({{"panel",Unbound::nativeRemainderId()}},{{"panel","unavailable"}},Qt::Horizontal); reject(bad);
+        Unbound::NativeArrangementPlan scoped; scoped.page="edit"; scoped.anchor="source"; scoped.tree=tabs; scoped.hidden.insert("inspector");
+        check(Unbound::NativeArrangementPlan::parse(scoped.json(),"edit",{"source","inspector"},restored).isEmpty() && restored.json()==scoped.json(),
+            "scoped plans preserve a specific native anchor, tab selection and closed panel states");
+        scoped.tree={{"panel","inspector"}};
+        check(Unbound::NativeArrangementPlan::parse(scoped.json(),"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped plan retains anchor identity after the anchor panel floats away");
+        auto scopedBad=scoped.json(); scopedBad["anchor"]="missing";
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped plan cannot claim an unknown native anchor");
+        scopedBad=scoped.json(); scopedBad["anchor"]=12;
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "malformed anchor metadata cannot masquerade as a whole-page plan");
+        scopedBad=saved.json(); scopedBad["anchor"]="source";
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped native plan cannot include the entire native page remainder");
+    }
     if (!failures) std::puts("PASS: regional drop policy, recursive 24-panel merges/tear-offs, legacy geometry and viewport recovery (no GUI windows)");
     return failures ? 1 : 0;
 }
