@@ -24,6 +24,7 @@ public:
     bool active() const { return lease.active(); }
     QWidget *surface() const { return host; }
     std::function<void(const QString &,QPoint)> tearOff;
+    std::function<void(const QJsonObject &,QRect,QPoint)> tearOffSection;
     bool contains(const QString &id) const { return active() && sessions.value(id); }
     bool selected(const QString &id) const {
         auto session=sessions.value(id); auto cell=cells.value(id);
@@ -207,7 +208,11 @@ private:
                 if (tearOff) tearOff(id,pointer);
                 return;
             }
-            logEvent("workspace.native-tab.tear-off-rejected",{{"reason","nested-section-or-native-remainder"}});
+            const auto tree=panelLayoutSnapshot(leaf); QStringList names;
+            if (groupTreeNames(tree,names) && names.size()>1 && !names.contains(nativeLeaf()) && tearOffSection) {
+                tearOffSection(tree,QRect(leaf->mapToGlobal(QPoint()),leaf->size()),pointer); return;
+            }
+            logEvent("workspace.native-tab.tear-off-rejected",{{"reason","native-remainder-or-invalid-section"}});
         };
         callbacks.leaf=[this](const QString &id) { return cells.value(id).data(); };
         callbacks.title=[this](const QString &id) {

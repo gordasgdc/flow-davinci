@@ -186,6 +186,7 @@ public:
         pendingGroups = settings.data["groups"].toArray();
         nativeMenus = new Unbound::PanelMenus(this);
         nativeWorkspace = new Unbound::NativeWorkspaceBinding(this);
+        nativeWorkspace->sectionDetached=[this](Unbound::PanelGroup *group) { configureGroup(group); };
         nativeWorkspace->beforeMount = [this] {
             if (nativeSizing) nativeSizing->restore();
             const QSignalBlocker block(background); background->setChecked(false); applyBackgroundVisibility(false);

@@ -15,10 +15,49 @@ public:
             floating->move(pointer-QPoint(80,12)); floating->raise(); floating->activateWindow();
             floating->beginPointerDrag(pointer,true);
         };
+        arrangement.tearOffSection=[this](const QJsonObject &tree,QRect frame,QPoint pointer) {
+            const auto error=detachSection(tree,frame,pointer);
+            if (!error.isEmpty() && failed) failed(error);
+        };
     }
     std::function<void()> changed;
     std::function<void()> beforeMount;
     std::function<void(const QString &)> failed;
+    std::function<void(PanelGroup *)> sectionDetached;
+    QString detachSection(const QJsonObject &tree,QRect frame,QPoint pointer) {
+        UiWorkTiming timing("workspace.native-section.transfer",arrangement.surface() ? arrangement.surface()->window() : nullptr);
+        QStringList names;
+        if (busy || !active() || !groupTreeNames(tree,names) || names.size()<2 || names.contains(nativeRemainderId()))
+            return QStringLiteral("Choose a retained panel section to detach.");
+        QList<MacPanelSession *> members;
+        for (const auto &id : names) {
+            auto session=registry.value(id);
+            if (!session || !contains(id)) return QStringLiteral("The native section changed before detachment.");
+            members.append(session);
+        }
+        QScopedValueRollback<bool> guard(busy,true);
+        const auto previous=arrangement.savedPlan("edit");
+        QPointer<QWidget> page=members.first()->pageWidget();
+        const auto rollback=[&](const QString &error) {
+            if (!arrangement.restore(false)) return error+QStringLiteral(" Native restoration requires recovery.");
+            QHash<QString,MacPanelSession *> original;
+            for (const auto &id : previous["panels"].toObject().keys()) if (registry.value(id)) original[id]=registry.value(id);
+            const auto restored=arrangement.initializeSaved(page,original,previous,"edit");
+            logEvent("workspace.native-section.rollback",{{"error",error},{"rollback_error",restored}});
+            return restored.isEmpty() ? error : error+QStringLiteral(" ")+restored;
+        };
+        for (const auto &id : names) if (!arrangement.detach(id,true)) return rollback(QStringLiteral("Could not release the native section."));
+        auto group=new PanelGroup(parent());
+        const auto error=group->initialize(members,tree,frame);
+        if (!error.isEmpty()) { group->dissolve(false,true); delete group; return rollback(error); }
+        if (sectionDetached) sectionDetached(group);
+        auto floating=static_cast<MacFloatingHost *>(group->window());
+        floating->move(pointer-QPoint(80,12)); floating->raise(); floating->activateWindow();
+        floating->beginPointerDrag(pointer,true);
+        logEvent("workspace.native-section.detach",{{"panels",QJsonArray::fromStringList(names)},{"x",pointer.x()},{"y",pointer.y()}});
+        if (changed) changed();
+        return {};
+    }
     void registerPanel(const QString &id,MacPanelSession *session) { registry[id]=session; }
     bool contains(const QString &id) const { return arrangement.contains(id); }
     bool selected(const QString &id) const { return arrangement.selected(id); }

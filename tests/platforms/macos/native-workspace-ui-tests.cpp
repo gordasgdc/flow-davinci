@@ -141,6 +141,63 @@ int main(int argc,char **argv) {
             settle();
         }
     }
+    {
+        QWidget nativeMain; auto outer=new QVBoxLayout(&nativeMain); auto nativePage=new QWidget(&nativeMain); outer->addWidget(nativePage);
+        auto original=new QHBoxLayout(nativePage);
+        QList<QWidget *> panels;
+        for (const auto &id : {"source","inspector","program"}) {
+            auto panel=new QPushButton(id,nativePage); panel->setObjectName(id); original->addWidget(panel); panels.append(panel);
+        }
+        nativeMain.resize(1000,600); nativeMain.show(); settle();
+        Unbound::MacPanelSession source,inspector,program;
+        check(source.undock(panels[0],nativePage,"Source").isEmpty() && inspector.undock(panels[1],nativePage,"Inspector").isEmpty() &&
+            program.undock(panels[2],nativePage,"Program").isEmpty(),"nested native tear-off session preparation");
+        source.window()->setObjectName("unboundFloating_source"); inspector.window()->setObjectName("unboundFloating_inspector");
+        program.window()->setObjectName("unboundFloating_program");
+        Unbound::NativeWorkspaceBinding binding(&nativeMain);
+        binding.registerPanel("source",&source); binding.registerPanel("inspector",&inspector); binding.registerPanel("program",&program);
+        auto section=Unbound::splitGroupTree({{"panel","source"}},{{"panel","inspector"}},Qt::Vertical);
+        section["sizes"]=QJsonArray{3,2};
+        const auto tabs=Unbound::splitGroupTree(section,{{"panel","program"}},Qt::Orientation(0));
+        check(binding.dock(nativePage,{{"source",&source},{"inspector",&inspector},{"program",&program}},tabs,
+            Unbound::nativeRemainderId(),Qt::Horizontal,false).isEmpty(),"nested split section occupies a native tab");
+        settle(); QPointer<Unbound::PanelGroup> detached;
+        binding.sectionDetached=[&](Unbound::PanelGroup *group) { detached=group; };
+        const auto beforeInvalid=binding.saved();
+        check(!binding.detachSection(Unbound::splitGroupTree({{"panel","source"}},{{"panel","missing"}},Qt::Vertical),QRect(0,0,500,500),QPoint()).isEmpty() &&
+            binding.saved()==beforeInvalid && source.placement()==Unbound::PanelPlacement::NativeSurface,
+            "a stale section request is rejected before changing native ownership or layout");
+        int inspectorClicks=0;
+        QObject::connect(static_cast<QPushButton *>(panels[1]),&QPushButton::clicked,&nativeMain,[&] { ++inspectorClicks; });
+        auto nativeTabs=nativePage->findChild<QTabWidget *>("unboundPanelTabs");
+        check(nativeTabs,"nested native section exposes a tab strip");
+        const auto beforeSection=nativeTabs ? Unbound::panelLayoutSnapshot(nativeTabs->widget(0)) : QJsonObject();
+        if (nativeTabs) {
+            auto bar=nativeTabs->tabBar(); const auto start=bar->tabRect(0).center(),end=QPoint(start.x(),bar->height()+40);
+            QMouseEvent press(QEvent::MouseButtonPress,start,bar->mapToGlobal(start),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+            QMouseEvent move(QEvent::MouseMove,end,bar->mapToGlobal(end),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
+            QApplication::sendEvent(bar,&press); QApplication::sendEvent(bar,&move); settle();
+        }
+        check(detached && source.floating() && inspector.floating() && source.window()->window()==inspector.window()->window() &&
+            program.placement()==Unbound::PanelPlacement::NativeSurface,"dragging a nested native tab transfers its whole split section while leaving other tabs native");
+        if (detached) {
+            const auto tree=Unbound::PanelGroup::savedTree(detached->snapshot());
+            check(tree["orientation"]=="vertical" && tree["children"].toArray()[0].toObject()["panel"]=="source" &&
+                tree["children"].toArray()[1].toObject()["panel"]=="inspector","nested native tear-off preserves split direction and panel order");
+            const auto oldSizes=beforeSection["sizes"].toArray(),newSizes=tree["sizes"].toArray();
+            check(oldSizes.size()==2 && newSizes.size()==2 &&
+                qAbs(double(oldSizes[0].toInt())/(oldSizes[0].toInt()+oldSizes[1].toInt())-
+                     double(newSizes[0].toInt())/(newSizes[0].toInt()+newSizes[1].toInt()))<0.02,
+                "nested native tear-off retains the user's divider proportion");
+            static_cast<QPushButton *>(panels[1])->click();
+            check(inspectorClicks==1,"native control signal connections survive nested section transfer");
+            auto host=static_cast<Unbound::MacFloatingHost *>(detached->window());
+            QMouseEvent release(QEvent::MouseButtonRelease,QPoint(80,12),host->mapToGlobal(QPoint(80,12)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+            QApplication::sendEvent(host,&release); detached->dissolve(true); delete detached.data();
+        }
+        check(binding.release(true) && nativePage->layout()==original && panels[0]->parentWidget()==nativePage && panels[1]->parentWidget()==nativePage &&
+            panels[2]->parentWidget()==nativePage,"nested tear-off and native recovery preserve all original panel slots");
+    }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly); const auto trace=events.readAll();
     check(trace.contains("workspace.native-transfer.request") && trace.contains("workspace.native-command.complete") &&
         trace.contains("workspace.native-plan.restore.request") && trace.contains("workspace.native-arrangement.presentation"),

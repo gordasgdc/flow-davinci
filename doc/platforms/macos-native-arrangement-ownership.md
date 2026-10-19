@@ -77,15 +77,21 @@ the content; explicit Undock still reveals the requested standalone window.
 Native panel tabs also use `TabTearOff`: dragging outside the strip detaches only
 that panel, reveals its floating host and continues the pointer drag. The UI
 fixture sends the actual press/move/release sequence and checks ownership on both
-sides. Tearing off an entire nested section or the native remainder is still
-unsupported and emits a rejection record; it is not silently flattened.
+sides. A tab containing a nested split/tab section now transfers all its retained
+sessions into one floating group without flattening its tree. The binding checks
+all members before transfer, retains the prior native plan for rollback, and
+connects the resulting floating group to the ordinary controller routes. The
+native remainder itself cannot be torn off and emits a rejection record.
+The gesture fixture covers a nested split, retained divider proportions, native
+button signals, stale-member rejection without mutation and original-slot recovery.
 
 The clean `fd8e795` matrix passed all 14 functional suites, with responsiveness
 still FAIL: dock-commit p95 was 16.824 ms against the unchanged 16.667 ms target.
 Receipt: `build/macos/verification/fd8e79549f-20261019T022543Z/receipt.json`.
 Its signed widget library and IO helper compiled and bootstrap tests passed.
-Neither was installed. The later native-tab tear-off change passed the focused
-UI fixture; that does not replace full-matrix or actual Resolve acceptance.
+Neither was installed. Later native-tab and nested-section tear-off changes
+passed the focused UI fixture; that does not replace full-matrix or actual
+Resolve acceptance.
 
 The full 13-suite run at `19bd6a8` was incomplete: Resolve opened after the five
 headless suites passed. Eight native-window suites compiled but were NOT RUN by
