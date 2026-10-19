@@ -7,23 +7,29 @@ namespace Unbound {
 inline QString nativeRemainderId() { return QStringLiteral("unbound.native-remainder"); }
 struct NativeArrangementPlan {
     QString page;
+    QString anchor;
     QJsonObject tree;
     QSet<QString> hidden;
     QJsonObject json() const {
         QStringList names; groupTreeNames(tree,names); QJsonObject panels;
         for (const auto &id : names) if (id!=nativeRemainderId()) panels[id]=QJsonObject{{"hidden",hidden.contains(id)}};
-        return {{"version",1},{"kind","native"},{"page",page},{"tree",tree},{"panels",panels}};
+        QJsonObject result{{"version",1},{"kind","native"},{"page",page},{"tree",tree},{"panels",panels}};
+        if (!anchor.isEmpty()) result["anchor"]=anchor;
+        return result;
     }
     static QString parse(const QJsonObject &value,const QString &expectedPage,const QSet<QString> &available,NativeArrangementPlan &output) {
         if (value["version"]!=1 || value["kind"]!="native" || expectedPage.isEmpty() || value["page"]!=expectedPage)
             return QStringLiteral("This native arrangement belongs to another page or format.");
         const auto tree=value["tree"].toObject(); QStringList names;
-        if (!groupTreeNames(tree,names) || names.size()<2 || names.size()>32 || !names.contains(nativeRemainderId()) || !geometryValid(tree))
+        const auto anchor=value["anchor"].toString(); const bool scoped=!anchor.isEmpty();
+        if ((value.contains("anchor") && (!value["anchor"].isString() || anchor.isEmpty() || !available.contains(anchor))) ||
+            !groupTreeNames(tree,names) || names.size()<(scoped ? 1 : 2) || names.size()>32 ||
+            names.contains(nativeRemainderId())==scoped || !geometryValid(tree))
             return QStringLiteral("The saved native arrangement tree is invalid.");
         if (!value["panels"].isObject()) return QStringLiteral("The saved native panel states are missing.");
         const auto panels=value["panels"].toObject();
-        if (panels.size()!=names.size()-1) return QStringLiteral("The saved native panel states do not match the arrangement.");
-        NativeArrangementPlan candidate; candidate.page=expectedPage; candidate.tree=tree;
+        if (panels.size()!=names.size()-(scoped ? 0 : 1)) return QStringLiteral("The saved native panel states do not match the arrangement.");
+        NativeArrangementPlan candidate; candidate.page=expectedPage; candidate.tree=tree; candidate.anchor=anchor;
         for (const auto &id : names) if (id!=nativeRemainderId()) {
             if (!available.contains(id) || !panels[id].isObject() || !panels[id].toObject()["hidden"].isBool())
                 return QStringLiteral("A saved native panel is unavailable or has invalid visibility.");

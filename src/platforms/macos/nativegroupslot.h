@@ -36,6 +36,7 @@ public:
         minimum=slot->minimumSize(); policy=slot->sizePolicy(); hidden=slot->isHidden();
         ownedLayout=new QVBoxLayout(slot); ownedLayout->setContentsMargins(0,0,0,0); ownedLayout->setSpacing(0);
         ownedLayout->addWidget(surface);
+        if (slot->objectName().startsWith("unboundNativePanelPosition_")) surface->setProperty("unboundScopedNativeArrangement",true);
         slot->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred); slot->setMinimumSize(0,0);
         surface->show(); slot->show(); slot->updateGeometry();
         logEvent("workspace.native-surface.mount",{{"slot",slot->objectName()},{"surface",surface->objectName()}});
@@ -48,6 +49,7 @@ public:
         if (surface && slot && owner && slot->isAncestorOf(surface)) {
             if (ownedLayout) ownedLayout->removeWidget(surface);
             surface->setParent(owner); surface->hide();
+            surface->setProperty("unboundScopedNativeArrangement",false);
         }
         if (ownedLayout) delete ownedLayout.data();
         if (slot) {

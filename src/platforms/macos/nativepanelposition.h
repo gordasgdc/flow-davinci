@@ -30,6 +30,14 @@ public:
     ~NativePanelPosition() { restore(); }
     bool active() const { return marker && original && parent; }
     QWidget *surface() const { return marker; }
+    static bool supported(QWidget *panel,QWidget *page) {
+        if (!panel || !page || panel==page || !page->isAncestorOf(panel) || panel->isWindow() || !panel->isVisible()) return false;
+        auto owner=panel->parentWidget();
+        if (auto split=qobject_cast<QSplitter *>(owner)) return split->indexOf(panel)>=0;
+        if (auto stack=qobject_cast<QStackedWidget *>(owner)) return stack->indexOf(panel)>=0;
+        auto layout=owner->layout();
+        return layout && (qobject_cast<QBoxLayout *>(layout) || qobject_cast<QGridLayout *>(layout)) && layout->indexOf(panel)>=0;
+    }
     QString acquire(QWidget *panel,QWidget *page) {
         if (active() || !panel || !page || panel==page || !page->isAncestorOf(panel) || panel->isWindow() || !panel->isVisible())
             return QStringLiteral("The native panel position is unavailable.");
@@ -39,6 +47,8 @@ public:
         if ((!split && !stack && !qobject_cast<QBoxLayout *>(candidate) && !qobject_cast<QGridLayout *>(candidate)) ||
             (candidate && candidate->indexOf(panel)<0) || (split && split->indexOf(panel)<0) || (stack && stack->indexOf(panel)<0))
             return QStringLiteral("This native panel position is not supported.");
+        logEvent("workspace.native-position.acquire.request",{{"panel",panel->objectName()},{"parent",owner->objectName()},
+            {"layout",candidate ? candidate->metaObject()->className() : owner->metaObject()->className()}});
         original=panel; parent=owner; nativePage=page; layout=candidate; splitter=split; stacked=stack;
         hidden=panel->isHidden(); geometry=panel->geometry(); flags=panel->windowFlags();
         if (splitter) sizes=splitter->sizes();

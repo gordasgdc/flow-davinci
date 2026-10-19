@@ -32,14 +32,87 @@ int main(int argc,char **argv) {
     auto media=new QWidget(page); media->setObjectName("frameEditPageMediaPool"); auto contents=new QVBoxLayout(media);
     auto header=new QWidget(media); auto row=new QHBoxLayout(header); auto options=new QToolButton(header); options->setObjectName("btnMediaPoolOptions");
     auto menu=new QMenu(options); options->setMenu(menu); row->addWidget(options); contents->addWidget(header);
-    auto mediaControl=new QPushButton("Native media control",media); contents->addWidget(mediaControl); native->addWidget(media);
+    QPointer<QPushButton> mediaControl=new QPushButton("Native media control",media); contents->addWidget(mediaControl); native->addWidget(media);
     auto remaining=new QPushButton("Native remaining panel",page); native->addWidget(remaining);
     auto inspector=new QWidget(page); inspector->setObjectName("widgetEditInspector");
     auto inspectorLayout=new QVBoxLayout(inspector); auto inspectorHeader=new QWidget(inspector); auto inspectorRow=new QHBoxLayout(inspectorHeader);
     auto inspectorOptions=new QToolButton(inspectorHeader); inspectorOptions->setObjectName("btnTitleOptions"); inspectorRow->addWidget(inspectorOptions); inspectorLayout->addWidget(inspectorHeader);
-    auto inspectorControl=new QPushButton("Native Inspector control",inspector); inspectorLayout->addWidget(inspectorControl); native->addWidget(inspector);
+    QPointer<QPushButton> inspectorControl=new QPushButton("Native Inspector control",inspector); inspectorLayout->addWidget(inspectorControl); native->addWidget(inspector);
     auto callers=new QMenu(&main); callers->setObjectName("workspaceShowPanel");
     main.resize(1100,650); main.show(); settle();
+    {
+        PanelControls controls; settle(300);
+        auto undock=controls.findChild<QPushButton *>("undock_widgetEditInspector"); if (undock) undock->click(); settle();
+        auto floating=dynamic_cast<Unbound::MacFloatingHost *>(inspectorControl->window());
+        check(floating && floating->attachRequested && Unbound::nativeDockSurfaces(&main).contains(media),
+            "visible supported native panels are drop targets before any custom arrangement exists");
+        controls.move(1400,800); if (floating) floating->move(1300,400); main.raise(); settle();
+        QElapsedTimer destinationReady; destinationReady.start(); Unbound::DockDestination destination;
+        do { destination=Unbound::resolveDockDestination(floating,media->mapToGlobal(media->rect().center()),{});
+            if (destination.surface!=media) settle(10);
+        } while (destination.surface!=media && destinationReady.elapsed()<500);
+        check(destination.surface==media,"native WindowServer destination lookup finds the initial panel target");
+        check(!Unbound::resolveDockDestination(floating,main.mapToGlobal(QPoint(2,2)),{}).surface,
+            "unused native window margins never become first-drop destinations");
+        if (floating && floating->attachRequested) floating->attachRequested(media,Qt::RightEdge); settle();
+        auto marker=page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool");
+        check(marker && native->indexOf(marker)==0 && native->indexOf(remaining)==1 && remaining->parentWidget()==page &&
+            mediaControl->window()==&main && inspectorControl->window()==&main && page->layout()==native,
+            "first drop occupies the chosen native panel slot without replacing the page layout or other native panels");
+        const auto frame=main.geometry();
+        auto hide=controls.findChild<QPushButton *>("hide_widgetEditInspector"),show=controls.findChild<QPushButton *>("show_widgetEditInspector");
+        if (hide) hide->click(); settle(); if (show) show->click(); settle();
+        check(inspectorControl->isVisible() && main.geometry()==frame,"scoped native doors preserve the outer window frame");
+    }
+    settle();
+    check(media->parentWidget()==page && page->layout()==native && inspector->parentWidget()==page,
+        "scoped native shutdown returns both panels to their original native slots");
+    {
+        PanelControls controls; settle(400);
+        check(page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool") &&
+            mediaControl->window()==&main && inspectorControl->window()==&main && page->layout()==native,
+            "ordinary helper reopening restores a scoped native first-drop arrangement");
+        auto source=controls.findChild<QPushButton *>("undock_widgetEditInspector"); if (source) source->click(); settle();
+        auto anchor=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool"); if (anchor) anchor->click(); settle();
+        check(mediaControl->window()!=&main && inspectorControl->window()!=&main && remaining->isVisible(),
+            "source and final anchor can detach independently while preserving remaining native panels");
+        auto dock=controls.findChild<QPushButton *>("bulk_1"); if (dock) dock->click(); settle(300);
+        check(media->parentWidget()==page && inspector->parentWidget()==page && native->indexOf(media)==0,
+            "Dock All restores the adopted anchor slot after the final scoped panel detaches");
+        if (source) source->click(); settle();
+        auto floating=dynamic_cast<Unbound::MacFloatingHost *>(inspectorControl->window());
+        if (floating && floating->attachRequested) floating->attachRequested(media,Qt::Edge(0)); settle();
+        check(page->findChild<QTabWidget *>("unboundPanelTabs") && inspectorControl->isVisible() && !mediaControl->isVisible(),
+            "the first native drop can create a selected tab at the target panel's original position");
+        auto expand=controls.findChild<QPushButton *>("expand_frameEditPageMediaPool");
+        if (expand) expand->click(); settle(80); if (expand) expand->click(); settle();
+        check(!mediaControl->isVisible() && inspectorControl->isVisible(),"scoped maximize restores the previously selected native tab");
+    }
+    settle();
+    {
+        PanelControls controls; settle(400);
+        check(page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool") &&
+            page->findChild<QTabWidget *>("unboundPanelTabs") && inspectorControl->isVisible() && !mediaControl->isVisible(),
+            "saved first-drop tabs restore their native anchor and selected panel");
+        auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool"); if (undock) undock->click(); settle();
+        check(mediaControl->window()!=&main && mediaControl->isVisible() && inspectorControl->window()==&main,
+            "the anchor can float while another member retains the scoped native position");
+    }
+    settle();
+    {
+        PanelControls controls; settle(400);
+        if (!mediaControl || !inspectorControl) {
+            files.setAutoRemove(false); std::fprintf(stderr,"FAIL: saved scoped restoration deleted a native control; diagnostics: %s\n",qPrintable(files.path())); return 1;
+        }
+        check(mediaControl->window()!=&main && mediaControl->isVisible() && inspectorControl->window()==&main &&
+            page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool"),
+            "saved native placement survives with its original anchor floating independently");
+        auto dockAnchor=controls.findChild<QPushButton *>("dock_frameEditPageMediaPool"); if (dockAnchor) dockAnchor->click(); settle();
+        check(media->parentWidget()==page && inspectorControl->window()!=&main && inspectorControl->isVisible(),
+            "returning the anchor to its original native slot releases the remaining group without deleting its content");
+        auto dock=controls.findChild<QPushButton *>("bulk_1"); if (dock) dock->click(); settle(300);
+    }
+    settle();
     {
         PanelControls controls; settle(300);
         auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");
@@ -203,5 +276,6 @@ int main(int argc,char **argv) {
         trace.contains("workspace.native-plan.restore.request") && trace.contains("workspace.native-arrangement.presentation"),
         "connected native UI commands retain transfer, completion, restore and presentation diagnostics");
     if (!failures) std::puts("PASS: native menu docking, panel doors, workspace saving, helper reopen and native undock commands");
+    else { files.setAutoRemove(false); std::fprintf(stderr,"Native UI failure diagnostics retained: %s\n",qPrintable(files.path())); }
     return failures ? 1 : 0;
 }

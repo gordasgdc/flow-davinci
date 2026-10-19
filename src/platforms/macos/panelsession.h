@@ -54,13 +54,14 @@ public:
     std::function<void()> expandedClosed;
     std::function<void()> arrangementChanged;
     std::function<void()> releaseGroup;
+    std::function<QString()> releaseOriginalPosition;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
     bool grouped() const { return !groupContainer.isNull(); }
     QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
     bool adoptOriginalPosition(NativePanelPosition &position) {
-        if (!active() || grouped() || transferredLayout || !placeholder || content!=position.content() ||
+        if (!active() || transferredLayout || !placeholder || content!=position.content() ||
             originalParent!=position.contentParking() || originalLayout || originalSplitter || originalStack) return false;
         return position.handoff(placeholder,[this](const NativePanelPosition::Destination &destination) {
             disconnect(parentDestroyed);
@@ -243,7 +244,7 @@ public:
         return {};
     }
 
-    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false)
+    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false,bool deferHostShow = false)
     {
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
@@ -330,7 +331,7 @@ public:
             if (host) host->deleteLater();
             clear();
         });
-        host->show();
+        if (!deferHostShow) host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (constrain) keepOnDisplay(host);
         logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
@@ -342,6 +343,10 @@ public:
 
     QString dock()
     {
+        if (releaseOriginalPosition) {
+            const auto release=releaseOriginalPosition; const auto error=release();
+            if (!error.isEmpty()) return error;
+        }
         endGroupedExpansion();
         if (releaseGroup) { auto release = releaseGroup; release(); }
         logEvent(QStringLiteral("panel.dock.request"), {{"widget", widgetState(content)},
@@ -528,6 +533,7 @@ private:
     }
     void clear()
     {
+        releaseOriginalPosition={};
         if (releaseGroup) { auto release = releaseGroup; release(); }
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         overflow.forget();

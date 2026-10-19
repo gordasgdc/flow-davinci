@@ -2,12 +2,14 @@
 #pragma once
 #include "nativearrangement.h"
 #include "panelgroup.h"
+#include "toolbars.h"
 namespace Unbound {
 // Bind session commands and saved workspace state to the page coordinator. UI
 // controls and native menus call this same route; it owns no window chrome.
 class NativeWorkspaceBinding : public QObject {
 public:
     explicit NativeWorkspaceBinding(QObject *owner) : QObject(owner),arrangement(this) {
+        arrangement.restored=[this] { if (changed) changed(); };
         arrangement.tearOff=[this](const QString &id,QPoint pointer) {
             QPointer<MacPanelSession> session=registry.value(id);
             if (!detach(id) || !session || !session->floating()) return;
@@ -20,6 +22,7 @@ public:
             if (!error.isEmpty() && failed) failed(error);
         };
     }
+    ~NativeWorkspaceBinding() override { if (nativeTargetPage) unregisterNativeDockSurfaces(nativeTargetPage); }
     std::function<void()> changed;
     std::function<void()> beforeMount;
     std::function<void(const QString &)> failed;
@@ -40,6 +43,17 @@ public:
         QPointer<QWidget> page=members.first()->pageWidget();
         const auto rollback=[&](const QString &error) {
             if (!arrangement.restore(false)) return error+QStringLiteral(" Native restoration requires recovery.");
+            const auto anchor=previous.value("anchor").toString();
+            if (!anchor.isEmpty()) {
+                auto session=registry.value(anchor);
+                if (!session || session->grouped()) return error+QStringLiteral(" The native anchor is unavailable for recovery.");
+                if (session->active()) {
+                    const auto dockError=session->dock();
+                    if (!dockError.isEmpty()) return error+QStringLiteral(" ")+dockError;
+                }
+                const auto prepareError=arrangement.preparePosition(panelSurface(page,anchor),page,session,anchor,anchor);
+                if (!prepareError.isEmpty()) return error+QStringLiteral(" ")+prepareError;
+            }
             QHash<QString,MacPanelSession *> original;
             for (const auto &id : previous["panels"].toObject().keys()) if (registry.value(id)) original[id]=registry.value(id);
             const auto restored=arrangement.initializeSaved(page,original,previous,"edit");
@@ -58,11 +72,31 @@ public:
         if (changed) changed();
         return {};
     }
-    void registerPanel(const QString &id,MacPanelSession *session) { registry[id]=session; }
+    void registerPanel(const QString &id,MacPanelSession *session,const QString &title={}) {
+        registry[id]=session; titles[id]=title.isEmpty() ? id : title;
+    }
+    void refreshNativeTargets(QWidget *page) {
+        if (busy) return;
+        if (nativeTargetPage) unregisterNativeDockSurfaces(nativeTargetPage);
+        nativeTargets.clear(); nativeTargetPage=page;
+        if (!page || !page->isVisible() || active() || arrangement.positionPrepared()) return;
+        QList<QWidget *> surfaces;
+        for (auto it=registry.begin();it!=registry.end();++it) if (it.value() && !it.value()->active()) {
+            if (it.key()=="frameEditToolbarTop" || it.key()=="unboundWorkspaceToolbar") continue;
+            auto surface=panelSurface(page,it.key());
+            if (NativePanelPosition::supported(surface,page)) { nativeTargets[it.key()]=surface; surfaces.append(surface); }
+        }
+        if (!surfaces.isEmpty()) registerNativeDockSurfaces(page->window(),page,surfaces);
+    }
+    QString targetName(QWidget *target) const {
+        for (auto it=nativeTargets.begin();it!=nativeTargets.end();++it) if (it.value()==target) return it.key();
+        return target ? target->property("groupPanel").toString() : QString();
+    }
     bool contains(const QString &id) const { return arrangement.contains(id); }
     bool selected(const QString &id) const { return arrangement.selected(id); }
     bool active() const { return arrangement.active(); }
     bool ownsTarget(QWidget *target) const {
+        for (auto it=nativeTargets.begin();it!=nativeTargets.end();++it) if (it.value()==target && it.value() && it.value()->isVisible()) return true;
         auto surface=arrangement.surface();
         return surface && target && surface->isAncestorOf(target) && target->property("groupPanel").isValid();
     }
@@ -83,7 +117,24 @@ public:
         if (error.isEmpty()) pending=saved; else logEvent("workspace.native-plan.failed",{{"error",error}});
         return error;
     }
-    QStringList requiredPanels() const { return pending["panels"].toObject().keys(); }
+    QStringList requiredPanels() const {
+        auto result=pending["panels"].toObject().keys(); const auto anchor=pending["anchor"].toString();
+        if (!anchor.isEmpty() && !result.contains(anchor)) result.append(anchor);
+        return result;
+    }
+    QString preparePending(QWidget *page) {
+        const auto anchor=pending.value("anchor").toString();
+        if (busy || anchor.isEmpty() || active() || arrangement.positionPrepared()) return {};
+        auto session=registry.value(anchor);
+        if (!page || !page->isVisible() || !session || session->active()) return QStringLiteral("The saved native anchor is unavailable.");
+        QScopedValueRollback<bool> guard(busy,true);
+        if (beforeMount) beforeMount();
+        return arrangement.preparePosition(panelSurface(page,anchor),page,session,anchor,titles.value(anchor,anchor));
+    }
+    QString pendingFloatingAnchor() const {
+        const auto anchor=pending.value("anchor").toString();
+        return pending.value("panels").toObject().contains(anchor) ? QString() : anchor;
+    }
     void queueRestore(QWidget *page) {
         if (queued || pending.isEmpty() || active()) return;
         queued=true; QPointer<QWidget> safePage=page;
@@ -106,6 +157,7 @@ public:
         if (beforeMount) beforeMount();
         const auto error=arrangement.initializeSaved(page,sessions,pending,"edit");
         if (error.isEmpty()) { pending={}; if (changed) changed(); }
+        else logEvent("workspace.native-plan.restore.failed",{{"error",error},{"plan",pending}});
         return error;
     }
     QJsonObject saved() const { return active() ? arrangement.savedPlan("edit") : pending; }
@@ -134,6 +186,39 @@ public:
         const auto tree=group ? PanelGroup::savedTree(previous) : QJsonObject{{"panel",id}};
         for (auto it=registry.begin();it!=registry.end();++it)
             if (it.value() && (group ? group->contains(it.value()) : it.key()==id)) panels[it.key()]=it.value();
+        const auto sourcePanels=panels;
+        const bool initial=!active() && target!=nativeRemainderId() && nativeTargets.value(target);
+        if (initial) {
+            QScopedValueRollback<bool> guard(busy,true);
+            auto anchor=registry.value(target);
+            if (!anchor || anchor->active()) return QStringLiteral("The native drop target changed.");
+            logEvent("workspace.native-position.drop.request",{{"source",id},{"anchor",target},{"members",panels.size()},
+                {"orientation",int(direction)},{"before",before}});
+            if (beforeMount) beforeMount();
+            auto error=arrangement.preparePosition(nativeTargets.value(target),page,anchor,target,titles.value(target,target));
+            if (!error.isEmpty()) return error;
+            if (group) group->dissolve(false,true);
+            panels[target]=anchor;
+            auto scopedTree=splitGroupTree({{"panel",target}},tree,direction,before);
+            if (direction==Qt::Orientation(0)) scopedTree["selected"]=before ? 0 : 1;
+            error=arrangement.initialize(page,panels,scopedTree);
+            if (!error.isEmpty()) {
+                const bool released=arrangement.restore(false);
+                if (released && anchor->active()) {
+                    const auto dockError=anchor->dock();
+                    if (!dockError.isEmpty()) error+=QStringLiteral(" ")+dockError;
+                }
+                if (group) {
+                    QList<MacPanelSession *> members; for (auto session : sourcePanels) members.append(session);
+                    const auto rollback=group->initialize(members,tree,WorkspaceSettings::rectangle(previous));
+                    if (rollback.isEmpty()) group->restore(previous);
+                    else error+=QStringLiteral(" ")+rollback;
+                }
+                if (!released) error+=QStringLiteral(" Native position recovery is incomplete.");
+            } else { pending={}; if (changed) changed(); }
+            logEvent("workspace.native-position.drop",{{"source",id},{"anchor",target},{"success",error.isEmpty()},{"error",error}});
+            return error;
+        }
         logEvent("workspace.native-transfer.request",{{"panel",id},{"members",panels.size()},{"target",target},{"orientation",int(direction)}});
         if (group) group->dissolve(false,true);
         const auto error=dock(page,panels,tree,target,direction,before);
@@ -164,6 +249,9 @@ public:
 private:
     NativeArrangement arrangement;
     QHash<QString,QPointer<MacPanelSession>> registry;
+    QHash<QString,QString> titles;
+    QHash<QString,QPointer<QWidget>> nativeTargets;
+    QPointer<QWidget> nativeTargetPage;
     QJsonObject pending;
     bool busy=false,queued=false;
 };

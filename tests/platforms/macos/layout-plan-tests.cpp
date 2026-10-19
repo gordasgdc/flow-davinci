@@ -156,6 +156,21 @@ int main(int argc, char **argv)
         children[1]=invalidTabs; tree["children"]=children; bad["tree"]=tree; reject(bad);
         bad=saved.json(); bad["tree"]=tabs; reject(bad);
         bad=saved.json(); bad["tree"]=Unbound::splitGroupTree({{"panel",Unbound::nativeRemainderId()}},{{"panel","unavailable"}},Qt::Horizontal); reject(bad);
+        Unbound::NativeArrangementPlan scoped; scoped.page="edit"; scoped.anchor="source"; scoped.tree=tabs; scoped.hidden.insert("inspector");
+        check(Unbound::NativeArrangementPlan::parse(scoped.json(),"edit",{"source","inspector"},restored).isEmpty() && restored.json()==scoped.json(),
+            "scoped plans preserve a specific native anchor, tab selection and closed panel states");
+        scoped.tree={{"panel","inspector"}};
+        check(Unbound::NativeArrangementPlan::parse(scoped.json(),"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped plan retains anchor identity after the anchor panel floats away");
+        auto scopedBad=scoped.json(); scopedBad["anchor"]="missing";
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped plan cannot claim an unknown native anchor");
+        scopedBad=scoped.json(); scopedBad["anchor"]=12;
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "malformed anchor metadata cannot masquerade as a whole-page plan");
+        scopedBad=saved.json(); scopedBad["anchor"]="source";
+        check(!Unbound::NativeArrangementPlan::parse(scopedBad,"edit",{"source","inspector"},restored).isEmpty(),
+            "a scoped native plan cannot include the entire native page remainder");
     }
     if (!failures) std::puts("PASS: regional drop policy, recursive 24-panel merges/tear-offs, legacy geometry and viewport recovery (no GUI windows)");
     return failures ? 1 : 0;

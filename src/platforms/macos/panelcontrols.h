@@ -193,6 +193,7 @@ public:
         };
         nativeWorkspace->changed = [this] {
             for (int i=0;i<panels.size();++i) updateRow(i);
+            nativeWorkspace->refreshNativeTargets(page());
             if (!quitting) saveTimer.start();
         };
         nativeWorkspace->failed = [this](const QString &error) { status->setText(error); };
@@ -236,7 +237,7 @@ public:
             panel.saved = savedPanels[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
-            nativeWorkspace->registerPanel(panel.name,panel.session);
+            nativeWorkspace->registerPanel(panel.name,panel.session,panel.label);
             panel.session->attachRequested = [this, i](QWidget *target, Qt::Edge edge) {
                 attachDrop(i, target, edge);
             };
@@ -268,6 +269,7 @@ public:
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
                 nativeWorkspace->queueRestore(page());
+                nativeWorkspace->refreshNativeTargets(page());
                 syncNativeToggle(i);
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
@@ -442,13 +444,14 @@ private:
         restoreExpanded(); auto group=groupFor(i);
         const auto direction=edge==Qt::Edge(0) ? Qt::Orientation(0) : edge==Qt::TopEdge || edge==Qt::BottomEdge ? Qt::Vertical : Qt::Horizontal;
         const auto error=nativeWorkspace->dockSelection(page(),panels[i].name,group,
-            target ? target->property("groupPanel").toString() : Unbound::nativeRemainderId(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
+            target ? nativeWorkspace->targetName(target) : Unbound::nativeRemainderId(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
         if (!error.isEmpty() && group && group->active()) {
             group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex())); group->setSnapping(snap->isChecked());
         }
         status->setText(error.isEmpty() ? QStringLiteral("Panel arrangement docked in the native workspace.") : error);
         Unbound::logEvent("workspace.native-command.complete",{{"panel",panels[i].name},{"success",error.isEmpty()},{"error",error}});
         for (int j=0;j<panels.size();++j) updateRow(j);
+        nativeWorkspace->refreshNativeTargets(page());
         save();
     }
     void togglePanelDoor(int i)
@@ -874,10 +877,20 @@ private:
                 toolbarDecoration->wire(page(), panels[i].name, [this, i] { togglePanelPlacement(i); });
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
+        const auto anchorError=nativeWorkspace->preparePending(root);
+        if (!anchorError.isEmpty()) { status->setText(anchorError); return; }
+        const auto floatingAnchor=nativeWorkspace->pendingFloatingAnchor();
+        if (!floatingAnchor.isEmpty()) for (const auto &panel : panels) if (panel.name==floatingAnchor && panel.session->active()) {
+            const auto geometry=Unbound::WorkspaceSettings::rectangle(panel.saved);
+            if (geometry.isValid()) panel.session->setFloatingGeometry(geometry);
+            panel.session->setPinned(panel.saved["pinned"].toBool());
+            panel.session->setHiddenByUser(panel.saved["hidden"].toBool(),false);
+        }
         for (int i = 0; i < panels.size(); ++i)
             if (panels[i].desired && !panels[i].session->active()) requestUndock(i, true);
         const auto nativeError=nativeWorkspace->restoreReady(root);
         if (!nativeError.isEmpty()) status->setText(nativeError);
+        nativeWorkspace->refreshNativeTargets(root);
         if (!pendingGroups.isEmpty()) QTimer::singleShot(120, this, [this] { restoreGroups(); });
         if (background->isChecked()) QTimer::singleShot(200, this, [this] { if (!quitting && background->isChecked()) applyBackgroundVisibility(true); });
     }

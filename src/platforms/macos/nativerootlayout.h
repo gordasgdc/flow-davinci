@@ -15,9 +15,14 @@ public:
     bool active() const { return page && nativeLayout && customLayout; }
     static bool contains(QWidget *nativePage,QWidget *container) {
         if (!nativePage || !container || container==nativePage) return false;
-        for (auto ancestor=container; ancestor && ancestor!=nativePage; ancestor=ancestor->parentWidget())
+        for (auto ancestor=container; ancestor && ancestor!=nativePage; ancestor=ancestor->parentWidget()) {
+            auto marker=ancestor->parentWidget();
+            if (ancestor->property("unboundScopedNativeArrangement").toBool() && marker &&
+                marker->objectName().startsWith("unboundNativePanelPosition_") && marker->layout() &&
+                marker->layout()->indexOf(ancestor)>=0 && nativePage->isAncestorOf(marker)) return true;
             if (ancestor->parentWidget()==nativePage && ancestor->property("unboundNativeArrangementRoot").toBool())
                 return nativePage->layout() && nativePage->layout()->indexOf(ancestor)>=0;
+        }
         return false;
     }
     static QWidget *restorationParent(QWidget *nativePage,QWidget *originalParent,QLayout *originalLayout) {
