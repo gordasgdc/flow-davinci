@@ -4,7 +4,7 @@ Current integration branch: `macos-panel-discovery-and-layout`. Feature ownershi
 remaining scope and verification are tracked in the [integration ledger](macos-integration-ledger.md).
 Preserved public/installed source snapshot: `fbe835c` (installed helper was built
 from its pre-commit source and reports a dirty build ID). The new integration is
-not installed. Historical branch/build records below apply to their own iterations.
+a test candidate; installation identity and verification are recorded in the integration ledger. Historical branch/build records below apply to their own iterations.
 
 ## Current Workspace UI acceptance
 
