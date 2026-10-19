@@ -93,6 +93,7 @@ public:
             member->window()->removeEventFilter(other); QObject::disconnect(member->window(), nullptr, other, nullptr);
             for (auto label : wrapper->findChildren<QLabel *>("unboundGroupHeader")) label->removeEventFilter(other);
             for (auto button : wrapper->findChildren<QPushButton *>("unboundDetachPanel")) QObject::disconnect(button, nullptr, other, nullptr);
+            for (auto button : wrapper->findChildren<QPushButton *>("unboundHidePanel")) QObject::disconnect(button, nullptr, other, nullptr);
             wrapper->setParent(host); members.append(member); leaves[member] = wrapper; wireMember(member);
         }
         other->members.clear(); other->leaves.clear(); other->retireHost();
@@ -301,7 +302,9 @@ private:
             connect(button, &QPushButton::clicked, this, [this, member] { detachMember(member); });
         }
         for (auto button : wrapper->findChildren<QPushButton *>("unboundHidePanel")) {
-            QObject::disconnect(button, nullptr, nullptr, nullptr);
+            // Preserve native/accessibility destruction tracking and observers.
+            // Only replace callbacks owned by this group.
+            QObject::disconnect(button, nullptr, this, nullptr);
             connect(button, &QPushButton::clicked, this, [this, member] { member->setHiddenByUser(true); syncVisibility(); });
         }
         connect(member->window(), &QObject::destroyed, this, [this] { if (!releasing && !rebuilding) dissolve(); });
