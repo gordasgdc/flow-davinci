@@ -127,9 +127,11 @@ public:
         if (busy || anchor.isEmpty() || active() || arrangement.positionPrepared()) return {};
         auto session=registry.value(anchor);
         if (!page || !page->isVisible() || !session || session->active()) return QStringLiteral("The saved native anchor is unavailable.");
+        auto surface=panelSurface(page,anchor);
+        if (!NativePanelPosition::supported(surface,page)) return QStringLiteral("The saved native anchor position is unavailable.");
         QScopedValueRollback<bool> guard(busy,true);
         if (beforeMount) beforeMount();
-        return arrangement.preparePosition(panelSurface(page,anchor),page,session,anchor,titles.value(anchor,anchor));
+        return arrangement.preparePosition(surface,page,session,anchor,titles.value(anchor,anchor));
     }
     QString pendingFloatingAnchor() const {
         const auto anchor=pending.value("anchor").toString();
@@ -169,6 +171,7 @@ public:
     QString dock(QWidget *page,const QHash<QString,MacPanelSession *> &sessions,const QJsonObject &tree,
         const QString &target,Qt::Orientation direction,bool before) {
         if (busy) return QStringLiteral("The native workspace is changing.");
+        if (!active() && target!=nativeRemainderId()) return QStringLiteral("The native drop target is unavailable.");
         QScopedValueRollback<bool> guard(busy,true);
         if (!active() && beforeMount) beforeMount();
         const auto error=active() ? arrangement.add(sessions,tree,target,direction,before) : arrangement.initialize(page,sessions,
@@ -192,6 +195,7 @@ public:
             QScopedValueRollback<bool> guard(busy,true);
             auto anchor=registry.value(target);
             if (!anchor || anchor->active()) return QStringLiteral("The native drop target changed.");
+            if (!NativePanelPosition::supported(nativeTargets.value(target),page)) return QStringLiteral("The native drop position changed.");
             logEvent("workspace.native-position.drop.request",{{"source",id},{"anchor",target},{"members",panels.size()},
                 {"orientation",int(direction)},{"before",before}});
             if (beforeMount) beforeMount();
