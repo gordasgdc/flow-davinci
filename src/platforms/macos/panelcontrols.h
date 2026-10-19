@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "productidentity.h"
+#include "panelmanagerview.h"
 #include <QApplication>
 #include <QAction>
 #include <QAbstractButton>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QScrollArea>
-#include <QInputDialog>
 #include <QMenu>
 #include <QMessageBox>
 #include <QTimer>
-#include <QVBoxLayout>
 #include <QWindow>
 #include "panelsession.h"
 #include "workspacesettings.h"
@@ -43,7 +39,6 @@
 #include "panelcommandcatalog.h"
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
-#include <QGroupBox>
 
 class PanelControls : public QWidget
 {
@@ -62,10 +57,11 @@ public:
         setWindowTitle(QStringLiteral("OpenGate Panel Manager"));
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
-        auto layout = new QVBoxLayout(this);
-        status = new QLabel(QStringLiteral("Open a project on the Edit page. Source Monitor can float with no clip loaded."), this);
-        status->setWordWrap(true); layout->addWidget(status);
-        presetsUi = new Unbound::ArrangementControls(this, layout, settings.data["selected_arrangement"].toString());
+        managerView=new Unbound::PanelManagerView(this,settings.data);
+        status=managerView->status; presetsUi=managerView->presets;
+        optionsScroll=managerView->scroll; pin=managerView->pin; constrain=managerView->constrain;
+        snap=managerView->snap; background=managerView->background;
+        hierarchyOption=managerView->hierarchy; style=managerView->style;
         presets = presetsUi->selection();
         workspaceRestore=new Unbound::WorkspaceRestoration(this);
         workspaceRestore->running=[this] { return !quitting; };
@@ -90,26 +86,6 @@ public:
         presetsUi->changed = [this] { save(); };
         presetsUi->restoreRequested = [this] { restoreArrangement(); };
         presetsUi->report = [this](QString message) { status->setText(message); };
-        auto scroll = new Unbound::ControlScroll(this); optionsScroll = scroll;
-        scroll->setObjectName(QStringLiteral("panelOptionsScroll"));
-        scroll->setWidgetResizable(true);
-        auto body = new QWidget(scroll);
-        auto bodyLayout = new QVBoxLayout(body);
-        auto options = new QVBoxLayout;
-        pin = new QCheckBox(QStringLiteral("Keep controls on top"), this);
-        pin->setObjectName(QStringLiteral("pinControls"));
-        pin->setChecked(settings.data["pin_controls"].toBool());
-        constrain = new QCheckBox(QStringLiteral("Keep a window grip reachable"), this);
-        constrain->setChecked(settings.data["keep_on_screen"].toBool(true));
-        options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
-        snap = new QCheckBox(QStringLiteral("Snap window edges (Option bypasses)"), this);
-        snap->setObjectName(QStringLiteral("snapWindows"));
-        snap->setChecked(settings.data["snap_windows"].toBool(true));
-        options->addWidget(snap);
-        background = new QCheckBox(QStringLiteral("Floating workspace (hide native background)"), this);
-        background->setObjectName(QStringLiteral("hideResolveBackground"));
-        const auto nativeMode=settings.data["native_workspace_mode"].toString();
-        background->setChecked(nativeMode=="floating" || (nativeMode.isEmpty() && settings.data["hide_background"].toBool(false))); options->addWidget(background);
         connect(background, &QCheckBox::toggled, this, [this](bool hidden) {
             action(QStringLiteral("background-visibility"));
             if (!applyBackgroundVisibility(hidden)) { const QSignalBlocker blocker(background); background->setChecked(!hidden); }
@@ -130,20 +106,10 @@ public:
         groupReserve = new Unbound::GroupHostReserve(this);
         nativeSizing = new Unbound::NativeWorkspaceSizing(this);
         nativeSizing->blocked = [this] { return quitting || expansionController->index() >= 0; };
-        hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
-        hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
-        hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
         hierarchy->setEnabled(hierarchyOption->isChecked());
-        bodyLayout->addWidget(hierarchyOption);
         connect(hierarchyOption, &QCheckBox::toggled, this, [this](bool enabled) {
             action("panel-hierarchy"); hierarchy->setEnabled(enabled); save();
         });
-        auto styleRow = new QHBoxLayout;
-        styleRow->addWidget(new QLabel(QStringLiteral("Panel title bars"), this));
-        style = new QComboBox(this); style->setObjectName(QStringLiteral("windowChrome"));
-        style->addItems({"Standard", "Compact traffic lights", "Hidden — drag grip and resize edges"});
-        style->setCurrentIndex(qBound(0, settings.data["window_chrome"].toInt(), 2));
-        styleRow->addWidget(style); bodyLayout->addLayout(styleRow);
         connect(style, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int value) {
             action(QStringLiteral("window-style-%1").arg(value));
             for (auto &panel : panels) panel.session->setChrome(static_cast<Unbound::WindowChrome>(value));
@@ -162,12 +128,8 @@ public:
             for (auto &panel : panels) panel.session->setConstrained(value);
             save();
         });
-        auto bulk = new QGridLayout;
-        const QStringList actions = {"Undock All", "Dock All", "Show All", "Hide All", "Recover Windows", QString::fromUtf8("Quick Export…")};
-        for (int i = 0; i < actions.size(); ++i) {
-            auto button = new QPushButton(actions[i], this);
-            button->setObjectName(QStringLiteral("bulk_%1").arg(i));
-            bulk->addWidget(button, i / 2, i % 2);
+        for (int i=0;i<managerView->bulkButtons.size();++i) {
+            auto button=managerView->bulkButtons[i];
             connect(button, &QPushButton::clicked, this, [this, i] {
                 action(QStringLiteral("bulk-%1").arg(i));
                 const unsigned command = ++bulkVersion;
@@ -196,7 +158,6 @@ public:
                 save();
             });
         }
-        layout->addLayout(bulk);
         panels = {
             {"Inspector", "widgetEditInspector", "Inspector", false},
             {"Timeline", "frameConformTimelines", "", false},
@@ -227,17 +188,11 @@ public:
             if (!quitting) saveTimer.start();
         };
         nativeWorkspace->failed = [this](const QString &error) { status->setText(error); };
-        auto groupBox = new QGroupBox(QStringLiteral("Join panels or their groups"), body);
-        auto groupLayout = new QGridLayout(groupBox);
-        auto firstPanel = new QComboBox(groupBox), secondPanel = new QComboBox(groupBox);
-        firstPanel->setObjectName(QStringLiteral("groupFirst")); secondPanel->setObjectName(QStringLiteral("groupSecond"));
-        for (const auto &panel : panels) { firstPanel->addItem(panel.label); secondPanel->addItem(panel.label); }
-        firstPanel->setCurrentIndex(2); secondPanel->setCurrentIndex(3);
-        groupLayout->addWidget(firstPanel, 0, 0); groupLayout->addWidget(secondPanel, 0, 1);
-        for (int i = 0; i < 4; ++i) {
-            auto button = new QPushButton(i == 0 ? QStringLiteral("Side by Side") : i == 1 ? QStringLiteral("Stack") : i == 2 ? QStringLiteral("Release Groups") : QStringLiteral("Tabs"), groupBox);
-            button->setObjectName(QStringLiteral("group_%1").arg(i));
-            groupLayout->addWidget(button, i >= 2 ? 2 : 1, i >= 2 ? i - 2 : i);
+        QStringList panelLabels; for (const auto &panel:panels) panelLabels.append(panel.label);
+        managerView->addGroups(panelLabels);
+        auto firstPanel=managerView->first,secondPanel=managerView->second;
+        for (int i=0;i<managerView->groupButtons.size();++i) {
+            auto button=managerView->groupButtons[i];
             connect(button, &QPushButton::clicked, this, [this, firstPanel, secondPanel, i] {
                 action(QStringLiteral("group-%1").arg(i));
                 if (i == 2) { releaseGroups(); save(); return; }
@@ -258,10 +213,6 @@ public:
                 });
             });
         }
-        bodyLayout->addWidget(groupBox);
-        layout->addWidget(scroll, 1);
-        scroll->setWidget(body);
-        auto grid = new QGridLayout; bodyLayout->addLayout(grid);
         for (int i = 0; i < panels.size(); ++i) {
             auto &panel = panels[i];
             panel.saved = savedPanels[panel.name].toObject();
@@ -277,23 +228,9 @@ public:
             panel.session->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex()));
             panel.session->setConstrained(constrain->isChecked());
             panel.session->setSnapping(snap->isChecked());
-            grid->addWidget(new QLabel(panel.label, this), i, 0);
-            panel.undock = new QPushButton(QStringLiteral("Undock"), this);
-            panel.dock = new QPushButton(QStringLiteral("Dock"), this);
-            panel.show = new QPushButton(QStringLiteral("Show"), this);
-            panel.hide = new QPushButton(QStringLiteral("Hide"), this);
-            panel.expand = new QPushButton(QStringLiteral("Expand"), this);
-            panel.center = new QPushButton(QStringLiteral("Center"), this);
-            panel.center->setObjectName(QStringLiteral("center_") + panel.name);
-            panel.expand->setObjectName(QStringLiteral("expand_") + panel.name);
-            panel.undock->setObjectName(QStringLiteral("undock_") + panel.name);
-            panel.dock->setObjectName(QStringLiteral("dock_") + panel.name);
-            panel.show->setObjectName(QStringLiteral("show_") + panel.name);
-            panel.hide->setObjectName(QStringLiteral("hide_") + panel.name);
-            grid->addWidget(panel.undock, i, 1); grid->addWidget(panel.dock, i, 2);
-            grid->addWidget(panel.show, i, 3); grid->addWidget(panel.hide, i, 4);
-            grid->addWidget(panel.expand, i, 5);
-            grid->addWidget(panel.center, i, 6);
+            const auto row=managerView->addPanel(i,panel.name,panel.label);
+            panel.undock=row.undock; panel.dock=row.dock; panel.show=row.show;
+            panel.hide=row.hide; panel.expand=row.expand; panel.center=row.center;
             panel.session->changed = [this, i] {
                 if (!panels[i].session->active()) expansionController->sessionInactive(i);
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
@@ -389,18 +326,9 @@ public:
             }
         };
         workspaceMenu->wire();
-        auto footerRow = new QHBoxLayout;
-        auto floatFooter = new QPushButton(QStringLiteral("Float Page Navigation"), body);
-        floatFooter->setObjectName("floatPageNavigation"); footerRow->addWidget(floatFooter);
-        auto dockFooter = new QPushButton(QStringLiteral("Dock Page Navigation"), body);
-        dockFooter->setObjectName("dockPageNavigation"); footerRow->addWidget(dockFooter);
-        connect(floatFooter, &QPushButton::clicked, this, [this] { status->setText(footer->floatPanel()); });
-        connect(dockFooter, &QPushButton::clicked, this, [this] { footer->dock(); });
-        bodyLayout->addLayout(footerRow);
-        auto credit=new QLabel(Unbound::productCredit(),body); credit->setWordWrap(true);
-        credit->setObjectName("openGateFoundationCredit"); bodyLayout->addWidget(credit);
-        bodyLayout->addStretch();
-        setMinimumSize(280, 200);
+        managerView->addFooter();
+        connect(managerView->floatFooter,&QPushButton::clicked,this,[this] { status->setText(footer->floatPanel()); });
+        connect(managerView->dockFooter,&QPushButton::clicked,this,[this] { footer->dock(); });
         saveTimer.setSingleShot(true); saveTimer.setInterval(250);
         connect(&saveTimer, &QTimer::timeout, this, [this] { save(); });
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
@@ -922,6 +850,7 @@ private:
         if (auto root = page()) if (root->window()->property("unboundBackgroundHidden").toBool()) Unbound::setNativeBackgroundHidden(root->window(), {}, false);
         for (auto &p : panels) if (p.session->active()) p.session->dock();
     }
+    Unbound::PanelManagerView *managerView=nullptr;
     Unbound::ControlScroll *optionsScroll = nullptr;
     QLabel *status = nullptr;
     QCheckBox *pin = nullptr, *constrain = nullptr;
