@@ -151,6 +151,12 @@
       "commit": "4d55e8cdb3364107cdf922c543cd713a46f5b195",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-pin-and-footer-persistence",
+      "commit": "cba88d9a1f1c346d9d8f46ef0308f82e90e7422b",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }

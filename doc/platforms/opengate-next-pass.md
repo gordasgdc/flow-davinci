@@ -6,7 +6,7 @@ Implementation, fixture checks and live Resolve acceptance are separate. None of
 
 | Priority / item | Current state | Required acceptance |
 | --- | --- | --- |
-| 1. Reopen the last view | Autosave/startup restore exists; two-process modified-view fixture compiles, execution pending | Restart Resolve: restore latest modified layout, not merely a named preset. Match display/frame, splits, tab selection, hidden doors, pinning, dividers, footer, toolbar and workspace identity. No native-layout fallback or duplicate shell. |
+| 1. Reopen the last view | Autosave/startup restore exists; pin-only autosave and footer pin snapshot fixed; two-process modified-view fixture compiles, execution pending | Restart Resolve: restore latest modified layout, not merely a named preset. Match display/frame, splits, tab selection, hidden doors, pinning, dividers, footer, toolbar and workspace identity. No native-layout fallback or duplicate shell. |
 | 2. Independent panel commands | Configurable OpenGate commands implemented and hidden fixtures pass | Source affects only Source; Program only Program. Reuse grouped doors. Retrieve panels from hidden native shell. Verify typing/dialog conflicts and persistence. Native keyboard-editor registration remains unverified. |
 | 3. Timeline undock | Dedicated reversible native control implemented; fixture checks pass | Attached toolbar travels with Timeline. Explicitly detached tools stay separate. Verify actual Resolve control visibility and drag. |
 | 4. Stacking/pinned doors | Timeline-group/Inspector policy changed; pinned-door fixture passed | Confirm user-visible Inspector stays above primary workspace and pin never prevents door changes. Identify actual native hosts in logs. |
