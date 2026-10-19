@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QApplication>
-#include <QLabel>
+#include <QAbstractButton>
+#include "panelscalecontrols.h"
 #include <QMenu>
 #include <QPointer>
 #include <QSet>
@@ -13,11 +14,15 @@ namespace Unbound {
 // Resolve's toolbar. All actions delegate to the existing panel/group owners.
 class WorkspaceHeaders : public QObject {
 public:
-    struct Panel { QString id,title;std::function<QWidget *()> host;std::function<bool()> shown;std::function<void(bool)> setShown; };
+    struct Panel { QString id,title;std::function<QWidget *()> host;std::function<bool()> shown;std::function<void(bool)> setShown;std::function<double()> scale={};std::function<void(double)> setScale={};std::function<void()> floatPanel={}; };
     struct Window { QString title;std::function<bool()> shown;std::function<void(bool)> setShown; };
     explicit WorkspaceHeaders(QObject *owner):QObject(owner) {
         timer.setSingleShot(true);timer.setInterval(50);
         connect(&timer,&QTimer::timeout,this,[this] { refresh(); });qApp->installEventFilter(this);
+        // Hidden native buttons need not paint when a project is switched.
+        projectWatch.setInterval(1000);connect(&projectWatch,&QTimer::timeout,this,[this] {
+            if (projectLabel && projectLabel->property("text").toString().trimmed()!=lastProject) schedule();
+        });projectWatch.start();
     }
     ~WorkspaceHeaders() override {
         qApp->removeEventFilter(this);
@@ -37,6 +42,16 @@ public:
                     logEvent("header.panel.visibility",{{"panel",panel.id},{"requested",shown}});
                     if (panel.setShown) panel.setShown(shown);
                 });
+            });
+        }
+        for (const auto &panel:panels) if (panel.id=="unboundWorkspaceToolbar" && panel.host && panel.host()==host) {
+            auto controls=menu->addMenu("Workspace Toolbar Controls");controls->setProperty("unboundOwnMenu",true);
+            if (panel.scale && panel.setScale) {
+                auto size=controls->addMenu("Interface Size");
+                populatePanelScaleMenu(size,this,panel.scale,panel.setScale);
+            }
+            if (panel.floatPanel) connect(controls->addAction("Float Separately"),&QAction::triggered,this,[this,panel] {
+                QTimer::singleShot(0,this,[panel] { if (!QApplication::activeModalWidget()) panel.floatPanel(); });
             });
         }
         const bool global=primary && primary()==host;
@@ -61,7 +76,7 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
-        if (object==projectLabel && (event->type()==QEvent::Paint || event->type()==QEvent::LayoutRequest)) {
+        if (object==projectLabel && (event->type()==QEvent::Paint || event->type()==QEvent::LayoutRequest || event->type()==QEvent::Show)) {
             if (object->property("text").toString().trimmed()!=lastProject) schedule();return false;
         }
         if (event->type()!=QEvent::Show && event->type()!=QEvent::WindowActivate && event->type()!=QEvent::Resize && event->type()!=QEvent::WindowTitleChange) return false;
@@ -73,12 +88,11 @@ private:
     QString projectName() {
         auto surface=projectSurface ? projectSurface() : nullptr;
         if (!surface) return {};
-        if (!projectLabel || !surface->isAncestorOf(projectLabel) || !projectLabel->isVisibleTo(surface)) {
+        if (!projectLabel || !surface->isAncestorOf(projectLabel)) {
             projectLabel=nullptr;
-            for (auto label:surface->findChildren<QLabel *>()) if (label->objectName()=="labelTitle" &&
-                label->parentWidget() && label->parentWidget()->objectName()=="centerFrame" && label->isVisibleTo(surface)) {
-                projectLabel=label;break;
-            }
+            for (auto button:surface->findChildren<QAbstractButton *>("btnProjectsMainBarProjectList"))
+                if (button->parentWidget() && button->parentWidget()->objectName()=="UiProjectsMainBarImp" &&
+                    !button->text().trimmed().isEmpty()) { projectLabel=button;break; }
         }
         return projectLabel ? projectLabel->property("text").toString().trimmed() : QString();
     }
@@ -100,7 +114,7 @@ private:
             }
             QPointer<WorkspaceHeaders> alive(this);QPointer<QWidget> window(host);
             setNativeHeaderMenu(host,true,[alive,window] {
-                if (!alive || !window) return;
+                if (!alive || !window || QApplication::activeModalWidget()) return;
                 auto menu=window->findChild<QMenu *>("openGateWindowPanels",Qt::FindDirectChildrenOnly);
                 if (!menu) { menu=new QMenu(window);menu->setObjectName("openGateWindowPanels");menu->setProperty("unboundOwnMenu",true); }
                 alive->populate(menu,window);menu->popup(window->mapToGlobal(QPoint(qMax(0,window->width()-240),0)));
@@ -111,6 +125,6 @@ private:
         else if (!current.contains(known[i])) { setNativeHeaderMenu(known[i],false,{});known.removeAt(i); }
     }
     QList<Panel> panels;QList<QPointer<QWidget>> known;QPointer<QWidget> projectLabel;
-    QString lastProject;QTimer timer;bool projectScanned=false;
+    QString lastProject;QTimer timer,projectWatch;bool projectScanned=false;
 };
 }

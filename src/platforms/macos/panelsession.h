@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "panelscope.h"
+#include "compacttoolbar.h"
 #include <QBoxLayout>
 #include <QCloseEvent>
 #include <QDynamicPropertyChangeEvent>
@@ -269,6 +270,7 @@ public:
         });
         host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
+        if (widget->findChild<QWidget *>("pageSingleScreenModeTools")) new CompactToolbar(host,widget);
         if (constrain) keepOnDisplay(host);
         refreshMetricScale();
         logEvent(QStringLiteral("panel.contents.undock"), {{"panel", title}, {"slot", widgetState(slot)}});
@@ -365,6 +367,7 @@ public:
         });
         if (!deferHostShow) host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
+        if (widget->findChild<QWidget *>("pageSingleScreenModeTools")) new CompactToolbar(host,widget);
         if (constrain) keepOnDisplay(host);
         refreshMetricScale();
         reconcileSourcePlayerPresentation(content,"undock");

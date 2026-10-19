@@ -220,9 +220,8 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
         objc_setAssociatedObject(window, &titleKey, title, OBJC_ASSOCIATION_RETAIN_NONATOMIC); [title release];
     }
     if (title.superview != green.superview) { [title removeFromSuperview]; [green.superview addSubview:title]; }
-    const bool compact = window.styleMask & NSWindowStyleMaskFullSizeContentView;
-    if (title.hidden != compact) title.hidden = compact;
-    if (!compact) {
+    if (title.hidden) title.hidden = NO;
+    {
         if (window.titleVisibility != NSWindowTitleHidden) window.titleVisibility = NSWindowTitleHidden;
         const CGFloat left = NSMaxX(frame) + 12;
         auto header=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
@@ -243,7 +242,7 @@ bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()
     if (!window) return false;
     auto button=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
     NSButton *green=[window standardWindowButton:NSWindowZoomButton];
-    if (!enabled || !green || !green.superview || green.hidden || (window.styleMask & NSWindowStyleMaskFullSizeContentView)) {
+    if (!enabled || !green || !green.superview || green.hidden) {
         if (button) { button.hidden=YES; [button setOpenCallback:{}]; } return false;
     }
     if (!button) {

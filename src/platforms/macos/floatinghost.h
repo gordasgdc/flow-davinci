@@ -92,7 +92,7 @@ public:
         const QRect position = geometry();
         chrome = value;
         setWindowFlag(Qt::FramelessWindowHint, value == WindowChrome::Hidden);
-        const int top = value == WindowChrome::Compact ? 28 : 24;
+        const int top = value == WindowChrome::Compact ? 28 : value == WindowChrome::Hidden ? 24 : 0;
         setContentsMargins(0, top, 0, 0);
         if (visible) show();
         {
@@ -164,9 +164,7 @@ protected:
         QWidget::paintEvent(event);
         QPainter painter(this);
         painter.setPen(palette().color(QPalette::WindowText));
-        if (chrome == WindowChrome::Compact)
-            painter.drawText(QRect(110, 0, qMax(0, width() - 118), 28), Qt::AlignVCenter | Qt::AlignLeft, windowTitle());
-        if (chrome != WindowChrome::Compact)
+        if (chrome == WindowChrome::Hidden)
             painter.drawText(QRect(0, 0, width(), 12), Qt::AlignCenter, QStringLiteral("···"));
     }
     bool eventFilter(QObject *object, QEvent *event) override

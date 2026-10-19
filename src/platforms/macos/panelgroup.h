@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "panelscalecontrols.h"
+#include "compacttoolbar.h"
 #include <QHash>
 #include <QPushButton>
 #include <QTabWidget>
@@ -314,6 +315,7 @@ private:
         // Keep old hosts until the destination is ready. Hiding the active host
         // earlier makes Cocoa activate another window in the middle of transfer.
         const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
+        if (name=="unboundWorkspaceToolbar") new CompactToolbar(wrapper,content->findChild<QStackedWidget *>() ? content->findChild<QStackedWidget *>() : content);
         members.append(member); leaves[member] = wrapper; wireMember(member); return {};
     }
     void wireMember(MacPanelSession *member)

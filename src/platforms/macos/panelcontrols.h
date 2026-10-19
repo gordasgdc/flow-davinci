@@ -370,11 +370,14 @@ public:
         for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
             [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
             [this,i] { return !panels[i].session->hiddenByUser(); },
-            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggle(i);save(); }});
+            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggle(i);save(); },
+            [this,i] { return panels[i].session->interfaceScale(); },
+            [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
+            [this,i] { if (quitting) return; if (auto group=groupFor(i)) group->detachMember(panels[i].session);save(); }});
         headers->add({"page-navigation","Page Navigation",[this] { return footer->floatingWindow(); },
             [this] { return !footer->snapshot()["hidden"].toBool(); },
             [this](bool visible) { if (!quitting) status->setText(visible ? footer->showPanel() : footer->hidePanel()); }});
-        headers->projectSurface=[this] { return Unbound::panelSurface(page(),"unboundWorkspaceToolbar"); };
+        headers->projectSurface=[] { return Unbound::resolveMainWindow(); };
         headers->primary=[this]() -> QWidget * {
             if (panels[1].session->active() && panels[1].session->window()->window()->isVisible()) return panels[1].session->window()->window();
             QWidget *best=nullptr;for (const auto &panel:panels) if (panel.session->active()) {
