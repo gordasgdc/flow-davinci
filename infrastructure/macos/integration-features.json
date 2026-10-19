@@ -295,6 +295,12 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "850efcc57caf6a57db6267ce76a4c8b6e2bd73ba"
+    },
+    {
+      "branch": "feature/macos-workspace-header-callers",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "70e3634f006265f8c76da8c04501663e1dd3bd41"
     }
   ]
 }
