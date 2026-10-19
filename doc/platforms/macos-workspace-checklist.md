@@ -585,3 +585,5 @@ The integration source/tests match that verified commit; feature provenance and
 documentation are updated separately. These passes do not close actual Resolve,
 GPU/playback, Single/Cinema Viewer, independent scaling or custom-color storage
 acceptance. Nothing in this follow-up is installed or merged to master.
+
+2026-10-19 first-install candidate: native arrangement/UI fixtures caught covered tab pages being shown together after recursive empty-branch recovery. Direct stacked pages now follow the selected page; descendants retain logical visibility. Both failing suites pass in isolated reruns. Hidden group native-door invocation now reveals the group. Full integrated verification and live first-install acceptance remain required; normal arrangements are preserved through a separate preview settings profile.

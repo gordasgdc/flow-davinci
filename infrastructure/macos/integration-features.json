@@ -307,6 +307,12 @@
       "commit": "e1d8defe02303a540ecdf482b45557fe06a05582",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-native-tab-visibility",
+      "commit": "cb3c794991598e6c31c4925688c981af44e33b31",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
