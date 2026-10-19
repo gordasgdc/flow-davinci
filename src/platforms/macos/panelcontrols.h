@@ -19,6 +19,7 @@
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "workspacesnapshot.h"
+#include "workspacerestoration.h"
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
 #include "panelmenus.h"
@@ -66,6 +67,25 @@ public:
         status->setWordWrap(true); layout->addWidget(status);
         presetsUi = new Unbound::ArrangementControls(this, layout, settings.data["selected_arrangement"].toString());
         presets = presetsUi->selection();
+        workspaceRestore=new Unbound::WorkspaceRestoration(this);
+        workspaceRestore->running=[this] { return !quitting; };
+        workspaceRestore->report=[this](QString message) { status->setText(message); };
+        workspaceRestore->validate=[this](const QJsonObject &value) {
+            return nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
+        };
+        workspaceRestore->dock=[this] {
+            ++bulkVersion; ++groupVersion; restoreExpanded(); dockAll();
+            for (const auto &panel:panels) if (panel.session->active()) return panel.name;
+            return QString();
+        };
+        workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
+        workspaceRestore->resume=[this] { restore(); save(); };
+        workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty(); };
+        workspaceRestore->unavailable=[this] {
+            QStringList missing;
+            for (const auto &panel:panels) if (panel.desired && !panel.session->active() && !panel.pending) missing.append(panel.label);
+            return missing;
+        };
         presetsUi->workspace = [this] { return arrangement(); };
         presetsUi->changed = [this] { save(); };
         presetsUi->restoreRequested = [this] { restoreArrangement(); };
@@ -518,26 +538,15 @@ private:
     }
     void restoreArrangement()
     {
-        action(QStringLiteral("arrangement-restore"));
-        const auto entry = presetsUi->find(presets->currentData().toString());
-        if (entry.isEmpty()) { status->setText(QStringLiteral("Select a saved arrangement first.")); return; }
-        if (!page() || !page()->isVisible()) { status->setText(QStringLiteral("Open the Edit page to restore an arrangement.")); return; }
-        const auto value = entry["workspace"].toObject();
-        const auto validation=nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
-        if (!validation.isEmpty()) { status->setText(validation); Unbound::logEvent("workspace.native-plan.failed",{{"error",validation},{"stage","preset-preflight"}}); return; }
-        ++bulkVersion;
-        ++groupVersion;
-        restoreExpanded();
-        dockAll();
-        for (const auto &panel : panels) if (panel.session->active()) {
-            status->setText(QStringLiteral("Could not restore: a panel could not be docked safely."));
-            Unbound::logEvent(QStringLiteral("arrangement.restore.failed"), {{"panel", panel.name}}); return;
-        }
+        workspaceRestore->preset(presetsUi->find(presets->currentData().toString()),page() && page()->isVisible());
+    }
+    QString applyWorkspace(const QJsonObject &value)
+    {
         if (footer) footer->setState(value["footer"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
         pendingGroups = value["groups"].toArray();
         const auto nativeError=nativeWorkspace->setPending(value["native_arrangement"].toObject(),pendingGroups);
-        if (!nativeError.isEmpty()) { status->setText(nativeError); return; }
+        if (!nativeError.isEmpty()) return nativeError;
         pin->setChecked(value["pin_controls"].toBool());
         constrain->setChecked(value["keep_on_screen"].toBool(true));
         snap->setChecked(value["snap_windows"].toBool(true));
@@ -548,11 +557,7 @@ private:
             panel.saved = saved[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool() || nativeWorkspace->requiredPanels().contains(panel.name);
         }
-        restore(); save();
-        QStringList missing;
-        for (const auto &panel : panels) if (panel.desired && !panel.session->active() && !panel.pending) missing.append(panel.label);
-        status->setText(missing.isEmpty() ? (pendingGroups.isEmpty() ? QStringLiteral("Arrangement restored.") : QStringLiteral("Restoring panel groups…")) : QStringLiteral("Unavailable: ") + missing.join(", "));
-        Unbound::logEvent(QStringLiteral("arrangement.restore"), {{"id", entry["id"]}, {"unavailable", missing.join(", ")}});
+        return {};
     }
     static void action(const QString &name, const QString &panel = {})
     { Unbound::logEvent(QStringLiteral("button.click"), {{"action", name}, {"panel", panel}}); }
@@ -697,6 +702,7 @@ private:
         outcome("dock", i, error); updateRow(i); save();
     }
     void dockAll() {
+        if (workspaceRestore) workspaceRestore->cancel();
         if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
         if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {};
         for (int i = panels.size() - 1; i >= 0; --i) dockOne(i);
@@ -841,22 +847,13 @@ private:
                 toolbarDecoration->wire(page(), panels[i].name, [this, i] { togglePanelPlacement(i); });
         QWidget *root = page();
         if (!root || !root->isVisible()) return;
-        const auto anchorError=nativeWorkspace->preparePending(root);
-        if (!anchorError.isEmpty()) { status->setText(anchorError); return; }
-        const auto floatingAnchor=nativeWorkspace->pendingFloatingAnchor();
-        if (!floatingAnchor.isEmpty()) for (const auto &panel : panels) if (panel.name==floatingAnchor && panel.session->active()) {
-            const auto geometry=Unbound::WorkspaceSettings::rectangle(panel.saved);
-            if (geometry.isValid()) panel.session->setFloatingGeometry(geometry);
-            panel.session->setPinned(panel.saved["pinned"].toBool());
-            panel.session->setHiddenByUser(panel.saved["hidden"].toBool(),false);
-        }
-        for (int i = 0; i < panels.size(); ++i)
-            if (panels[i].desired && !panels[i].session->active()) requestUndock(i, true);
-        const auto nativeError=nativeWorkspace->restoreReady(root);
-        if (!nativeError.isEmpty()) status->setText(nativeError);
-        nativeWorkspace->refreshNativeTargets(root);
-        if (!pendingGroups.isEmpty()) QTimer::singleShot(120, this, [this] { restoreGroups(); });
-        if (background->isChecked()) QTimer::singleShot(200, this, [this] { if (!quitting && background->isChecked()) applyBackgroundVisibility(true); });
+        QList<Unbound::WorkspaceRestoration::Panel> restoring;
+        for (const auto &panel:panels) restoring.append({panel.name,panel.saved,panel.desired,panel.session});
+        const auto result=workspaceRestore->native(root,nativeWorkspace,restoring,[this](int i) { requestUndock(i,true); });
+        if (!result.error.isEmpty()) status->setText(result.error);
+        if (!result.prepared) return;
+        workspaceRestore->settled(!pendingGroups.isEmpty(),background->isChecked(),
+            [this] { restoreGroups(); },[this] { if (background->isChecked()) applyBackgroundVisibility(true); });
     }
     void keepGripsReachable()
     {
@@ -908,6 +905,7 @@ private:
     {
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
+        if (workspaceRestore) workspaceRestore->cancel();
         groupReserve->clear();
         if (nativeWorkspace) nativeWorkspace->release(true);
         if (nativeSizing) nativeSizing->restore();
@@ -930,6 +928,7 @@ private:
     Unbound::NativePanelToggles *nativeToggles=nullptr;
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
+    Unbound::WorkspaceRestoration *workspaceRestore=nullptr;
     Unbound::ArrangementControls *presetsUi = nullptr;
     Unbound::PanelCommandCatalog *commands=nullptr;
     Unbound::WorkspaceArrangements *workspaceMenu = nullptr;
