@@ -4,7 +4,7 @@
   "features": [
     {
       "branch": "experiment/macos-custom-clip-colors",
-      "commit": "6cfc157252048dfdf0ad20e2bd26f190c1c4a310",
+      "commit": "0eaacd197a21e29d085fe0d0547a2754f1725508",
       "scope": "research",
       "acceptance": "pending"
     },
@@ -16,7 +16,7 @@
     },
     {
       "branch": "feature/macos-command-registration",
-      "commit": "c2dc08d980d3f7aefd6fecf683afe09cf839f1b6",
+      "commit": "b1d1be5722b40a4d263aca301879e51cedb75747",
       "scope": "implementation",
       "acceptance": "pending"
     },
@@ -121,6 +121,18 @@
       "commit": "ab8789403f04aae6d0d8ae89d9a1dac25129d3d9",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-timeline-undock-control",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "f5728befa117f38aaa59b6a2e9c4c6fb702dd847"
+    },
+    {
+      "branch": "fix/macos-group-window-stacking",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "86b9f1a0eae5d7f00029f555c76f968382358df5"
     }
   ]
 }

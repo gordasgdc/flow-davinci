@@ -22,7 +22,7 @@ commit = git('rev-parse', 'HEAD')
 stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
-tests = ['build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
+tests = ['panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
          'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
 receipt = {'commit': commit, 'branch': git('branch', '--show-current'),
