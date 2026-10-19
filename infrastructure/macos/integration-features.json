@@ -325,6 +325,24 @@
       "commit": "94d5f023797b5916bd04b4648d0f34e5f2606915",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-page-transition-crash-evidence",
+      "commit": "33e788dd85335a88a8a8bc3c8ece7373bcef99c1",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-sidebar-overflow",
+      "commit": "b1faa7a17178c2a3054a321c0e3720572e2b8f3a",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-header-cleanup",
+      "commit": "5fb14ba521591fdfb395ba4b0175d954f6d32dc7",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
