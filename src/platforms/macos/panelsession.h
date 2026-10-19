@@ -270,7 +270,6 @@ public:
         });
         host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
-        if (widget->findChild<QWidget *>("pageSingleScreenModeTools")) new CompactToolbar(host,widget);
         if (constrain) keepOnDisplay(host);
         refreshMetricScale();
         logEvent(QStringLiteral("panel.contents.undock"), {{"panel", title}, {"slot", widgetState(slot)}});
@@ -365,6 +364,7 @@ public:
             if (host) host->deleteLater();
             clear();
         });
+        if (widget->findChild<QWidget *>("pageSingleScreenModeTools")) host->setProperty("unboundToolbarStrip",true);
         if (!deferHostShow) host->show();
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (widget->findChild<QWidget *>("pageSingleScreenModeTools")) new CompactToolbar(host,widget);

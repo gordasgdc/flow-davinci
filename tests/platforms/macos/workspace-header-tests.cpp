@@ -48,6 +48,10 @@ int main(int argc,char **argv) {
     ok &= chrome.contentsMargins().top()==0;
     chrome.setChrome(Unbound::WindowChrome::Compact);chrome.show();settle();
     ok &= Unbound::setNativeHeaderMenu(&chrome,true,[] {});
+    Unbound::MacFloatingHost strip(&main);strip.setAttribute(Qt::WA_DontShowOnScreen);strip.setProperty("unboundToolbarStrip",true);
+    strip.setChrome(Unbound::WindowChrome::Standard);strip.show();settle();
+    ok &= strip.contentsMargins().top()==0 && strip.contentsMargins().left()>=100;
+    ok &= Unbound::setNativeHeaderMenu(&strip,true,[] {});
     int clicked=0;Unbound::setNativePin(&first,false,[](bool) {});
     ok &= Unbound::setNativeHeaderMenu(&first,true,[&] { ++clicked; });
     auto button=Unbound::nativeHeaderMenuFrameForTest(&first);auto traffic=Unbound::nativeTrafficFramesForTest(&first);

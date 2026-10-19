@@ -92,12 +92,13 @@ public:
         const QRect position = geometry();
         chrome = value;
         setWindowFlag(Qt::FramelessWindowHint, value == WindowChrome::Hidden);
-        const int top = value == WindowChrome::Compact ? 28 : value == WindowChrome::Hidden ? 24 : 0;
-        setContentsMargins(0, top, 0, 0);
+        const bool strip=property("unboundToolbarStrip").toBool();
+        const int top = strip ? 0 : value == WindowChrome::Compact ? 28 : value == WindowChrome::Hidden ? 24 : 0;
+        setContentsMargins(strip ? 110 : 0, top, strip ? 90 : 0, 0);
         if (visible) show();
         {
             UiWorkTiming native("window.chrome.native",this);
-            applyNativeChrome(this, value == WindowChrome::Compact);
+            applyNativeChrome(this, value == WindowChrome::Compact || strip);
         }
         if (position.isValid()) setGeometry(position);
         {

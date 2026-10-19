@@ -220,8 +220,9 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
         objc_setAssociatedObject(window, &titleKey, title, OBJC_ASSOCIATION_RETAIN_NONATOMIC); [title release];
     }
     if (title.superview != green.superview) { [title removeFromSuperview]; [green.superview addSubview:title]; }
-    if (title.hidden) title.hidden = NO;
-    {
+    const bool strip=widget->property("unboundToolbarStrip").toBool();
+    if (title.hidden!=strip) title.hidden=strip;
+    if (!strip) {
         if (window.titleVisibility != NSWindowTitleHidden) window.titleVisibility = NSWindowTitleHidden;
         const CGFloat left = NSMaxX(frame) + 12;
         auto header=(OpenGateHeaderControl *)objc_getAssociatedObject(window,&headerMenuKey);
