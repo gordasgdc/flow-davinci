@@ -184,3 +184,7 @@ undock-button drags cancel pending capture on Escape/application switch and reta
 the release position if host readiness arrives after release. The dependency
 branches also own their respective header-control lifetime fixes, so those fixes
 are not available only as a side effect of enabling drag support.
+
+## Test candidate: recovery and destination ordering (2026-10-19)
+
+The combined candidate now contains 21 feature/research entries. Native drop recovery and drag destination ordering remain separate branches, integrated for installation testing. Their focused fixtures pass. Dock preview latency improves in the synthetic fixture, but the responsiveness gate still fails; docking commit, toggle variability and a one-pixel tracking failure remain recorded in `macos-destination-order.md`. No installed-baseline benchmark or live Resolve acceptance is claimed. Main remains unchanged.
