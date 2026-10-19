@@ -57,10 +57,12 @@ int main(int argc, char **argv)
         decoration.wire(&nativePanel,"pool","Media Pool",false,[&] { ++toggles; });
         decoration.wire(&nativePanel,"pool","Media Pool",true,[&] { ++toggles; });
         auto button = nativePanel.findChild<QToolButton *>("unboundNativeUndock_pool");
-        check(button && row->indexOf(button)+2 == row->indexOf(options),"undock glyph occupies its own native layout slot before options");
+        check(button && row->indexOf(button)+1 == row->indexOf(options) &&
+            !nativePanel.findChild<QToolButton *>("unboundNativeKeyboard_pool"),
+            "one placement control occupies the native slot immediately before options");
         check(nativePanel.findChildren<QToolButton *>("unboundNativeUndock_pool").size() == 1,"native header rewiring cannot duplicate the button");
         if (button) button->click();
-        check(toggles == 1 && button->toolTip() == "Dock Media Pool","native header button dispatches once and reflects docking state");
+        check(toggles == 1 && button->toolTip() == "Attach Media Pool","native header button dispatches once and reflects docking state");
         int drags=0;
         decoration.wire(&nativePanel,"pool","Media Pool",true,[&] { ++toggles; },[&](QPoint) { ++drags; });
         QMouseEvent press(QEvent::MouseButtonPress,QPointF(4,4),QPointF(100,100),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
