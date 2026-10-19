@@ -26,6 +26,7 @@
 #include "groupvisibility.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
+#include "sourceplayerpresentation.h"
 
 namespace Unbound {
 // Experimental Mac session. Each instance owns one host and preserves one slot.
@@ -104,6 +105,7 @@ public:
         }
         refreshMetricScale();
         groupContainer->setVisible(!userHidden);
+        reconcileSourcePlayerPresentation(content,"join-group");
         return {};
     }
     void finishGroupTransfer()
@@ -111,6 +113,7 @@ public:
         if (!grouped() || !host) return;
         UiWorkTiming hide("panel.group.hide-old-host",host);
         host->hide();
+        reconcileSourcePlayerPresentation(content,"group-ready");
     }
     void detachFromGroup(bool deferHostShow = false)
     {
@@ -127,6 +130,7 @@ public:
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         setFloatingGeometry(detachedGeometry);
         if (!deferHostShow) host->setVisible(!userHidden && originalPage && originalPage->isVisible());
+        reconcileSourcePlayerPresentation(content,"leave-group");
     }
     QWidget *expandedWindow() const { return expandedHost; }
     bool beginGroupedExpansion()
@@ -211,6 +215,7 @@ public:
                 }
             }
         }
+        if (!hide) reconcileSourcePlayerPresentation(content,"door");
         auto actualSurface=window(); auto actualHost=actualSurface ? actualSurface->window() : nullptr;
         logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)},
             {"placement",panelPlacementName(placement())},{"stage","session-state"},{"requested_hidden",userHidden},
@@ -360,6 +365,7 @@ public:
         static_cast<MacFloatingHost *>(host.data())->setChrome(chrome);
         if (constrain) keepOnDisplay(host);
         refreshMetricScale();
+        reconcileSourcePlayerPresentation(content,"undock");
         logEvent(QStringLiteral("panel.undock.complete"), {{"panel", title}, {"widget", widgetState(content)},
             {"original_parent", originalParent->objectName()},
             {"layout", originalLayout ? originalLayout->metaObject()->className() : "none"}});
@@ -560,6 +566,7 @@ private:
                 surface->setAttribute(Qt::WA_ShowWithoutActivating, true);
                 surface->show(); surface->setAttribute(Qt::WA_ShowWithoutActivating, previous);
             }
+            reconcileSourcePlayerPresentation(content,"native-recovery");
             logEvent(QStringLiteral("panel.recover.complete"), {{"widget", widgetState(content)}, {"host", widgetState(host)}});
         });
     }
