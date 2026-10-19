@@ -289,6 +289,12 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "b6ab382dac700fa1fd923e652a3f2af14d08bffd"
+    },
+    {
+      "branch": "fix/macos-native-toggle-scope",
+      "scope": "implementation",
+      "acceptance": "pending",
+      "commit": "850efcc57caf6a57db6267ce76a4c8b6e2bd73ba"
     }
   ]
 }
