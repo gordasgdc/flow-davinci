@@ -16,7 +16,7 @@
     },
     {
       "branch": "feature/macos-command-registration",
-      "commit": "a0e95eec92df572d86fb126626df6da4ea93d369",
+      "commit": "de3df2bdf0b700f59c920b3d4a9c985ec3de9230",
       "scope": "implementation",
       "acceptance": "pending"
     },

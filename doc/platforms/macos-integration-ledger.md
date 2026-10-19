@@ -10,7 +10,7 @@ Current source additionally includes OpenGate labels/attribution and the compile
 
 A feature tip in the build manifest means its source is included, not that its
 acceptance requirements are complete. Worktrees live beside the main repository
-under `../unbound-features/`. Merge feature branches into integration; do not move
+under `../OpenGate-features/`. Merge feature branches into integration; do not move
 master until reviewed acceptance evidence justifies it. Each branch starts from
 8828868; downstream feature dependencies must be merged explicitly.
 
@@ -202,3 +202,7 @@ Hidden-only receipt `build/macos/verification/5e80cde9d3-hidden-20261019T051238Z
 OpenGate by CineWaltz branding preserves Wolfgang foundation credit, MIT license, existing data paths and stable internal IDs. Last-view reopening has its own `feature/macos-reopen-workspace-contract` and two-process fixture; it is not conflated with named workspace recall. The footer/Page Navigation attachment contract is recorded explicitly: default Timeline-bottom attachment, travels until explicitly detached, independently callable, and persistent on reopen. This attachment behavior and adaptive toolbar/scaling work are not yet delivered.
 
 Pin persistence follow-up: standalone/group pin changes now schedule bounded layout saving without a move/rescue side effect, and Page Navigation snapshots include/reapply pin state. The native fixture assertions compile; execution and the new two-process reopening fixture remain pending with Resolve open. This does not implement the separate default Timeline/footer attachment behavior.
+
+### Local checkout rename — 2026-10-19
+
+Active checkouts are now `Developer/OpenGate` and sibling `Developer/OpenGate-features` (separate Git worktrees, not nested source modules). Full pre-rename copies are preserved in `Developer/OpenGate-backups/pre-rename-20261019T054646Z`. All 26 checkout HEADs and working statuses were verified unchanged; Git worktree links and 46 absolute build symlinks were repaired. Historical receipt paths retain their original names. Remote repository, internal settings IDs and installed plugin are unchanged. Page Navigation now shares one visibility operation between its menu and independent shortcut, with Edit-only commands still yielding outside Edit.
