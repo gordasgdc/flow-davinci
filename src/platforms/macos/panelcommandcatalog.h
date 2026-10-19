@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "panelshortcuteditor.h"
+#include "nativekeyboardnavigation.h"
 #include <QPointer>
 
 namespace Unbound {
@@ -9,7 +10,7 @@ namespace Unbound {
 class PanelCommandCatalog : public PanelCommands {
 public:
     PanelCommandCatalog(QWidget *owner, std::function<bool()> running)
-        : PanelCommands(owner), editorOwner(owner)
+        : PanelCommands(owner), nativeEditor(this)
     {
         context=[owner,running] {
             auto window=QApplication::activeWindow();
@@ -32,11 +33,10 @@ public:
     }
     void showEditor()
     {
-        if (!editor) editor=createPanelShortcutEditor(this,editorOwner);
-        editor->show(); editor->raise(); editor->activateWindow();
+        if (!nativeEditor.open("OpenGate"))
+            logEvent("keyboard.native.unavailable",{{"origin","opengate-command-menu"},{"duplicate_editor_opened",false}});
     }
 private:
-    QPointer<QWidget> editorOwner;
-    QPointer<QDialog> editor;
+    NativeKeyboardNavigation nativeEditor;
 };
 }

@@ -117,9 +117,9 @@ private:
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
         auto about=action(root,"openGateAbout","About OpenGate…","About");
         auto keyboard = action(root,"unboundKeyboardCustomization",QString::fromUtf8("Keyboard Customization…"),"Keyboard");
-        auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8("OpenGate Panel Shortcuts…"),"PanelShortcuts");
+        auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8("OpenGate Commands in Keyboard Customization…"),"PanelShortcuts");
         shortcuts->setEnabled(bool(showPanelShortcuts));
-        shortcuts->setToolTip("Assign OpenGate panel and Edit UI commands here; separate from Resolve Keyboard Customization");
+        shortcuts->setToolTip("Open Resolve’s native Keyboard Customization, filtered to OpenGate commands; native presets and assignments are authoritative");
         auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("OpenGate Panel Manager…"),"PanelManager");
         manager->setEnabled(bool(showPanelManager));
         const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
