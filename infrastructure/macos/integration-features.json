@@ -223,6 +223,12 @@
       "commit": "bf829580fb9d09e6df933c8ef730f8f51c7d2b31",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-opengate-ui-panel-menu",
+      "commit": "c101484e4978579467599de8ad099e969ad209c7",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
