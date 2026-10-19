@@ -529,6 +529,14 @@ int main(int argc, char **argv)
         check(tabs->isTabVisible(0) && group.selected(&i), "door restores and selects the panel's remembered tab");
         auto host = static_cast<Unbound::MacFloatingHost *>(group.window());
         host->setPinned(true); check(group.snapshot()["pinned"].toBool(), "group pin is persisted on its shared native host");
+        const auto pinnedFrame=host->geometry();
+        for (int cycle=0;cycle<4;++cycle) {
+            i.setHiddenByUser(true); group.syncVisibility(); settle();
+            check(group.selected(&m) && host->pinned(),"pinned group can close Inspector door without unpinning");
+            i.setHiddenByUser(false); group.syncVisibility(&i); settle();
+            check(group.selected(&i) && host->pinned() && host->geometry()==pinnedFrame,
+                "pinned group restores the door without changing pin or outer frame");
+        }
         const auto before = group.snapshot();
         auto surface = i.window(); auto nativeLayout = surface->layout();
         check(i.beginGroupedExpansion() && i.expandedWindow() && !surface->layout(), "temporary maximize borrows layout without releasing group slot");
