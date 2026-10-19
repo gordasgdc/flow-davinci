@@ -888,6 +888,18 @@ int main(int argc, char **argv)
         activate(&group); hierarchy.apply(); check(ahead(&group, &pool), "active group follows normal activation within its tier");
     }
     settle();
+    {
+        QWidget main; main.setObjectName("UiMainWindow"); auto layout=new QVBoxLayout(&main);
+        auto page=new QWidget(&main); layout->addWidget(page); main.show(); page->show();
+        QWidget ownerHost(&main,Qt::Tool); ownerHost.setObjectName("unboundFloating_timeline");
+        auto owner=new QWidget(&ownerHost);auto ownerLayout=new QVBoxLayout(owner);(new QVBoxLayout(&ownerHost))->addWidget(owner);
+        auto mixer=new QWidget(owner);mixer->setObjectName("frameEditAudioMeter");auto nativeLayout=new QVBoxLayout(mixer);nativeLayout->addWidget(new QPushButton("Mixer",mixer));ownerLayout->addWidget(mixer);
+        ownerHost.show();settle();Unbound::MacPanelSession nested(nullptr);
+        check(!nested.undockContents(mixer,page,"Mixer").isEmpty(),"nested Mixer is rejected without an explicit managed owner");
+        check(nested.undockContents(mixer,page,"Mixer",owner).isEmpty(),"Mixer can detach from its managed floating Timeline");settle();
+        nested.setHiddenByUser(true);check(nested.hiddenByUser(),"detached Mixer can be hidden");nested.setHiddenByUser(false);
+        check(nested.dock().isEmpty() && mixer->layout()==nativeLayout,"Mixer docking returns its exact content layout to the retained owner slot");
+    }
     Unbound::flushDiagnostics();
     QFile events(logs.path() + QStringLiteral("/events.jsonl"));
     check(events.open(QIODevice::ReadOnly), "diagnostic log created");

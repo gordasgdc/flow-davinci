@@ -71,10 +71,12 @@ public:
     void addScale(int row,QWidget *control) { panelGrid->addWidget(control,row,7); }
     void addFooter()
     {
-        auto row=new QHBoxLayout; floatFooter=new QPushButton("Float Page Navigation",body);
-        floatFooter->setObjectName("floatPageNavigation"); row->addWidget(floatFooter);
-        dockFooter=new QPushButton("Dock Page Navigation",body); dockFooter->setObjectName("dockPageNavigation"); row->addWidget(dockFooter);
-        bodyLayout->addLayout(row);
+        const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel("Page Navigation",body),row,0);
+        floatFooter=new QPushButton("Float",body); floatFooter->setObjectName("floatPageNavigation"); panelGrid->addWidget(floatFooter,row,1);
+        dockFooter=new QPushButton("Native Dock",body); dockFooter->setObjectName("dockPageNavigation"); panelGrid->addWidget(dockFooter,row,2);
+        showFooter=new QPushButton("Show",body); showFooter->setObjectName("showPageNavigation"); panelGrid->addWidget(showFooter,row,3);
+        hideFooter=new QPushButton("Hide",body); hideFooter->setObjectName("hidePageNavigation"); panelGrid->addWidget(hideFooter,row,4);
+        attachFooter=new QPushButton("Attach to Timeline",body); attachFooter->setObjectName("attachPageNavigation"); panelGrid->addWidget(attachFooter,row,5,1,2);
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }
@@ -84,7 +86,7 @@ public:
     QCheckBox *pin=nullptr,*constrain=nullptr,*snap=nullptr,*background=nullptr,*hierarchy=nullptr;
     QComboBox *style=nullptr,*first=nullptr,*second=nullptr;
     QList<QPushButton *> bulkButtons,groupButtons;
-    QPushButton *floatFooter=nullptr,*dockFooter=nullptr;
+    QPushButton *floatFooter=nullptr,*dockFooter=nullptr,*showFooter=nullptr,*hideFooter=nullptr,*attachFooter=nullptr;
 private:
     QWidget *owner,*body=nullptr;
     QVBoxLayout *bodyLayout=nullptr;

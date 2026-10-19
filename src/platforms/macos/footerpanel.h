@@ -75,6 +75,15 @@ public:
         return {};
     }
     QString showPanel() {
+        state["hidden"]=false;
+        if (!session.active() && !accessory.active()) if (auto main=root())
+            if (auto widget=main->findChild<QWidget *>("m_PageSwitcherContainer")) {
+                widget->show();
+                if (state["attachment"].toString()=="native") {
+                    logEvent("footer.visibility",{{"placement","native"},{"hidden",false},{"origin","show-panel"}});
+                    if (changed) changed(); return {};
+                }
+            }
         syncAttachment();
         if (accessory.active()) {
             if (revealAttachmentOwner) revealAttachmentOwner();
@@ -98,6 +107,14 @@ public:
         }
         if (session.active()) { session.setHiddenByUser(!session.hiddenByUser()); return {}; }
         return floatPanel();
+    }
+    QString hidePanel() {
+        syncAttachment(); state["hidden"]=true;
+        if (accessory.active()) accessory.setHidden(true);
+        else if (session.active()) session.setHiddenByUser(true);
+        else if (auto main=root()) if (auto widget=main->findChild<QWidget *>("m_PageSwitcherContainer")) widget->hide();
+        logEvent("footer.visibility",{{"hidden",true},{"origin","manager-hide"}});
+        if (changed) changed(); return {};
     }
     void dock()
     {

@@ -34,6 +34,7 @@
 #include "panelexpansioncontroller.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
+#include "nativepanelvisibility.h"
 #include "attachedtoolbarreveal.h"
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
@@ -329,7 +330,11 @@ public:
                 if (session->active()) return !session->hiddenByUser() && session->window() && session->window()->isVisible();
                 auto surface=Unbound::panelSurface(page(),panels[i].name); return surface && surface->isVisible();
             },
-            [this,i] { if (panels[i].session->active()) showPanel(i,true); else requestUndock(i); }});
+            [this,i] {
+                auto target=Unbound::panelSurface(page(),panels[i].name);
+                if (panels[i].session->active() || managedOwnerFor(target)) showPanel(i,true);
+                else requestUndock(i);
+            }});
         panelCallers->add({"page-navigation","Page Navigation","edit",[this] { return !quitting && bool(footer); },
             [this] { return footer && !footer->snapshot()["hidden"].toBool(); },
             [this] { const auto error=footer->showPanel(); if (!error.isEmpty()) status->setText(error); }});
@@ -363,6 +368,9 @@ public:
         managerView->addFooter();
         connect(managerView->floatFooter,&QPushButton::clicked,this,[this] { status->setText(footer->floatPanel()); });
         connect(managerView->dockFooter,&QPushButton::clicked,this,[this] { footer->dock(); });
+        connect(managerView->showFooter,&QPushButton::clicked,this,[this] { status->setText(footer->showPanel()); });
+        connect(managerView->hideFooter,&QPushButton::clicked,this,[this] { status->setText(footer->hidePanel()); });
+        connect(managerView->attachFooter,&QPushButton::clicked,this,[this] { status->setText(footer->attachToTimeline()); });
         pageLifecycle=new Unbound::EditPageLifecycle(this);
         pageLifecycle->running=[this] { return !quitting; };
         pageLifecycle->checkpoint=[this] { restoreExpanded(); saveTimer.stop(); save(); };
@@ -450,6 +458,16 @@ private:
     }
     void showPanel(int i,bool visible)
     {
+        if (!panels[i].session->active()) {
+            bool handled=Unbound::setNativePanelVisibility(Unbound::resolveMainWindow(),panels[i].toggle,visible);
+            auto target=Unbound::panelSurface(page(),panels[i].name);
+            if (!handled && panels[i].name=="frameEditToolbarTop" && managedOwnerFor(target)) {
+                if (visible) showPanel(1,true);
+                target->setVisible(visible); handled=true;
+            }
+            Unbound::logEvent("panel.visibility.native-request",{{"panel",panels[i].name},{"requested",visible},{"handled",handled}});
+            return;
+        }
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
         else {
             panels[i].session->setHiddenByUser(!visible);
@@ -461,6 +479,12 @@ private:
         if (nativeWorkspace->contains(panels[i].name)) { nativeWorkspace->detach(panels[i].name); readyNativeDrag(i); save(); }
         else if (panels[i].session->active()) dockOne(i);
         else requestUndock(i);
+    }
+    QWidget *managedOwnerFor(QWidget *target) const {
+        auto root=page();
+        for (const auto &owner:panels) if (owner.session->active() && owner.session->nativeOwnerWindow()==(root ? root->window() : nullptr) &&
+            Unbound::panelInManagedScope(target,root,owner.session->window()) && !root->isAncestorOf(target)) return owner.session->window();
+        return nullptr;
     }
     void dockNative(int i,QWidget *target=nullptr,Qt::Edge edge=Qt::RightEdge)
     {
@@ -556,7 +580,8 @@ private:
             p.undock->setEnabled((!active || p.session->placement()==Unbound::PanelPlacement::NativeSurface) && !p.pending);
             p.dock->setEnabled(active && !p.session->dockPending());
             p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
-            p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
+            const bool nativeCaller=!p.toggle.isEmpty() && page() && page()->isVisible();
+            p.show->setEnabled(active || nativeCaller); p.hide->setEnabled(active ? !p.session->hiddenByUser() : nativeCaller);
             p.expand->setText(expansionController->index() == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
             p.expand->setEnabled(true);
             p.center->setEnabled(p.session->floating());
@@ -654,8 +679,11 @@ private:
             {"target_visible", target && target->isVisible()}, {"target_in_page", root && target && root->isAncestorOf(target)}});
         if (p.name == QLatin1String("widgetEditSourcePlayer")) target = Unbound::sourceViewerSurface(target);
         const QSize nativeSize = target ? target->size() : QSize();
-        const QString error = p.contents ? p.session->undockContents(target, root, p.label) :
-            p.session->undock(target, root, p.label, p.name == QLatin1String("widgetEditSourcePlayer"));
+        QWidget *managedOwner=managedOwnerFor(target);
+        Unbound::logEvent("panel.undock.scope",{{"panel",p.name},{"managed_owner",Unbound::widgetState(managedOwner)},
+            {"accepted",Unbound::panelInManagedScope(target,root,managedOwner)}});
+        const QString error = p.contents ? p.session->undockContents(target, root, p.label,managedOwner) :
+            p.session->undock(target, root, p.label, p.name == QLatin1String("widgetEditSourcePlayer"),false,managedOwner);
         if (error.isEmpty()) {
             groupReserve->request(p.session->nativeOwnerWindow());
             p.session->window()->setObjectName(QStringLiteral("unboundFloating_") + p.name);

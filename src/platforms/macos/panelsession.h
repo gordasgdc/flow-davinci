@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "panelscope.h"
 #include <QBoxLayout>
 #include <QCloseEvent>
 #include <QDynamicPropertyChangeEvent>
@@ -228,10 +229,10 @@ public:
         if (arrangementChanged) arrangementChanged();
     }
 
-    QString undockContents(QWidget *slot, QWidget *page, const QString &title)
+    QString undockContents(QWidget *slot, QWidget *page, const QString &title,QWidget *managedOwner=nullptr)
     {
         if (active()) return QStringLiteral("This panel is already floating.");
-        if (!slot || !page || !page->isAncestorOf(slot) || !slot->isVisible() || !slot->layout())
+        if (!panelInManagedScope(slot,page,managedOwner) || !slot->isVisible() || !slot->layout())
             return QStringLiteral("Show this panel on the Edit page first.");
         originalParent = slot;
         originalPage = page;
@@ -275,11 +276,11 @@ public:
         return {};
     }
 
-    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false,bool deferHostShow = false)
+    QString undock(QWidget *widget, QWidget *page, const QString &title, bool retainHiddenSurface = false,bool deferHostShow = false,QWidget *managedOwner=nullptr)
     {
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
-        if (!widget || !page || !page->isAncestorOf(widget) ||
+        if (!panelInManagedScope(widget,page,managedOwner) ||
             (!widget->isVisible() && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
             return QStringLiteral("Show this panel on the Edit page first.");
         QWidget *parent = widget->parentWidget();

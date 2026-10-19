@@ -66,6 +66,9 @@ int main(int argc,char **argv)
         check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"returning owner restores attachment and hidden door");
         panel.dock(); panel.syncAttachment();
         check(footer->parentWidget()==&main && panel.snapshot()["attachment"]=="native","explicit native placement suppresses automatic attachment");
+        panel.hidePanel(); check(footer->isHidden(),"manager can hide native Page Navigation");
+        check(panel.showPanel().isEmpty() && footer->isVisible() && footer->parentWidget()==&main,
+            "manager reopens native Page Navigation without floating or reparenting it");
         panel.setState(saved);
         check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"saved attachment restores without invoking floating geometry");
         check(panel.releaseAttachment(),"shutdown can return attached footer without changing saved preference");

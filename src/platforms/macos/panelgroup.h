@@ -11,6 +11,7 @@
 #include "workspacesettings.h"
 #include "tabtearoff.h"
 #include "groupvisibility.h"
+#include "panellayoutvisibility.h"
 #include "docksurfaces.h"
 #include "uiworktiming.h"
 #include "grouphostreserve.h"
@@ -202,6 +203,10 @@ public:
             if (!wrapper->parentWidget() || !qobject_cast<QStackedWidget *>(wrapper->parentWidget())) wrapper->setVisible(visible);
             member->window()->setVisible(visible);
         }
+        if (root) applyPanelLayoutVisibility(root,visibility,[this](const QString &id) {
+            for (auto member:members) if (member && panelName(member)==id) return !member->hiddenByUser();
+            return false;
+        });
         if (host->layout()) host->layout()->activate();
         if (root) visibility.restore(root);
         if (select && !select->hiddenByUser()) visibility.selectPath(leaves.value(select),host);
@@ -383,6 +388,10 @@ private:
             QList<int> sizes; for (auto size : splitter->property("savedSizes").toList()) sizes.append(qMax(1, size.toInt()));
             if (sizes.size() == splitter->count()) splitter->setSizes(sizes);
         }
+        applyPanelLayoutVisibility(root,visibility,[this](const QString &id) {
+            for (auto member:members) if (member && panelName(member)==id) return !member->hiddenByUser();
+            return false;
+        });
         QStringList titles; for (auto member : members) if (member && member->window()) titles.append(member->window()->windowTitle());
         host->setWindowTitle(titles.join(QStringLiteral(" + ")));
         QList<QWidget *> surfaces;

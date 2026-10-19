@@ -16,7 +16,10 @@ inline bool applyPanelLayoutVisibility(QWidget *node,GroupVisibility &state,cons
     } else if (auto splitter=qobject_cast<QSplitter *>(node)) {
         for (int i=0;i<splitter->count();++i) any |= applyPanelLayoutVisibility(splitter->widget(i),state,visible);
     } else any=visible(node->property("groupPanel").toString());
-    node->setVisible(any && !panelCoveredByTab(node));
+    // QTabWidget controls its direct stacked page. Descendants of a covered
+    // page must retain logical visibility so selecting that page reveals them.
+    auto stack=qobject_cast<QStackedWidget *>(node->parentWidget());
+    if (!stack || !qobject_cast<QTabWidget *>(stack->parentWidget())) node->setVisible(any);
     return any;
 }
 }
