@@ -287,7 +287,7 @@ bool setNativeGroupSurfaceClipping(QWidget *widget)
     widget->setAttribute(Qt::WA_NativeWindow);
     NSView *view = reinterpret_cast<NSView *>(widget->winId());
     if (!view || ![view respondsToSelector:@selector(setClipsToBounds:)]) return false;
-    view.clipsToBounds = YES;
+    if (!view.clipsToBounds) view.clipsToBounds = YES;
     return view.clipsToBounds;
 }
 
@@ -295,7 +295,8 @@ void normalizeNativePanel(QWidget *widget)
 {
     if (!widget || widget->windowType() != Qt::Tool) return;
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
-    window.hidesOnDeactivate = NO; window.level = NSNormalWindowLevel;
+    if (window.hidesOnDeactivate) window.hidesOnDeactivate = NO;
+    if (window.level != NSNormalWindowLevel) window.level = NSNormalWindowLevel;
 }
 int nativeVisibilityFlags(QWidget *widget)
 {
@@ -307,10 +308,10 @@ bool setNativeBackgroundHidden(QWidget *main, const QList<QWidget *> &panels, bo
     if (!main) return false;
     NSWindow *background = reinterpret_cast<NSView *>(main->winId()).window;
     if (hidden) {
-        [background orderOut:nil];
+        if (background.isVisible) [background orderOut:nil];
         for (auto panel : panels) if (panel && panel->isVisible() && !panel->isMinimized()) {
             NSWindow *window = reinterpret_cast<NSView *>(panel->winId()).window;
-            [window orderFront:nil];
+            if (!window.isVisible) [window orderFront:nil];
         }
         for (auto panel : panels) if (panel && panel->isVisible() && !panel->isMinimized() && !(nativeVisibilityFlags(panel) & 1)) {
             [background orderFront:nil]; return false;
