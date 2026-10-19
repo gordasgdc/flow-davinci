@@ -325,6 +325,17 @@ qint64 nativeWindowNumber(QWidget *widget)
     NSView *view = reinterpret_cast<NSView *>(widget->winId());
     return view.window ? view.window.windowNumber : 0;
 }
+QJsonObject nativeWindowGeometryState(QWidget *widget)
+{
+    if (!widget || !widget->testAttribute(Qt::WA_WState_Created)) return {};
+    NSWindow *window=reinterpret_cast<NSView *>(widget->winId()).window;
+    if (!window) return {};
+    const NSRect frame=window.frame, content=[window contentRectForFrameRect:frame];
+    return {{"native_id",qint64(window.windowNumber)},{"native_frame_x",frame.origin.x},{"native_frame_y",frame.origin.y},
+        {"native_content_x",content.origin.x},{"native_content_y",content.origin.y},
+        {"native_content_width",content.size.width},{"native_content_height",content.size.height},
+        {"backing_scale",window.backingScaleFactor},{"native_primary_height",NSScreen.screens.firstObject.frame.size.height}};
+}
 QList<qint64> nativeOrderedWindowNumbers()
 {
     QList<qint64> result;

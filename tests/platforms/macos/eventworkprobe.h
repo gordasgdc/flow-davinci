@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMouseEvent>
 #include <algorithm>
 
 // Fixture-only attribution. Measure outer event deliveries so nested signals and
@@ -12,6 +13,8 @@
 class EventWorkApplication : public QApplication {
 public:
     using QApplication::QApplication;
+    void setScriptedPointer(bool held) { scriptedPointer=held; }
+    int ignoredPointerMoves() const { return unsolicitedPointerMoves; }
     void beginProbe() { records.clear(); probing=true; }
     void setProbeEnabled(bool enabled) { probing=enabled; }
     QJsonArray endProbe() {
@@ -27,6 +30,13 @@ public:
         return result;
     }
     bool notify(QObject *receiver,QEvent *event) override {
+        // A programmatically moved native window can synthesize a hover move
+        // with physical buttons=None. It is not part of our injected held-button
+        // stream. Production still receives these events and cancels normally.
+        if (scriptedPointer && event->type()==QEvent::MouseMove &&
+            !static_cast<QMouseEvent *>(event)->buttons().testFlag(Qt::LeftButton)) {
+            ++unsolicitedPointerMoves; return true;
+        }
         const bool sample=probing && depth==0;
         // Object names here come only from this synthetic fixture, never from
         // an editor's project, text fields or media names.
@@ -46,5 +56,6 @@ private:
     struct Record { quint64 count=0; qint64 total=0,maximum=0; };
     QHash<QString,Record> records;
     int depth=0;
-    bool probing=false;
+    bool probing=false,scriptedPointer=false;
+    int unsolicitedPointerMoves=0;
 };

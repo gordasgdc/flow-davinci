@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QList>
+#include <QJsonObject>
 #include <QPoint>
 #include <QRect>
 #include <functional>
@@ -14,6 +15,7 @@ int nativeChromeFlags(QWidget *widget);
 void orderNativeWindows(const QList<QWidget *> &bottomToTop);
 qint64 nativeKeyWindowNumber();
 qint64 nativeWindowNumber(QWidget *widget);
+QJsonObject nativeWindowGeometryState(QWidget *widget);
 QList<qint64> nativeOrderedWindowNumbers();
 double nativeInputAgeMilliseconds(quint64 timestamp);
 double nativeCurrentDragAgeMilliseconds();
