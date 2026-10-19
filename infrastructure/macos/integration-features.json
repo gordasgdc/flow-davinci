@@ -301,6 +301,12 @@
       "scope": "implementation",
       "acceptance": "pending",
       "commit": "70e3634f006265f8c76da8c04501663e1dd3bd41"
+    },
+    {
+      "branch": "fix/macos-hidden-group-door-reveal",
+      "commit": "e1d8defe02303a540ecdf482b45557fe06a05582",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
