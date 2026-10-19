@@ -1,0 +1,36 @@
+#!/bin/bash
+set -eu
+fail() { echo "OpenGate: $*" >&2; exit 1; }
+[[ "${3:-/}" == / ]] || fail 'Install on the running startup disk.'
+[[ "$(/usr/bin/uname -m)" == arm64 ]] || fail 'This prototype requires Apple Silicon.'
+major=$(/usr/bin/sw_vers -productVersion); major=${major%%.*}
+[[ "$major" -ge 27 ]] || fail 'This exact prototype build requires macOS 27 or later.'
+if /usr/bin/pgrep -x Resolve >/dev/null; then fail 'Save and quit DaVinci Resolve, then run this installer again.'; fi
+app='/Applications/DaVinci Resolve/DaVinci Resolve.app'
+[[ -d "$app" ]] || fail 'Install DaVinci Resolve at /Applications/DaVinci Resolve/DaVinci Resolve.app first.'
+version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+[[ "$version" == 21.* ]] || fail 'This prototype supports Resolve 21 only; tested with Resolve Studio 21.1.1.'
+user=$(/usr/bin/stat -f '%Su' /dev/console)
+[[ "$user" != root && "$user" != loginwindow ]] || fail 'Log in to your macOS desktop before installing.'
+home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | /usr/bin/cut -d ' ' -f 2-)
+[[ -d "$home" && "$home" != / ]] || fail 'Could not resolve the desktop user home.'
+base="$home/Library/Application Support/Unbound"
+stamp=$(/bin/date -u +%Y%m%dT%H%M%SZ)
+backup="$base/InstallBackups/0.0.1-$stamp"
+/bin/mkdir -p "$backup"
+resolve='/Library/Application Support/Blackmagic Design/DaVinci Resolve'
+for item in "$resolve/IOPlugins/Unbound.dvcp.bundle" /Applications/OpenGate.app "$home/Applications/OpenGate.app"; do
+ if [[ -e "$item" ]]; then name=$(echo "$item" | /usr/bin/sed 's|/|_|g'); /usr/bin/ditto "$item" "$backup/$name"; fi
+done
+/bin/mkdir -p "$backup/workflow" "$backup/settings"
+if [[ -d "$resolve/Workflow Integration Plugins" ]]; then
+ while IFS= read -r -d '' item; do /usr/bin/ditto "$item" "$backup/workflow/$(/usr/bin/basename "$item")"; done < <(/usr/bin/find "$resolve/Workflow Integration Plugins" -maxdepth 1 -type f \( -name 'OpenGate*.py' -o -name Unbound.py \) -print0)
+fi
+for name in Workspace.json Arrangements.json Shortcuts.json Profile.json; do
+ if [[ -f "$base/$name" ]]; then /bin/cp -p "$base/$name" "$backup/settings/$name"; fi
+done
+if [[ -d "$base/Profiles" ]]; then /usr/bin/ditto "$base/Profiles" "$backup/settings/Profiles"; fi
+/usr/sbin/chown -R "$user" "$backup"
+# Carry the backup location between this package's scripts, without a shared temp file.
+/bin/mkdir -p '/Library/Application Support/CineWaltz/OpenGate'
+printf '%s\n' "$backup" > '/Library/Application Support/CineWaltz/OpenGate/last-install-backup.txt'

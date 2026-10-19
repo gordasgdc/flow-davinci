@@ -1,0 +1,256 @@
+# OpenGate macOS integration ledger
+
+**OpenGate by CineWaltz**, built on **Unbound by Wolfgang Woehl (MIT)**.
+
+Integration: `macos-panel-discovery-and-layout`. Installed rollback: `00bef62`. Main/master and upstream remain unchanged. The explicit current [acceptance list](opengate-next-pass.md) includes **restoring the last modified view on reopening Resolve**, separate from named preset recall.
+
+The last displayed candidate `2650fb3` passed all 18 functional suites, including pinned-door cycling; responsiveness failed only the unchanged frame-budget assertions (dock commit 27.032 ms p95; viewer command 19.795 ms). Functional success does not establish smoothness or full live Resolve acceptance.
+
+Current source additionally includes OpenGate labels/attribution and the compiled two-process last-view restoration fixture. These additions are not installed. Displayed phases are pending while Resolve is open. Detailed older receipts and development history follow below.
+
+A feature tip in the build manifest means its source is included, not that its
+acceptance requirements are complete. Worktrees live beside the main repository
+under `../OpenGate-features/`. Merge feature branches into integration; do not move
+master until reviewed acceptance evidence justifies it. Each branch starts from
+8828868; downstream feature dependencies must be merged explicitly.
+
+| Area | Feature branch | Implemented so far | Still required |
+| --- | --- | --- | --- |
+| Discovery | feature/macos-panel-discovery | Workspace UI Panel Manager entry; renamed window; native-header undock glyph beside recognized options; existing-header hidden-panel callers | Native fixtures/live verification; complete panel coverage; native live verification |
+| Native button drag | feature/macos-native-panel-drag | Drag threshold, readiness-based host capture, release/click separation, header callback cleanup | Native drag/drop and lifecycle fixture execution; delayed readiness/live behavior |
+| Placement semantics | feature/macos-panel-placement | Original-slot leasing separated from native-surface and floating-surface placement; headless state tests pass | Native-session fixture coverage; command and embedded-adapter wiring |
+| Shared layout surface | feature/macos-layout-surfaces | Split/tab renderer used by floating groups and usable in an ordinary embedded host; invalid-tree checks before ownership changes | Native fixtures; actual original-window slot adapter and embedded arrangement persistence |
+| Containment/width | feature/macos-panel-containment | Debounced boundary audit; owned group cells get native clipping NSViews | Reproduce actual Resolve leakage and prove fix; divider/resize/input and GPU/playback checks |
+| Narrow Inspector | feature/macos-panel-overflow | Retained native content in a reversible scroll viewport; original minima/policy/background retained; grouped door/recovery/scroll and maximize-offset fixture checks PASS | Live Resolve validation; other panels; independent UI scale remains separate |
+| Group signal lifetimes | feature/macos-group-signal-lifetimes | Group transfer disconnects only its own receivers; external callbacks and Qt accessibility destruction tracking survive; focused regression failed before and passes after the fix | Full integration and live Resolve validation; not a claim that all crashes share this cause |
+| Nested doors | feature/macos-nested-panel-doors | Reveal every enclosing tab; close restores prior outer selection; covered-panel hiding leaves current view unchanged; transition logs | Live command/shortcut checks and larger nested-layout matrix |
+| Native-first startup | feature/macos-native-first-startup | Manager initializes hidden; fresh defaults retain native background; stale launch requests consumed; explicit/legacy preferences retained; no key-window change in fixture | Fresh Resolve acceptance; original-window split/tab rearrangement is still open |
+| Native workspace | feature/macos-native-workspace-space | Hidden restoration placeholders; transferred empty containers collapse; scoped native outer sizing/restoration | Native fixture/live verification of shrinking and restoration; drag/split/tab rearrangement inside native surface; native recovery and focus |
+| Commands | feature/macos-command-registration | OpenGate-owned persisted panel door/maximize bindings and editor; conflict, typing, page, repeat and menu fixtures pass | Native keyboard-editor registration; live command/group matrix |
+| Clip colors | experiment/macos-custom-clip-colors | Known native palette action inventory, type metadata only | Storage investigation on disposable project; bright Red, picker/name/edit/remove; saved color identity; native menu and shortcut commands; reopening/undo/redo |
+| Tracing/performance | feature/macos-interaction-tracing | Bounded pointer position/speed samples; receipt-to-next-turn records; existing action and latency logs retained | Runtime tests for new records; hook new command outcomes; repeated performance matrix with all features; actual playback/paint limitations documented |
+| Empty Source/viewers | feature/macos-viewer-commands | Offline Source stack discovery without a loaded player; regression fixture | Live empty/loaded Source tests; Single Viewer and Cinema command matrix; maximize restoration |
+| Independent scale | experiment/macos-panel-scaling | Feasibility/restoration specification; no scale implementation | Feasibility and hit/render/menu/GPU tests; +/-/100% controls; independent persistence; exact native restoration |
+
+## Cross-feature acceptance (all open unless evidence is explicitly recorded)
+
+- Original window can become smaller as panels leave; remaining native panels
+  stay usable. No requirement to manually hide a backdrop for ordinary arranging.
+- Same discoverable docking language inside native and floating arrangements:
+  arbitrary groups, left/right/above/below/tab; target labels; reliable tear-off;
+  no zones across the whole screen and no accidental dock on free release.
+- Maximize/restore round trip preserves panel placement, tabs, proportions,
+  visibility, display and temporary front priority. Native Cinema Viewer and
+  Single Viewer commands retain their distinct meaning and mappings.
+- Hide/reveal acts as a door; repeated cycles preserve outer group frame and
+  restore intended internal proportions/tab selection. All-hidden groups remain
+  recoverable through menus. Pins stay beside traffic lights without overlap.
+- Source detaches without loading a clip. Timeline keeps its toolbar tethered;
+  Mixer, footer and all supported panels have discoverable native controls.
+  Footer sizing/orientation and scale remain explicitly tracked.
+- Presets keep IDs, page isolation, order and restart persistence; Native UI is
+  permanent. Unbound Panel Manager is optional, not the main arranging workflow.
+- Stabilize, Dock All, native editing buttons, Timeline A/V divider, menus,
+  workflow integrations, project/page changes and multi-display rescue work.
+- Pointer/click/command/result/geometry evidence is bounded, redacted and linked
+  to the exact build and feature commits. Missing paint must not count as fast.
+- No automatic installation while Resolve is open. Before replacing a helper,
+  preserve the installed bundle, symbols, settings and manifest; verify signatures
+  and exact file hashes. Do not claim complete based on compilation alone.
+
+## Current verification
+
+- Native workspace-menu, group, instrumentation, hidden-controls and reliability
+  fixtures PASS. Session fixtures exposed a splitter restoration bug: proportions
+  were applied while the replacement pane still inherited the hidden vacancy.
+  Applying sizes after revealing it fixes the failure; feature and integration
+  session runs PASS.
+- Two preview assertions failed twice before a later pass. The fixture had only
+  drained Qt events, without waiting for WindowServer presentation. It now waits
+  on both native window IDs appearing (500 ms deadline); the integration session
+  fixture passes with that explicit precondition. Repeated/live acceptance remains
+  required; a passing rerun alone does not close the reported drop-zone issues.
+- Native clipping rejection compares original attributes against their baseline,
+  since Qt may already promote a sibling to native. No actual Resolve clipping,
+  custom-color storage, native-shortcut registration, independent scaling or
+  native-root rearrangement acceptance is claimed.
+- Responsiveness fixture functional checks PASS. At `29a431d`, p95 event-turn
+  times in ms: free drag 1.882, dock approach 6.705, dock commit 28.641,
+  divider 10.827, door 15.232, viewer command 12.953, button 0.795.
+  Dock commit still FAILS the unchanged 16.667 ms target. These are simulated
+  input on real Qt/native fixture windows, not playback/GPU presentation latency.
+- Viewer commands now reveal Source without raising/activating its group;
+  ordinary grouped doors avoid normalizing or moving an already-visible host.
+  Native viewer discovery is cached with menu action/language invalidation and
+  QPointer lifetime protection. Tests cover late menu creation/replacement and
+  live shortcut identity. The new responsiveness branch is
+  `feature/macos-responsive-command-discovery`.
+- An experimental repaint batch failed to improve docking latency and was
+  reverted. No feature or diagnostic logging was disabled to improve measurements.
+- Production rebuild and fresh Resolve acceptance are still required before
+  claiming this pass installed or complete.
+
+Source/native-toggle preparation now observes Show/ParentChange/LayoutRequest
+readiness instead of waiting fixed 100/50 ms. The temporary event filter is
+removed at completion/cancellation/deadline, with a one-second bounded fallback.
+Feature and integration session fixtures PASS, including not-before-ready and
+exactly-once completion. Actual empty Source behavior in Resolve remains a live
+acceptance item; this does not prove lazy player creation in every Resolve state.
+
+## Continued native-first and interaction pass
+
+- Readiness observation also replaces the fixed 100 ms group-command delay.
+  A fixture verifies ready panels join through event processing without sleeping.
+- Native session, group, hidden-controls, reliability and instrumentation fixtures
+  passed during this pass. Later changes still require combined verification and
+  actual Resolve acceptance; none of the new candidates is installed.
+- Narrow Inspector keeps real control constraints and supplies horizontal/vertical
+  overflow, not UI scaling. The original rightmost button is the actual hit target
+  after scrolling. Magnetic grouping, door cycles, native reclamation and native
+  restoration pass. Temporary expansion can restore the prior overflow offset.
+- Nested tabs now select the complete containing path when revealing a panel,
+  then restore the preceding outer selection on close. Logs record level counts
+  and index transitions without copying user project text.
+- Startup no longer automatically opens Panel Manager. A fresh configuration
+  keeps the native workspace; explicit saved floating preferences remain valid.
+  Recent explicit launch requests still open the manager, stale ones are consumed.
+- A native-ancestor view-promotion experiment reduced some work but worsened viewer
+  timing in repeated measurements; reverted. This was internal rendering plumbing,
+  not removal of native Resolve surfaces or the native-first product goal.
+- Fixture timing now separates input dispatch and deferred event work, with bounded
+  outer-event attribution excluding scenario preparation and nested double counts.
+  The overall 16.667 ms p95 gate remains unchanged and unpassed. Do not infer smooth
+  presentation merely from short dispatch time, or sum separate p95 percentiles.
+- New feature branches are stacked on required integration dependencies. Inclusion
+  in the manifest does not make a branch independently merge-ready for master.
+
+Consolidated fixture receipt for `6b6cef81ab`:
+`build/macos/verification/6b6cef81ab-20261018T191923Z/receipt.json`.
+Eleven suites PASS; responsiveness FAILS, with zero functional failures and the
+unchanged latency gate exceeded by docking commit (38.898 ms p95) and door toggle
+(16.722 ms p95). Viewer command p95 is 12.832 ms in this run. The receipt records
+clean source, exact commit, feature-lock hash, every exit code and complete logs.
+Run `python3 -u infrastructure/macos/verify-integration.py` with Resolve closed;
+it briefly creates native fixture windows. The script retains failures rather
+than reporting a partial selection of passing checks as full acceptance.
+
+## Continued implementation
+
+The separate group-signal-lifetime correction (`03c8596`) is included. A full
+native-arrangement draft run exposed a Qt accessibility crash during group recall.
+The focused regression proved that broad Hide-button disconnection removed
+external observers and left a deleted button's interface cached. The fix preserves
+Qt's own receivers and removes only old/new group handlers. Native test builds
+retain source symbols. See `macos-group-signal-lifetimes.md`; actual Resolve crash
+acceptance is still open.
+
+Inspector overflow recovery follow-up (`feature/macos-panel-overflow`, `d2a1334`):
+the group fixture reproduced a 700-pixel content widget retaining a 936-pixel
+control layout after native reparent/recovery. Its rightmost button therefore
+remained outside the scrollable host despite scrolling to the maximum. Recovery
+now invalidates/activates that content layout once at the ownership boundary.
+The regression asserts layout/content geometry agreement and keeps detailed
+pointer-hit diagnostics on failure. Group fixtures pass on the overflow branch
+and together with the native-arrangement ownership draft. Actual Resolve input
+and responsiveness acceptance remain open.
+
+The separate `feature/macos-native-arrangement-surfaces` draft has tested native
+root layout ownership, shared nested split/tab rendering and scoped panel-session
+adoption, including restore, destruction, door visibility and temporary expansion.
+It is not integrated or installed: complete remaining-panel preservation,
+arrangement coordination, drop adapters and preset wiring are still required.
+
+Native outer sizing captures/restores its own minimum and layout constraint,
+respects surviving content hints, avoids maximize/fullscreen changes and does
+not apply during temporary Unbound expansion. User movement after an automatic
+resize prevents automatic geometry restoration. Transferred native content slots
+are hidden reversibly while their contents float. These are implemented candidates,
+not live acceptance claims.
+
+The shared layout renderer is now used by floating groups. It can construct the
+same split/tab tree in an ordinary QWidget host; connecting an original native
+slot requires ownership/restoration fixture verification before production wiring.
+The original-window drop adapter and preset representation are still open.
+
+Native sizing now captures constraints before detachment can change them, and
+vacated content slots restore their exact policy/minimum/visibility. Native
+undock-button drags cancel pending capture on Escape/application switch and retain
+the release position if host readiness arrives after release. The dependency
+branches also own their respective header-control lifetime fixes, so those fixes
+are not available only as a side effect of enabling drag support.
+
+## Test candidate: recovery and destination ordering (2026-10-19)
+
+The combined candidate now contains 21 feature/research entries. Native drop recovery and drag destination ordering remain separate branches, integrated for installation testing. Their focused fixtures pass. Dock preview latency improves in the synthetic fixture, but the responsiveness gate still fails; docking commit, toggle variability and a one-pixel tracking failure remain recorded in `macos-destination-order.md`. No installed-baseline benchmark or live Resolve acceptance is claimed. Main remains unchanged.
+
+The `7c31c99` combined run passed 15 functional suites but its responsiveness stress fixture also failed repeated-drop geometry and one-pixel tracking checks, beyond the latency gate. Therefore the destination-order optimization was reverted from the installation candidate and its manifest entry removed; the separate published branch retains the experiment. The candidate contains 20 entries including the recovery guard. This is not accepted as a smoothness fix.
+
+After excluding that optimization, the `fecf7fa` responsiveness run passed free-drag tracking, repeated-drop frame prediction, linked-viewer grouping and divider bounds. Its only failed assertion was the unchanged 16.667 ms p95 gate: docking commit 37.033 ms; approach 8.271 ms, divider 10.741 ms, door 15.869 ms, viewer 14.475 ms, button 1.211 ms. Report retained under `build/macos/verification/fecf7fa-responsiveness/`. The previous combined run's 15 functional suites passed; excluding the optimization returns production/tests to that verified baseline plus the separately passing recovery guard. This is an installation test candidate, not complete checklist acceptance.
+
+## Timeline, panel commands and stacking candidate (2026-10-19)
+
+Installed baseline remains `00bef62`; candidate is not installed. Separate branches add Timeline-owned click/drag control, persistent independent Show/Hide and Maximize/Restore bindings through Workspace UI → Unbound Panel Shortcuts, group-membership-aware stacking with native-ID diagnostics, and guards against unchanged native presentation writes. Group door implementation is retained. Three combined hidden suites pass. Signed helper and bootstrap build pass. Displayed native/group suites remain pending while Resolve is open; these are required before installation. Native keyboard-editor registration is not delivered: the bindings use an explicitly Unbound-owned editor.
+
+Red probe connects through the scripting API but a later read-only request stalled and was stopped. The bounded disposable-project probe is prepared and its open-project mutation guard passes. No Red palette item or storage success is claimed. Independent scaling, adaptive toolbar wrapping/vertical layout, general toolbar-to-panel attachment, and the first-launch movable default layout remain open. The pinned-door visual report also remains live-pending.
+
+Follow-up hidden verification: native workspace-menu regression passes with the Unbound shortcut editor callback and repeated wire calls. Native keymap changes now block only the colliding Unbound binding; unrelated commands keep working and removing the collision restores the stored binding. Native action inventory is collected once per validation rather than once per command. Timeline header tests cover a single-content horizontal layout and exact direction restoration. A live guarded Red request returned `not-run` because an existing project is open; no project switch/save/color write occurred. Displayed regressions remain pending with Resolve open.
+
+Hidden-only receipt `build/macos/verification/5e80cde9d3-hidden-20261019T051238Z/receipt.json` records all five reviewed hidden suites passing on clean, unchanged source: panel commands, Timeline control, stacking policy, workspace menu, build manifest. Red probe open-project guards also pass separately. `verify-integration.py --hidden-only` deliberately excludes displayed native/group/drag/responsiveness suites and labels its scope in the receipt. It can run while Resolve is open; default full verification still requires Resolve closed. Installed helper remains `00bef62`.
+
+## Current additions
+
+OpenGate by CineWaltz branding preserves Wolfgang foundation credit, MIT license, existing data paths and stable internal IDs. Last-view reopening has its own `feature/macos-reopen-workspace-contract` and two-process fixture; it is not conflated with named workspace recall. The footer/Page Navigation attachment contract is recorded explicitly: default Timeline-bottom attachment, travels until explicitly detached, independently callable, and persistent on reopen. This attachment behavior and adaptive toolbar/scaling work are not yet delivered.
+
+Pin persistence follow-up: standalone/group pin changes now schedule bounded layout saving without a move/rescue side effect, and Page Navigation snapshots include/reapply pin state. The native fixture assertions compile; execution and the new two-process reopening fixture remain pending with Resolve open. This does not implement the separate default Timeline/footer attachment behavior.
+
+### Local checkout rename — 2026-10-19
+
+Active checkouts are now `Developer/OpenGate` and sibling `Developer/OpenGate-features` (separate Git worktrees, not nested source modules). Full pre-rename copies are preserved in `Developer/OpenGate-backups/pre-rename-20261019T054646Z`. All 26 checkout HEADs and working statuses were verified unchanged; Git worktree links and 46 absolute build symlinks were repaired. Historical receipt paths retain their original names. Remote repository, internal settings IDs and installed plugin are unchanged. Page Navigation now shares one visibility operation between its menu and independent shortcut, with Edit-only commands still yielding outside Edit.
+
+### Responsibility extraction and expansion rollback — 2026-10-19
+
+`refactor/macos-panel-control-modules` extracts command catalog/editor lifetime, native toggle observation, workspace serialization and expansion transactions. Manager size changes from 1,039 to 952 lines; UI construction, grouping and restore orchestration remain there. See `macos-control-modules.md` for boundaries. Hidden tests passed native signal blocking/rebinding, separate command dispatch, shutdown context, snapshot preservation and expansion cancellation. Group/reopen suites compile; displayed execution is pending while Resolve runs.
+
+`fix/macos-expansion-readiness-rollback` restores original panel/native presentation when a requested expansion surface is unavailable, with `panel.expand.failed` diagnostics and a hidden rollback regression check. `test/macos-footer-reopen` extends fresh-process restoration coverage to hidden/pinned Page Navigation and native-menu retrieval. Compilation does not establish live restart acceptance. Footer attachment, adaptive toolbar layout and independent scaling remain open.
+
+### Displayed verification and installed-source comparison — 2026-10-19
+
+Full clean-source receipt: `build/macos/verification/b4277d05dd-20261019T061022Z/receipt.json`. Eighteen non-performance suites passed. The initial reopen fixture failed because it observed Media Pool's native placeholder rather than the transferred content. Correcting that observation on `test/macos-footer-reopen` retained the assertions and passed both processes, including hidden/pinned footer retrieval: `build/macos/reopen-fixture.zetYyQ`. This establishes fixture behavior, not actual Resolve restart/GPU acceptance.
+
+The unchanged responsiveness harness ran against installed source `00bef62` and candidate `b4277d0`, with all features and diagnostics enabled. Candidate functional assertions passed; its 16.667 ms p95 gate failed for dock commit. Baseline also had a one-pixel free-drag assertion failure and exceeded the gate for dock commit and doors. Single runs are not a causal speed claim.
+
+| Scenario p95, ms | Installed source | Candidate |
+| --- | ---: | ---: |
+| Free drag | 0.649 | 2.208 |
+| Dock approach | 13.208 | 15.616 |
+| Dock commit | 26.287 | 26.276 |
+| Divider | 9.333 | 7.768 |
+| Door | 17.056 | 14.106 |
+| Viewer command | 15.186 | 13.518 |
+| Button | 0.853 | 0.984 |
+
+Baseline report: `build/macos/verification/installed-00bef62-responsiveness.json`; candidate report is retained with the full receipt. Dock commit remains dominated by deferred group transfer/exposure; approach spends time in mouse-move destination resolution. The separate, unintegrated `experiment/macos-destination-id-query` replaces metadata enumeration with a current ID-only candidate query. It compiles; correctness/occlusion/timing execution remains pending. No cached stack, relaxed thresholds or removed diagnostics are used. Installed helper remains `00bef62`; Resolve may stay open for source/hidden work.
+
+### Separate footer attachment branch — 2026-10-19
+
+`feature/macos-footer-timeline-attachment` at `1469ca2` is pushed but not integrated or installed. `PanelAccessoryLease` owns reversible native placement and Qt-parented bottom attachment, including safe return before owner children are deleted and rejection on foreign ownership. Footer controls persist native/attached/floating choices and hidden doors. Native footer menu exposes attach/float/native recovery without requiring the manager. Wide native contents use horizontal overflow without forcing owner width; this does not deliver wrapping/vertical toolbar layout.
+
+All six hidden suites pass on clean unchanged feature source: `../OpenGate-features/footer-attachment/build/macos/verification/1469ca24cf-hidden-20261019T063520Z/receipt.json`. Group tests and restart variants (independent footer and attached footer) compile. Displayed grouping/tear-off, page changes, restart, actual Resolve input and playback remain required before integration/installation. No displayed fixture or helper replacement is run while the user works in Resolve.
+
+### Combined footer/restoration candidate — 2026-10-19
+
+Footer attachment at `1469ca2` passes displayed groups and both fresh-process variants (`floating.Gry3Kv`, `attached.V3kxD0` under the footer feature build directory). Workspace restoration at `f8f8a1c` passes its six hidden suites. Both branches are now combined for full verification; actual Resolve input/playback/reopen acceptance remains pending. Merge resolution retains both shutdown cancellation and native footer release, and both new regression suites.
+
+ID-only destination query at `cc51558` passed displayed panel-session/destination-order assertions but did not establish a latency improvement (approach 17.485 ms, commit 26.978 ms, viewer 19.411 ms p95; functional assertions pass). It remains excluded. No frame budget or diagnostics was relaxed.
+
+### Manager presentation and stress result — 2026-10-19
+
+`refactor/macos-panel-manager-view` at `06d6fc7` passes seven hidden suites, displayed manager-hidden behavior, displayed groups and both footer restart variants. Widget construction now belongs to `PanelManagerView`; manager remains under 900 lines with transition/policy and group coordination still present.
+
+Combined footer/restoration receipt `build/macos/verification/b66d3fb7a9-20261019T064840Z/receipt.json` passes all 21 dedicated non-performance suites. Responsiveness stress also catches the intermittent one-pixel free-drag failure (seen in installed source) as well as budget failures: commit 32.442 ms and viewer 19.237 ms p95. Do not describe this as only a budget failure or close smoothness acceptance. A separate read-only geometry trace is being used to distinguish Qt state, requested geometry and the Cocoa frame before any correction. Installation has not changed.
+
+### Scripted-pointer stress diagnosis — 2026-10-19
+
+Read-only geometry trace found zero requested-vs-Qt mismatches while the failed free-drag case had only one processed move. Lifecycle trace identified `button-no-longer-down`: programmatic native movement generated a no-button hover event during an injected held-button stream. Production cancellation was correct; the fixture continued measuring after the gesture had ended. The benchmark now scopes/isolate its scripted pointer stream, reports filtered counts, retains exact-position and explicit-release assertions, and does not alter production input. Ordinary panel-session tests still exercise no-button cancellation and stale moves without isolation.
+
+Installed-source run using the exact corrected fixture passes functional assertions; the unchanged frame-budget gate still fails (commit 32.086 ms, doors 18.248 ms p95). Report: `build/macos/verification/installed-00bef62-isolated-pointer.json`. Candidate functional assertions also pass in the diagnostic feature trial; a combined run follows. This fixes benchmark input modeling, not UI speed. No native positional compensation was added.

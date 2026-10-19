@@ -1,4 +1,45 @@
-# Unbound - Floating panels for DaVinci Resolve
+# OpenGate — by CineWaltz
+
+OpenGate is the CineWaltz macOS panel/workspace fork, built on **Unbound by Wolfgang Woehl**. Wolfgang created the foundation; his MIT copyright and license remain in [LICENSE](LICENSE). OpenGate is a separate project and should not be confused with the original Unbound. Historical Windows instructions and internal compatibility identifiers below retain the original name.
+
+## Download the prototype
+
+[CineWaltz OpenGate 0.0.1 Prototype](https://github.com/jordantetewsky/OpenGate/releases/tag/opengate-v0.0.1-prototype) includes a double-click macOS installer, Native Emulator and two example arrangements. This exact build requires **Apple Silicon, macOS 27+ and Resolve 21** (tested with Studio 21.1.1). Save and quit Resolve before installing. The package is unsigned and not notarized. Existing arrangements are preserved.
+
+**Custom hotkey execution is on the roadmap**, not a working feature of this release. Backtick maximize/restore is working in the local trial. Read the [release notes and limitations](doc/releases/opengate-0.0.1-prototype.md).
+
+The accepted prototype is the baseline for this fork. The [next pass](doc/platforms/opengate-post-prototype-pass.md) prioritizes macOS compatibility, custom hotkey execution and duplicate/inconsistent panel controls. Responsiveness comes last, beginning with a bounded investigation and discussion before optimization.
+
+See the explicit [OpenGate next-pass acceptance list](doc/platforms/opengate-next-pass.md), including **restoring the last view when Resolve reopens**.
+
+## Historical integration notes — October 18, 2026
+
+`macos-panel-discovery-and-layout` combines separate feature branches for ongoing
+work. It is **not a completed or newly installed release**. See the
+[integration ledger](doc/platforms/macos-integration-ledger.md) for each feature's
+implementation and verification status. Build manifests identify the exact
+included feature commits; they do not certify acceptance. The preserved installed
+snapshot is described below. Master and upstream have not been merged.
+
+The current candidate starts with Panel Manager closed and the native workspace
+visible on a fresh configuration. Nested tab-door selection and reversible narrow
+Inspector scrolling have fixture coverage. Original-window rearrangement, live
+Resolve acceptance and the responsiveness target remain unfinished.
+
+## Preserved experimental macOS snapshot — October 17, 2026
+
+This branch, `macos-responsive-group-transfers`, is an experimental macOS build
+shared for ongoing development; it has not been merged into main. Arrangement
+and docking flow still need refinement, which Jordan plans to address in the next
+pass. A reported clipping issue can let Timeline content overlap Inspector in a
+combined window; that issue is not fixed in this snapshot.
+
+The previous `macos-tethered-timeline-and-viewers` build contains useful experiments
+and remains available for comparison and rollback. Jordan reports that it feels
+less snappy than this iteration. That is user feedback, not a completed performance
+validation: this branch's responsiveness target and full live regression checklist
+remain open. See the [current development status](doc/platforms/macos-next-pass-status.md)
+and [verification checklist](doc/platforms/macos-workspace-checklist.md).
 
 Unbound lets you undock DaVinci Resolve panels into independent, resizable windows.
 Arrange them across your displays and restore your custom workspace between sessions.
@@ -65,7 +106,8 @@ folder, ready to attach to GitHub release `v0.1.0`.
 - `src/platform/`: contracts used by shared code.
 - `src/platforms/windows/`: the Windows launcher, bootstrap, native window backend
   and resources.
-- `src/platforms/macos/`: reserved for the macOS backend; not implemented yet.
+- `src/platforms/macos/`: experimental Mac helper, panel sessions and launcher;
+  the full release backend is unfinished.
 - `infrastructure/<platform>/`: platform build, audit and packaging workflows.
 - `tests/core/`: shared fixtures; `tests/platforms/<platform>/`: native adapters,
   launcher tests and diagnostic tools.

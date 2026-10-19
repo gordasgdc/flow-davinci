@@ -1,0 +1,11 @@
+# Drag coordinate and benchmark input diagnosis
+
+An intermittent one-pixel stress failure initially looked like a geometry error. Read-only sampling found no difference between requested and Qt geometry, but the first drag had only two sampled stages (one move). Lifecycle evidence showed `drag.end` reason `button-no-longer-down` before the benchmark's intended release. Programmatic native-window movement had generated an unsolicited no-button hover move while the fixture was injecting a held-button stream. Production correctly cancelled that no-button drag; the fixture then continued measuring a gesture it had already ended.
+
+`EventWorkApplication` now isolates only the benchmark's explicitly scoped scripted pointer stream from no-left-button mouse moves and reports the ignored count. Its explicit releases, deactivation, exact-position and frame-budget assertions remain. Production input/cancellation is unchanged. The ordinary panel-session fixture separately checks missed releases and stale moves without this isolation. Both baseline and candidate comparisons must use this same corrected harness.
+
+With isolation, all functional assertions passed, including exact tracking and explicit release. One run reported commit 27.931 ms and viewer 18.808 ms p95, so the unchanged 16.667 ms gate still fails. Do not claim smoothness or a speed win from fixing the benchmark input model.
+
+`DragGeometryTrace` records one detailed mismatch at most per drag plus aggregate counts. It compares Qt and QWindow geometry with requested coordinates, and queries Cocoa content/frame/backing scale only when a mismatch occurs. It never compensates positions or writes native geometry. This is diagnostics, not a coordinate workaround.
+
+A later combined run also ended early on genuine deactivation because the fixture had never made its dragged host the native key window. Free-drag and approach preparation now explicitly activate and assert that context, as commit preparation already did. Deactivation remains a real cancellation; it is not filtered. With this precondition, functional assertions pass; a trial still misses the unchanged gate (commit 16.690 ms p95). Final comparisons use 32 drop commits and record display geometry/DPR/refresh because the desktop configuration changed during overnight checks.
