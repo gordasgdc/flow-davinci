@@ -5,6 +5,7 @@
 #include <QTabWidget>
 #include "grouplayout.h"
 #include "panellayoutsurface.h"
+#include "panellayoutsnapshot.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
 #include "tabtearoff.h"
@@ -308,20 +309,7 @@ private:
     }
     QJsonObject treeSnapshot(QWidget *widget) const
     {
-        if (!widget) return {};
-        if (auto tabs = qobject_cast<QTabWidget *>(widget)) {
-            QJsonArray children;
-            for (int i = 0; i < tabs->count(); ++i) children.append(treeSnapshot(tabs->widget(i)));
-            return {{"orientation", "tabs"}, {"children", children}, {"selected", tabs->currentIndex()}};
-        }
-        auto splitter = qobject_cast<QSplitter *>(widget); if (!splitter) return {{"panel", widget->property("groupPanel").toString()}};
-        QJsonArray children, sizes;
-        for (int i = 0; i < splitter->count(); ++i) children.append(treeSnapshot(splitter->widget(i)));
-        auto measured = splitter->sizes();
-        const auto remembered = splitter->property("unboundVisibleSizes").value<QList<int>>();
-        if (measured.contains(0) && remembered.size() == measured.size()) measured = remembered;
-        for (int size : measured) sizes.append(size);
-        return {{"orientation", splitter->orientation() == Qt::Horizontal ? "horizontal" : "vertical"}, {"children", children}, {"sizes", sizes}};
+        return panelLayoutSnapshot(widget);
     }
     QWidget *buildTree(const QJsonObject &node)
     {

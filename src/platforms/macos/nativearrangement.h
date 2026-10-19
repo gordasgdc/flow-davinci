@@ -1,0 +1,217 @@
+// SPDX-License-Identifier: MIT
+#pragma once
+#include <QHash>
+#include "grouplayout.h"
+#include "nativerootlayout.h"
+#include "panellayoutsnapshot.h"
+#include "panellayoutsurface.h"
+#include "panelsession.h"
+#include "nativedocksurfaces.h"
+namespace Unbound {
+// Page-level ownership, independent of floating host chrome and drop detection.
+// The retained native layout is always represented explicitly in the tree.
+class NativeArrangement : public QObject {
+public:
+    explicit NativeArrangement(QObject *owner=nullptr) : QObject(owner),lease(this) {}
+    ~NativeArrangement() override {
+        if (!restore(false)) for (auto session : sessions) if (session) {
+            session->releaseGroup={}; session->detachFromGroup();
+        }
+    }
+    static QString nativeLeaf() { return QStringLiteral("unbound.native-remainder"); }
+    bool active() const { return lease.active(); }
+    QWidget *surface() const { return host; }
+    QJsonObject snapshot() const { return panelLayoutSnapshot(root); }
+    bool setPanelVisible(const QString &id,bool visible) {
+        auto session=sessions.value(id); auto cell=cells.value(id);
+        if (changing || !active() || !root || !session || !cell) return false;
+        QScopedValueRollback<bool> guard(changing,true);
+        UiWorkTiming timing("workspace.native-arrangement.visibility",host->window());
+        visibility.remember(root);
+        if (!visible) visibility.closePath(cell,host);
+        session->setHiddenByUser(!visible,false);
+        if (!active() || !root || !host || !cell) return false;
+        if (auto stack=qobject_cast<QStackedWidget *>(cell->parentWidget())) {
+            if (auto tabs=qobject_cast<QTabWidget *>(stack->parentWidget())) visibility.tabVisibility(tabs,cell,visible,false);
+        } else cell->setVisible(visible);
+        if (visible) visibility.selectPath(cell,host);
+        host->layout()->activate(); visibility.restore(root);
+        logEvent("workspace.native-arrangement.visibility",{{"panel",id},{"visible",visible}});
+        return true;
+    }
+    QString initialize(QWidget *page,const QHash<QString,MacPanelSession *> &panels,const QJsonObject &tree) {
+        QStringList names;
+        if (changing || host || !page || !page->isVisible() || panels.isEmpty() || panels.size()>31 ||
+            !groupTreeNames(tree,names) || names.size()!=panels.size()+1 || !names.contains(nativeLeaf()))
+            return QStringLiteral("Invalid native arrangement.");
+        QSet<MacPanelSession *> unique;
+        for (auto it=panels.begin();it!=panels.end();++it) {
+            auto session=it.value();
+            if (it.key()==nativeLeaf() || !names.contains(it.key()) || !session || !session->active() || session->grouped() ||
+                session->pageWidget()!=page || session->nativeOwnerWindow()!=page->window() || unique.contains(session))
+                return QStringLiteral("Choose available panels from this native page.");
+            unique.insert(session);
+        }
+        QScopedValueRollback<bool> guard(changing,true);
+        UiWorkTiming timing("workspace.native-arrangement.initialize",page->window());
+        host=new QWidget(page->window()); host->setObjectName("unboundNativeArrangement");
+        auto layout=new QVBoxLayout(host); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
+        for (const auto &name : names) {
+            auto cell=new QWidget(host); cell->setObjectName("unboundGroupCell_"+name); cell->setProperty("groupPanel",name);
+            if (auto session=panels.value(name)) cell->setWindowTitle(session->window()->windowTitle());
+            cells[name]=cell;
+        }
+        if (!rebuild(tree)) { retire(); return QStringLiteral("Could not render the native arrangement."); }
+        auto error=lease.mount(page,host);
+        if (!error.isEmpty()) { if (!lease.active()) retire(); return error; }
+        ownerDestroyed=connect(page,&QObject::destroyed,this,[this] {
+            unregisterNativeDockSurfaces(host);
+            for (auto session : sessions) if (session) session->releaseGroup={};
+            sessions.clear(); cells.clear(); host=nullptr; root=nullptr; visibility.reset();
+            logEvent("workspace.native-arrangement.owner-destroyed");
+        });
+        error=lease.retainNativeRemainder(cells.value(nativeLeaf()));
+        if (!error.isEmpty()) { restoreOwned(false); return error; }
+        for (auto it=panels.begin();it!=panels.end();++it) {
+            auto session=it.value(); error=session->attachToGroup(cells.value(it.key()),true);
+            if (!error.isEmpty()) { restoreOwned(false); return error; }
+            sessions[it.key()]=session;
+            const auto id=it.key(); session->releaseGroup=[this,id] { detach(id); };
+        }
+        for (auto session : sessions) if (session) session->finishGroupTransfer();
+        syncCellVisibility();
+        logEvent("workspace.native-arrangement.create",{{"panels",QJsonArray::fromStringList(names)}});
+        return {};
+    }
+    bool detach(const QString &id) {
+        auto session=sessions.value(id); auto cell=cells.value(id);
+        if (changing || !active() || !session || !cell) return false;
+        QScopedValueRollback<bool> guard(changing,true);
+        UiWorkTiming timing("workspace.native-arrangement.detach",host->window());
+        const auto next=removeGroupLeaf(snapshot(),id);
+        session->releaseGroup={}; session->detachFromGroup(); sessions.remove(id); cells.remove(id);
+        cell->hide(); cell->deleteLater();
+        const bool result=sessions.isEmpty() ? restoreOwned(false) : rebuild(next);
+        logEvent("workspace.native-arrangement.detach",{{"panel",id},{"success",result}});
+        return result;
+    }
+    QString add(const QHash<QString,MacPanelSession *> &panels,const QJsonObject &addition,
+        const QString &target,Qt::Orientation direction,bool before=false) {
+        QStringList added,existing; const auto previous=snapshot();
+        if (changing || !active() || panels.isEmpty() || sessions.size()+panels.size()>31 ||
+            !groupTreeNames(addition,added) || added.size()!=panels.size() ||
+            !groupTreeNames(previous,existing) || !existing.contains(target)) return QStringLiteral("Invalid native dock target.");
+        QSet<MacPanelSession *> unique;
+        for (auto current : sessions) if (current) unique.insert(current);
+        for (auto it=panels.begin();it!=panels.end();++it) {
+            auto session=it.value();
+            if (!added.contains(it.key()) || existing.contains(it.key()) || !session || !session->active() || session->grouped() ||
+                session->pageWidget()!=host->parentWidget() || session->nativeOwnerWindow()!=host->window() || unique.contains(session))
+                return QStringLiteral("Choose available panels from this native page.");
+            unique.insert(session);
+        }
+        QScopedValueRollback<bool> guard(changing,true);
+        UiWorkTiming timing("workspace.native-arrangement.add",host->window());
+        for (auto it=panels.begin();it!=panels.end();++it) {
+            auto cell=new QWidget(host); cell->setObjectName("unboundGroupCell_"+it.key()); cell->setProperty("groupPanel",it.key());
+            cell->setWindowTitle(it.value()->window()->windowTitle()); cells[it.key()]=cell;
+        }
+        QString error;
+        if (!rebuild(insertGroupTree(previous,addition,target,direction,before))) error=QStringLiteral("Could not render the docked panels.");
+        if (error.isEmpty()) for (auto it=panels.begin();it!=panels.end();++it) {
+            error=it.value()->attachToGroup(cells.value(it.key()),true);
+            if (!error.isEmpty()) break;
+            sessions[it.key()]=it.value();
+        }
+        if (!error.isEmpty()) {
+            for (const auto &id : added) {
+                if (auto session=sessions.take(id)) session->detachFromGroup();
+                if (auto cell=cells.take(id)) { cell->hide(); cell->deleteLater(); }
+            }
+            const bool restored=rebuild(previous);
+            logEvent("workspace.native-arrangement.add-rollback",{{"restored",restored},{"error",error}});
+            return error;
+        }
+        for (const auto &id : added) {
+            auto session=sessions.value(id);
+            session->releaseGroup=[this,id] { detach(id); }; session->finishGroupTransfer();
+        }
+        syncCellVisibility();
+        logEvent("workspace.native-arrangement.add",{{"panels",QJsonArray::fromStringList(added)},{"target",target}});
+        return {};
+    }
+    bool restore(bool dockPanels) {
+        if (changing) return false;
+        QScopedValueRollback<bool> guard(changing,true);
+        return restoreOwned(dockPanels);
+    }
+private:
+    bool restoreOwned(bool dockPanels) {
+        UiWorkTiming timing("workspace.native-arrangement.restore",host ? host->window() : nullptr);
+        // Original slots must be back before sessions dock into them. If native
+        // ownership changed, retain the arrangement rather than deleting content.
+        if (!lease.restore()) return false;
+        bool result=true;
+        const auto current=sessions.values(); sessions.clear();
+        for (auto session : current) if (session) session->releaseGroup={};
+        for (auto session : current) if (session) {
+            session->releaseGroup={}; session->detachFromGroup();
+            if (dockPanels && session->active()) {
+                const auto error=session->dock(); result &= error.isEmpty();
+                if (!error.isEmpty()) logEvent("workspace.native-arrangement.dock-failed",{{"error",error}});
+            }
+        }
+        retire(); return result;
+    }
+    bool rebuild(const QJsonObject &tree) {
+        PanelLayoutCallbacks callbacks;
+        callbacks.leaf=[this](const QString &id) { return cells.value(id).data(); };
+        callbacks.title=[this](const QString &id) {
+            auto session=sessions.value(id);
+            return session && session->window() ? session->window()->windowTitle() : id==nativeLeaf() ? QStringLiteral("Native workspace") : id;
+        };
+        // Validate before moving any live cells out of their current surface.
+        QSet<QString> ids; QList<QPointer<QWidget>> leaves;
+        if (!validatePanelLayoutSurface(tree,callbacks,ids,leaves)) return false;
+        for (auto cell : cells) if (cell) cell->setParent(host);
+        visibility.reset();
+        if (root) { host->layout()->removeWidget(root); root->hide(); root->deleteLater(); }
+        root=buildPanelLayoutSurface(tree,host,this,callbacks);
+        if (!root) return false;
+        host->layout()->addWidget(root); root->show();
+        syncCellVisibility();
+        host->layout()->activate();
+        auto splitters=root->findChildren<QSplitter *>();
+        if (auto splitter=qobject_cast<QSplitter *>(root.data())) splitters.prepend(splitter);
+        for (auto splitter : splitters) {
+            QList<int> sizes; for (const auto &size : splitter->property("savedSizes").toList()) sizes.append(qMax(1,size.toInt()));
+            if (sizes.size()==splitter->count()) splitter->setSizes(sizes);
+        }
+        QList<QWidget *> targets; for (auto cell : cells) if (cell) targets.append(cell);
+        if (!registerNativeDockSurfaces(host->window(),host,targets)) return false;
+        return true;
+    }
+    void syncCellVisibility() {
+        for (auto it=cells.begin();it!=cells.end();++it) if (auto cell=it.value()) {
+            auto session=sessions.value(it.key()); const bool visible=!session || !session->hiddenByUser();
+            if (auto stack=qobject_cast<QStackedWidget *>(cell->parentWidget())) {
+                if (auto tabs=qobject_cast<QTabWidget *>(stack->parentWidget())) visibility.tabVisibility(tabs,cell,visible,false);
+                cell->setVisible(visible && stack->currentWidget()==cell);
+            } else cell->setVisible(visible);
+        }
+    }
+    void retire() {
+        unregisterNativeDockSurfaces(host);
+        disconnect(ownerDestroyed); ownerDestroyed={};
+        if (host) { host->hide(); host->deleteLater(); }
+        host=nullptr; root=nullptr; cells.clear();
+    }
+    NativeRootLayout lease;
+    QMetaObject::Connection ownerDestroyed;
+    GroupVisibility visibility;
+    QPointer<QWidget> host,root;
+    QHash<QString,QPointer<QWidget>> cells;
+    QHash<QString,QPointer<MacPanelSession>> sessions;
+    bool changing=false;
+};
+}

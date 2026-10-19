@@ -19,6 +19,19 @@ second floating workspace requiring the user to hide the original background.
 - Root transitions and rejected restoration attempts emit diagnostics. Unexpected
   layout replacement retains both control trees for a retry; page destruction
   cleans up the parked native tree.
+- `NativeArrangement` coordinates multiple session leases, an explicit native
+  remainder leaf, nested subtree insertion, individual detachment, Inspector door
+  selection/return and root-first recovery. The remaining native controls keep
+  their original layout and signal connections in the same main window.
+- Sessions detached after rearrangement remember their logical original page,
+  rather than the temporary remainder container. Returning one panel does not
+  require tearing down the rest of the arrangement.
+- Native drop registration accepts only real arrangement cells. Lookup respects
+  native window order and never falls back to the native window's outer edges or
+  unused margins. It is not yet connected to production panel drop commands.
+- Floating/native groups share `panelLayoutSnapshot`; covered-tab recovery no
+  longer re-shows a session through an inactive tab. Transaction callbacks cannot
+  reenter an unfinished coordinator operation.
 
 ## Verification
 
@@ -26,21 +39,24 @@ second floating workspace requiring the user to hide the original background.
 identity, constraints, focus, visibility, page destruction, foreign-layout
 replacement/retry, the shared nested split/tab renderer and actual panel-session
 transfer into/out of the native surface.
+It also exercises multi-panel subtree addition, rejected targets without mutation,
+native remainder preservation, logical parent restoration, project replacement,
+door tab return, scoped drop bounds and operation diagnostics.
 
 `bash infrastructure/macos/test-panel-sessions.sh` passed after the scoped session
 adoption change. Fixture evidence does not establish real Resolve/GPU behavior.
 
 ## Required before exposing this in the product
 
-1. A page arrangement coordinator with explicit ownership of every participating
-   panel and preservation of unsupported or remaining native controls. Parking
-   a page while only adopting some panels would hide the others; do not ship that.
-2. Transactional recovery: restore the original root before returning sessions
-   to their native layout slots. A pane's own vacancy must not own other panes.
-3. Shared group interactions for embedded surfaces, including doors, tab tear-off,
+1. Connect the coordinator to production panel commands and initial native drop
+   destinations. Preserve the user's intended location within the native layout;
+   a generic split around the entire native remainder is not sufficient.
+2. Verify remaining/unsupported Resolve controls and project/page ownership live.
+   Fixtures establish synthetic ownership behavior only.
+3. Complete shared group interactions for embedded surfaces, including tab tear-off,
    close/reveal callers and exact split/tab state restoration.
-4. Native-cell drop registration and preview coordinates, with no whole-screen
-   docking catchment or implicit conversion of a free-floating drop.
+4. Integrate native-cell previews and drop dispatch, with no implicit conversion
+   of a free-floating drop and complete rollback on failed transfer.
 5. Persisted native placement and native/floating transfers; page/project changes,
    Source readiness, viewer commands and temporary maximize must preserve it.
 6. Existing integration fixtures, responsiveness gates and fresh Resolve checks.

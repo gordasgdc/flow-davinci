@@ -20,6 +20,17 @@ public:
                 return nativePage->layout() && nativePage->layout()->indexOf(ancestor)>=0;
         return false;
     }
+    static QWidget *restorationParent(QWidget *nativePage,QWidget *originalParent,QLayout *originalLayout) {
+        if (!nativePage || !originalParent || originalParent!=nativePage || !originalLayout || originalParent->layout()==originalLayout) return originalParent;
+        auto retained=originalLayout->parentWidget();
+        return retained && retained->layout()==originalLayout &&
+            retained->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,retained)
+            ? retained : originalParent;
+    }
+    static QWidget *logicalParent(QWidget *nativePage,QWidget *currentParent) {
+        return currentParent && currentParent->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,currentParent)
+            ? nativePage : currentParent;
+    }
     QString mount(QWidget *nativePage,QWidget *arrangement) {
         if (page || !nativePage || !nativePage->layout() || !arrangement || arrangement->isWindow() ||
             arrangement==nativePage || arrangement->isAncestorOf(nativePage))
@@ -44,13 +55,30 @@ public:
         // Preserve visibility of unmanaged direct children too; native custom
         // widgets are not necessarily represented by a QLayoutItem.
         for (auto child : page->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly))
-            if (child!=surface && !child->isWindow()) { visibility.append({child,child->isHidden()}); child->hide(); }
+            if (child!=surface && !child->isWindow()) { visibility.append({child,child->isHidden(),child->geometry()}); child->hide(); }
         customLayout=new QVBoxLayout(page); customLayout->setContentsMargins(margins); customLayout->setSpacing(0);
         customLayout->addWidget(surface);
         rootProperty=surface->property("unboundNativeArrangementRoot");
         surface->setProperty("unboundNativeArrangementRoot",true);
         page->setMinimumSize(0,0); surface->show();
         logEvent("workspace.native-root.mount",{{"page",page->objectName()},{"native_layout",nativeLayout->metaObject()->className()}});
+        return {};
+    }
+    // Keep the still-native layout as a real leaf of the arrangement. This is
+    // deliberately explicit: adopting only some panes must not hide all others.
+    QString retainNativeRemainder(QWidget *container) {
+        if (!active() || remainder || !container || container->layout() ||
+            !contains(page,container) || container==surface || stash->isAncestorOf(container))
+            return QStringLiteral("The remaining native workspace cannot be placed here.");
+        remainder=container;
+        auto layout=new QVBoxLayout(container); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
+        layout->addWidget(stash);
+        stash->setProperty("unboundNativeLayoutRemainder",true);
+        for (const auto &item : visibility) if (item.widget && item.widget->parentWidget()==page) {
+            item.widget->setParent(stash); item.widget->setGeometry(item.geometry); item.widget->setVisible(!item.hidden);
+        }
+        stash->show();
+        logEvent("workspace.native-root.remainder",{{"page",page->objectName()},{"unmanaged_controls",visibility.size()}});
         return {};
     }
     bool restore() {
@@ -81,7 +109,10 @@ public:
         }
         page->setMinimumSize(minimum); page->setSizePolicy(policy);
         for (const auto &item : visibility)
-            if (item.first && item.first->parentWidget()==page) item.first->setVisible(!item.second);
+            if (item.widget) {
+                if (item.widget->parentWidget()==stash) { item.widget->setParent(page); item.widget->setGeometry(item.geometry); }
+                if (item.widget->parentWidget()==page) item.widget->setVisible(!item.hidden);
+            }
         disconnect(pageDestroyed);
         delete parking; delete stash.data();
         logEvent("workspace.native-root.restore",{{"page",page->objectName()},{"native_layout_restored",true}});
@@ -90,11 +121,12 @@ public:
 private:
     void clear() {
         disconnect(pageDestroyed); pageDestroyed={};
-        page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; nativeLayout=nullptr; customLayout=nullptr; visibility.clear();
+        page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; remainder=nullptr; nativeLayout=nullptr; customLayout=nullptr; visibility.clear();
     }
-    QPointer<QWidget> page,main,surface,stash;
+    QPointer<QWidget> page,main,surface,stash,remainder;
     QPointer<QLayout> nativeLayout,customLayout;
-    QList<QPair<QPointer<QWidget>,bool>> visibility;
+    struct NativeVisibility { QPointer<QWidget> widget; bool hidden; QRect geometry; };
+    QList<NativeVisibility> visibility;
     QMetaObject::Connection pageDestroyed;
     QSize minimum; QSizePolicy policy;
     QVariant rootProperty;

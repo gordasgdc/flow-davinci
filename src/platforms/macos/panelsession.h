@@ -20,6 +20,7 @@
 #include "nativerootlayout.h"
 #include "vacatedcontents.h"
 #include "panelplacement.h"
+#include "groupvisibility.h"
 #include "cinemaviewer.h"
 #include "uiworktiming.h"
 
@@ -242,7 +243,7 @@ public:
             return QStringLiteral("The panel is not in its expected layout.");
 
         content = widget;
-        originalParent = parent;
+        originalParent = NativeRootLayout::logicalParent(page,parent);
         originalLayout = layout;
         originalSplitter = splitter;
         originalStack = stack;
@@ -305,7 +306,7 @@ public:
         widget->installEventFilter(this);
         host->installEventFilter(this);
         page->installEventFilter(this);
-        parentDestroyed = connect(parent, &QObject::destroyed, this, [this] {
+        parentDestroyed = connect(originalParent, &QObject::destroyed, this, [this] {
             // The original owner is gone; its displaced content ends with it.
             if (originalPage) originalPage->removeEventFilter(this);
             if (host) host->deleteLater();
@@ -359,18 +360,19 @@ public:
         }
         if (!content || !originalParent || !placeholder)
             return QStringLiteral("Resolve changed the panel hierarchy; restoration was stopped.");
+        auto destinationParent=NativeRootLayout::restorationParent(originalPage,originalParent,originalLayout);
         if (content->parentWidget() != host && content->parentWidget() != originalParent && !overflow.owns(content) && !nativeOwner(content->parentWidget()))
             return QStringLiteral("This panel belongs to an unexpected window; restoration was stopped.");
         if (overflow.owns(content)) {
             // Validate the destination before removing the retained viewport.
             if ((originalStack && originalStack->indexOf(placeholder)<0) ||
                 (originalSplitter && originalSplitter->indexOf(placeholder)<0) ||
-                (originalParent->layout() && !originalStack && !originalSplitter && originalParent->layout()->indexOf(placeholder)<0))
+                (destinationParent->layout() && !originalStack && !originalSplitter && destinationParent->layout()->indexOf(placeholder)<0))
                 return QStringLiteral("The original panel slot changed.");
             overflow.releaseInto(host);
         }
-        const bool reclaimed = content->parentWidget() == originalParent;
-        QLayout *currentLayout = originalParent->layout();
+        const bool reclaimed = content->parentWidget() == destinationParent;
+        QLayout *currentLayout = destinationParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
             if (currentLayout) currentLayout->removeWidget(placeholder);
             logEvent(QStringLiteral("panel.dock.native-reclaimed"), {{"widget", widgetState(content)}});
@@ -392,12 +394,12 @@ public:
             auto item = currentLayout->replaceWidget(placeholder, content, Qt::FindDirectChildrenOnly);
             if (!item) return QStringLiteral("Could not restore the panel slot.");
             delete item;
-            content->setParent(originalParent, flags);
+            content->setParent(destinationParent, flags);
         } else {
-            if (originalParent->layout()) return QStringLiteral("Resolve added a layout to this panel slot.");
-            content->setParent(originalParent, flags);
+            if (destinationParent->layout()) return QStringLiteral("Resolve added a layout to this panel slot.");
+            content->setParent(destinationParent, flags);
         }
-        if (content->parentWidget() != originalParent || content->isWindow())
+        if (content->parentWidget() != destinationParent || content->isWindow())
             return QStringLiteral("Resolve did not retain the restored panel in its original parent.");
         widthAllowance.restore();
         content->setGeometry(geometry);
@@ -412,14 +414,20 @@ public:
         oldHost->removeEventFilter(this);
         delete placeholder.data();
         const auto restored = content;
-        const auto destination = originalParent;
+        const QPointer<QWidget> destination = destinationParent;
+        const auto nativeDestination=originalParent;
+        const auto nativeDestinationLayout=originalLayout;
+        const bool retainedNativeSlot=destinationParent!=originalParent;
         logEvent(QStringLiteral("panel.dock.complete"), {{"widget", widgetState(content)}});
         clear();
         oldHost->hide();
         oldHost->deleteLater();
-        QTimer::singleShot(0, this, [restored, destination] {
+        QTimer::singleShot(0, this, [restored, destination,nativeDestination,nativeDestinationLayout,retainedNativeSlot] {
+            const bool nativeRootRestored=retainedNativeSlot && nativeDestination && nativeDestinationLayout &&
+                nativeDestination->layout()==nativeDestinationLayout && restored && restored->parentWidget()==nativeDestination;
             logEvent(QStringLiteral("panel.dock.verify"), {{"widget", widgetState(restored)},
-                {"passed", restored && destination && restored->parentWidget() == destination && !restored->isWindow()}});
+                {"native_root_restored",nativeRootRestored},
+                {"passed", restored && !restored->isWindow() && ((destination && restored->parentWidget()==destination) || nativeRootRestored)}});
         });
         if (changed) changed();
         return {};
@@ -492,7 +500,7 @@ private:
                 }
                 content->show();
             }
-            if (!userHidden && !surface->isVisible()) {
+            if (!userHidden && !surface->isVisible() && !panelCoveredByTab(surface)) {
                 const bool previous = surface->testAttribute(Qt::WA_ShowWithoutActivating);
                 surface->setAttribute(Qt::WA_ShowWithoutActivating, true);
                 surface->show(); surface->setAttribute(Qt::WA_ShowWithoutActivating, previous);

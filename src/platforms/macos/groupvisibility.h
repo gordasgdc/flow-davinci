@@ -9,6 +9,12 @@
 #include <QTabWidget>
 #include "diagnostics.h"
 namespace Unbound {
+inline bool panelCoveredByTab(QWidget *panel) {
+    for (auto child=panel; child && child->parentWidget(); child=child->parentWidget())
+        if (auto stack=qobject_cast<QStackedWidget *>(child->parentWidget()))
+            if (qobject_cast<QTabWidget *>(stack->parentWidget()) && stack->currentWidget()!=child) return true;
+    return false;
+}
 // Remember divider sizes for each open/closed combination, rather than rescaling repeatedly.
 class GroupVisibility
 {
