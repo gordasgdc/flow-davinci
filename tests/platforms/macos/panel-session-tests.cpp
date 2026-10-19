@@ -230,6 +230,9 @@ int main(int argc, char **argv)
             const QPoint delta = desiredFrame - moving.frameGeometry().topLeft();
             QMouseEvent down(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(press), Qt::LeftButton, Qt::LeftButton, modifiers);
             QApplication::sendEvent(&moving, &down);
+            // Native title-bar callbacks enter here; standard chrome has no
+            // second Qt grip row for a synthetic client-area press to hit.
+            moving.beginPointerDrag(press);
             QMouseEvent move(QEvent::MouseMove, QPointF(100, 7) + delta, QPointF(press + delta), Qt::NoButton, Qt::LeftButton, modifiers);
             QApplication::sendEvent(&moving, &move);
             auto preview = moving.findChild<QWidget *>("unboundSnapPreview");
@@ -245,7 +248,7 @@ int main(int argc, char **argv)
         const auto begin = [&] {
             const auto point = moving.mapToGlobal(QPoint(100, 7));
             QMouseEvent press(QEvent::MouseButtonPress, QPointF(100, 7), QPointF(point), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
-            QApplication::sendEvent(&moving, &press); return point;
+            QApplication::sendEvent(&moving, &press); moving.beginPointerDrag(point); return point;
         };
         auto point = begin();
         QMouseEvent otherRelease(QEvent::MouseButtonRelease, QPointF(), QPointF(point + QPoint(30, 15)), Qt::LeftButton, Qt::NoButton, Qt::AltModifier);
