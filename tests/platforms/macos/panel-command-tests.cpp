@@ -135,6 +135,15 @@ int main(int argc,char **argv) {
         check(expansion.index()==-1 && cancelled==2 && restored==2 && nativeRestored==2 && saved==2 && readinessErrors==1,
             "unavailable expansion surface rolls back original presentation instead of saving temporary state");
     }
+    {
+        QWidget root,page(&root),floating(&root,Qt::Tool);auto toggle=new QPushButton(&floating);
+        toggle->setObjectName("btnEditToggleMixerInSSM");toggle->setCheckable(true);toggle->setChecked(true);
+        Unbound::NativePanelToggles bridge(nullptr);int calls=0;
+        bridge.add("Mixer",[] { return true; },[] { return true; },[&] { ++calls; });
+        bridge.wire(&page);bridge.sync(0,&page);
+        check(!toggle->isChecked() && calls==0,"native toggle sync reaches a floated Workspace Toolbar without emitting native signals");
+        toggle->click();check(calls>0,"floated native toolbar retains its panel-door bridge");
+    }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly);
     check(events.readAll().contains("command.invoke"),"command origin and acceptance logged");
     if (!failures) std::puts("PASS: independent commands, persistence, conflicts, typing, page scope, repeats and editor discovery");

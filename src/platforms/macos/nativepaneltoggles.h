@@ -20,14 +20,14 @@ public:
         const auto &entry=entries[index];
         if (!root || entry.toggle.isEmpty() || !entry.active()) return;
         const auto prefix=QStringLiteral("btnEditToggle")+entry.toggle+"In";
-        for (auto button:root->findChildren<QAbstractButton *>()) if (button->objectName().startsWith(prefix)) {
+        for (auto button:root->window()->findChildren<QAbstractButton *>()) if (button->objectName().startsWith(prefix)) {
             const QSignalBlocker blocked(button); button->setChecked(!entry.hidden());
         }
     }
     void wire(QWidget *root)
     {
         if (!root) return;
-        const auto buttons=root->findChildren<QAbstractButton *>();
+        const auto buttons=root->window()->findChildren<QAbstractButton *>();
         for (const auto &entry:entries) {
             if (entry.toggle.isEmpty()) continue;
             const auto prefix=QStringLiteral("btnEditToggle")+entry.toggle+"In";
