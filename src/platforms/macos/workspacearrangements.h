@@ -14,6 +14,7 @@
 #include "diagnostics.h"
 #include "workspacepages.h"
 #include "keyboardlauncher.h"
+#include "workflowcommandmenu.h"
 
 namespace Unbound {
 // Native menus and the controls window dispatch to the same arrangement owner.
@@ -21,7 +22,7 @@ namespace Unbound {
 class WorkspaceArrangements : public QObject
 {
 public:
-    explicit WorkspaceArrangements(QObject *owner) : QObject(owner) { qApp->installEventFilter(this); }
+    explicit WorkspaceArrangements(QObject *owner) : QObject(owner) { commandMenu=new WorkflowCommandMenu(this); qApp->installEventFilter(this); }
     ~WorkspaceArrangements() override { if (qApp) qApp->removeEventFilter(this); }
     std::function<QJsonArray()> entries;
     std::function<QString()> selected;
@@ -112,6 +113,7 @@ private:
     }
     void refresh(QMenu *root)
     {
+        commandMenu->wire(root);
         const auto page = currentPage(); const auto label = workspacePageLabel(page);
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
@@ -194,6 +196,7 @@ private:
         rendered[root] = model;
     }
     QSet<QAction *> wiredActions;
+    WorkflowCommandMenu *commandMenu=nullptr;
     QSet<QMenu *> wiredMenus;
     QHash<QMenu *,QJsonObject> rendered;
     bool pageRefreshQueued = false;
