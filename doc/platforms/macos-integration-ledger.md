@@ -230,3 +230,9 @@ The unchanged responsiveness harness ran against installed source `00bef62` and 
 | Button | 0.853 | 0.984 |
 
 Baseline report: `build/macos/verification/installed-00bef62-responsiveness.json`; candidate report is retained with the full receipt. Dock commit remains dominated by deferred group transfer/exposure; approach spends time in mouse-move destination resolution. The separate, unintegrated `experiment/macos-destination-id-query` replaces metadata enumeration with a current ID-only candidate query. It compiles; correctness/occlusion/timing execution remains pending. No cached stack, relaxed thresholds or removed diagnostics are used. Installed helper remains `00bef62`; Resolve may stay open for source/hidden work.
+
+### Separate footer attachment branch — 2026-10-19
+
+`feature/macos-footer-timeline-attachment` at `1469ca2` is pushed but not integrated or installed. `PanelAccessoryLease` owns reversible native placement and Qt-parented bottom attachment, including safe return before owner children are deleted and rejection on foreign ownership. Footer controls persist native/attached/floating choices and hidden doors. Native footer menu exposes attach/float/native recovery without requiring the manager. Wide native contents use horizontal overflow without forcing owner width; this does not deliver wrapping/vertical toolbar layout.
+
+All six hidden suites pass on clean unchanged feature source: `../OpenGate-features/footer-attachment/build/macos/verification/1469ca24cf-hidden-20261019T063520Z/receipt.json`. Group tests and restart variants (independent footer and attached footer) compile. Displayed grouping/tear-off, page changes, restart, actual Resolve input and playback remain required before integration/installation. No displayed fixture or helper replacement is run while the user works in Resolve.
