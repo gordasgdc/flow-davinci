@@ -16,7 +16,9 @@ def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--hidden-only',action='store_true',help='Run only reviewed hidden fixtures; never native window/drag tests.')
+modes=parser.add_mutually_exclusive_group()
+modes.add_argument('--functional-only',action='store_true',help='Run functional fixtures; exclude the performance benchmark without claiming its gate passed.')
+modes.add_argument('--hidden-only',action='store_true',help='Run only reviewed hidden fixtures; never native window/drag tests.')
 args=parser.parse_args()
 resolve = subprocess.run(['pgrep', '-x', 'Resolve'], capture_output=True, text=True)
 if not args.hidden_only and resolve.returncode != 1:
@@ -24,18 +26,21 @@ if not args.hidden_only and resolve.returncode != 1:
     sys.exit(2)
 
 commit = git('rev-parse', 'HEAD')
-stamp = ('hidden-' if args.hidden_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+stamp = ('hidden-' if args.hidden_only else 'functional-' if args.functional_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
-tests = ['workspace-restoration','panel-accessories', 'panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
+tests = ['panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories', 'panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
          'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'workspace-reopen', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
+if args.functional_only:
+    tests.remove('responsiveness')
 if args.hidden_only:
-    tests=['workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
-receipt = {'matrix': 'hidden' if args.hidden_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
+    tests=['panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
+receipt = {'matrix': 'hidden' if args.hidden_only else 'functional' if args.functional_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),
            'scope': ('Hidden fixtures only; displayed/native-window and responsiveness checks excluded' if args.hidden_only else 'Fixtures only; does not establish live Resolve or GPU/playback acceptance'),
+           'performance_gate': 'not run; previously failed; no smoothness claim' if args.functional_only or args.hidden_only else 'included',
            'tests': [], 'all_passed': False}
 def save():
     temporary = output / 'receipt.tmp'

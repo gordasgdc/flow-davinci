@@ -205,6 +205,24 @@
       "commit": "4e2c5dc2ab1a61211ccbeca408c18aaf183ff9ae",
       "scope": "diagnostics",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-independent-panel-metrics",
+      "commit": "7081d1dce6028f76eec7fb501bddfc472b5eda05",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-unified-native-workspace",
+      "commit": "e7031d20b59646be9513b2e0cb3d93148db52420",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-edit-ui-commands",
+      "commit": "bf829580fb9d09e6df933c8ef730f8f51c7d2b31",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
