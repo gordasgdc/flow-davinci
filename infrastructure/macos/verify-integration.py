@@ -27,11 +27,11 @@ commit = git('rev-parse', 'HEAD')
 stamp = ('hidden-' if args.hidden_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
-tests = ['panel-accessories', 'panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
+tests = ['workspace-restoration','panel-accessories', 'panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
          'workspace-pages', 'workspace-menu', 'panel-sessions', 'panel-groups',
          'native-panel-positions', 'native-arrangements', 'native-workspace-ui', 'workspace-reopen', 'group-signal-lifetimes', 'controls-hidden', 'reliability', 'instrumentation', 'responsiveness']
 if args.hidden_only:
-    tests=['panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
+    tests=['workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
 receipt = {'matrix': 'hidden' if args.hidden_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),
