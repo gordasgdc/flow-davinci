@@ -18,6 +18,7 @@
 #include <QWindow>
 #include "panelsession.h"
 #include "workspacesettings.h"
+#include "workspacesnapshot.h"
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
 #include "panelmenus.h"
@@ -32,13 +33,14 @@
 #include "viewerpreparation.h"
 #include "surfacereadiness.h"
 #include "footerpanel.h"
-#include "panelexpansion.h"
+#include "panelexpansioncontroller.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
 #include "viewermodecommand.h"
 #include "arrangementcontrols.h"
 #include "workspacearrangements.h"
-#include "panelshortcuteditor.h"
+#include "panelcommandcatalog.h"
+#include "nativepaneltoggles.h"
 #include "pagecontext.h"
 #include <QGroupBox>
 
@@ -99,10 +101,15 @@ public:
             for (auto group : groups) group->setSnapping(enabled);
             save();
         });
+        expansionController=new Unbound::PanelExpansionController(this);
+        expansionController->running=[this] { return !quitting; };
+        expansionController->update=[this](int i) { updateRow(i); };
+        expansionController->save=[this] { save(); };
+        expansionController->report=[this](QString error) { status->setText(error); };
         hierarchy = new Unbound::WindowHierarchy(this);
         groupReserve = new Unbound::GroupHostReserve(this);
         nativeSizing = new Unbound::NativeWorkspaceSizing(this);
-        nativeSizing->blocked = [this] { return quitting || expanded >= 0; };
+        nativeSizing->blocked = [this] { return quitting || expansionController->index() >= 0; };
         hierarchyOption = new QCheckBox(QStringLiteral("Use panel hierarchy"), this);
         hierarchyOption->setObjectName(QStringLiteral("panelHierarchy"));
         hierarchyOption->setChecked(settings.data["panel_hierarchy"].toBool(true));
@@ -268,7 +275,7 @@ public:
             grid->addWidget(panel.expand, i, 5);
             grid->addWidget(panel.center, i, 6);
             panel.session->changed = [this, i] {
-                if (expanded == i && !panels[i].session->active()) expanded = -1;
+                if (!panels[i].session->active()) expansionController->sessionInactive(i);
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
                 nativeWorkspace->queueRestore(page());
@@ -277,7 +284,7 @@ public:
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
             };
-            panel.session->expandedClosed = [this, i] { if (expanded == i) restoreExpanded(); };
+            panel.session->expandedClosed = [this, i] { if (expansionController->index() == i) restoreExpanded(); };
             panel.session->arrangementChanged = [this] { if (!quitting) saveTimer.start(); };
             connect(panel.undock, &QPushButton::clicked, this, [this, i] { action("undock", panels[i].label); if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name); else requestUndock(i); });
             connect(panel.dock, &QPushButton::clicked, this, [this, i] { action("dock", panels[i].label); dockOne(i); });
@@ -314,32 +321,23 @@ public:
                 else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
             }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
-        commands=new Unbound::PanelCommands(this);
-        commands->context=[this] {
-            auto window=QApplication::activeWindow();
-            return !quitting && window &&
-                (window->objectName()=="UiMainWindow" || window==this || window->objectName().startsWith("unboundFloating_"));
-        };
-        for (int i=0;i<panels.size();++i) {
-            commands->add({"panel.toggle."+panels[i].name,"Show / Hide "+panels[i].label,
-                [this] { return page() && page()->isVisible(); },[this,i] {
-                    if (panels[i].session->active()) queuePanelDoor(i);
-                    else requestUndock(i);
-                }});
-            commands->add({"panel.expand."+panels[i].name,"Maximize / Restore "+panels[i].label,
-                [this] { return page() && page()->isVisible(); },[this,i] { toggleExpanded(i); }});
-        }
-        commands->add({"panel.toggle.page-navigation","Show / Hide Page Navigation",
-            [this] { return footer && Unbound::resolveMainWindow(); },[this] {
-                const auto error=footer->toggleVisibility();
-                if (!error.isEmpty()) status->setText(error);
-                Unbound::logEvent("command.footer.result",{{"success",error.isEmpty()},{"error",error}});
-            }});
+        nativeToggles=new Unbound::NativePanelToggles(this);
+        for (int i=0;i<panels.size();++i)
+            nativeToggles->add(panels[i].toggle,[this,i] { return panels[i].session->active(); },
+                [this,i] { return panels[i].session->hiddenByUser(); },[this,i] { queuePanelDoor(i); });
+        commands=new Unbound::PanelCommandCatalog(this,[this] { return !quitting; });
+        for (int i=0;i<panels.size();++i)
+            commands->addPanel(panels[i].name,panels[i].label,
+                [this] { return page() && page()->isVisible(); },
+                [this,i] { if (panels[i].session->active()) queuePanelDoor(i); else requestUndock(i); },
+                [this,i] { toggleExpanded(i); });
+        commands->addNavigation([this] { return footer && Unbound::resolveMainWindow(); },[this] {
+            const auto error=footer->toggleVisibility();
+            if (!error.isEmpty()) status->setText(error);
+            return error;
+        });
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
-        workspaceMenu->showPanelShortcuts=[this] {
-            if (!shortcutEditor) shortcutEditor=Unbound::createPanelShortcutEditor(commands,this);
-            shortcutEditor->show(); shortcutEditor->raise(); shortcutEditor->activateWindow();
-        };
+        workspaceMenu->showPanelShortcuts=[this] { commands->showEditor(); };
         workspaceMenu->showPanelManager = [this] {
             showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
             Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
@@ -418,7 +416,7 @@ protected:
             auto key = static_cast<QKeyEvent *>(event);
             if ((key->key() == Qt::Key_QuoteLeft || key->key() == Qt::Key_AsciiTilde) &&
                 !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
-                int target = expanded;
+                int target = expansionController->index();
                 auto hovered = QApplication::widgetAt(QCursor::pos());
                 if (target < 0) for (int i = 0; i < panels.size(); ++i) {
                     QWidget *surface = panels[i].session->active() ? panels[i].session->window() : page() ? page()->findChild<QWidget *>(panels[i].name) : nullptr;
@@ -434,7 +432,7 @@ protected:
                 }
             }
         }
-        if (expanded >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
+        if (expansionController->index() >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
             Unbound::setNativePin(this, pin->isChecked(), [alive](bool value) { if (alive) alive->pin->setChecked(value); });
@@ -489,7 +487,7 @@ private:
     {
         auto session = panels[i].session;
         if (!session->active() || !page() || !page()->isVisible()) return;
-        if (expanded >= 0) restoreExpanded();
+        if (expansionController->index() >= 0) restoreExpanded();
         auto group = groupFor(i);
         const bool reveal = session->hiddenByUser() || (group && !group->selected(session)) ||
             (nativeWorkspace->contains(panels[i].name) && !nativeWorkspace->selected(panels[i].name));
@@ -503,33 +501,8 @@ private:
         pendingNativeDoors.insert(i);
         QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
     }
-    void syncNativeToggle(int i)
-    {
-        if (!panels[i].session->active()) return;
-        const QString base = QStringLiteral("btnEditToggle") + panels[i].toggle;
-        if (panels[i].toggle.isEmpty() || !page()) return;
-        for (auto button : page()->findChildren<QAbstractButton *>()) if (button->objectName().startsWith(base + "In")) {
-            QSignalBlocker block(button); button->setChecked(!panels[i].session->hiddenByUser());
-        }
-    }
-    void wireNativeToggles()
-    {
-        auto root = page(); if (!root || quitting) return;
-        for (int i = 0; i < panels.size(); ++i) {
-            if (panels[i].toggle.isEmpty()) continue;
-            const QString base = QStringLiteral("btnEditToggle") + panels[i].toggle;
-            for (auto button : root->findChildren<QAbstractButton *>()) {
-                if (!button->objectName().startsWith(base + "In") || observedToggles.contains(button)) continue;
-                observedToggles.insert(button);
-                connect(button, &QObject::destroyed, this, [this, button] { observedToggles.remove(button); });
-                const auto request = [this, i] { queuePanelDoor(i); };
-                connect(button, &QAbstractButton::clicked, this, request);
-                connect(button, &QAbstractButton::toggled, this, [this, i, request](bool checked) {
-                    if (checked != !panels[i].session->hiddenByUser()) request();
-                });
-            }
-        }
-    }
+    void syncNativeToggle(int i) { if (nativeToggles) nativeToggles->sync(i,page()); }
+    void wireNativeToggles() { if (!quitting) nativeToggles->wire(page()); }
     QJsonObject arrangement() const
     {
         auto result = settings.data;
@@ -603,83 +576,33 @@ private:
             p.dock->setEnabled(active && !p.session->dockPending());
             p.dock->setText(p.session->dockPending() ? QStringLiteral("Pending") : QStringLiteral("Dock"));
             p.show->setEnabled(active); p.hide->setEnabled(active && !p.session->hiddenByUser());
-            p.expand->setText(expanded == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
+            p.expand->setText(expansionController->index() == i ? QStringLiteral("Restore Size") : QStringLiteral("Expand"));
             p.expand->setEnabled(true);
             p.center->setEnabled(p.session->floating());
         });
     }
     void toggleExpanded(int i)
     {
-        action(QStringLiteral("expand-toggle"), panels[i].label);
-        if (expanded == i) { restoreExpanded(); return; }
+        action(QStringLiteral("expand-toggle"),panels[i].label);
+        if (expansionController->index()==i) { restoreExpanded(); return; }
         restoreExpanded();
         if (!page() || !page()->isVisible() || QApplication::activeModalWidget()) {
             status->setText(QStringLiteral("Open the Edit page and close dialogs before expanding a panel.")); return;
         }
         save();
-        auto &panel = panels[i];
-        beforeExpanded = panel.saved;
-        beforeExpandedNative = nativeWorkspace->contains(panel.name) ? nativeWorkspace->saved() : QJsonObject();
-        beforeOverflowOffset = panel.session->overflowOffset();
-        expandedWasFloating = panel.session->active();
-        expandedWasGrouped = panel.session->grouped();
-        expandedGroup = groupFor(i);
-        beforeExpandedGroup = expandedGroup ? expandedGroup->snapshot() : QJsonObject();
-        if (expandedWasGrouped && !panel.session->beginGroupedExpansion()) return;
-        expanded = i;
-        const unsigned request = ++expandVersion;
-        if (!expandedWasFloating) requestUndock(i, true);
-        new Unbound::SurfaceReadiness(this,page(),
-            [this,i,request] { return expanded==i && request==expandVersion && !quitting; },
-            [this,i] { return panels[i].session->active() && !panels[i].pending &&
-                (expandedWasGrouped ? panels[i].session->expandedWindow() : panels[i].session->window()); },
-            [this, i, request](bool ready) {
-            if (expanded != i || request != expandVersion) return;
-            auto host = expandedWasGrouped ? panels[i].session->expandedWindow() : panels[i].session->window();
-            if (!ready || !host) { expanded = -1; updateRow(i); save(); return; }
-            auto screen = host->screen();
-            if (!screen) screen = QApplication::primaryScreen();
-            const auto margins = host->windowHandle() ? host->windowHandle()->frameMargins() : QMargins();
-            host->setGeometry(screen->availableGeometry().adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom()));
-            panels[i].session->setHiddenByUser(false);
-            expansion.foreground(host);
-            updateRow(i);
-            Unbound::logEvent(QStringLiteral("panel.expand"), {{"panel", panels[i].name}, {"originally_floating", expandedWasFloating}});
-        });
-        updateRow(i);
+        auto &panel=panels[i];
+        Unbound::PanelExpansionController::Target target;
+        target.index=i; target.name=panel.name; target.session=panel.session; target.group=groupFor(i);
+        target.saved=panel.saved; target.native=nativeWorkspace->contains(panel.name) ? nativeWorkspace->saved() : QJsonObject();
+        target.pending=[this,i] { return panels[i].pending; };
+        target.undock=[this,i] { requestUndock(i,true); };
+        target.cancelPending=[this,i] { ++panels[i].requestVersion; panels[i].pending=false; };
+        target.restoreSaved=[this,i](QJsonObject value) { panels[i].saved=value; };
+        target.restoreNative=[this](QJsonObject value) { return nativeWorkspace->restorePresentation(value); };
+        target.restored=[this,i] { panels[i].desired=panels[i].session->active() && !panels[i].session->dockPending(); };
+        expansionController->begin(std::move(target),page());
     }
-    void restoreExpanded()
-    {
-        if (expanded < 0) return;
-        const int i = expanded;
-        expansion.restore();
-        ++expandVersion;
-        expanded = -1;
-        auto &panel = panels[i];
-        ++panel.requestVersion; panel.pending = false;
-        QString error;
-        if (expandedWasGrouped) {
-            panel.session->endGroupedExpansion();
-            if (expandedGroup && expandedGroup->active()) expandedGroup->restore(beforeExpandedGroup);
-        }
-        expandedGroup = nullptr;
-        if (panel.session->active()) {
-            panel.session->setFloatingGeometry(Unbound::WorkspaceSettings::rectangle(beforeExpanded));
-            panel.session->setHiddenByUser(beforeExpanded["hidden"].toBool());
-            if (!expandedWasFloating) error = panel.session->dock();
-        }
-        panel.saved = beforeExpanded;
-        if (!beforeExpandedNative.isEmpty()) {
-            const auto nativeError=nativeWorkspace->restorePresentation(beforeExpandedNative);
-            if (!nativeError.isEmpty()) error=nativeError;
-            beforeExpandedNative={};
-        }
-        panel.session->restoreOverflowOffset(beforeOverflowOffset);
-        panel.desired = panel.session->active() && !panel.session->dockPending();
-        updateRow(i); save();
-        Unbound::logEvent(QStringLiteral("panel.expand.restore"), {{"panel", panel.name}, {"success", error.isEmpty()}, {"error", error}});
-        if (!error.isEmpty()) status->setText(error);
-    }
+    void restoreExpanded() { expansionController->restore(); }
     void outcome(const QString &operation, int i, const QString &error)
     {
         Unbound::logEvent(QStringLiteral("button.result"), {{"action", operation}, {"panel", panels[i].label},
@@ -697,7 +620,7 @@ private:
         if (!restoring) p.saved["hidden"] = false;
         QWidget *root = page();
         QWidget *target = Unbound::panelSurface(root, p.name);
-        if (nativeSizing && expanded<0 && root && root->isVisible()) nativeSizing->prepare(root->window(),root);
+        if (nativeSizing && expansionController->index()<0 && root && root->isVisible()) nativeSizing->prepare(root->window(),root);
         if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
             Unbound::prepareSourceViewer(root, target)) {
             p.pending = true; updateRow(i);
@@ -766,7 +689,7 @@ private:
     }
     void dockOne(int i)
     {
-        if (expanded == i) restoreExpanded();
+        if (expansionController->index() == i) restoreExpanded();
         auto &p = panels[i];
         ++p.requestVersion; p.pending = false;
         const QString error = p.session->active() ? p.session->dock() : QString();
@@ -828,7 +751,7 @@ private:
     void attachDrop(int source, QWidget *target, Qt::Edge edge)
     {
         Unbound::UiWorkTiming timing("group.drop",target ? target->window() : nullptr);
-        if (quitting || QApplication::activeModalWidget() || expanded >= 0 || !panels[source].session->active()) return;
+        if (quitting || QApplication::activeModalWidget() || expansionController->index() >= 0 || !panels[source].session->active()) return;
         if (nativeWorkspace->ownsTarget(target)) { dockNative(source,target,edge); return; }
         for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
             (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
@@ -952,25 +875,22 @@ private:
         QJsonObject saved;
         for (int i = 0; i < panels.size(); ++i) {
             auto &p = panels[i];
-            QJsonObject value = p.saved;
-            value["floating"] = p.desired;
-            if (p.session->active()) {
-                value = Unbound::WorkspaceSettings::rectangle(p.session->floatingGeometry());
-                value["floating"] = p.desired; value["hidden"] = p.session->hiddenByUser(); value["pinned"] = p.session->pinned();
-            }
-            if (expanded == i) value = beforeExpanded;
+            auto value=Unbound::WorkspaceSnapshot::panel(p.saved,p.desired,p.session->active(),
+                p.session->active() ? p.session->floatingGeometry() : QRect(),p.session->hiddenByUser(),p.session->pinned());
+            value=expansionController->panelSnapshot(i,value);
             p.saved = value; saved[p.name] = value;
         }
         QJsonArray savedGroups = pendingGroups;
-        for (auto group : groups) if (group->active()) savedGroups.append(expanded >= 0 && group == expandedGroup ? beforeExpandedGroup : group->snapshot());
-        settings.data = {{"version", 1}, {"pin_controls", pin->isChecked()}, {"groups", savedGroups},
-            {"native_arrangement",expanded>=0 && !beforeExpandedNative.isEmpty() ? beforeExpandedNative : nativeWorkspace ? nativeWorkspace->saved() : QJsonObject()},
-            {"hide_background", background->isChecked()}, {"native_workspace_mode", background->isChecked() ? "floating" : "native"}, {"footer", footer ? footer->snapshot() : QJsonObject{}},
-            {"selected_arrangement", presets->currentData().toString()},
-            {"window_chrome", style->currentIndex()},
-            {"panel_hierarchy", hierarchyOption->isChecked()},
-            {"snap_windows", snap->isChecked()},
-            {"keep_on_screen", constrain->isChecked()}, {"controls", Unbound::WorkspaceSettings::rectangle(geometry())}, {"panels", saved}};
+        for (auto group : groups) if (group->active()) savedGroups.append(expansionController->groupSnapshot(group));
+        Unbound::WorkspaceSnapshot snapshot;
+        snapshot.panels=saved; snapshot.groups=savedGroups;
+        snapshot.nativeArrangement=expansionController->nativeSnapshot(nativeWorkspace ? nativeWorkspace->saved() : QJsonObject());
+        snapshot.footer=footer ? footer->snapshot() : QJsonObject();
+        snapshot.pinControls=pin->isChecked(); snapshot.hideBackground=background->isChecked();
+        snapshot.selected=presets->currentData().toString(); snapshot.chrome=style->currentIndex();
+        snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
+        snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
+        settings.data=snapshot.json();
         const bool success = settings.save();
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
         Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success}});
@@ -978,7 +898,7 @@ private:
     }
     void updateNativeSizing()
     {
-        if (quitting || expanded>=0 || !nativeSizing) return;
+        if (quitting || expansionController->index()>=0 || !nativeSizing) return;
         if (nativeWorkspace && nativeWorkspace->active()) return;
         QSet<QString> managed;
         for (const auto &panel : panels) if (panel.session->active()) managed.insert(panel.name);
@@ -1007,15 +927,14 @@ private:
     Unbound::NativeWorkspaceBinding *nativeWorkspace = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
-    QSet<QAbstractButton *> observedToggles;
+    Unbound::NativePanelToggles *nativeToggles=nullptr;
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
     Unbound::ArrangementControls *presetsUi = nullptr;
-    Unbound::PanelCommands *commands=nullptr;
-    QPointer<QDialog> shortcutEditor;
+    Unbound::PanelCommandCatalog *commands=nullptr;
     Unbound::WorkspaceArrangements *workspaceMenu = nullptr;
     QComboBox *presets = nullptr;
-    Unbound::PanelExpansion expansion;
+    Unbound::PanelExpansionController *expansionController=nullptr;
     Unbound::ViewerModeCommand *viewerMode = nullptr;
     Unbound::ToolbarDecoration *toolbarDecoration = nullptr;
     Unbound::NativePanelDecoration *nativeDecoration = nullptr;
@@ -1027,12 +946,6 @@ private:
     bool quitting = false;
     bool toggleScanQueued = false;
     unsigned bulkVersion = 0;
-    unsigned expandVersion = 0;
-    int expanded = -1;
-    bool expandedWasFloating = false, expandedWasGrouped = false;
-    QJsonObject beforeExpanded, beforeExpandedGroup, beforeExpandedNative;
-    QPoint beforeOverflowOffset;
-    QPointer<Unbound::PanelGroup> expandedGroup;
     QList<Unbound::PanelGroup *> groups;
     QJsonArray pendingGroups;
     unsigned groupVersion = 0;

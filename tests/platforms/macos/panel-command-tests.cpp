@@ -2,7 +2,11 @@
 #include <QTemporaryDir>
 #include <QLineEdit>
 #include <cstdio>
-#include "panelshortcuteditor.h"
+#include "panelcommandcatalog.h"
+#include "nativepaneltoggles.h"
+#include "workspacesnapshot.h"
+#include "panelexpansioncontroller.h"
+#include <QPushButton>
 int main(int argc,char **argv) {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM","1");
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
@@ -40,6 +44,76 @@ int main(int argc,char **argv) {
     check(source==2 && navigation==1,"global Page Navigation remains callable while Edit panel commands are unavailable");
     auto dialog=Unbound::createPanelShortcutEditor(&commands,&main); dialog->setAttribute(Qt::WA_DontShowOnScreen);
     check(dialog->findChild<QKeySequenceEdit *>("binding_source")!=nullptr,"every command has a discoverable editable binding"); delete dialog;
+    {
+        qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Catalog.json").toUtf8());
+        Unbound::PanelCommandCatalog catalog(&main,[&] { return ready; });
+        int calls=0,expansions=0,footerCalls=0;
+        catalog.addPanel("source","Source Monitor",[&] { return editVisible; },[&] { ++calls; },[&] { ++expansions; });
+        catalog.addNavigation([] { return true; },[&] { ++footerCalls; return QString(); });
+        check(catalog.save({{"panel.toggle.source","F21"},{"panel.expand.source","F22"},
+            {"panel.toggle.page-navigation","F23"}}).isEmpty(),"catalog retains stable command IDs");
+        QApplication::setActiveWindow(&main); QApplication::processEvents();
+        send(Qt::Key_F21); send(Qt::Key_F23);
+        check(calls==0 && footerCalls==1,"catalog applies panel availability independently of global navigation");
+        editVisible=true; send(Qt::Key_F21); send(Qt::Key_F22);
+        check(calls==1 && expansions==1,"catalog dispatches separate door and expansion commands");
+        ready=false; send(Qt::Key_F23); check(footerCalls==1,"shutdown context blocks catalog dispatch"); ready=true;
+    }
+    {
+        QWidget nativeRoot; bool active=true,hidden=false; int requested=0,nativeSignals=0;
+        Unbound::NativePanelToggles bridge(nullptr);
+        bridge.add("Inspector",[&] { return active; },[&] { return hidden; },[&] { ++requested; });
+        auto button=new QPushButton(&nativeRoot); button->setCheckable(true);
+        button->setObjectName("btnEditToggleInspectorInHeader");
+        QObject::connect(button,&QAbstractButton::toggled,[&] { ++nativeSignals; });
+        bridge.wire(&nativeRoot); bridge.wire(&nativeRoot); bridge.sync(0,&nativeRoot);
+        check(button->isChecked() && nativeSignals==0 && requested==0,"sync blocks native signals and does not invoke a door");
+        button->click(); check(requested==2,"repeated wiring dispatches each clicked/toggled signal once for the door coalescer");
+        active=false; hidden=false; bridge.sync(0,&nativeRoot);
+        check(!button->isChecked(),"inactive panel sync leaves native state alone");
+        delete button;
+        button=new QPushButton(&nativeRoot); button->setCheckable(true);
+        button->setObjectName("btnEditToggleInspectorInHeader");
+        bridge.wire(&nativeRoot); button->click();
+        check(requested==3,"replacement native buttons are wired after old buttons are destroyed");
+    }
+    {
+        const QJsonObject previous{{"hidden",true},{"pinned",true},{"width",321},{"custom","retained"}};
+        const auto inactive=Unbound::WorkspaceSnapshot::panel(previous,false,false,{},false,false);
+        check(inactive["hidden"].toBool() && inactive["width"].toInt()==321 && inactive["custom"]=="retained" &&
+            !inactive["floating"].toBool(),"inactive snapshots preserve saved geometry and hidden/pin state");
+        const auto active=Unbound::WorkspaceSnapshot::panel(previous,true,true,QRect(10,20,400,300),false,true);
+        check(Unbound::WorkspaceSettings::rectangle(active)==QRect(10,20,400,300) && !active.contains("custom") &&
+            !active["hidden"].toBool() && active["pinned"].toBool(),"active snapshots capture actual frame and door/pin state");
+        Unbound::WorkspaceSnapshot snapshot; snapshot.panels={{"source",active}}; snapshot.selected="saved-but-modified";
+        snapshot.hideBackground=true; snapshot.footer={{"floating",true},{"hidden",true},{"pinned",true}};
+        const auto serialized=snapshot.json();
+        check(serialized["panels"].toObject()["source"]==active && serialized["footer"].toObject()==snapshot.footer &&
+            serialized["selected_arrangement"]==snapshot.selected && serialized["native_workspace_mode"]=="floating",
+            "last-view schema retains independent doors, footer state and selected preset identity");
+    }
+    {
+        Unbound::MacPanelSession session;
+        Unbound::PanelExpansionController expansion(nullptr);
+        int undocked=0,cancelled=0,restored=0,nativeRestored=0,saved=0;
+        expansion.running=[] { return true; }; expansion.update=[](int) {}; expansion.save=[&] { ++saved; };
+        expansion.report=[&](QString) { check(false,"pending expansion restore has no error"); };
+        Unbound::PanelExpansionController::Target target;
+        target.index=4; target.name="source"; target.session=&session;
+        target.saved={{"width",420},{"height",240},{"hidden",true}}; target.native={{"original",true}};
+        target.pending=[] { return true; }; target.undock=[&] { ++undocked; };
+        target.cancelPending=[&] { ++cancelled; }; target.restored=[&] { ++restored; };
+        target.restoreSaved=[&](QJsonObject value) { check(value["hidden"].toBool(),"expansion restores original hidden state"); };
+        target.restoreNative=[&](QJsonObject value) { if (value["original"].toBool()) ++nativeRestored; return QString(); };
+        expansion.begin(target,&main);
+        check(expansion.index()==4 && undocked==1 && expansion.panelSnapshot(4,{})==target.saved &&
+            expansion.nativeSnapshot({})==target.native,"pending expansion preserves original persistence snapshots");
+        expansion.restore(); QApplication::processEvents();
+        check(expansion.index()==-1 && cancelled==1 && restored==1 && nativeRestored==1 && saved==1,
+            "restoring before readiness cancels pending work and restores exactly once");
+        expansion.restore(); QApplication::processEvents();
+        check(cancelled==1 && saved==1,"stale readiness and repeated restore cannot replay a completed expansion");
+    }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl"); events.open(QIODevice::ReadOnly);
     check(events.readAll().contains("command.invoke"),"command origin and acceptance logged");
     if (!failures) std::puts("PASS: independent commands, persistence, conflicts, typing, page scope, repeats and editor discovery");
