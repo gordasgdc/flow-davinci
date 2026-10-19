@@ -14,6 +14,7 @@
 #include "dockdestination.h"
 #include "dockfeedback.h"
 #include "dragtiming.h"
+#include "draggeometrytrace.h"
 #include "uiworktiming.h"
 #include "diagnostics.h"
 #include <QScreen>
@@ -107,7 +108,7 @@ public:
         delete nativeMoveWatch.data();
         nativeMoveWatch = watchNativeWindowMove(this, [this] {
             if (dragging) return;
-            dragTiming.begin();
+            dragTiming.begin(); geometryTrace.begin();
             ++dragGeneration; nativeDragging = dragging = movedEnough = true; startGeometry = geometry();
             delete releaseWatch.data();
             releaseWatch = watchNativePointerRelease(this, [this](QPoint position, bool bypass) {
@@ -126,7 +127,7 @@ public:
     {
         if (dragging) return; // Native and custom events may report the same gesture.
         snapPosition = {}; attachmentTarget = nullptr;
-        dragTiming.begin();
+        dragTiming.begin(); geometryTrace.begin();
         ++dragGeneration;
         dragging = true; movedEnough = continuing; start = global; startGeometry = geometry();
         delete releaseWatch.data();
@@ -238,8 +239,10 @@ private:
         else {
             const QRect desired(startGeometry.topLeft() + delta, size());
             setGeometry(desired);
+            geometryTrace.sample(this,global,desired,"after-set-geometry");
             if (movedEnough) previewSnap(desired, bypass);
             else { snapPosition = {}; attachmentTarget = nullptr; hidePreviews(); }
+            geometryTrace.sample(this,global,desired,"after-preview");
         }
     }
     void finishPointerDrag(bool bypass, bool cancelled, const QString &reason)
@@ -253,7 +256,7 @@ private:
         delete releaseWatch.data(); releaseWatch = nullptr;
         hidePreviews();
         if (QWidget::mouseGrabber() == this) releaseMouse();
-        dragTiming.report(objectName());
+        dragTiming.report(objectName()); geometryTrace.report(objectName());
         logEvent(QStringLiteral("drag.end"), {{"window", objectName()}, {"reason", reason}, {"cancelled", cancelled}, {"attach", attach}, {"target", target ? target->objectName() : QString()}, {"edge", int(edge)}});
         const auto generation = dragGeneration;
         if (attach) QTimer::singleShot(0, this, [this, target, edge, generation] {
@@ -364,6 +367,7 @@ private:
     WindowChrome chrome = WindowChrome::Standard;
     bool chromeInitialized = false;
     DragTiming dragTiming;
+    DragGeometryTrace geometryTrace;
     bool snapping = true;
     DockCompass *compass = nullptr;
     QPointer<QWidget> hoverDestination;

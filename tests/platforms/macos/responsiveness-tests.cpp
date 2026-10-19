@@ -83,7 +83,7 @@ int main(int argc,char **argv)
             dispatch.summary()["p95_ms"].toDouble(),deferred.summary()["p95_ms"].toDouble());
     };
     QPoint press = moving->mapToGlobal(QPoint(100,8));
-    const QPoint grabOffset = press-moving->geometry().topLeft(); moving->beginPointerDrag(press,false);
+    const QPoint grabOffset = press-moving->geometry().topLeft(); app.setScriptedPointer(true); moving->beginPointerDrag(press,false);
     int trackingError = 0;
     const auto available = moving->screen()->availableGeometry();
     const QPoint freePoint(available.right()-80,available.bottom()-80);
@@ -98,10 +98,10 @@ int main(int argc,char **argv)
     });
     const QPoint released = freePoint+QPoint(19,0);
     QMouseEvent release(QEvent::MouseButtonRelease,QPointF(100,8),QPointF(released),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
-    QApplication::sendEvent(moving,&release); settle();
+    QApplication::sendEvent(moving,&release); app.setScriptedPointer(false); settle();
     check(trackingError == 0 && moving->geometry().topLeft() == released-grabOffset,
         "every free-drag frame preserves the actual native grab offset without trailing or forced docking");
-    moving->setGeometry(30,80,360,260); press = moving->mapToGlobal(QPoint(100,8)); moving->beginPointerDrag(press,false);
+    moving->setGeometry(30,80,360,260); press = moving->mapToGlobal(QPoint(100,8)); app.setScriptedPointer(true); moving->beginPointerDrag(press,false);
     const auto edge = target->frameGeometry().right();
     measure("dock_approach_event_turn",120,[&](int i) {
         const auto point = QPoint(edge-(i%12),target->frameGeometry().center().y());
@@ -110,12 +110,12 @@ int main(int argc,char **argv)
     });
     // Release away from targets; target computation remains fully enabled throughout.
     QMouseEvent away(QEvent::MouseMove,QPointF(100,8),QPointF(freePoint),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
-    QApplication::sendEvent(moving,&away); QApplication::sendEvent(moving,&release); settle();
+    QApplication::sendEvent(moving,&away); QApplication::sendEvent(moving,&release); app.setScriptedPointer(false); settle();
     auto timeline = main.findChild<QWidget *>("frameConformTimelines"); auto program = main.findChild<QWidget *>("widgetEditTimelinePlayer");
     QPoint commitPoint; QRect commitFrame;
     measure("dock_commit_event_turn",12,[&](int) {
         QMouseEvent up(QEvent::MouseButtonRelease,QPointF(100,8),QPointF(commitPoint),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
-        QApplication::sendEvent(moving,&up);
+        QApplication::sendEvent(moving,&up); app.setScriptedPointer(false);
     },[&](int iteration) {
         if (iteration) {
             check(timeline->window() == program->window() && program->window()->frameGeometry() == commitFrame,
@@ -132,7 +132,7 @@ int main(int argc,char **argv)
         target->setGeometry(500,200,760,400); moving->setGeometry(30,80,360,260);
         target->raise(); moving->raise(); settle(300);
         Unbound::activateNativeWindowForTest(moving); settle(20);
-        press = moving->mapToGlobal(QPoint(100,8)); moving->beginPointerDrag(press,false);
+        press = moving->mapToGlobal(QPoint(100,8)); app.setScriptedPointer(true); moving->beginPointerDrag(press,false);
         commitPoint = QPoint(target->frameGeometry().right()-4,target->frameGeometry().center().y());
         commitFrame = target->frameGeometry();
         QMouseEvent approach(QEvent::MouseMove,QPointF(100,8),QPointF(commitPoint),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
@@ -179,8 +179,18 @@ int main(int argc,char **argv)
     while (!events.atEnd()) {
         const auto record = QJsonDocument::fromJson(events.readLine()).object();
         if (record["event"] == "ui.work" || record["event"] == "drag.timing" || record["event"] == "ui.responsiveness" ||
-            record["event"] == "group.reserve.take") trace.append(record);
+            record["event"] == "group.reserve.take" || record["event"] == "drag.geometry.mismatch" || record["event"] == "drag.geometry.summary" || record["event"] == "drag.begin" || record["event"] == "drag.end" || record["event"] == "drag.capture.recovered") trace.append(record);
     }
+    bool freeReleased=false;
+    for (const auto &entry:trace) {
+        const auto record=entry.toObject();
+        if (record["event"]=="drag.end" && record["window"]=="unboundFloating_frameConformTimelines") {
+            freeReleased=true;
+            check(!record["cancelled"].toBool() && record["reason"]=="qt-mouse-up",
+                "scripted free drag remains active until its explicit release"); break;
+        }
+    }
+    check(freeReleased,"scripted free drag records an explicit completed release");
     const QString reportPath = qEnvironmentVariable("UNBOUND_RESPONSIVENESS_REPORT",QCoreApplication::applicationDirPath()+"/responsiveness-report.json");
     const int functionalFailures = failures;
     for (auto item = scenarios.begin();item != scenarios.end();++item) {
@@ -191,7 +201,7 @@ int main(int argc,char **argv)
     QSaveFile report(reportPath); check(report.open(QIODevice::WriteOnly),"open responsiveness artifact");
     report.write(QJsonDocument(QJsonObject{{"time",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
         {"scope","Real Qt/native windows with simulated input; not Resolve playback or GPU presentation"},
-        {"features_enabled",true},{"functional_failures",functionalFailures},{"budget_failures",budgetFailures},
+        {"scripted_pointer_isolation",true},{"ignored_unsolicited_pointer_moves",app.ignoredPointerMoves()},{"features_enabled",true},{"functional_failures",functionalFailures},{"budget_failures",budgetFailures},
         {"passed",failures == 0},{"scenarios",scenarios},{"trace",trace}}).toJson());
     check(report.commit(),"write responsiveness artifact");
     std::printf("Report: %s\n",qPrintable(reportPath));
