@@ -20,6 +20,7 @@
 #include "nativechrome.h"
 #include "viewerdiagnostics.h"
 #include "editcontrolinspection.h"
+#include "pagecontext.h"
 
 namespace Unbound {
 inline bool textEditor(QWidget *widget)
@@ -46,7 +47,7 @@ public:
             logEvent(QStringLiteral("focus.changed"), {{"before", widgetState(before,false)}, {"after", widgetState(after,false)},
                 {"active_window", widgetState(QApplication::activeWindow(),false)}});
         });
-        QTimer::singleShot(0, this, [this] { scanActions(); });
+        QTimer::singleShot(0, this, [this] { scanActions(); recordPage(); });
     }
     ~InteractionDiagnostics() override { qApp->removeEventFilter(this); }
 protected:
@@ -54,8 +55,17 @@ protected:
     {
         const auto type = event->type();
         if (type != QEvent::ActionAdded && type != QEvent::Shortcut && type != QEvent::Show && type != QEvent::Polish &&
-            type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate) return false;
+            type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate &&
+            type != QEvent::ChildAdded && type != QEvent::ParentChange && type != QEvent::Hide) return false;
         auto widget = qobject_cast<QWidget *>(object);
+        if ((type == QEvent::ChildAdded || type == QEvent::ParentChange) && related(widget) && !controlsScanQueued) {
+            controlsScanQueued = true;
+            QTimer::singleShot(0,this,[this] { controlsScanQueued=false; scanButtons(); });
+        }
+        if (widget && widget->objectName().startsWith("WStackPage_") && (type==QEvent::Show || type==QEvent::Hide) && !pageScanQueued) {
+            pageScanQueued=true;
+            QTimer::singleShot(0,this,[this] { pageScanQueued=false; recordPage(); });
+        }
         if (type == QEvent::Show) inspectTimelineOptions(qobject_cast<QMenu *>(widget));
         if (event->type() == QEvent::ActionAdded && related(widget)) {
             observe(static_cast<QActionEvent *>(event)->action());
@@ -144,7 +154,8 @@ private:
         auto record = [button](const QString &event) {
             logEvent(event, {{"button", widgetState(button,false)}, {"label", button->text()},
                 {"checked", button->isChecked()}, {"tooltip", button->toolTip()},
-                {"focus", widgetState(QApplication::focusWidget(),false)}});
+                {"focus", widgetState(QApplication::focusWidget(),false)},
+                {"page",currentWorkspacePage(resolveMainWindow())}, {"observation","qt-button-signal"}});
         };
         // Press precedes the action; clicked also covers keyboard and programmatic activation.
         connect(button, &QAbstractButton::pressed, this, [record] { record(QStringLiteral("input.button.pressed")); });
@@ -157,7 +168,8 @@ private:
         connect(action, &QObject::destroyed, this, [this, action] { tracked.remove(action); });
         connect(action, &QAction::triggered, this, [this, action] {
             logEvent(QStringLiteral("input.action.triggered"), {{"action", action->objectName()},
-                {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget(),false)}});
+                {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget(),false)},
+                {"page",currentWorkspacePage(resolveMainWindow())}, {"observation","qt-action-signal"}});
             if (action->objectName() == "workspaceViewerModeCinemaViewer" || action->text().contains("Cinema Viewer", Qt::CaseInsensitive)) {
                 viewerDiagnostics->capture("command-triggered", action->objectName());
                 const QString name = action->objectName();
@@ -166,8 +178,25 @@ private:
             }
         });
     }
+    void scanButtons()
+    {
+        // Includes hidden controls: a command can invoke an existing native button
+        // without showing its panel. Connections observe signals, never consume input.
+        for (auto window : QApplication::topLevelWidgets()) if (related(window)) {
+            observeButton(qobject_cast<QAbstractButton *>(window));
+            for (auto button : window->findChildren<QAbstractButton *>()) observeButton(button);
+        }
+    }
+    void recordPage()
+    {
+        const auto page=currentWorkspacePage(resolveMainWindow());
+        if(page==lastPage)return;
+        logEvent("workspace.page.changed",{{"before",lastPage},{"page",page},{"observation","native-page-visibility"}});
+        lastPage=page;
+    }
     void scanActions()
     {
+        scanButtons();
         viewerDiagnostics->scan();
         QJsonArray viewerActions;
         for (auto window : QApplication::topLevelWidgets()) if (window->objectName() == QLatin1String("UiMainWindow"))
@@ -218,6 +247,7 @@ private:
     QSet<QAction *> tracked;
     QSet<QAbstractButton *> buttons;
     QJsonArray lastViewerActions;
-    bool activationScanQueued = false;
+    QString lastPage;
+    bool activationScanQueued = false,controlsScanQueued=false,pageScanQueued=false;
 };
 }

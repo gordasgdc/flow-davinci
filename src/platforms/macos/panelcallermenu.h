@@ -30,9 +30,12 @@ public:
             action->setToolTip("Show or hide "+action->text()+" in its remembered location");
             connect(action,&QAction::triggered,this,[this,i](bool value) {
                 QTimer::singleShot(0,this,[this,i,value] {
-                    const auto &panel=panels[i];if((panel.page!="global" && currentPage()!=panel.page) || !panel.available || !panel.available())return;
-                    logEvent("workspace.panel.visibility",{{"panel",panel.id},{"requested",value},{"origin","panels-root"}});
+                    const auto &panel=panels[i];
+                    const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
+                    logEvent("workspace.panel.visibility.request",{{"panel",panel.id},{"page",currentPage()},{"requested",value},{"accepted",ready},{"origin","panels-root"}});
+                    if(!ready){logEvent("workspace.panel.visibility.failed",{{"panel",panel.id},{"reason","page-or-panel-unavailable"}});return;}
                     if(panel.setVisible)panel.setVisible(value);else if(value && panel.show)panel.show();
+                    logEvent("workspace.panel.visibility.dispatched",{{"panel",panel.id},{"requested",value},{"observed_visible",panel.visible && panel.visible()}});
                 });
             });
         }

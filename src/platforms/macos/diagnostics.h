@@ -10,6 +10,8 @@
 #include <QWidget>
 #include <QHash>
 #include <QTimer>
+#include <QUuid>
+#include <atomic>
 #include "diagnosticsink.h"
 #include "crashbreadcrumb.h"
 
@@ -18,10 +20,18 @@
 #endif
 
 namespace Unbound {
+inline const QString &diagnosticSessionId()
+{
+    static const QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    return id;
+}
 inline void logEvent(const QString &event, QJsonObject details = {})
 {
     const QString directory = qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",
         QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
+    static std::atomic<quint64> sequence{0};
+    details.insert(QStringLiteral("session"), diagnosticSessionId());
+    details.insert(QStringLiteral("event_sequence"), double(++sequence));
     details.insert(QStringLiteral("component"), productName());
     details.insert(QStringLiteral("vendor"), productVendor());
     details.insert(QStringLiteral("module"), QStringLiteral("UnboundWidgetProbe.dylib"));

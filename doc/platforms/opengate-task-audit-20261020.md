@@ -273,3 +273,14 @@ controls there, with native-painted callable proxies on secondary surfaces. Hidd
 navigation regression passes; restart fixture compiles with updated ownership checks.
 Displayed restart/live testing remains pending. This supersedes the earlier primary
 page-only copy design. No install, main merge or publication. Fusion remains later.
+
+## Interaction audit follow-up
+
+`fix/macos-interaction-audit` records hidden and dynamically-created native button
+activations, page transitions, per-session identity and monotonic event sequence.
+Panel caller request/rejection/dispatch, header visibility, footer visibility/placement
+and native accessory ownership requests now have explicit records. Crash markers retain
+the session id and bounded native-ownership/page breadcrumbs; no fatal signal handlers
+are replaced and signal observations do not assert native success or root cause.
+Hidden interaction and crash-correlation tests pass; durable flush/rotation tests pass;
+existing reliability suite compiles. No install, main merge or publication.

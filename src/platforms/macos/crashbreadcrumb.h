@@ -11,7 +11,9 @@ namespace Unbound {
 // Ownership boundaries only, never pointer-move telemetry or a signal handler.
 inline void recordCrashBreadcrumb(const QString &event,const QJsonObject &record) {
     if (!event.startsWith("workspace.edit.") && event!="panel.undock.request" && event!="panel.undock.complete" &&
-        event!="panel.dock.request" && event!="panel.dock.complete" && event!="group.detach") return;
+        event!="panel.dock.request" && event!="panel.dock.complete" && event!="group.detach" &&
+        !event.startsWith("accessory.") && !event.startsWith("workspace.page.") &&
+        !event.startsWith("header.pinned.") && !event.startsWith("footer.visibility.")) return;
     const auto path=qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",QDir::homePath()+"/Library/Logs/Unbound")+"/active-session.json";
     QFile input(path);if (!input.open(QIODevice::ReadOnly)) return;
     auto session=QJsonDocument::fromJson(input.readAll()).object();input.close();

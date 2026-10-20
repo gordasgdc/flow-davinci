@@ -48,7 +48,7 @@ public:
             }
         }
         QSaveFile marker(path);if (marker.open(QIODevice::WriteOnly)) {
-            marker.write(QJsonDocument(QJsonObject{{"component","OpenGate"},{"build",UNBOUND_BUILD_ID},{"pid",QCoreApplication::applicationPid()},
+            marker.write(QJsonDocument(QJsonObject{{"component","OpenGate"},{"session",diagnosticSessionId()},{"build",UNBOUND_BUILD_ID},{"pid",QCoreApplication::applicationPid()},
                 {"started",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}}).toJson());marker.commit();
         }
     }
