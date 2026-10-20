@@ -52,8 +52,11 @@ changed, so variation in expansion measurements is not attributed to this patch.
 The full panel-session regression passes, covering expansion, backtick, original
 ownership, docking, pinning and persistence. The strengthened focused fixture
 passes with zero timeouts and exact frame/split/tab restoration, including the
-changed-underlying-group fallback. The experiment is committed separately from
-the benchmark and remains uninstalled and unmerged to the integration candidate.
+changed-underlying-group fallback. The experiment was committed separately from
+the benchmark and initially held outside the installed integration candidate.
+After the user's explicit installation request, it is included in the combined
+candidate for full functional verification and installation. The local
+`build/macos/install-receipt.json` identifies the actual installed revision.
 The bounded investigation stops here; native window creation, GPU presentation
 and actual input-to-video-frame latency need a separate measurement before a
 larger design change. No responsiveness-gate pass is claimed.
