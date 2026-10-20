@@ -5,18 +5,19 @@ Preserve arrangements and native keyboard presets. No merges to main from experi
 
 - [x] Isolate native menu mutations implicated in repeated crashes; candidate installed.
 - [x] Verify live Stabilize menu execution and actual Option+Shift S/W Qt key values.
-- [ ] Native-preset shortcuts: bounded read-only format validation, alternates,
-      malformed input, absent preset, conflict policy and live switch timing.
-      Do not claim native dispatch is impossible. No runtime reader enabled yet.
-- [ ] Fixed Playhead: lazy menu creation/target discovery and truthful result logging.
-- [ ] Inspector overflow guidance (reset buttons exist; do not remove native controls).
-- [ ] GitHub: inventory release assets/branches, prepare accepted-release default
-      branch and independent OpenGate presentation without rewriting history.
-      Detach only after metadata preservation/review.
-- [ ] Header/artwork: audit all visible symbols; concise acknowledgment, retain MIT.
-- [ ] RELEASE BLOCKER: overlapping project title and Source/Program Monitor controls.
-      Reserve title space; labels -> icons/tooltips -> overflow at narrow widths.
-      No overlap in native, attached, or floating headers; preserve native ownership.
+- [x] Native-preset adapter implemented and fixture-tested (explicit opt-in only).
+- [ ] Live preset save/switch timing, selected-clip Stabilize execution and duplicate
+      routing acceptance. Never claim unsupported native dispatch from absence alone.
+- [x] Fixed Playhead exact native Edit action lookup, prior-style restore and target-result logs.
+- [ ] Live Fixed Playhead action discovery/state acceptance.
+- [x] Inspector overflow arrow/hint and scrolling fixture.
+- [ ] Live Inspector appearance/reachability acceptance.
+- [x] GitHub default `main`/OpenGate landing page and release/metadata/history backup.
+- [ ] Permanent fork separation; settings UI unavailable in this session.
+- [x] macOS placement artwork audit: independently drawn OpenGate glyph; MIT retained.
+- [x] Header controls bounded away from project title; labels/icons/overflow fixtures.
+- [x] Elided outer window-title full tooltip, with stationary controls.
+- [ ] RELEASE BLOCKER: live native/attached/floating header overlap acceptance.
 - [ ] Responsiveness last; bounded measurement before optimization.
 
 Evidence: latest fbfc2a9 input log has Qt::Key_S (83), Qt::Key_W (87),
