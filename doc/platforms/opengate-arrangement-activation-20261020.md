@@ -46,3 +46,17 @@ Work on fix/macos-arrangement-activation; no main change or new install yet.
 Acceptance should cover first-click restores between Native Edit UI, Native
 Emulator and existing saved arrangements, footer attached to Timeline, Source
 unloaded/loaded, repeated switches and no unwanted changes to named presets.
+
+## Scoped Source transfer fix
+
+Confirmed source bug: NativeArrangement.add compared the session's original Edit
+page with host->parentWidget(). A scoped arrangement is parented under its
+restoration marker, so that check rejects valid same-page panels. The coordinator
+now retains its actual initialization page and validates against that identity.
+Its lifetime observer and retirement clear the page reference. Native owner
+window, grouped/active state, ID and duplicate guards remain unchanged.
+
+The native-arrangement fixture passes a new scoped Program/Timeline arrangement,
+adding Source to Program, rejection of a foreign-page panel without mutation,
+and restoration of original panel parentage. This fix is not installed or merged
+to main; it does not resolve footer ownership or prove live acceptance.

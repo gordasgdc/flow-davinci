@@ -121,10 +121,11 @@ public:
         if (!rebuild(tree)) { retire(); return QStringLiteral("Could not render the native arrangement."); }
         auto error=scoped ? scopedLease.mount(position.surface(),host,page->window()) : lease.mount(page,host);
         if (!error.isEmpty()) { if (!lease.active() && !scopedLease.active()) retire(); return error; }
+        pageOwner=page;
         ownerDestroyed=connect(page,&QObject::destroyed,this,[this] {
             unregisterNativeDockSurfaces(host);
             for (auto session : sessions) if (session) session->releaseGroup={};
-            sessions.clear(); cells.clear(); host=nullptr; root=nullptr; visibility.reset();
+            sessions.clear(); cells.clear(); host=nullptr; root=nullptr; pageOwner=nullptr; visibility.reset();
             if (anchorSession) anchorSession->releaseOriginalPosition={};
             anchorSession=nullptr; anchorId.clear();
             logEvent("workspace.native-arrangement.owner-destroyed");
@@ -165,7 +166,7 @@ public:
         for (auto it=panels.begin();it!=panels.end();++it) {
             auto session=it.value();
             if (!added.contains(it.key()) || existing.contains(it.key()) || !session || !session->active() || session->grouped() ||
-                session->pageWidget()!=host->parentWidget() || session->nativeOwnerWindow()!=host->window() || unique.contains(session))
+                session->pageWidget()!=pageOwner || session->nativeOwnerWindow()!=host->window() || unique.contains(session))
                 return QStringLiteral("Choose available panels from this native page.");
             unique.insert(session);
         }
@@ -286,7 +287,7 @@ private:
         unregisterNativeDockSurfaces(host);
         disconnect(ownerDestroyed); ownerDestroyed={};
         if (host) { host->hide(); host->deleteLater(); }
-        host=nullptr; root=nullptr; cells.clear();
+        host=nullptr; root=nullptr; pageOwner=nullptr; cells.clear();
     }
     NativeRootLayout lease;
     NativePanelPosition position;
@@ -295,7 +296,7 @@ private:
     QString anchorId;
     QMetaObject::Connection ownerDestroyed;
     GroupVisibility visibility;
-    QPointer<QWidget> host,root;
+    QPointer<QWidget> host,root,pageOwner;
     QHash<QString,QPointer<QWidget>> cells;
     QHash<QString,QPointer<MacPanelSession>> sessions;
     bool changing=false;

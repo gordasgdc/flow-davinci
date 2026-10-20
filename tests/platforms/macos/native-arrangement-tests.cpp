@@ -295,6 +295,27 @@ int main(int argc,char **argv) {
             "the same coordinator can adopt a new project after the old page is destroyed");
         check(arrangement.restore(true) && nextPanel->parentWidget()==nextPage,"replacement project's native layout restores independently");
     }
+    {
+        QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);auto outer=new QVBoxLayout(&main);
+        auto page=new QWidget(&main);auto native=new QHBoxLayout(page);outer->addWidget(page);
+        auto program=new QPushButton("Program",page);auto timeline=new QPushButton("Timeline",page);auto source=new QPushButton("Source",page);
+        native->addWidget(program);native->addWidget(timeline);native->addWidget(source);main.resize(1000,600);main.show();QApplication::processEvents();
+        Unbound::MacPanelSession p,t,s;Unbound::NativeArrangement arrangement(nullptr);
+        check(arrangement.preparePosition(program,page,&p,"program","Program").isEmpty(),"scoped Program native position prepared");
+        check(t.undock(timeline,page,"Timeline").isEmpty(),"Timeline detaches for scoped arrangement");
+        const auto tree=Unbound::splitGroupTree({{"panel","program"}},{{"panel","timeline"}},Qt::Vertical);
+        check(arrangement.initialize(page,{{"program",&p},{"timeline",&t}},tree).isEmpty(),"scoped arrangement mounts under native marker");
+        check(arrangement.surface()->parentWidget()!=page,"fixture distinguishes native slot parent from real page identity");
+        check(s.undock(source,page,"Source").isEmpty(),"Source detaches from the same original page");
+        check(arrangement.add({{"source",&s}},{{"panel","source"}},"program",Qt::Horizontal).isEmpty(),"same-page Source joins scoped Program arrangement");
+        check(arrangement.contains("source")&&s.placement()==Unbound::PanelPlacement::NativeSurface,"Source is adopted by the intended native arrangement");
+        QWidget foreignPage(&main);auto foreignLayout=new QVBoxLayout(&foreignPage);auto foreign=new QPushButton("Foreign",&foreignPage);foreignLayout->addWidget(foreign);foreignPage.show();QApplication::processEvents();
+        Unbound::MacPanelSession f;check(f.undock(foreign,&foreignPage,"Foreign").isEmpty(),"foreign-page negative fixture prepared");
+        const auto before=arrangement.snapshot();
+        check(!arrangement.add({{"foreign",&f}},{{"panel","foreign"}},"program",Qt::Horizontal).isEmpty()&&arrangement.snapshot()==before&&f.floating(),"foreign-page transfer remains rejected without mutation");
+        check(f.dock().isEmpty(),"foreign test session returns safely");
+        check(arrangement.restore(true)&&!p.active()&&!t.active()&&!s.active()&&program->parentWidget()==page&&source->parentWidget()==page,"scoped arrangement including newly added Source restores original ownership");
+    }
     Unbound::flushDiagnostics(); QFile events(files.path()+"/events.jsonl");
     check(events.open(QIODevice::ReadOnly),"native arrangement diagnostic log is readable");
     const auto trace=events.readAll();
