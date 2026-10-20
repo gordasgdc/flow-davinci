@@ -28,14 +28,20 @@ int main(int argc,char **argv) {
  const auto parent=originalFooter->parentWidget();const int index=native->indexOf(originalFooter);const auto policy=originalFooter->sizePolicy();const auto minimum=originalFooter->minimumSize();
  QJsonObject saved;QWidget *primary=&first;
  {
-  Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.attachmentOwner=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
+  Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.primarySurface=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
   auto a=first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");auto b=second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
   check(a&&b&&a->isVisibleTo(&first)&&!b->isVisibleTo(&second),"main surface gets footer by default, secondary remains opt-in");
   check(firstLayout->indexOf(a)==firstLayout->count()-1&&firstLayout->indexOf(group)==0,"footer sits below entire group outside its content");
+  check(group->geometry().bottom()<a->geometry().top(),"surface content cannot occupy the reserved footer band");
+  const int reservedHeight=group->height();controller.setPinned(&first,false);settle();
+  check(group->height()>reservedHeight&&visibility->isChecked(),"unpin reclaims content space without changing native global visibility");
+  controller.setPinned(&first,true);settle();
+  auto replacement=new QWidget(&first);firstLayout->removeWidget(group);group->hide();group->deleteLater();firstLayout->insertWidget(0,replacement);settle();
+  check(firstLayout->indexOf(a)==firstLayout->count()-1&&replacement->geometry().bottom()<a->geometry().top(),"rebuilding group content leaves the reserved bottom band intact");
   const auto render=qEnvironmentVariable("OPENGATE_NAVIGATION_TEST_RENDER_DIR");
   if(!render.isEmpty()){QDir().mkpath(render);a->grab().save(render+"/navigation-wide.png");}
   controller.setPinned(&second,true);settle();check(b->isVisibleTo(&second),"second surface can pin synchronized footer");
-  auto audioA=a->findChild<QToolButton *>("openGatePage_fairlight");audioA->click();settle();controller.syncAttachment();settle();
+  auto audioA=a->findChild<QToolButton *>("openGatePage_fairlight");audioA->click();settle();controller.refreshSurfaces();settle();
   check(pageClicks==1&&pages->currentWidget()==audio,"proxy invokes original native page button exactly once");
   check(a->findChild<QToolButton *>("openGatePage_fairlight")->isChecked()&&b->findChild<QToolButton *>("openGatePage_fairlight")->isChecked(),"active page synchronizes across surfaces");
   check(controller.hidePanel().isEmpty(),"global hide delegates to native action");settle();
@@ -56,18 +62,23 @@ int main(int argc,char **argv) {
   check(nativeStrip&&nativeStrip->parentWidget()==middle&&home->isVisibleTo(originalFooter),"adaptive native pages preserve adjacent Home controls");
   if(nativeStrip)check(!QRect(nativeStrip->mapTo(originalFooter,QPoint()),nativeStrip->size()).intersects(home->geometry()),"native overlay does not cover neighboring footer controls");
   check(originalFooter->parentWidget()==parent&&native->indexOf(originalFooter)==index&&originalFooter->layout()==originalLayout&&originalFooter->sizePolicy()==policy&&originalFooter->minimumSize()==minimum,"native footer ownership, slot and constraints never change");
+  controller.setPinned(&main,false);settle();
+  check(originalFooter->isHidden()&&visibility->isChecked()&&b->isVisibleTo(&second),"native main surface can unpin its footer while other pinned surfaces stay visible");
+  visibility->trigger();visibility->trigger();settle();
+  check(originalFooter->isHidden()&&b->isVisibleTo(&second),"native visibility toggle preserves main-surface unpin choice");
+  controller.setPinned(&main,true);settle();check(originalFooter->isVisibleTo(&main),"repinning native main restores its existing footer band");
   QMenu menu;controller.populateSurfaceMenu(&menu,&second);auto navigation=menu.actions().first()->menu();check(navigation&&navigation->actions().size()==2&&navigation->actions().last()->isChecked(),"Panels exposes global visibility and this-surface placement");
   for(int repeat=0;repeat<5;++repeat)controller.restore();settle();
   check(first.findChildren<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation").size()==1,"repeated refresh cannot duplicate surface footers");
   controller.setState({{"hidden",true},{"surfaces",controller.snapshot()["surfaces"]}});settle();
   check(visibility->isChecked()&&a->isVisibleTo(&first),"saved arrangement cannot override authoritative native global visibility");
   saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="surface-v1","snapshot migrates old attachment model to surface placement");
-  controller.dock();controller.syncAttachment();settle();check(b->isVisibleTo(&second),"arrangement Dock All cannot move footer or erase placement");
+  controller.refreshSurfaces();settle();check(b->isVisibleTo(&second),"arrangement Dock All cannot move footer or erase placement");
  }
  check(!first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")&&!second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"teardown removes only owned strips");
  check(originalFooter->parentWidget()==&main,"teardown keeps native footer intact");
  {
-  Unbound::FooterPanel reopened(nullptr,[&]{return &main;},saved);reopened.attachmentOwner=[&]{return primary;};reopened.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};reopened.restore();settle();
+  Unbound::FooterPanel reopened(nullptr,[&]{return &main;},saved);reopened.primarySurface=[&]{return primary;};reopened.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};reopened.restore();settle();
   check(reopened.pinned(&second)&&second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")->isVisibleTo(&second),"saved surface placement restores independently of layout lease");
  }
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;

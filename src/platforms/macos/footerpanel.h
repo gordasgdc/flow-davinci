@@ -23,29 +23,24 @@ public:
         timer.setSingleShot(true);timer.setInterval(40);connect(&timer,&QTimer::timeout,this,[this]{refresh();});
         pendingVisibility=state.contains("hidden");qApp->installEventFilter(this);schedule();
     }
-    ~FooterPanel() override {qApp->removeEventFilter(this);releaseAttachment();}
+    ~FooterPanel() override {shutdown();}
     std::function<void()> changed;
-    std::function<QWidget *()> attachmentOwner;
-    std::function<void()> revealAttachmentOwner;
+    std::function<QWidget *()> primarySurface;
+    std::function<void(bool,bool)> placementChanged;
     std::function<QList<QWidget *>()> surfaceHosts;
-    QWidget *floatingWindow() const {return nullptr;}
-    bool releaseAttachment() {
+    void shutdown() {
+        stopped=true;timer.stop();qApp->removeEventFilter(this);
         for(auto view:views)if(view)delete view;views.clear();delete nativeView.data();nativeView=nullptr;
-        return true;
+        if(nativeFooter){QScopedValueRollback<bool> guard(applyingPlacement,true);nativeFooter->setVisible(nativeVisibility?nativeVisibility->isChecked():shown);}
     }
-    void syncAttachment(){refresh();}
+    void refreshSurfaces(){refresh();}
     void restore(){refresh();}
     void wireMenu(){refresh();}
-    // Compatibility entry points migrate saved floating/attached layouts to a
-    // pinned surface footer. They never move Resolve's original widget.
-    QString attachToWorkspace() {
-        auto host=attachmentOwner?attachmentOwner():nullptr;
-        if(!host)return QStringLiteral("No custom workspace surface is available yet.");
-        setPinned(host,true);return showPanel();
+    QString pinPrimarySurface(bool enabled) {
+        auto host=primarySurface?primarySurface():nullptr;
+        if(!host)return QStringLiteral("No workspace surface is available yet.");
+        setPinned(host,enabled);return {};
     }
-    QString attachToTimeline(){return attachToWorkspace();}
-    QString floatPanel(){return attachToWorkspace();}
-    void dock(){refresh();}
     QString showPanel(){return requestVisibility(true);}
     QString hidePanel(){return requestVisibility(false);}
     QString toggleVisibility(){refresh();return requestVisibility(!shown);}
@@ -57,7 +52,8 @@ public:
     }
     bool pinned(QWidget *host) const {
         if(!host)return false;const auto choices=state["surfaces"].toObject();
-        return choices.contains(host->objectName())?choices[host->objectName()].toBool():attachmentOwner && attachmentOwner()==host;
+        return choices.contains(host->objectName())?choices[host->objectName()].toBool():
+            host==(root?root():nullptr) || (primarySurface && primarySurface()==host);
     }
     void setPinned(QWidget *host,bool enabled) {
         if(!host || host->objectName().isEmpty())return;
@@ -67,7 +63,7 @@ public:
         auto navigation=menu->addMenu("Page Navigation");navigation->setProperty("unboundOwnMenu",true);
         auto visibility=navigation->addAction("Show Page Navigation");visibility->setProperty("openGateNavigationProxy",true);visibility->setCheckable(true);visibility->setChecked(shown);
         connect(visibility,&QAction::triggered,this,[this](bool value){defer([this,value]{requestVisibility(value);});});
-        auto placement=navigation->addAction("Pin to This Surface");placement->setCheckable(true);placement->setChecked(pinned(host));placement->setEnabled(host && !host->property("unboundToolbarStrip").toBool());
+        auto placement=navigation->addAction("Pin to This Surface");placement->setToolTip("Reserve a bottom band for Page Navigation on this surface");placement->setCheckable(true);placement->setChecked(pinned(host));placement->setEnabled(host && !host->property("unboundToolbarStrip").toBool());
         QPointer<QWidget> retained(host);connect(placement,&QAction::triggered,this,[this,retained](bool value){defer([this,retained,value]{if(retained)setPinned(retained,value);});});
     }
 protected:
@@ -75,7 +71,7 @@ protected:
         const auto type=event->type();
         if(type==QEvent::Show || type==QEvent::Hide || type==QEvent::Resize || type==QEvent::LayoutRequest) {
             auto widget=qobject_cast<QWidget *>(object);
-            if(widget==nativeFooter && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
+            if(widget==nativeFooter && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
                 shown=!nativeFooter->isHidden();publish();
             }
             if(widget && (widget==nativeFooter || widget->objectName()=="m_PageSwitcherContainer" || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
@@ -145,11 +141,15 @@ private:
         logEvent("footer.page.unavailable",{{"page",id}});
     }
     void refresh() {
-        if(refreshing)return;QScopedValueRollback<bool> guard(refreshing,true);discover();
+        if(stopped || refreshing)return;QScopedValueRollback<bool> guard(refreshing,true);discover();
         if(nativeVisibility){pendingVisibility=false;shown=nativeVisibility->isChecked();}
         else if(pendingVisibility && nativeFooter)requestVisibility(!state["hidden"].toBool());
         else if(nativeFooter && !initialized)shown=!nativeFooter->isHidden();
         initialized=true;
+        if(nativeFooter) {
+            QScopedValueRollback<bool> placement(applyingPlacement,true);
+            nativeFooter->setVisible(shown && pinned(root?root():nullptr));
+        }
         if(nativeFooter && !pages.isEmpty()) {
             QWidget *slot=nativeFooter;
             for(auto parent=pages.first().target?pages.first().target->parentWidget():nullptr;parent && parent!=nativeFooter;parent=parent->parentWidget())
@@ -166,7 +166,7 @@ private:
             nativeView->updatePages(pages);nativeView->setNativeSlotGeometry(local);nativeView->show();nativeView->raise();
         }
         auto hosts=surfaceHosts?surfaceHosts():QList<QWidget *>{};
-        if(auto primary=attachmentOwner?attachmentOwner():nullptr)if(!hosts.contains(primary))hosts.append(primary);
+        if(auto primary=primarySurface?primarySurface():nullptr)if(!hosts.contains(primary))hosts.append(primary);
         for(auto host:hosts) {
             if(!host || host==(root?root():nullptr) || host->property("unboundToolbarStrip").toBool())continue;
             auto layout=qobject_cast<QBoxLayout *>(host->layout());if(!layout || layout->direction()!=QBoxLayout::TopToBottom)continue;
@@ -180,6 +180,8 @@ private:
         }
         for(auto it=views.begin();it!=views.end();++it)if(it.value() && !hosts.contains(it.key()))it.value()->hide();
         for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))if(menu->objectName()=="workspaceShowPanel")wireCaller(menu);
+        auto primary=primarySurface?primarySurface():nullptr;
+        if(placementChanged)placementChanged(bool(primary),pinned(primary));
     }
     void wireCaller(QMenu *menu) {
         auto entry=menu->findChild<QAction *>("unboundPageNavigation",Qt::FindDirectChildrenOnly);
@@ -194,6 +196,6 @@ private:
     QPointer<QWidget> nativeFooter;QPointer<QAction> nativeVisibility;
     QPointer<SurfacePageNavigation> nativeView;
     QList<NavigationPage> pages;QHash<QWidget *,QPointer<SurfacePageNavigation>> views;
-    bool shown=true,pendingVisibility=true,initialized=false,refreshing=false;
+    bool shown=true,pendingVisibility=true,initialized=false,refreshing=false,applyingPlacement=false,stopped=false;
 };
 }

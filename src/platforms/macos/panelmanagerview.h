@@ -72,12 +72,9 @@ public:
     void addFooter()
     {
         const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel("Page Navigation",body),row,0);
-        floatFooter=new QPushButton("Float",body); floatFooter->setObjectName("floatPageNavigation"); panelGrid->addWidget(floatFooter,row,1);
-        dockFooter=new QPushButton("Native Dock",body); dockFooter->setObjectName("dockPageNavigation"); panelGrid->addWidget(dockFooter,row,2);
-        showFooter=new QPushButton("Show",body); showFooter->setObjectName("showPageNavigation"); panelGrid->addWidget(showFooter,row,3);
-        hideFooter=new QPushButton("Hide",body); hideFooter->setObjectName("hidePageNavigation"); panelGrid->addWidget(hideFooter,row,4);
-        attachFooter=new QPushButton("Attach to Workspace",body); attachFooter->setObjectName("attachPageNavigation"); panelGrid->addWidget(attachFooter,row,5,1,2);
-        floatFooter->hide();dockFooter->hide();attachFooter->setText("Pin to Main Surface");
+        showFooter=new QPushButton("Show",body);showFooter->setObjectName("showPageNavigation");panelGrid->addWidget(showFooter,row,1);
+        hideFooter=new QPushButton("Hide",body);hideFooter->setObjectName("hidePageNavigation");panelGrid->addWidget(hideFooter,row,2);
+        pinFooter=new QPushButton("Pin to Main Surface",body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip("Reserve or remove the Page Navigation band on the main surface");panelGrid->addWidget(pinFooter,row,3,1,4);
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }
@@ -87,7 +84,7 @@ public:
     QCheckBox *pin=nullptr,*constrain=nullptr,*snap=nullptr,*background=nullptr,*hierarchy=nullptr;
     QComboBox *style=nullptr,*first=nullptr,*second=nullptr;
     QList<QPushButton *> bulkButtons,groupButtons;
-    QPushButton *floatFooter=nullptr,*dockFooter=nullptr,*showFooter=nullptr,*hideFooter=nullptr,*attachFooter=nullptr;
+    QPushButton *pinFooter=nullptr,*showFooter=nullptr,*hideFooter=nullptr;
 private:
     QWidget *owner,*body=nullptr;
     QVBoxLayout *bodyLayout=nullptr;

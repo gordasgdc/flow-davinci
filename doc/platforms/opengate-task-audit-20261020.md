@@ -189,3 +189,13 @@ Surface navigation build review: hidden fixture covers duplicate inactive native
 page-button modes and keeps Home outside the overlay. Native preset tests still
 pass. Full helper/bootstrap build passed for the first implementation; the final
 primary-surface refinement is being rebuilt. No installation or main merge.
+
+## Pinned footer band build
+
+Jordan refined the request to pinned/unpinned reserved bands, with no footer
+docking and normal independent-window overlap. Production footer float/dock/lease
+paths are removed. Hidden reservation, unpin/reclaim, content replacement, native
+main/secondary visibility, migration and hotkey fixtures pass. Displayed group
+and cross-process restart fixtures compile, but cannot run while Resolve is
+open. Build and save the isolated branch; do not install or publish from fixture
+results alone. Current installed runtime remains ca505c1.

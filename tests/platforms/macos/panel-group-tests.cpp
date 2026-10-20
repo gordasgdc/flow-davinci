@@ -160,7 +160,7 @@ int main(int argc, char **argv)
         auto caller=menu.findChild<QAction *>("unboundPageNavigation");check(caller&&caller->isChecked(),"Panels caller reflects shared native visibility");
         if(caller)caller->trigger();settle();check(footer.snapshot()["hidden"].toBool(),"Panels caller hides global navigation");
         if(caller)caller->trigger();settle();check(!footer.snapshot()["hidden"].toBool(),"Panels caller restores global navigation");
-        const auto saved=footer.snapshot();footer.dock();footer.setState(saved);settle();
+        const auto saved=footer.snapshot();footer.refreshSurfaces();footer.setState(saved);settle();
         check(nativeFooter->parentWidget()==&main&&!footer.snapshot()["floating"].toBool(),"restore never transfers native footer ownership");
     }
     {

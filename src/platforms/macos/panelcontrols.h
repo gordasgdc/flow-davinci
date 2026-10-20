@@ -275,7 +275,7 @@ public:
             return nullptr;
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
-        footer->attachmentOwner=[this]() -> QWidget * {
+        footer->primarySurface=[this]() -> QWidget * {
             if (!page() || !page()->isVisible()) return nullptr;
             QWidget *best=nullptr;
             for (int i=0;i<panels.size();++i) if (panels[i].session->active() && panels[i].name!="unboundWorkspaceToolbar") {
@@ -297,7 +297,10 @@ public:
             }
             return hosts;
         };
-        footer->revealAttachmentOwner=[this] { if (auto owner=footer->attachmentOwner()) { owner->show();owner->raise(); } };
+        footer->placementChanged=[this](bool available,bool pinned) {
+            if(!managerView->pinFooter)return;
+            managerView->pinFooter->setEnabled(available);managerView->pinFooter->setChecked(pinned);
+        };
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
@@ -382,7 +385,7 @@ public:
         };
         workspaceMenu->nativeWorkspace = [this](const QString &activePage) {
             if (activePage == "edit") { ++bulkVersion; restoreExpanded(); dockAll(); save(); }
-            else footer->dock();
+            else footer->refreshSurfaces();
             if (auto main = Unbound::resolveMainWindow()) {
                 Unbound::setNativeBackgroundHidden(main,{},false);
                 main->showNormal(); main->raise(); main->activateWindow();
@@ -435,11 +438,9 @@ public:
         };
         headers->schedule();
         managerView->addFooter();
-        connect(managerView->floatFooter,&QPushButton::clicked,this,[this] { status->setText(footer->floatPanel()); });
-        connect(managerView->dockFooter,&QPushButton::clicked,this,[this] { footer->dock(); });
         connect(managerView->showFooter,&QPushButton::clicked,this,[this] { status->setText(footer->showPanel()); });
         connect(managerView->hideFooter,&QPushButton::clicked,this,[this] { status->setText(footer->hidePanel()); });
-        connect(managerView->attachFooter,&QPushButton::clicked,this,[this] { status->setText(footer->attachToTimeline()); });
+        connect(managerView->pinFooter,&QPushButton::clicked,this,[this](bool pinned) { status->setText(footer->pinPrimarySurface(pinned)); });
         pageLifecycle=new Unbound::EditPageLifecycle(this);
         pageLifecycle->running=[this] { return !quitting; };
         pageLifecycle->checkpoint=[this] { restoreExpanded(); saveTimer.stop(); save(); };
@@ -449,7 +450,7 @@ public:
             nativePresentation.restore(); nativeSizing->restore();
             if (auto main=Unbound::resolveMainWindow()) if (main->property("unboundBackgroundHidden").toBool())
                 Unbound::setNativeBackgroundHidden(main,{},false);
-            if (footer) footer->syncAttachment();
+            if (footer) footer->refreshSurfaces();
         };
         pageLifecycle->resume=[this] {
             for (auto group:groups) if (group->active()) group->syncVisibility();
@@ -793,16 +794,13 @@ private:
                 if (!quitting && background->isChecked()) applyBackgroundVisibility(true);
             });
         }
-        if (error.isEmpty() && p.name=="frameConformTimelines" && footer) footer->syncAttachment();
+        if (error.isEmpty() && p.name=="frameConformTimelines" && footer) footer->refreshSurfaces();
         outcome("undock", i, error); updateRow(i); updateNativeSizing(); save();
     }
     void dockOne(int i)
     {
         if (expansionController->index() == i) restoreExpanded();
         auto &p = panels[i];
-        if (p.name=="frameConformTimelines" && footer && !footer->releaseAttachment()) {
-            status->setText("Could not release attached Page Navigation safely."); return;
-        }
         ++p.requestVersion; p.pending = false;
         const QString error = p.session->active() ? p.session->dock() : QString();
         if (error.isEmpty()) p.desired = false;
@@ -813,7 +811,7 @@ private:
         if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
         nativePresentation.restore();
         if (nativeSizing) nativeSizing->restore();
-        if (footer) footer->dock(); background->setChecked(false); ++groupVersion; pendingGroups = {};
+        background->setChecked(false); ++groupVersion; pendingGroups = {};
         for (int i = panels.size() - 1; i >= 0; --i) dockOne(i);
     }
     bool applyBackgroundVisibility(bool hidden)
@@ -1022,7 +1020,7 @@ private:
         if (quitting) return;
         restoreExpanded(); save(); quitting = true; saveTimer.stop(); restoreTimer.stop();
         if (workspaceRestore) workspaceRestore->cancel();
-        if (footer) footer->releaseAttachment();
+        if (footer) footer->shutdown();
         groupReserve->clear();
         if (nativeWorkspace) nativeWorkspace->release(true);
         if (nativeSizing) nativeSizing->restore();

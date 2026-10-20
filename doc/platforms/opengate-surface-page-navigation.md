@@ -62,3 +62,24 @@ first-click restore failure fully resolved. No performance work is included.
 
 Build and installation are distinct. No installation or main merge is authorized
 by this document. The prior installed ca505c1 remains available for rollback.
+
+## Pinned-only refinement
+
+Jordan chose a reserved footer band instead of a dockable panel. Float, Native
+Dock, attachment and drag affordances are removed rather than hidden. The
+manager provides a checked Pin to Main Surface control; each surface's Panels
+menu provides its own pin setting. Unpinning returns the band to surface content.
+The native main surface also supports an independent pin choice without
+changing the native global Show Page Navigation assignment or checked state.
+Global hide/show preserves those pin choices. Other independent windows retain
+normal overlap behavior; no new window-placement exclusion rules are introduced.
+
+The fixture checks content/footer non-overlap, content expansion after unpin,
+group-content replacement preserving the bottom band, and native-main unpin
+while other footers remain visible. Old footer-docking methods and callbacks
+were removed; old serialized floating/attachment keys are accepted as migration
+input only. Teardown restores the native footer's global visibility.
+
+A backtick conflict investigation is separate. Jordan confirmed the installed
+build works after resolving duplicate assignments. No shortcut conflict-policy
+change or proposed Fusion exception is included in this footer branch.

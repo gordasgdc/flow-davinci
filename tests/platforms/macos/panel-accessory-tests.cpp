@@ -55,7 +55,7 @@ int main(int argc,char **argv)
         check(footer->parentWidget()==&main&&!panel.snapshot()["floating"].toBool(),"legacy floating footer state migrates without moving native content");
         check(panel.hidePanel().isEmpty()&&footer->isHidden(),"global hide retains native slot");
         check(panel.showPanel().isEmpty()&&footer->isVisible(),"global show restores native visibility");
-        check(panel.releaseAttachment()&&footer->parentWidget()==&main,"shutdown releases presentation without a native lease");
+        panel.shutdown();check(footer->parentWidget()==&main,"shutdown releases presentation without a native lease");
     }
     Unbound::flushDiagnostics();
     if (!failures) std::puts("PASS: accessory ownership, overflow, native restoration, owner destruction and footer attachment state");
