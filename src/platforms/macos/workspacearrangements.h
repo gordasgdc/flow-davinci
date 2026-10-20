@@ -19,6 +19,9 @@
 namespace Unbound {
 // Native menus and the controls window dispatch to the same arrangement owner.
 // The native recovery action is outside the removable preset collection.
+// Show only arrangements belonging to the active page. Until a page has a verified
+// panel backend, keep its saved-workspace operations disabled. Future cross-page
+// panels must preserve their source-page lifecycle rather than bypass this gate.
 class WorkspaceArrangements : public QObject
 {
 public:
