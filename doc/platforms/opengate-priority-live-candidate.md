@@ -1,6 +1,6 @@
 # Priority live-test candidate
 
-Branch: `integration/macos-priority-live-candidate`. Runtime build: **f03d165**.
+Branch: `integration/macos-priority-live-candidate`. Exact runtime identity is recorded in the built bundle manifest.
 Installed baseline **541cd25** is an ancestor. No main merge is required to test
 the complete assembled application. This branch is not installed or published.
 
