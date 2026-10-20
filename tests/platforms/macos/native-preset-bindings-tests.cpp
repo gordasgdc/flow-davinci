@@ -47,7 +47,7 @@ int main(int argc,char **argv){
  press(&main,Qt::Key_QuoteLeft,Qt::NoModifier);check(expanded==1,"legacy default remains only when native preset has no hovered command row");
  press(&main,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"alternate binding executes");
  QLineEdit typing(&edit);typing.show();typing.setFocus();QApplication::processEvents();
- press(&typing,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"text entry guard retained");typing.clearFocus();
+ press(&typing,Qt::Key_S,Qt::NoModifier);check(calls==2,"ordinary typing remains text entry");typing.clearFocus();
  edit.hide();press(&main,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"no execution outside Edit");edit.show();
  QWidget floating(&main,Qt::Window);floating.setObjectName("unboundFloating_fixture");floating.setAttribute(Qt::WA_DontShowOnScreen);floating.show();QApplication::setActiveWindow(&floating);QApplication::processEvents();
  press(&floating,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==3,"same assignment works from floating surface");
@@ -73,5 +73,8 @@ int main(int argc,char **argv){
  save("keyboard.preset.xml",preset({{stabilize,{t}},{hovered,{}}}));settle();
  press(&floating,Qt::Key_F18,Qt::NoModifier);press(&floating,Qt::Key_QuoteLeft,Qt::NoModifier);
  check(expanded==2,"clearing native maximize assignment disables both old key and legacy backtick");
+ QApplication::setActiveWindow(&main);typing.setFocus();QApplication::processEvents();
+ press(&typing,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==6,"modified native Edit command works with text-field focus");
+ typing.clearFocus();
  std::printf("native preset failures=%d\n",failures);return failures?1:0;
 }

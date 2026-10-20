@@ -36,7 +36,7 @@ public:
     bool invoke(const QString &id,const QString &origin) {
         auto active=QApplication::activeWindow();
         const QString blocked=!active ? "no-active-window" : qobject_cast<QDialog *>(active) || QApplication::activeModalWidget() ? "dialog-active" :
-            QApplication::activePopupWidget() ? "menu-active" : textEditor(QApplication::focusWidget()) ? "text-editing" :
+            QApplication::activePopupWidget() ? "menu-active" : textEditor(QApplication::focusWidget()) && !editCommand(id) ? "text-editing" :
             !context || !context() ? "outside-workspace" : QString();
         const bool eligible=blocked.isEmpty();
         for (const auto &command:commands) if (command.id==id) {
@@ -69,6 +69,9 @@ public:
     std::function<bool()> legacyBacktickAllowed;
     std::function<bool()> context;
 protected:
+    static bool editCommand(const QString &id) {
+        return id=="edit.timeline.fixed-playhead" || id=="edit.inspector.stabilize";
+    }
     bool eventFilter(QObject *,QEvent *event) override {
         if (event->type()==QEvent::ActionAdded || event->type()==QEvent::ActionChanged || event->type()==QEvent::ActionRemoved) {
             refresh.start(0); return false;
@@ -76,7 +79,7 @@ protected:
         if (event->type()!=QEvent::ShortcutOverride && event->type()!=QEvent::KeyPress) return false;
         auto active=QApplication::activeWindow();
         if (!active || qobject_cast<QDialog *>(active) || active->property("unboundShortcutEditor").toBool() || QApplication::activeModalWidget() ||
-            QApplication::activePopupWidget() || textEditor(QApplication::focusWidget()) || !context || !context()) return false;
+            QApplication::activePopupWidget() || !context || !context()) return false;
         auto key=static_cast<QKeyEvent *>(event);
         const QKeySequence pressed(key->key() | int(key->modifiers() & ~Qt::KeypadModifier));
         if (nativeMatch) {
@@ -86,6 +89,10 @@ protected:
                 return false;
             }
             if (!match.command.isEmpty()) {
+                // Explicit modified Edit commands are usable from Inspector
+                // fields; ordinary typing and unmodified keys remain text.
+                if(textEditor(QApplication::focusWidget()) &&
+                   (!editCommand(match.command) || !(key->modifiers() & (Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier))))return false;
                 // Claim ShortcutOverride before Qt's shortcut map; consume the
                 // matching KeyPress once. No time-window deduplication.
                 event->accept();
@@ -100,6 +107,7 @@ protected:
                 return true;
             }
         }
+        if(textEditor(QApplication::focusWidget()))return false;
         for (const auto &command : commands) {
             if(nativeMatch && (command.id!="panel.expand.hovered" || (legacyBacktickAllowed && !legacyBacktickAllowed())))continue;
             const auto configured=QKeySequence::fromString(bindings.value(command.id).toString(),QKeySequence::PortableText);
