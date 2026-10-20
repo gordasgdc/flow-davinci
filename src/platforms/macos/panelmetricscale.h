@@ -75,6 +75,9 @@ private:
             for (auto ancestor=widget;ancestor && ancestor!=surface;ancestor=ancestor->parentWidget())
                 if (ancestor->isWindow() || ancestor->property("openGateChrome").toBool()) { excluded=true; break; }
             if (excluded || widget->property("openGateChrome").toBool()) continue;
+            // A viewport adapter derives its own geometry from the scaled native
+            // child. Scale the child, not the adapter's already-derived height.
+            if(widget->property("openGateMetricContainer").toBool())continue;
             if (!known.contains(widget)) {
                 QSize icon;
                 if (auto button=qobject_cast<QAbstractButton *>(widget)) icon=button->iconSize();

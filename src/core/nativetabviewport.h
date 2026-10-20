@@ -33,7 +33,7 @@ public:
         auto bandOwner=row->parentWidget();const int rowIndex=vertical->indexOf(row);
         tabs=bar;originalParent=nativeParent;originalLayout=slot;rowLayout=vertical;
         oldGeometry=bar->geometry();oldPolicy=bar->sizePolicy();oldFill=bar->autoFillBackground();oldArrows=bar->usesScrollButtons();oldElide=bar->elideMode();oldExpanding=bar->expanding();
-        area=new QScrollArea(nativeParent);area->setObjectName("openGateTimelineTabViewport");area->setFrameShape(QFrame::NoFrame);area->setMinimumWidth(0);area->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+        area=new QScrollArea(nativeParent);area->setObjectName("openGateTimelineTabViewport");area->setProperty("openGateMetricContainer",true);area->setFrameShape(QFrame::NoFrame);area->setMinimumWidth(0);area->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
         area->setWidgetResizable(false);area->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);area->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         auto oldItem=slot->replaceWidget(bar,area,Qt::FindDirectChildrenOnly);
         if(!oldItem){delete area.data();area=nullptr;tabs=nullptr;return false;}delete oldItem;

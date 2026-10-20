@@ -365,3 +365,12 @@ Fusion's outer container; actual per-panel ownership still needs a loaded Fusion
 page capture before undocking can be implemented responsibly. Likewise native-painted
 Timeline body scaling has no verified hook. Do not claim either feature implemented
 from invented fixture object names. No install or live Resolve interaction.
+
+## Tab viewport and scale integration
+
+`fix/macos-tab-viewport-scale` marks the generated viewport as an adapter-owned metric
+container while continuing to scale its real native tab child. This prevents scaling
+an already-derived viewport height twice. Hidden integration fixture passes native
+text fit, separate padded scrollbar/ruler geometry, selection-preserving scroll and
+original-row restoration at 100/150/200/300 percent. It does not establish native-painted
+Timeline track/ruler scaling or actual Resolve tab-layout availability. No install.
