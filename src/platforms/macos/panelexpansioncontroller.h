@@ -69,9 +69,14 @@ public:
         if (current<0) return;
         const int index=current; priority.restore(); ++version; current=-1;
         target.cancelPending(); QString error;
+        bool groupRebuilt=false;
         if (wasGrouped) {
             target.session->endGroupedExpansion();
-            if (originalGroup && originalGroup->active()) originalGroup->restore(originalGroupState);
+            // Borrowing one leaf's content does not necessarily change its
+            // retained group. Rebuilding an identical tree reparents every leaf
+            // and recreates tabs/splitters on each maximize/restore pair.
+            if (originalGroup && originalGroup->active() && originalGroup->snapshot()!=originalGroupState)
+                groupRebuilt=originalGroup->restore(originalGroupState);
         }
         originalGroup=nullptr;
         if (target.session->active()) {
@@ -88,7 +93,7 @@ public:
         target.session->restoreOverflowOffset(originalOffset);
         target.restored();
         update(index); save();
-        logEvent("panel.expand.restore",{{"panel",target.name},{"success",error.isEmpty()},{"error",error}});
+        logEvent("panel.expand.restore",{{"panel",target.name},{"success",error.isEmpty()},{"error",error},{"group_rebuilt",groupRebuilt}});
         if (!error.isEmpty()) report(error);
     }
 private:
