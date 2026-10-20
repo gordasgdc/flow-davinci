@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QComboBox>
+#include <QHash>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -15,7 +16,7 @@ namespace Unbound {
 class ArrangementControls : public QObject
 {
 public:
-    ArrangementControls(QWidget *owner, QVBoxLayout *layout, const QString &selected) : QObject(owner), owner(owner)
+    ArrangementControls(QWidget *owner, QVBoxLayout *layout, const QString &selected, const QString &page = "edit") : QObject(owner), owner(owner), activePage(page)
     {
         auto row = new QHBoxLayout;
         presets = new QComboBox(owner); presets->setObjectName("arrangements"); presets->setMinimumWidth(0);
@@ -30,7 +31,7 @@ public:
         order = new ArrangementOrder(owner); layout->addWidget(order); order->hide();
         order->reordered = [this](const QStringList &ids) {
             const auto id = presets->currentData().toString();
-            const auto error = arrangements.reorderPage("edit",ids); reloadPresets(id);
+            const auto error = arrangements.reorderPage(activePage,ids); reloadPresets(id);
             if (changed) changed();
             if (report) report(error.isEmpty() ? QStringLiteral("Workspace preset order saved.") : error);
             logEvent("arrangement.reorder", {{"success", error.isEmpty()}, {"error", error}});
@@ -40,13 +41,21 @@ public:
         connect(restore, &QPushButton::clicked, this, [this] { if (restoreRequested) restoreRequested(); });
     }
     QComboBox *selection() const { return presets; }
+    QString page() const { return activePage; }
+    void setPage(const QString &page)
+    {
+        if (page.isEmpty() || page == activePage) return;
+        selections.insert(activePage, presets->currentData().toString());
+        activePage = page;
+        reloadPresets(selections.value(page));
+    }
     QJsonObject find(const QString &id) const { return arrangements.find(id); }
     QJsonArray list() const { return arrangements.list(); }
     void invoke(const QString &operation, const QString &id = {})
     {
         if (!id.isEmpty()) {
             const int index = presets->findData(id);
-            if (index < 0 || arrangements.find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
+            if (index < 0 || workspacePage(arrangements.find(id)) != activePage || arrangements.find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
             if (operation == "Restore") presets->setCurrentIndex(index);
         }
         if (operation == "Restore") { if (restoreRequested) restoreRequested(); }
@@ -89,28 +98,37 @@ private:
     {
         const QSignalBlocker blocker(presets);
         presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
-        for (const auto &value : arrangements.list("edit")) {
+        for (const auto &value : arrangements.list(activePage)) {
             const auto entry = value.toObject();
             presets->addItem(entry["name"].toString(), entry["id"].toString());
         }
         presets->setCurrentIndex(qMax(0, presets->findData(selected)));
-        if (order) order->reload(arrangements.list("edit"));
+        if (order) order->reload(arrangements.list(activePage));
     }
     void manageArrangement(const QString &operation, const QString &target = {})
     {
+        const auto operationPage = activePage;
         logEvent(QStringLiteral("button.click"), {{"action", QStringLiteral("arrangement-") + operation}});
         if (operation == "Reorder") { order->setVisible(order->isHidden()); return; }
         if (changed) changed();
         const auto previous = presets->currentData().toString();
         QString id = target.isEmpty() ? previous : target, error;
         const auto entry = arrangements.find(id);
-        if (operation != QString::fromUtf8("Save As…") && entry.isEmpty()) {
+        if (operation != QString::fromUtf8("Save As…") && (entry.isEmpty() || workspacePage(entry) != operationPage)) {
             report(QStringLiteral("Select a saved arrangement first.")); return;
         }
-        if (operation == "Update") error = arrangements.update(id, workspace());
+        const auto capture = [this, operationPage]() {
+            const auto value = workspace ? workspace() : QJsonObject{};
+            return activePage == operationPage && value.value("page").toString("edit") == operationPage ? value : QJsonObject{};
+        };
+        if (operation == "Update") {
+            const auto value = capture();
+            error = value.isEmpty() ? "Workspace page changed; no preset was updated." : arrangements.update(id, value);
+        }
         else if (operation == "Delete") {
             if (QMessageBox::question(owner, QStringLiteral("Delete arrangement"),
                 QStringLiteral("Delete “%1”? Your current windows will stay in place.").arg(entry["name"].toString())) != QMessageBox::Yes) return;
+            if (activePage != operationPage) { if (report) report("Workspace page changed; no preset was deleted."); return; }
             error = arrangements.remove(id); if (error.isEmpty()) id.clear();
         } else {
             bool accepted = false;
@@ -118,8 +136,12 @@ private:
             if (operation == QString::fromUtf8("Duplicate…")) initial += QStringLiteral(" copy");
             const auto name = QInputDialog::getText(owner, operation, QStringLiteral("Arrangement name"), QLineEdit::Normal, initial, &accepted);
             if (!accepted) return;
+            if (activePage != operationPage) { if (report) report("Workspace page changed; no preset was saved."); return; }
             if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
-            else error = arrangements.create(name, operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : workspace(), id);
+            else {
+                const auto value = operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : capture();
+                error = value.isEmpty() ? "Workspace page changed; no preset was saved." : arrangements.create(name, value, id);
+            }
         }
         const auto operatedId = entry.isEmpty() ? id : entry["id"].toString();
         if ((operation == QString::fromUtf8("Rename…") || operation == "Delete") && !target.isEmpty() && previous != target)
@@ -129,6 +151,8 @@ private:
         Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", operatedId}, {"selected", id}, {"success", error.isEmpty()}, {"error", error}});
     }
     QWidget *owner;
+    QString activePage;
+    QHash<QString, QString> selections;
     QComboBox *presets = nullptr;
     QLabel *state = nullptr;
     ArrangementStore arrangements;

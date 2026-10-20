@@ -327,3 +327,14 @@ Core persistence fixture passes migration, independent Edit/Fusion mode/selectio
 cross-page rejection, restart, interrupted-transition recovery and no recursive capture.
 Panel-session/restart integration compilation passes. Fusion panel/coordinator wiring
 is not enabled or claimed complete. No install, main merge or publication.
+## Page-aware workspace controls foundation
+
+`fix/macos-page-aware-arrangements` removes the controls' hardcoded Edit list/order,
+retains selection independently per page in memory, and rejects cross-page restore,
+update and dialog completion. Existing Edit callers retain their default behavior.
+A hidden Qt fixture passed for same-named Edit/Fusion presets, filtered lists,
+independent selection and mismatched capture rejection. This is a controls foundation:
+page-switch coordinator wiring, per-page persisted selection and Fusion session
+ownership/restoration are still pending. Fusion stays disabled until those exist.
+Reuse Edit interaction/native styling; no mixed-page windows or alternate Fusion UI.
+No new install, main merge, push or publication.
