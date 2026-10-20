@@ -38,3 +38,25 @@ input. Runtime provider remains disabled pending switch-timing validation.
 
 Header title acceptance: elide by available pixel width; show full project name
 in a tooltip. Hover must not move, reflow, or animate neighboring controls.
+
+## Lowest priority: timeline tab-strip scrolling
+
+Target is the timeline-name tab row above the timeline ruler, not track or
+playhead scrolling. Investigate a slim horizontal scrollbar plus trackpad/wheel
+support while retaining native left/right overflow arrows, tab close buttons,
+per-tab dropdowns and the + control. Preserve selection, ordering and native
+editing gestures. Feasibility inspection comes after current functional and
+header work; no implementation has been started.
+
+## Candidate checkpoint
+
+Prepared separately: native-preset adapter (explicit opt-in), exact native Edit
+Fixed Playhead lookup and exclusive-style restore, responsive header controls,
+full window-title tooltip, and Inspector horizontal-scroll hints. Passing fixtures
+are not live acceptance. Current installation remains fbfc2a9.
+
+GitHub default branch is now main, based on the accepted prototype plus landing
+page documentation only. Release assets and repository metadata are backed up;
+full-history git bundle verified. Fork detachment is not performed: this session
+has no working settings UI, and metadata loss requires review. One historical
+issue/PR is in the backup. Original MIT notices and Windows source are preserved.
