@@ -10,7 +10,7 @@
 #include <QToolButton>
 #include <functional>
 #include "workspacepages.h"
-#include "nativepagebutton.h"
+#include "../../core/nativepagebutton.h"
 namespace Unbound {
 struct NavigationPage { QString id,title;QPointer<QAbstractButton> target;bool current=false; };
 // OpenGate controls mirror native page buttons. The native footer never moves.
