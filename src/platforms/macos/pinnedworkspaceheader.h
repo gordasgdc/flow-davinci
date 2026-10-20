@@ -21,7 +21,7 @@ public:
     bool shown() const{return visible;}
     QJsonObject snapshot() const{return {{"model","pinned-top-v1"},{"visible",visible}};}
     void setState(QJsonObject saved){visible=saved.value("visible").toBool(true);schedule();}
-    void setShown(bool value){if(visible==value){schedule();return;}visible=value;schedule();if(changed)changed();}
+    void setShown(bool value){if(visible==value){schedule();return;}logEvent("header.pinned.visibility.request",{{"visible",value}});visible=value;schedule();if(changed)changed();}
     void schedule(){if(!stopped && !timer.isActive())timer.start();}
     void populateMenu(QMenu *menu) {
         auto action=menu->addAction("Workspace Header");action->setObjectName("openGateShowWorkspaceHeader");

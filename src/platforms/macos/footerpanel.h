@@ -59,6 +59,7 @@ public:
     }
     void setPinned(QWidget *host,bool enabled) {
         if(!host || host->objectName().isEmpty())return;
+        logEvent("footer.placement.request",{{"surface",host->objectName()},{"pinned",enabled}});
         auto choices=state["surfaces"].toObject();choices[host->objectName()]=enabled;state["surfaces"]=choices;refresh();publish();
     }
     void populatePlacementMenu(QMenu *menu,QWidget *host) {
@@ -96,10 +97,11 @@ private:
         });wait->start(0);
     }
     QString requestVisibility(bool value) {
+        logEvent("footer.visibility.request",{{"visible",value}});
         discover();
         if(nativeVisibility) {
             if(nativeVisibility->isChecked()!=value) {
-                if(!nativeVisibility->isEnabled())return QStringLiteral("Resolve's Show Page Navigation command is disabled.");
+                if(!nativeVisibility->isEnabled()){logEvent("footer.visibility.failed",{{"reason","native-command-disabled"},{"visible",value}});return QStringLiteral("Resolve's Show Page Navigation command is disabled.");}
                 if(QApplication::activePopupWidget()){defer([this,value]{requestVisibility(value);});return {};}
                 nativeVisibility->trigger();
             }
@@ -108,8 +110,9 @@ private:
             // Fallback for early construction: this is still the real native
             // footer, in its original slot. A later native action takes authority.
             nativeFooter->setVisible(value);shown=value;
-        } else return QStringLiteral("Native Page Navigation is not available yet.");
-        pendingVisibility=false;publish();refresh();return {};
+        } else {logEvent("footer.visibility.failed",{{"reason","native-footer-unavailable"},{"visible",value}});return QStringLiteral("Native Page Navigation is not available yet.");}
+        pendingVisibility=false;publish();refresh();
+        logEvent("footer.visibility.complete",{{"requested",value},{"visible",shown}});return {};
     }
     void discover() {
         auto main=root?root():nullptr;if(!main)return;
@@ -143,8 +146,10 @@ private:
     void activatePage(const QString &id) {
         discover();for(const auto &page:pages)if(page.id==id && page.target && page.target->isEnabled()) {
             // Qt's original clicked signal reaches Resolve's real page owner.
-            QPointer<QAbstractButton> target=page.target;target->click();schedule();
-            logEvent("footer.page.request",{{"page",id},{"route","native-page-button"}});return;
+            QPointer<QAbstractButton> target=page.target;
+            logEvent("footer.page.request",{{"page",id},{"route","native-page-button"}});
+            target->click();schedule();
+            logEvent("footer.page.dispatched",{{"page",id},{"target_alive",bool(target)}});return;
         }
         logEvent("footer.page.unavailable",{{"page",id}});
     }

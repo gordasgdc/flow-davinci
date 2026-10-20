@@ -21,6 +21,7 @@ public:
         auto layout=owner ? qobject_cast<QBoxLayout *>(owner->layout()) : nullptr;
         if ((edge!=Qt::TopEdge && edge!=Qt::BottomEdge) || !layout || layout->direction()!=QBoxLayout::TopToBottom || !accessory || accessory==owner || accessory->isAncestorOf(owner))
             return QStringLiteral("This panel does not have a supported reserved-band layout.");
+        logEvent("accessory.attach.request",{{"panel",accessory->objectName()},{"owner",owner->objectName()},{"edge",edge==Qt::TopEdge?"top":"bottom"}});
         const int height=qMax(32,accessory->sizeHint().height());
         const auto error=position.acquire(accessory,nativeRoot);
         if (!error.isEmpty()) return error;
@@ -48,6 +49,7 @@ private:
             (!ownerDying && (!destination || viewport->parentWidget()!=destination || !destinationLayout || destinationLayout->indexOf(viewport)<0))) {
             logEvent("accessory.release.rejected",{{"reason","attachment-ownership-changed"}}); return false;
         }
+        logEvent("accessory.release.request",{{"panel",content->objectName()},{"owner",destination?destination->objectName():QString()},{"owner_dying",ownerDying}});
         auto widget=viewport->takeWidget(); widget->setParent(position.contentParking()); widget->hide();
         if (!position.restore()) { viewport->setWidget(widget); widget->show(); return false; }
         widget->setAutoFillBackground(originalFill);
