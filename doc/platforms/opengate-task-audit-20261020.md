@@ -232,3 +232,10 @@ for macOS 11.0 with arm64 and x86_64 slices. Binary/architecture/plist/signature
 and current-host self-tests pass. Older-OS, Intel-hardware and Windows feature parity
 are not verified. Installed 091268b is unchanged; public packaging remains unchanged.
 See opengate-platform-compatibility-20261020.md for selective upstream module analysis.
+
+## Continuous tab viewport experiment
+
+experiment/macos-timeline-tab-viewport replaces arrow stepping with a public Qt scroll
+viewport only in recognized slots. Scrollbar owns a separate padded row; hidden one-pixel,
+trackpad, dynamic-tab, selection, plus-button and restore checks pass. Resolve custom-tab
+parent assumptions still need live acceptance. Branch is not installed or merged.

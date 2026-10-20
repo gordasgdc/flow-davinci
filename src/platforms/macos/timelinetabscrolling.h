@@ -15,6 +15,7 @@
 #include <QToolButton>
 #include <QWheelEvent>
 #include "diagnostics.h"
+#include "../../core/nativetabviewport.h"
 namespace Unbound {
 // Experimental native adapter. Never reparent tabs or change their selection.
 // Only a discovered native scroll model or Qt's original arrow buttons are used.
@@ -152,10 +153,14 @@ protected:
 private:
     void discover(){
         for(auto widget:QApplication::allWidgets())if(TimelineTabScroller::isNativeTimelineTabs(widget)&&!adapters.contains(widget)){
-            auto adapter=new TimelineTabScroller(widget);adapters[widget]=adapter;
-            connect(widget,&QObject::destroyed,this,[this,widget]{adapters.remove(widget);});
+            if(qEnvironmentVariable("OPENGATE_TIMELINE_TAB_SCROLLING").isEmpty() || qEnvironmentVariable("OPENGATE_TIMELINE_TAB_SCROLLING")=="smooth") {
+                auto continuous=new NativeTabViewport(this);
+                if(continuous->attach(qobject_cast<QTabBar *>(widget))){adapters[widget]=continuous;logEvent("timeline.tabs.capability",{{"supported",true},{"route","experimental-public-qt-viewport"}});}
+                else {delete continuous;logEvent("timeline.tabs.viewport.unavailable",{{"reason","unsupported-native-tab-layout"}});adapters[widget]=new TimelineTabScroller(widget);}
+            } else adapters[widget]=new TimelineTabScroller(widget);
+            connect(widget,&QObject::destroyed,this,[this,widget]{auto adapter=adapters.take(widget);if(adapter && adapter->parent()==this)adapter->deleteLater();});
         }
     }
-    QHash<QWidget *,QPointer<TimelineTabScroller>> adapters;QTimer scan;
+    QHash<QWidget *,QPointer<QObject>> adapters;QTimer scan;
 };
 }
