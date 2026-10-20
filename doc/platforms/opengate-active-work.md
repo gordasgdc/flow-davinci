@@ -60,3 +60,11 @@ page documentation only. Release assets and repository metadata are backed up;
 full-history git bundle verified. Fork detachment is not performed: this session
 has no working settings UI, and metadata loss requires review. One historical
 issue/PR is in the backup. Original MIT notices and Windows source are preserved.
+
+Header acceptance matrix clarified by Jordan's screenshots:
+- Native Edit UI: overlapping native project title and added toolbar callers is
+  the reported defect; validate the bounded controls here first.
+- Native Emulator: current title strip/toolbar separation works; preserve it.
+  Only tighten the far-right Panels pill to fit its title strip.
+- Other saved arrangements and floating surfaces: preserve mounting and selection,
+  verify no duplicate titles/traffic lights and no overlap at narrow widths.
