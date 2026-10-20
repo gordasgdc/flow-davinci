@@ -20,11 +20,17 @@ public:
     // Edit-page presentation command: no clip-selection or focused-panel requirement.
     bool fixedPlayhead() {
         QSet<QAction *> matches;
-        if (ready()) for (auto widget:QApplication::allWidgets()) if (auto menu=qobject_cast<QMenu *>(widget)) {
-            if (!nativeTimelineOptionsMenu(menu)) continue;
-            for (auto action:menu->actions()) if (nativeEditActionLabel(action,"Fixed Playhead")) matches.insert(action);
+        // This Edit action identity is present in Resolve's own keyboard preset.
+        // Prefer its native View-menu command over custom-painted options rows.
+        if (ready()) for (auto widget:QApplication::allWidgets()) {
+            auto actions=widget->actions();actions.append(widget->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly));
+            for(auto action:actions)if(action->objectName()=="viewTimelineScrollingFixed")matches.insert(action);
         }
-        if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("fixed-playhead",matches.size(),"Open Timeline View Options once so Resolve creates its Fixed Playhead action.");
+        if(matches.isEmpty() && ready()) for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget)) {
+            if(!nativeTimelineOptionsMenu(menu))continue;
+            for(auto action:menu->actions())if(nativeEditActionLabel(action,"Fixed Playhead"))matches.insert(action);
+        }
+        if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("fixed-playhead",matches.size(),"Edit's native Fixed Playhead action is unavailable or ambiguous; no scrolling state was changed.");
         auto action=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","fixed-playhead"},{"object",action->objectName()},
             {"checkable",action->isCheckable()},{"checked_before",action->isChecked()}});
