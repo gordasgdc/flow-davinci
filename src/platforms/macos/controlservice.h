@@ -12,6 +12,7 @@
 #include "keyboardprobe.h"
 #include "boundarydiagnostics.h"
 #include "workflowcommandbridge.h"
+#include "timelinetabscrolling.h"
 
 namespace Unbound {
 class ControlService : public QObject
@@ -27,6 +28,7 @@ public:
         new SurfaceTrace(this);
         new ClipColorProbe(this);
         new KeyboardProbe(this);
+        if(qEnvironmentVariableIntValue("OPENGATE_TIMELINE_TAB_SCROLLING")==1)new TimelineTabScrolling(this);
         new BoundaryDiagnostics(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));

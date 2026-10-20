@@ -18,7 +18,10 @@ Preserve arrangements and native keyboard presets. No merges to main from experi
 - [x] Header controls bounded away from project title; labels/icons/overflow fixtures.
 - [x] Elided outer window-title full tooltip, with stationary controls.
 - [ ] RELEASE BLOCKER: live native/attached/floating header overlap acceptance.
-- [ ] Responsiveness last; bounded measurement before optimization.
+- [ ] Timeline-tab scrolling attempt on feature/macos-timeline-tab-scrolling;
+      supported adapters tested, native custom-strip capability pending.
+- [ ] Responsiveness is LAST, after the timeline-tab scrolling attempt.
+      Bounded measurement before optimization.
 
 Evidence: latest fbfc2a9 input log has Qt::Key_S (83), Qt::Key_W (87),
 modifiers 167772160 (Alt|Shift); prior native binding observations remain empty.
@@ -40,14 +43,14 @@ input. Runtime provider remains disabled pending switch-timing validation.
 Header title acceptance: elide by available pixel width; show full project name
 in a tooltip. Hover must not move, reflow, or animate neighboring controls.
 
-## Lowest priority: timeline tab-strip scrolling
+## Timeline tab-strip scrolling (before responsiveness)
 
 Target is the timeline-name tab row above the timeline ruler, not track or
 playhead scrolling. Investigate a slim horizontal scrollbar plus trackpad/wheel
 support while retaining native left/right overflow arrows, tab close buttons,
 per-tab dropdowns and the + control. Preserve selection, ordering and native
-editing gestures. Feasibility inspection comes after current functional and
-header work; no implementation has been started.
+editing gestures. Feasibility attempt is isolated on feature/macos-timeline-tab-scrolling.
+Responsiveness remains below this item.
 
 ## Candidate checkpoint
 
