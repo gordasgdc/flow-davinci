@@ -4,8 +4,12 @@
 #include <QTemporaryDir>
 #include <QElapsedTimer>
 #include <QThread>
+#include <QProcess>
+#include <QLineEdit>
 #include <cstdio>
 #include "workflowcommandbridge.h"
+#include "workflowcommandmenu.h"
+#include "panelcommands.h"
 int main(int argc,char **argv) {
     QApplication app(argc,argv); QTemporaryDir files; qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());
     int failures=0; auto check=[&](bool ok,const char *why) { if (!ok) { ++failures; std::fprintf(stderr,"FAIL: %s\n",why); } };
@@ -24,5 +28,30 @@ int main(int argc,char **argv) {
     request("unknown.json",json("arbitrary.code",QDateTime::currentMSecsSinceEpoch())); settle();
     check(attempts==2 && accepted==1,"unknown command IDs cannot bypass registry whitelist");
     check(QDir(files.path()+"/command-requests").entryList({"*.json"},QDir::Files).isEmpty(),"all requests are consumed once including rejected requests");
+    {
+        const auto directory=files.path()+"/assigned-key";qputenv("UNBOUND_LAUNCH_DIRECTORY",directory.toUtf8());
+        qputenv("UNBOUND_SHORTCUTS_FILE",(directory+"/Shortcuts.json").toUtf8());
+        QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
+        QMenu native,root(&main);
+        auto action=native.addAction("OpenGate - Show-Hide Source Monitor");action->setObjectName("workspaceWIPlugins_fixture");
+        action->setShortcut(QKeySequence("Alt+Shift+S"));
+        int nativeCalls=0,registryCalls=0;
+        const auto wrapper=QFileInfo(QStringLiteral(__FILE__)).dir().absoluteFilePath("../../../build/macos/workflow-commands/OpenGate - Show-Hide Source Monitor.py");
+        QObject::connect(action,&QAction::triggered,[&] {
+            ++nativeCalls;check(QProcess::execute("python3",{wrapper})==0,"native workflow handler runs the actual generated command script");
+        });
+        Unbound::PanelCommands commands(nullptr);commands.context=[&] { return QApplication::activeWindow()==&main; };
+        commands.add({"panel.toggle.widgetEditSourcePlayer","Show / Hide Source Monitor",[] { return true; },[&] { ++registryCalls; }});
+        Unbound::WorkflowCommandBridge routed(nullptr,directory,[&](QString id) { return commands.invoke(id,"assigned-key-fixture"); });
+        Unbound::WorkflowCommandMenu presentation(nullptr);presentation.wire(&root);
+        main.show();QApplication::setActiveWindow(&main);settle();
+        QKeyEvent key(QEvent::KeyPress,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);QApplication::sendEvent(&main,&key);settle();
+        check(nativeCalls==1 && registryCalls==1,"assigned key reaches native action, generated Python request and command registry exactly once");
+        settle();check(registryCalls==1,"native notification and filesystem fallback cannot double execute an assigned key");
+        QLineEdit typing(&main);typing.show();typing.setFocus();settle();
+        check(QApplication::focusWidget()==&typing,"typing guard fixture owns keyboard focus");
+        QKeyEvent guarded(QEvent::KeyPress,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);QApplication::sendEvent(&typing,&guarded);settle();
+        check(registryCalls==1,"native-assigned OpenGate command cannot run while editing text");
+    }
     std::printf("workflow command failures=%d\n",failures); return failures ? 1 : 0;
 }
