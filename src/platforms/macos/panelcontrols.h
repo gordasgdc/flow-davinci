@@ -1046,6 +1046,7 @@ private:
         snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
         snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
         auto captured=snapshot.json();captured["page"]="edit";
+        const auto previousMode=Unbound::PageWorkspaceState::mode(settings.pageView("edit"));
         QString pageError;
         if(restoringNative) {
             const auto pages=settings.data["page_workspaces"].toObject();
@@ -1054,6 +1055,10 @@ private:
         } else pageError=settings.recordPage("edit",captured);
         const bool success = pageError.isEmpty() && settings.save();
         if(!pageError.isEmpty())Unbound::logEvent("workspace.page-state.failed",{{"page","edit"},{"error",pageError}});
+        if(success && !restoringNative && previousMode!=Unbound::PageWorkspaceState::mode(captured))
+            Unbound::logEvent("workspace.mode.changed",{{"page","edit"},{"before",previousMode},
+                {"mode",Unbound::PageWorkspaceState::mode(captured)},{"preset_loaded",false},
+                {"layout_policy","retain-existing-native-and-managed-surfaces"}});
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
         Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success},{"page","edit"},
             {"layout_mode",Unbound::PageWorkspaceState::mode(captured)},{"selected",snapshot.selected},

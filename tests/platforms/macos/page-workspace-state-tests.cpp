@@ -7,6 +7,12 @@ int main(int argc,char **argv) {
  QCoreApplication app(argc,argv);QTemporaryDir dir;qputenv("UNBOUND_WORKSPACE_FILE",(dir.path()+"/Workspace.json").toUtf8());
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
  QJsonObject edit{{"page","edit"},{"panels",QJsonObject{{"timeline",QJsonObject{{"floating",true},{"x",42}}}}},{"selected_arrangement","edit-id"}};
+ QJsonObject initialNative{{"page","edit"},{"panels",QJsonObject{}}};
+ QJsonObject automatic=initialNative;
+ check(Unbound::PageWorkspaceState::record(automatic,"edit",initialNative).isEmpty(),"initial Native mode records");
+ check(Unbound::PageWorkspaceState::record(automatic,"edit",edit).isEmpty(),"first floating panel automatically records managed mode");
+ const auto automaticView=Unbound::PageWorkspaceState::view(automatic,"edit");
+ check(automaticView["layout_mode"]=="managed" && automaticView["panels"]==edit["panels"] && automaticView["selected_arrangement"]==edit["selected_arrangement"],"automatic flow preserves captured geometry and preset identity without loading a starter");
  QJsonObject root=edit;
  check(Unbound::PageWorkspaceState::record(root,"edit",edit).isEmpty(),"migrate legacy Edit without losing modified geometry");
  auto fusion=QJsonObject{{"page","fusion"},{"groups",QJsonArray{QJsonObject{{"custom",true}}}},{"selected_arrangement","fusion-id"}};

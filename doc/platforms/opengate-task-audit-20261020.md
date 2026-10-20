@@ -338,3 +338,16 @@ page-switch coordinator wiring, per-page persisted selection and Fusion session
 ownership/restoration are still pending. Fusion stays disabled until those exist.
 Reuse Edit interaction/native styling; no mixed-page windows or alternate Fusion UI.
 No new install, main merge, push or publication.
+
+## Automatic workspace mode semantics
+
+`fix/macos-automatic-workspace-mode` verifies and records Native→managed state from
+actual saved panel/group ownership. It retains existing native and managed surfaces,
+geometry and selected preset identity; it never loads the Native Emulator starter
+preset on an undock. Explicit Native return uses the established docking/restoration
+route, preserving the last managed page view. Existing NativeWorkspacePresentation
+keeps surviving native editing content and retires only an empty shell; the shared
+pinned bars follow the existing primary-surface policy. No extra root-layout conversion
+is needed for this transition. Earlier notes calling for a separate Auto root conversion
+are superseded by this retained-layout strategy. Hidden page-state tests pass; live
+transition/bar ownership acceptance remains required. No install or publication.
