@@ -1,3 +1,5 @@
+> Current status: see [the 2026-10-20 task audit](opengate-task-audit-20261020.md). This document retains historical requirements/evidence; old installed-build statements below are not the current installation.
+
 # One shortcut editor
 
 User preference: retain Resolve's existing native assignments and use its native

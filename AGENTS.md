@@ -125,3 +125,13 @@ package, `run-gammaray.cmd`, and page snapshots. See its README for capture step
 Edit's page widget is `WStackPage_Conform`; Color is `WStackPage_Color`, Fairlight
 is `WStackPage_Audio`. Use a fresh Resolve session without Unbound for native
 captures, and verify exports have `truncated: false`.
+
+## Current install-review requirement (2026-10-20)
+
+Before another build/install proposal, read `doc/platforms/opengate-task-audit-20261020.md`
+and update the current acceptance status. Jordan explicitly requested task-list
+review before another installation. During this audit, make no further install,
+live-project changes, merge to main or publication. Fixture passes do not close
+live failures. Do not omit ordinary-launch hotkey behavior or the command submenu
+from the review. Keep responsiveness on hold and the tab-scrolling experiment on
+its separate branch. Record installed/built/pushed/merged/published separately.

@@ -1,77 +1,19 @@
 # Active work
 
-Installed baseline: 92e6e6c. Never replace the running helper or close Resolve.
-Preserve arrangements and native keyboard presets. No merges to main from experiments.
+Read [the current task audit](opengate-task-audit-20261020.md) before resuming code,
+build, installation or release work. It supersedes this file’s earlier stale
+build/status notes and links the historical checklists without treating them as
+live acceptance.
 
-- [x] Isolate native menu mutations implicated in repeated crashes; candidate installed.
-- [x] Verify live Stabilize menu execution and actual Option+Shift S/W Qt key values.
-- [x] Native-preset adapter implemented and fixture-tested (explicit opt-in only).
-- [ ] Live preset save/switch timing, selected-clip Stabilize execution and duplicate
-      routing acceptance. Never claim unsupported native dispatch from absence alone.
-- [x] Fixed Playhead candidate prepares the actual Edit settings menu without display, reads custom-painted captions and dispatches its native row. Ineffective global QAction fallback removed.
-- [ ] Live Fixed Playhead acceptance with timeline hidden, another panel focused, both toggle states and remapped keys. Candidate built on fix/macos-fixed-playhead-native-target; not installed.
-- [x] Workflow menu request deferral implemented; retain valid requests until native popup tracking ends, then claim once.
-- [x] Stabilize visibility-independent API transport implemented on fix/macos-visibility-independent-commands, including native-workflow dispatch and completion logging.
-- [ ] Live Stabilize acceptance: Inspector hidden, selected clips, menu/hotkey, remap, and no-selection behavior. Main merge remains paused.
-- [x] Inspector overflow arrow/hint and scrolling fixture.
-- [ ] Live Inspector appearance/reachability acceptance.
-- [x] GitHub default `main`/OpenGate landing page and release/metadata/history backup.
-- [ ] Permanent fork separation; settings UI unavailable in this session.
-- [x] macOS placement artwork audit: independently drawn OpenGate glyph; MIT retained.
-- [x] Header controls bounded away from project title; labels/icons/overflow fixtures.
-- [x] Elided outer window-title full tooltip, with stationary controls.
-- [ ] RELEASE BLOCKER: live native/attached/floating header overlap acceptance.
-- [ ] Timeline-tab scrolling attempt on feature/macos-timeline-tab-scrolling;
-      supported adapters tested, native custom-strip capability pending.
-- [ ] Responsiveness is LAST, after the timeline-tab scrolling attempt.
-      Bounded measurement before optimization.
+Task-list review is complete; resume implementation from its open items. Further
+install, live-project change, merge to main and publication remain on hold.
 
-Evidence: latest fbfc2a9 input log has Qt::Key_S (83), Qt::Key_W (87),
-modifiers 167772160 (Alt|Shift); prior native binding observations remain empty.
-Fixed Playhead request reaches registry but target matches=0. Bridge acceptance
-is not proof of successful target invocation. Inspector horizontal overflow=33–64px.
+Installed: **541cd25**, combined command candidate, not live accepted. Its installer
+preserved arrangement and keyboard preference hashes. It is a separate feature
+branch; main and the public release remain unchanged.
 
-Fixed Playhead contract: Edit page only; independent of panel focus and clip
-selection. It changes timeline scrolling/presentation, not playback transport.
-Stabilize remains conditional on the applicable selected clip/native target.
-
-Read-only preset audit found native collisions: Alt+Shift+W also maps to
-viewReferenceWipeModeCycle; Alt+Shift+F also maps to
-FairlightTimeline.trimCrossfadeSelection. These require page-aware conflict
-policy, not a blanket global veto or silent override. Alt+Shift+S has no
-same-sequence collision in the persisted active preset. Audit parses all six
-presets, retains alternate bindings and distinguishes absent preset from corrupt
-input. Runtime provider remains disabled pending switch-timing validation.
-
-Header title acceptance: elide by available pixel width; show full project name
-in a tooltip. Hover must not move, reflow, or animate neighboring controls.
-
-## Timeline tab-strip scrolling (before responsiveness)
-
-Target is the timeline-name tab row above the timeline ruler, not track or
-playhead scrolling. Investigate a slim horizontal scrollbar plus trackpad/wheel
-support while retaining native left/right overflow arrows, tab close buttons,
-per-tab dropdowns and the + control. Preserve selection, ordering and native
-editing gestures. Feasibility attempt is isolated on feature/macos-timeline-tab-scrolling.
-Responsiveness remains below this item.
-
-## Candidate checkpoint
-
-Prepared separately: native-preset adapter (explicit opt-in), exact native Edit
-Fixed Playhead lookup and exclusive-style restore, responsive header controls,
-full window-title tooltip, and Inspector horizontal-scroll hints. Passing fixtures
-are not live acceptance. Current installation remains fbfc2a9.
-
-GitHub default branch is now main, based on the accepted prototype plus landing
-page documentation only. Release assets and repository metadata are backed up;
-full-history git bundle verified. Fork detachment is not performed: this session
-has no working settings UI, and metadata loss requires review. One historical
-issue/PR is in the backup. Original MIT notices and Windows source are preserved.
-
-Header acceptance matrix clarified by Jordan's screenshots:
-- Native Edit UI: overlapping native project title and added toolbar callers is
-  the reported defect; validate the bounded controls here first.
-- Native Emulator: current title strip/toolbar separation works; preserve it.
-  Only tighten the far-right Panels pill to fit its title strip.
-- Other saved arrangements and floating surfaces: preserve mounting and selection,
-  verify no duplicate titles/traffic lights and no overlap at narrow widths.
+Most urgent unresolved requirements: live visibility-independent commands,
+normal-launch editable hotkeys, safe command submenu, Native Edit UI header
+collision, arrangement/mounting regressions and page/crash validation. GitHub fork
+separation is still pending. Tab scrolling remains a separate experiment.
+Responsiveness remains on hold and last.
