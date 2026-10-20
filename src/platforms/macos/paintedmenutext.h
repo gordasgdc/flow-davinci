@@ -43,10 +43,13 @@ protected:
     }
 };
 inline QStringList paintedMenuText(QWidget *widget) {
-    if(!widget || widget->width()>2048 || widget->height()>256)return {};
+    if(!widget)return {};
     MenuTextPaintDevice device;
     QPainter painter(&device);
-    widget->render(&painter,QPoint(),QRegion(widget->rect()),QWidget::DrawWindowBackground);
+    // A never-shown native row can retain QWidget's default 640x480 geometry.
+    // Bound the paint region without resizing it or requiring menu layout/show.
+    const QRect region(QPoint(),widget->size().boundedTo(QSize(2048,256)));
+    widget->render(&painter,QPoint(),QRegion(region),QWidget::DrawWindowBackground);
     painter.end();
     return device.engine.text;
 }
