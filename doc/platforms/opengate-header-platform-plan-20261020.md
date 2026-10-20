@@ -97,3 +97,26 @@ Fusion is an extension of the established Edit behavior, not a new interaction m
 Future only: panels may eventually be called across pages. That requires explicit
 source-page lifecycle, rendering and ownership support; do not weaken current page
 isolation to simulate it.
+
+## Shared header/footer across pages
+
+The pinned header and footer are shared workspace infrastructure, not Edit-only or
+separately invented Fusion controls. Reuse Resolve's native page semantics.
+
+- The reserved top band presents the active page's native workspace controls. On
+  Fusion, discover and use Fusion's controls/panels through the same header controller;
+  do not retain Edit controls or introduce a separate Fusion header design.
+- Header Show/Hide remains discoverable through Panels and existing synchronized
+  command/menu entry points. Preserve the established visibility/pinning policy across
+  page changes; page departure alone is not a user hide or rearrangement operation.
+- The complete native footer and its page switcher work across supported pages,
+  including navigation into and out of Fusion. Retain Home, Project Settings and native
+  actions/signals. Do not replace native navigation with a custom page model.
+- Footer Show/Hide and per-surface placement use the existing shared owner and stay
+  synchronized with Resolve's native visibility command and other entry points.
+- Panels remains reachable when either band is hidden. Page switches must safely
+  release/rebind native controls, preserve reserved space and avoid duplicate bars,
+  stale Edit actions, clipped controls or layout contamination between pages.
+- Verify Edit → Fusion → Edit, hidden/shown bands, saved arrangement restoration and
+  repeated switching. Keep Fusion-specific discovery/adapters on its functional
+  branches; shared controller changes remain separately reviewable dependencies.
