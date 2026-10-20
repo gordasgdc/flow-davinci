@@ -73,11 +73,12 @@ int main(int argc,char **argv) {
         if (footerAction) footerAction->trigger();
         check(waitFor([&] { return !footer->isVisible(); }),"menu hides the pinned footer without docking it");
         click("hide_frameEditPageMediaPool"); click("show_widgetEditSourcePlayer"); settle(550);
+        const auto inspectorSurfaceName=panes[0]->window()->objectName();
         delete controls; controls=nullptr;
         const auto saved=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
         const auto footerState=saved["footer"].toObject();
         check(!footerState["floating"].toBool()&&footerState["hidden"].toBool()&&footerState["model"]=="surface-v1"&&
-            footerState["surfaces"].toObject()[panes[0]->window()->objectName()].toBool()==!attached,
+            footerState["surfaces"].toObject()[inspectorSurfaceName].toBool()==!attached,
             "last view records global visibility and independent surface pin choices");
         check(saved["groups"].toArray().size()==1 && !saved["selected_arrangement"].toString().isEmpty(),"last view saved independently of selected preset contents");
         QFile expected(expectedPath); check(expected.open(QIODevice::WriteOnly),"open cross-process expectation"); expected.write(QJsonDocument(saved).toJson());

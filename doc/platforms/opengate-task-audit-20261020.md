@@ -199,3 +199,14 @@ main/secondary visibility, migration and hotkey fixtures pass. Displayed group
 and cross-process restart fixtures compile, but cannot run while Resolve is
 open. Build and save the isolated branch; do not install or publish from fixture
 results alone. Current installed runtime remains ca505c1.
+
+## Authorized footer installation review
+
+Jordan explicitly requested installation after the completed pinned-footer build.
+Resolve is closed. Displayed group validation exposed a null QWidget event-filter
+comparison when the native footer is absent; the guard now requires a real widget.
+The group suite passes with that fix. Cross-process restart passes both placements;
+its assertion now captures the surface identity before teardown restores native panes.
+The group fixture explicitly shows its dynamically added native page button.
+Rebuild and backed-up installation follow; hotkey mappings remain untouched.
+Live footer acceptance, main merge and release remain pending.

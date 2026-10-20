@@ -151,7 +151,7 @@ int main(int argc, char **argv)
         auto nativeFooter = new QWidget(&main); nativeFooter->setObjectName("m_PageSwitcherContainer");
         (new QHBoxLayout(nativeFooter))->addWidget(new QLabel("Native page buttons", nativeFooter));
         layout->addWidget(nativeFooter); main.show(); settle();
-        auto pageButton=new QPushButton("Edit",nativeFooter);pageButton->setObjectName("buttonConformPanel");nativeFooter->layout()->addWidget(pageButton);
+        auto pageButton=new QPushButton("Edit",nativeFooter);pageButton->setObjectName("buttonConformPanel");nativeFooter->layout()->addWidget(pageButton);pageButton->show();settle();
         Unbound::FooterPanel footer(nullptr,[&] {return &main;},{});footer.wireMenu();
         check(nativeFooter->window()==&main,"surface footer keeps native page navigation in its original window");
         check(nativeFooter->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"native slot receives an adaptive page strip");

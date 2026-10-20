@@ -71,7 +71,7 @@ protected:
         const auto type=event->type();
         if(type==QEvent::Show || type==QEvent::Hide || type==QEvent::Resize || type==QEvent::LayoutRequest) {
             auto widget=qobject_cast<QWidget *>(object);
-            if(widget==nativeFooter && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
+            if(widget && widget==nativeFooter && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
                 shown=!nativeFooter->isHidden();publish();
             }
             if(widget && (widget==nativeFooter || widget->objectName()=="m_PageSwitcherContainer" || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
