@@ -20,6 +20,27 @@ int main(int argc,char **argv){
   check(adapter.supported()&&scroll&&scroll->maximum()>0,"overflowing Qt tabs gain scrollbar");
   const int leftBefore=tabs.tabRect(0).left();scroll->setValue(scroll->maximum());settle();
   check(tabs.tabRect(0).left()<leftBefore&&tabs.currentIndex()==selected,"scrollbar moves tabs without selecting another timeline");
+  scroll->setValue(0);settle();scroll->setSliderDown(true);
+  int previous=qMax(0,-tabs.tabRect(0).left());
+  for(int target=0;target<=qMin(scroll->maximum(),900);target+=11){
+   scroll->setValue(target);settle();const int actual=qMax(0,-tabs.tabRect(0).left());
+   check(actual>=previous,"increasing drag targets cannot oscillate backwards between native stops");previous=actual;
+  }
+  scroll->setSliderDown(false);settle();
+  scroll->setSliderDown(true);
+  previous=qMax(0,-tabs.tabRect(0).left());
+  for(int target=scroll->value();target>=0;target-=11){
+   scroll->setValue(target);settle();const int actual=qMax(0,-tabs.tabRect(0).left());
+   check(actual<=previous,"decreasing drag targets cannot oscillate forwards between native stops");previous=actual;
+  }
+  scroll->setSliderDown(false);scroll->setValue(0);settle();
+  for(int i=0;i<30;++i){
+   QWheelEvent small(QPointF(100,10),QPointF(100,10),QPoint(-8,0),QPoint(),Qt::NoButton,Qt::NoModifier,i?Qt::ScrollUpdate:Qt::ScrollBegin,false);
+   QApplication::sendEvent(&tabs,&small);settle();
+  }
+  check(tabs.tabRect(0).left()<0&&tabs.currentIndex()==selected,"small trackpad deltas accumulate instead of being lost at native stops");
+  QWheelEvent end(QPointF(100,10),QPointF(100,10),QPoint(),QPoint(),Qt::NoButton,Qt::NoModifier,Qt::ScrollEnd,false);
+  QApplication::sendEvent(&tabs,&end);settle();
   QWheelEvent wheel(QPointF(100,10),QPointF(100,10),QPoint(120,0),QPoint(),Qt::NoButton,Qt::NoModifier,Qt::ScrollUpdate,false);
   QApplication::sendEvent(&tabs,&wheel);settle();check(tabs.currentIndex()==selected,"trackpad scroll preserves selection");
   for(auto button:tabs.findChildren<QToolButton *>())if(button->arrowType()==Qt::LeftArrow&&button->isEnabled()){button->click();settle();break;}
