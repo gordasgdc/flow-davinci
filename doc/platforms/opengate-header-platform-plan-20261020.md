@@ -135,3 +135,25 @@ Target a live-testable candidate this evening, not an unverified cross-platform
 stability claim. 0.0.2 packaging follows live acceptance. Older macOS/Intel hardware
 and Windows require their own build/runtime evidence; universal binaries alone do
 not establish support. Keep unfinished Fusion functionality out of release claims.
+
+## Confirmed page behavior: Native UI and Native Emulator
+
+Jordan confirmed behavioral consistency with Edit as the requirement:
+
+- Fusion has its own Native Fusion UI and Native Emulator, using the existing
+  arrangement/session architecture rather than a new workflow.
+- Fusion panels can be rearranged and their arrangements saved/restored through
+  the same functions and interaction patterns as Edit.
+- Each page independently retains its last active Native/custom mode, selected
+  arrangement and last modified layout in memory and through session persistence.
+- Example: leave a custom Fusion arrangement for Native Edit UI. Returning to Fusion
+  restores that Fusion arrangement; returning to Edit restores Edit's remembered
+  Native UI. Changing either page must not replace the other's mode or layout.
+- Restart restores each page's last state through the established last-view
+  persistence mechanism, including unsaved modifications independently of a preset.
+- Apply the shared header/footer, Panels, window/command and source ownership rules
+  above. No mixed-page panels in this pass. Functional Fusion branches remain
+  separately reviewable and follow the existing arrangement fixes in priority.
+
+Working cadence: report verified progress and unresolved issues, then continue the
+next authorized task. A status update is not a request to pause implementation.
