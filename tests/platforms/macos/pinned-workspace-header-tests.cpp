@@ -13,7 +13,8 @@ int main(int argc,char **argv){
  auto settle=[] {QElapsedTimer t;t.start();while(t.elapsed()<150){QApplication::processEvents();QThread::msleep(1);}};
  const auto oldTree=Unbound::splitGroupTree({{"panel","unboundWorkspaceToolbar"}},{{"panel","timeline"}},Qt::Vertical);
  QJsonObject oldGroup{{"tree",oldTree},{"panels",QJsonArray{"unboundWorkspaceToolbar","timeline"}},{"x",40},{"y",80},{"width",900},{"height",600}};
- auto migrated=Unbound::migrateWorkspaceHeader({{"custom-field",42},{"groups",QJsonArray{oldGroup}},{"panels",QJsonObject{{"unboundWorkspaceToolbar",QJsonObject{{"floating",true},{"hidden",true}}},{"timeline",QJsonObject{{"pinned",true}}}}}});
+ auto migrated=Unbound::migrateWorkspaceHeader({{"custom-field",42},{"footer",QJsonObject{{"surfaces",QJsonObject{{"unboundFloating_group_timeline_unboundWorkspaceToolbar",false}}}}},{"groups",QJsonArray{oldGroup}},{"panels",QJsonObject{{"unboundWorkspaceToolbar",QJsonObject{{"floating",true},{"hidden",true}}},{"timeline",QJsonObject{{"pinned",true}}}}}});
+ check(migrated["footer"].toObject()["surfaces"].toObject().contains("unboundFloating_timeline")&&!migrated["footer"].toObject()["surfaces"].toObject()["unboundFloating_timeline"].toBool(),"footer unpin choice follows a renamed legacy surface");
  check(migrated["custom-field"]==42&&migrated["groups"].toArray().isEmpty(),"legacy toolbar group migrates without discarding unknown settings");
  check(!migrated["header"].toObject()["visible"].toBool()&&migrated["panels"].toObject()["timeline"].toObject()["pinned"].toBool()&&migrated["panels"].toObject()["timeline"].toObject()["width"]==900,"migration retains hidden header choice and remaining surface frame");
  QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);auto outer=new QVBoxLayout(&main);auto page=new QWidget(&main);outer->addWidget(page);auto native=outer;
