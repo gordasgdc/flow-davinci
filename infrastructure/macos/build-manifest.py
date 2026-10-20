@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Record only feature tips actually contained in this build's Git ancestry."""
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -19,6 +20,8 @@ if lock.exists():
         features.append(item)
 manifest = {'schema': 1, 'product': 'OpenGate', 'vendor': 'CineWaltz', 'foundation': 'Unbound by Wolfgang Woehl (MIT)', 'branch': git('branch', '--show-current'), 'commit': git('rev-parse', 'HEAD'),
             'dirty': bool(git('status', '--porcelain')), 'features': features,
+            'macos_deployment_target': os.getenv('OPENGATE_MACOS_DEPLOYMENT_TARGET', 'unspecified'),
+            'macos_architectures': os.getenv('OPENGATE_MACOS_ARCHS', 'host-default'),
             'meaning': 'Included means present in source ancestry, not acceptance-tested or complete.'}
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 payload = json.dumps(manifest, separators=(',', ':'))

@@ -210,3 +210,11 @@ its assertion now captures the surface identity before teardown restores native 
 The group fixture explicitly shows its dynamically added native page button.
 Rebuild and backed-up installation follow; hotkey mappings remain untouched.
 Live footer acceptance, main merge and release remain pending.
+
+## Compatibility research branch
+
+research/macos-platform-compatibility builds the helper, bootstrap and Swift launcher
+for macOS 11.0 with arm64 and x86_64 slices. Binary/architecture/plist/signature audit
+and current-host self-tests pass. Older-OS, Intel-hardware and Windows feature parity
+are not verified. Installed 091268b is unchanged; public packaging remains unchanged.
+See opengate-platform-compatibility-20261020.md for selective upstream module analysis.
