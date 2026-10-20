@@ -55,21 +55,27 @@ public:
         return true;
     }
     bool stabilize() {
-        QSet<QAbstractButton *> matches;
-        if (ready()) for (auto top:QApplication::topLevelWidgets()) for (auto button:top->findChildren<QAbstractButton *>()) {
-            if (!button->isVisible() || (label(button->text())!="Stabilize" && button->objectName()!="btnStabilize")) continue;
-            bool inspector=false;
-            for (auto parent=button->parentWidget();parent;parent=parent->parentWidget()) inspector |= parent->objectName()=="widgetEditInspector";
-            if (inspector) matches.insert(button);
+        if(!ready())return unavailable("stabilize",0,"Stabilize requires the Edit page.");
+        QString directory="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins";
+#ifdef UNBOUND_NATIVE_TESTS
+        directory=qEnvironmentVariable("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",directory);
+#endif
+        QFile script(directory+"/OpenGate - Edit - Stabilize.py");
+        if(!script.open(QIODevice::ReadOnly) || !script.read(8192).contains("# opengate-command-route: selected-timeline-api-v1"))
+            return unavailable("stabilize",0,"The matching selected-clip Stabilize script must be installed with this helper; no legacy button fallback was used.");
+        QSet<QAction *> matches;
+        for(auto widget:QApplication::allWidgets()) {
+            auto actions=widget->actions();actions.append(widget->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly));
+            for(auto action:actions)
+                if(action->objectName().startsWith("workspaceWIPlugins_") && label(action->text())=="OpenGate - Edit - Stabilize")matches.insert(action);
         }
-        if (matches.size()!=1 || !(*matches.begin())->isEnabled()) {
-            inspectStabilizationControls();
-            return unavailable("stabilize",matches.size(),"Show the Inspector Stabilization section for a video clip; its native Stabilize button must be enabled.");
-        }
-        auto button=*matches.begin();
-        logEvent("command.edit-target.invoke",{{"command","stabilize"},{"object",button->objectName()},{"method","native-button-click"}});
-        button->click();
-        logEvent("command.edit-target.result",{{"command","stabilize"},{"success",true},{"completion","native-button-invoked"}});
+        if(matches.size()!=1 || !(*matches.begin())->isEnabled())
+            return unavailable("stabilize",matches.size(),"Resolve's native OpenGate Stabilize workflow command is unavailable or ambiguous.");
+        auto action=*matches.begin();
+        logEvent("command.edit-target.invoke",{{"command","stabilize"},{"object",action->objectName()},{"method","native-workflow-selected-timeline-api"}});
+        action->trigger();
+        // Completion comes from the API script, not from a Qt checked flag or
+        // merely observing that QAction::trigger() returned.
         return true;
     }
 private:

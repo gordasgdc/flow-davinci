@@ -8,6 +8,7 @@
 #include <QThread>
 #include <cstdio>
 #include "panelcommandcatalog.h"
+#include "nativeeditcommands.h"
 static QByteArray preset(const QList<QPair<QString,QList<QKeySequence>>> &rows,const QString &name="Active") {
     QByteArray inner;QDataStream i(&inner,QIODevice::WriteOnly);i.setVersion(QDataStream::Qt_5_15);
     i<<quint32(1)<<quint32(rows.size());for(const auto &row:rows){i<<row.first<<quint32(row.second.size());for(const auto &key:row.second)i<<key;}i<<QString("DaVinci Resolve");
@@ -34,7 +35,11 @@ int main(int argc,char **argv){
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
  QWidget edit(&main);edit.setObjectName("WStackPage_Conform");edit.show();main.show();QApplication::setActiveWindow(&main);QApplication::processEvents();
  int calls=0;Unbound::PanelCommandCatalog commands(&main,[]{return true;});
- commands.add({"edit.inspector.stabilize","Edit Inspector / Stabilize",[]{return true;},[&]{++calls;}});
+ qputenv("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",dir.path().toUtf8());
+ save("OpenGate - Edit - Stabilize.py","# opengate-command-route: selected-timeline-api-v1\n");
+ QMenu workflow(&main);auto nativeAction=workflow.addAction(stabilize);nativeAction->setObjectName("workspaceWIPlugins_fixture");
+ QObject::connect(nativeAction,&QAction::triggered,[&] {++calls;});
+ Unbound::NativeEditCommands editCommands(&main,[&] {return &edit;});editCommands.addTo(&commands);
  auto press=[&](QWidget *receiver,int key,Qt::KeyboardModifiers mods){QKeyEvent over(QEvent::ShortcutOverride,key,mods);QApplication::sendEvent(receiver,&over);QKeyEvent down(QEvent::KeyPress,key,mods);QApplication::sendEvent(receiver,&down);QApplication::processEvents();};
  press(&main,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==1,"persisted assignment executes registry once");
  press(&main,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"alternate binding executes");
@@ -48,11 +53,15 @@ int main(int argc,char **argv){
  auto settle=[] {QElapsedTimer timer;timer.start();while(timer.elapsed()<1500){QApplication::processEvents();QThread::msleep(1);}};
  save("keyboard.preset.xml",preset({{stabilize,{t}}}));settle();
  check(watched.snapshot().commands.value(stabilize)==QList<QKeySequence>{t},"atomic assignment replacement reloads");
+ press(&floating,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==3,"removed assignment no longer reaches the native API route");
+ press(&floating,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==4,"remapped key reaches actual Stabilize workflow route without Inspector");
  save("config.user.xml","<Config><CustomKeyboardPreset>Different</CustomKeyboardPreset></Config>");settle();
  check(!watched.snapshot().present&&watched.snapshot().commands.isEmpty(),"preset switch clears prior assignment");
+ press(&floating,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==4,"switching preset cannot retain previous native command binding");
  save("config.user.xml",config);save("keyboard.preset.xml","broken");settle();
  check(!watched.snapshot().error.isEmpty()&&watched.snapshot().commands.isEmpty(),"bad rewrite cannot retain stale assignments");
  save("keyboard.preset.xml",preset({{stabilize,{t}}}));settle();
  check(watched.snapshot().error.isEmpty()&&watched.snapshot().commands.value(stabilize)==QList<QKeySequence>{t},"watch survives atomic replacements and parse recovery");
+ press(&floating,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==5,"restored preset dispatches native API route exactly once after recovery");
  std::printf("native preset failures=%d\n",failures);return failures?1:0;
 }

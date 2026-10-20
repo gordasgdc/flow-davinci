@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json,os,runpy,subprocess,tempfile,sys
+from types import SimpleNamespace as Obj
 from pathlib import Path
 root=Path(__file__).resolve().parents[3]
 subprocess.run(['python3',str(root/'infrastructure/macos/build-workflow-commands.py')],check=True)
@@ -9,11 +10,20 @@ assert len({entry['command'] for entry in manifest})==len(manifest)==30
 with tempfile.TemporaryDirectory() as directory:
     old=os.environ.get('UNBOUND_LAUNCH_DIRECTORY'); os.environ['UNBOUND_LAUNCH_DIRECTORY']=directory
     try:
+        calls=[]
+        clip=Obj(GetTrackTypeAndIndex=lambda:['video',1],Stabilize=lambda:calls.append('stabilize') or True)
+        timeline=Obj(GetSelectedClips=lambda:[clip])
+        project=Obj(GetCurrentTimeline=lambda:timeline)
+        resolve=Obj(GetCurrentPage=lambda:'edit',GetProjectManager=lambda:Obj(GetCurrentProject=lambda:project))
         for entry in manifest:
-            runpy.run_path(str(output/entry['file']))
+            runpy.run_path(str(output/entry['file']),init_globals={'resolve':resolve})
         requests=list((Path(directory)/'command-requests').glob('*.json'))
-        assert len(requests)==30
-        assert {json.loads(p.read_text())['command'] for p in requests}=={e['command'] for e in manifest}
+        assert len(requests)==29
+        assert {json.loads(p.read_text())['command'] for p in requests}=={e['command'] for e in manifest if e['command']!='edit.inspector.stabilize'}
+        results=list((Path(directory)/'command-results').glob('*.json'))
+        assert calls==['stabilize'] and len(results)==1
+        result=json.loads(results[0].read_text())
+        assert result['success'] and result['completed']==1 and result['command']=='edit.inspector.stabilize'
         assert not list((Path(directory)/'command-requests').glob('*.tmp'))
         # Resolve's embedded Python may lack the optional ctypes extension.
         # The request must still be published for the filesystem wake-up path.
@@ -25,8 +35,15 @@ with tempfile.TemporaryDirectory() as directory:
             if had_ctypes:sys.modules['ctypes']=original_ctypes
             else:sys.modules.pop('ctypes',None)
         fallback=list((Path(directory)/'command-requests').glob('*.json'))
-        assert len(fallback)==31
+        assert len(fallback)==30
+        stabilize=next(e for e in manifest if e['command']=='edit.inspector.stabilize')
+        # No initialized Resolve context fails explicitly; it cannot fall back to
+        # a legacy registry request or to the clip underneath the playhead.
+        runpy.run_path(str(output/stabilize['file']))
+        results=[json.loads(p.read_text()) for p in (Path(directory)/'command-results').glob('*.json')]
+        assert len(results)==2 and any(r.get('reason')=='resolve-context-unavailable' for r in results)
+        assert len(list((Path(directory)/'command-requests').glob('*.json')))==30
     finally:
         if old is None: os.environ.pop('UNBOUND_LAUNCH_DIRECTORY',None)
         else: os.environ['UNBOUND_LAUNCH_DIRECTORY']=old
-print('PASS: 30 native-workflow command wrappers create isolated atomic requests with exact registry IDs')
+print('PASS: 29 atomic workflow requests and one direct selected-clip API command, without recursive requests')

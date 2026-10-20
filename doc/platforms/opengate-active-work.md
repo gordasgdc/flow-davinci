@@ -11,7 +11,8 @@ Preserve arrangements and native keyboard presets. No merges to main from experi
 - [x] Fixed Playhead candidate prepares the actual Edit settings menu without display, reads custom-painted captions and dispatches its native row. Ineffective global QAction fallback removed.
 - [ ] Live Fixed Playhead acceptance with timeline hidden, another panel focused, both toggle states and remapped keys. Candidate built on fix/macos-fixed-playhead-native-target; not installed.
 - [x] Workflow menu request deferral implemented; retain valid requests until native popup tracking ends, then claim once.
-- [ ] Stabilize visibility-independent API transport: separate branch, not merged. Main merge remains paused.
+- [x] Stabilize visibility-independent API transport implemented on fix/macos-visibility-independent-commands, including native-workflow dispatch and completion logging.
+- [ ] Live Stabilize acceptance: Inspector hidden, selected clips, menu/hotkey, remap, and no-selection behavior. Main merge remains paused.
 - [x] Inspector overflow arrow/hint and scrolling fixture.
 - [ ] Live Inspector appearance/reachability acceptance.
 - [x] GitHub default `main`/OpenGate landing page and release/metadata/history backup.
