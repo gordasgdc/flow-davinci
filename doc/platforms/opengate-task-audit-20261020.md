@@ -224,3 +224,11 @@ Resolve is running, so displayed combined suites remain deferred. Automatic full
 Native Emulator transition is not claimed complete; current header follows existing
 primary surfaces without loading a starter preset. Native styling and compatibility
 follow on isolated branches. No installation, main merge or publication.
+
+## Compatibility research branch
+
+research/macos-platform-compatibility builds the helper, bootstrap and Swift launcher
+for macOS 11.0 with arm64 and x86_64 slices. Binary/architecture/plist/signature audit
+and current-host self-tests pass. Older-OS, Intel-hardware and Windows feature parity
+are not verified. Installed 091268b is unchanged; public packaging remains unchanged.
+See opengate-platform-compatibility-20261020.md for selective upstream module analysis.
