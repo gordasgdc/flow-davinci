@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QPushButton>
+#include <QLineEdit>
 #include <QVBoxLayout>
 #include <QTemporaryDir>
 #include <cstdio>
@@ -33,6 +34,14 @@ int main(int argc,char **argv) {
     QMenu timeline; timeline.addAction("Display Stacked Timelines"); auto fixed=timeline.addAction("Fixed Playhead"); fixed->setCheckable(true);
     check(commands.fixedPlayhead() && fixed->isChecked() && !wrong->isChecked(),"only native Timeline Options action is toggled");
     check(commands.fixedPlayhead() && !fixed->isChecked(),"second command reverses the same native state");
+    // No selected clip or timeline focus is necessary for presentation toggling.
+    stabilize->setEnabled(false);
+    QLineEdit inspectorFocus(inspector);inspectorFocus.show();inspectorFocus.setFocus();QApplication::processEvents();
+    check(commands.fixedPlayhead() && fixed->isChecked(),"Inspector focus and unavailable clip target do not block fixed playhead");
+    check(commands.fixedPlayhead() && !fixed->isChecked(),"fixed playhead restores state independent of clip selection");
+    page.hide();QApplication::processEvents();
+    check(!commands.fixedPlayhead() && !fixed->isChecked(),"leaving Edit cannot toggle the timeline presentation");
+    page.show();QApplication::processEvents();
     fixed->setEnabled(false); check(!commands.fixedPlayhead() && !fixed->isChecked(),"disabled timeline action is respected");
     timeline.removeAction(fixed);
     QWidget preferences; preferences.setObjectName("btnEditToolbarPreferences");
