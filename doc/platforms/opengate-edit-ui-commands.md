@@ -1,22 +1,15 @@
-# Edit UI command candidates
+# Edit command candidate: visibility-independent Fixed Playhead
 
-Two assignable commands are added to Workspace UI → OpenGate Panel Shortcuts:
+Fixed Playhead runs only on the active Edit page, regardless of timeline panel visibility, focus or clip selection. `PanelControls` supplies active-page identity separately from native panel visibility.
 
-- Edit Timeline / Toggle Fixed Playhead
-- Edit Inspector / Stabilize
+The candidate prepares Timeline View Options using the native `UiMenuButton::MenuAboutToShow()` Qt signal, which the installed native library emits before reading its menu and entering popup display. It does not send mouse input, show the menu, move focus or require a native shortcut assignment. It identifies the real Edit settings row by caption. Custom-painted captions are read through Qt's public QWidget rendering and QPaintEngine text callbacks into a bounded text-only device, without reading object memory or invoking binary addresses. It then triggers the native row's QAction. Ambiguous, disabled or absent targets fail closed.
 
-These are OpenGate bindings, not registration in Resolve's native keyboard editor.
-No default key mappings are assigned. They dispatch the real native QAction or
-QAbstractButton click signal, respecting enabled state and active Edit page.
-Ambiguous targets are refused and every invocation/unavailability is diagnosed.
+The prior `viewTimelineScrollingFixed` fallback is removed: its Qt checkmark changed in logs without proving Edit scrolling changed. No success claim is based on that checkmark.
 
-Fixed Playhead requires Resolve's Timeline View Options menu to have been created
-(open it once if the command reports unavailable). Only a menu also containing
-Display Stacked Timelines qualifies. Stabilize requires an enabled, visible
-Stabilize button beneath widgetEditInspector; reveal its native section for the
-selected video clip. It does not auto-select footage or synthesize analysis.
+The isolated fixture passes both handler states with page, menu and custom-painted row hidden; it checks no focus change, rejection of another caption, rejection outside Edit and refusal of the unrelated global QAction. This validates the adapter, not the actual Resolve backend. Native preparation, caption extraction and real playback mode still require live acceptance in a fresh candidate session.
 
-Fixtures verify signal dispatch, native toggle state, disabled/inactive handling,
-wrong-menu rejection and ambiguity. Native control discovery still requires live
-Resolve acceptance. The bounded investigation did not establish invocation while
-these lazy native controls have never been constructed or remain hidden.
+Stabilize now dispatches the original native Workflow Integration action by stable command label, independent of its numeric menu position and Inspector widgets. The generated script runs `GetCurrentTimeline().GetSelectedClips()` and `TimelineItem.Stabilize()` on selected video items in Edit. Empty/audio-only selection and absence of a current timeline fail explicitly; no playhead or media-pool substitute is used. Both menu and hotkey enter this script. The native helper refuses an older request-posting script to prevent recursive dispatch.
+
+The script publishes a bounded atomic completion result. A read-only result watcher logs the API result, attempted count and completed count. Dispatch acceptance is not recorded as completed analysis. No external scripting preference or additional shortcut store is required. The existing native-preset adapter still supplies editable bindings; it remains opt-in for this acceptance candidate.
+
+Fixtures cover hidden Inspector routing, changing native menu positions, disabled/ambiguous actions, absent/legacy wrappers, selected video/audio filtering and API failures, real wrapper execution with fake API objects, remap/preset-switch routing, and completion consumption without replay. Actual Resolve script-host invocation and analysis still need live acceptance.

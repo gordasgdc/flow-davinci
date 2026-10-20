@@ -30,6 +30,9 @@ static void settleFor(int milliseconds)
 
 int main(int argc, char **argv)
 {
+    // This suite exercises the legacy default-key contract. Do not read the
+    // developer's real Resolve preset; native-preset behavior has its own suite.
+    qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS","0");
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
     QTemporaryDir logs;
@@ -38,6 +41,63 @@ int main(int argc, char **argv)
     qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
     const auto presetPath = (logs.path() + QStringLiteral("/Arrangements.json")).toUtf8();
     qputenv("UNBOUND_ARRANGEMENTS_FILE", presetPath);
+    for (const auto &name : {"frameEditPageMediaPool", "frameEditPageEditIndex", "frameEditPageEffectsLibrary",
+                            "frameEditPageMetadata", "frameEditAudioMeter", "frameEditPageSoundLibrary", "frameEditPageKeyframeEditor"}) {
+        QWidget main; auto outer=new QVBoxLayout(&main);
+        auto page=new QWidget(&main); outer->addWidget(page); auto layout=new QVBoxLayout(page);
+        auto slot=new QWidget(page); slot->setObjectName(name); slot->setMinimumWidth(760);
+        auto native=new QHBoxLayout(slot); auto left=new QPushButton("Left",slot); auto right=new QPushButton("Right",slot);
+        native->addWidget(left); native->addStretch(); native->addWidget(right); layout->addWidget(slot);
+        main.resize(1000,500); main.show(); settle();
+        const auto minimum=slot->minimumSize(); const auto policy=slot->sizePolicy();
+        Unbound::MacPanelSession session;
+        check(session.undockContents(slot,page,name).isEmpty(),"every multipart sidebar can detach with overflow");
+        session.window()->resize(320,400); settle(); settle();
+        auto scroll=session.window()->findChild<QScrollArea *>();
+        check(scroll && scroll->horizontalScrollBar()->maximum()>0 && session.window()->width()==320,
+            "multipart sidebar viewport stays narrow without shrinking native controls");
+        if (scroll) {
+            scroll->horizontalScrollBar()->setValue(scroll->horizontalScrollBar()->maximum()); settle();
+            check(scroll->viewport()->rect().contains(right->mapTo(scroll->viewport(),right->rect().center())),
+                "last native sidebar control is reachable by scrolling");
+            const auto offset=scroll->horizontalScrollBar()->value();
+            page->hide(); settle(); page->show(); settle(); settle();
+            check(scroll->horizontalScrollBar()->value()==offset && scroll->widget()==right->parentWidget(),
+                "page return retains the same controls and overflow position");
+        }
+        check(session.dock().isEmpty() && slot->layout()==native && right->parentWidget()==slot &&
+            slot->minimumSize()==minimum && slot->sizePolicy()==policy,
+            "each multipart sidebar restores its exact native layout and constraints");
+        settle();
+    }
+    {
+        QWidget main; auto outer=new QVBoxLayout(&main);
+        auto page=new QWidget(&main); outer->addWidget(page); auto layout=new QVBoxLayout(page);
+        auto pool=new QWidget(page); pool->setObjectName("frameEditPageMediaPool");
+        auto controls=new QHBoxLayout(pool);
+        auto first=new QPushButton("First native control",pool);
+        auto last=new QPushButton("Last native control",pool);
+        controls->addWidget(first); controls->addStretch(); controls->addWidget(last);
+        pool->setMinimumWidth(760); layout->addWidget(pool);
+        main.resize(1000,500); main.show(); settle();
+        const auto minimum=pool->minimumSize(); const auto policy=pool->sizePolicy();
+        Unbound::MacPanelSession session;
+        check(session.undock(pool,page,"Media Pool").isEmpty(),"Media Pool overflow detaches");
+        session.window()->resize(320,400); settle(); settle();
+        auto scroll=session.window()->findChild<QScrollArea *>("unboundPanelOverflow_frameEditPageMediaPool");
+        check(scroll && scroll->horizontalScrollBar()->maximum()>0 && session.window()->width()==320,
+            "narrow Media Pool has horizontal scrolling instead of compressing native controls");
+        check(pool->minimumSize()==minimum && pool->sizePolicy()==policy,
+            "Media Pool overflow preserves native minimum and size policy");
+        if (scroll) {
+            scroll->horizontalScrollBar()->setValue(scroll->horizontalScrollBar()->maximum()); settle();
+            const auto target=last->mapTo(scroll->viewport(),last->rect().center());
+            check(scroll->viewport()->rect().contains(target),"scrolling reaches the last native Media Pool control");
+        }
+        check(session.dock().isEmpty() && pool->parentWidget()==page && pool->minimumSize()==minimum && pool->sizePolicy()==policy,
+            "Media Pool docking restores native ownership and constraints");
+        settle();
+    }
     {
         QWidget slot; slot.setMinimumSize(700,400); slot.setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Preferred);
         const auto minimum=slot.minimumSize(); const auto policy=slot.sizePolicy(); const bool hidden=slot.isHidden();
@@ -705,7 +765,8 @@ int main(int argc, char **argv)
             check(session.undockContents(slot, &page, "Index").isEmpty(), "multipart sidebar detaches");
             auto host = session.window(); settle();
             check(slot->isHidden(), "transferred content leaves a hidden native container rather than a duplicate blank surface");
-            check(slot->parentWidget() == &page && header->parentWidget() == host && content->parentWidget() == host,
+            auto viewport=host->findChild<QScrollArea *>();
+            check(slot->parentWidget() == &page && viewport && header->parentWidget() == viewport->widget() && content->parentWidget() == viewport->widget(),
                 "native slot stays while all panel parts move together");
             const int flags = Unbound::nativeChromeFlags(host);
             check(chrome == Unbound::WindowChrome::Hidden ? !(flags & 1) : bool(flags & 1), "native title style matches option");

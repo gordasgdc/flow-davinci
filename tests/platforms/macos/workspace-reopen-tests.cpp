@@ -61,14 +61,14 @@ int main(int argc,char **argv) {
         panes[1]->window()->setGeometry(100,160,760,440);
         auto inspector=dynamic_cast<Unbound::MacFloatingHost *>(panes[0]->window());
         if (inspector) { inspector->setGeometry(220,170,450,500); inspector->setPinned(true); }
-        check(panes[1]->isAncestorOf(footer),"Timeline initially carries Page Navigation without a second window");
+        check((panes[1]->window()==footer->window()),"workspace host initially carries Page Navigation without a second window");
         if (!attached) click("floatPageNavigation");
         check(waitFor([&] { return footer->window()!=&main; }),"Page Navigation leaves the native background before saving");
         if (auto host=dynamic_cast<Unbound::MacFloatingHost *>(footer->window())) {
             if (!attached) host->setGeometry(120,110,700,host->height());
             host->setPinned(true);
         } else check(false,"footer has a native floating owner");
-        check(attached ? panes[1]->isAncestorOf(footer) : !panes[1]->isAncestorOf(footer),
+        check(attached ? (panes[1]->window()==footer->window()) : !(panes[1]->window()==footer->window()),
             "explicit footer detachment changes ownership rather than moving a duplicate");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
         check(footerAction!=nullptr,"footer remains discoverable in native Show Panel menu");
@@ -79,7 +79,7 @@ int main(int argc,char **argv) {
         const auto saved=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
         const auto footerState=saved["footer"].toObject();
         check(footerState["floating"].toBool()==!attached && footerState["hidden"].toBool() &&
-            (attached ? footerState["attachment"]=="timeline" : footerState["pinned"].toBool()),
+            (attached ? footerState["attachment"]=="workspace" : footerState["pinned"].toBool()),
             "last view records independent or attached hidden Page Navigation");
         check(saved["groups"].toArray().size()==1 && !saved["selected_arrangement"].toString().isEmpty(),"last view saved independently of selected preset contents");
         QFile expected(expectedPath); check(expected.open(QIODevice::WriteOnly),"open cross-process expectation"); expected.write(QJsonDocument(saved).toJson());
@@ -89,7 +89,7 @@ int main(int argc,char **argv) {
         check(waitFor([&] { return footer->window()!=&main; }),"fresh process restores detached Page Navigation");
         settle(650);
         const auto actual=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
-        check((panes[1]->isAncestorOf(footer))==attached,"fresh process restores explicit footer owner choice");
+        check(((panes[1]->window()==footer->window()))==attached,"fresh process restores explicit footer owner choice");
         check(actual["footer"]==expected["footer"] && !footer->isVisible(),
             "fresh process restores footer frame, hidden door and pin state");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");

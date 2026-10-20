@@ -18,7 +18,7 @@ manifest=[]
 for command,label in commands:
     filename='OpenGate - '+label+'.py'
     source='''# OpenGate by CineWaltz; native Workflow Integration command bridge.
-import ctypes, json, os, pathlib, time, uuid
+import json, os, pathlib, time, uuid
 base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/Unbound")))
 directory=base/"command-requests"
 directory.mkdir(parents=True,exist_ok=True)
@@ -28,13 +28,46 @@ temporary.write_text(json.dumps({"command":COMMAND,"issued_ms":int(time.time()*1
 os.replace(temporary,directory/(token+".json"))
 # Wake the GUI main queue immediately; directory watching remains a fallback.
 try:
+    import ctypes
     post=ctypes.CDLL(None).notify_post
     post.argtypes=[ctypes.c_char_p]
     post.restype=ctypes.c_uint32
     post(b"com.cinewaltz.opengate.command-request")
-except (AttributeError,OSError):
+except (ImportError,AttributeError,OSError):
     pass
 '''.replace('COMMAND',repr(command))
+    if command=='edit.inspector.stabilize':
+        # Resolve supplies `resolve` in its internal Workflow Integration host.
+        # Both menu and native-preset hotkey enter this one operation. Never post
+        # another stabilization request to the Qt registry (which would recurse).
+        operation=(root/'infrastructure/macos/selected-clip-stabilization.py').read_text()
+        source='''# OpenGate by CineWaltz.
+# opengate-command-route: selected-timeline-api-v1
+import json, os, pathlib, time, uuid
+'''+operation+'''
+_started_ms=int(time.time()*1000)
+try:
+    import builtins
+    if getattr(builtins,"_opengate_stabilizing",False):
+        _result={"success":False,"reason":"stabilization-already-running"}
+    else:
+        builtins._opengate_stabilizing=True
+        try:
+            _resolve=globals().get("resolve")
+            _result=stabilize_selected(_resolve) if _resolve is not None else {"success":False,"reason":"resolve-context-unavailable"}
+        finally:
+            builtins._opengate_stabilizing=False
+except Exception as _error:
+    _result={"success":False,"reason":"scripting-api-error","error_type":type(_error).__name__}
+_result.update({"command":"edit.inspector.stabilize","issued_ms":int(time.time()*1000),"started_ms":_started_ms})
+base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/Unbound")))
+directory=base/"command-results"
+directory.mkdir(parents=True,exist_ok=True)
+token=str(uuid.uuid4())
+temporary=directory/(token+".tmp")
+temporary.write_text(json.dumps(_result))
+os.replace(temporary,directory/(token+".json"))
+'''
     (output/filename).write_text(source)
     manifest.append(dict(command=command,label='OpenGate - '+label,file=filename))
 (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

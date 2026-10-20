@@ -248,14 +248,20 @@ public:
         host->setObjectName(QStringLiteral("unboundFloating_") + slot->objectName());
         host->setWindowTitle(title); host->setProperty("unboundPanelTitle",title);
         host->resize(slot->size().expandedTo(QSize(320, 240)));
-        host->setLayout(originalLayout);
-        if (slot->layout() || host->layout() != originalLayout) {
-            if (!slot->layout() && host->layout() == originalLayout) slot->setLayout(originalLayout);
+        transferredSurface=new QWidget(host);
+        transferredSurface->setObjectName(slot->objectName());
+        transferredSurface->setMinimumSize(slot->minimumSize());
+        transferredSurface->setSizePolicy(slot->sizePolicy());
+        transferredSurface->setLayout(originalLayout);
+        if (slot->layout() || transferredSurface->layout() != originalLayout) {
+            if (!slot->layout() && transferredSurface->layout() == originalLayout) slot->setLayout(originalLayout);
             delete host.data(); clear(); return QStringLiteral("Could not transfer this panel's content layout.");
         }
         transferredLayout = true;
-        relaxedWidth = slot->objectName() == QLatin1String("frameEditPageMediaPool");
-        if (relaxedWidth) { widthAllowance.apply(host); host->setProperty("unboundRelaxedWidth", true); }
+        auto presentation=new QVBoxLayout(host); presentation->setContentsMargins(0,0,0,0);
+        presentation->addWidget(overflow.wrap(transferredSurface,host));
+        relaxedWidth = true;
+        host->setProperty("unboundRelaxedWidth",true);
         placeholderLayout = new QVBoxLayout(slot);
         auto marker = new QLabel(title + QStringLiteral(" is floating."), slot);
         marker->setAlignment(Qt::AlignCenter);
@@ -344,13 +350,21 @@ public:
         auto box = new QVBoxLayout(host);
         box->setContentsMargins(0, 0, 0, 0);
         const bool scrollInspector = widget->objectName()==QLatin1String("widgetEditInspector");
-        const bool scrollToolbar=widget->findChild<QWidget *>("pageSingleScreenModeTools");
-        box->addWidget(scrollInspector || scrollToolbar ? overflow.wrap(widget,host,scrollToolbar) : widget);
+        const bool scrollToolbar=widget->objectName()==QLatin1String("frameEditToolbarTop") ||
+            widget->findChild<QWidget *>("pageSingleScreenModeTools");
+        const bool scrollMediaPool=widget->objectName()==QLatin1String("frameEditPageMediaPool");
+        const bool scrollViewer=widget->objectName()==QLatin1String("widgetEditSourcePlayer") ||
+            widget->objectName()==QLatin1String("widgetEditTimelinePlayer") ||
+            widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
+        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
+        box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
             widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
-        if (relaxedWidth && !scrollInspector) widthAllowance.apply(widget);
-        if (scrollInspector || scrollToolbar) host->setProperty("unboundRelaxedWidth",true);
+        // Relax the viewport, never the native controls inside it. Ignoring the
+        // Media Pool's minimum width makes its toolbar overlap before it scrolls.
+        if (relaxedWidth && !scrollContent) widthAllowance.apply(widget);
+        if (scrollContent) host->setProperty("unboundRelaxedWidth",true);
         // A detached tools row must not leave a second empty tools row in Timeline.
         marker->hide();
         logEvent("workspace.native-slot.vacated", {{"panel",widget->objectName()},
@@ -401,7 +415,7 @@ public:
         QScopedValueRollback<bool> restoring(docking, true);
         if (transferredLayout) {
             if (!originalParent || !originalLayout || !placeholderLayout ||
-                originalParent->layout() != placeholderLayout || host->layout() != originalLayout)
+                originalParent->layout() != placeholderLayout || !transferredSurface || transferredSurface->layout() != originalLayout)
                 return QStringLiteral("Resolve changed this panel's content layout.");
             metricScale.restore();
             widthAllowance.restore();
@@ -594,6 +608,7 @@ private:
         originalMain = nullptr;
         splitterSizes.clear();
         transferredLayout = false;
+        transferredSurface = nullptr;
         placeholderLayout = nullptr;
         userHidden = false;
         arrangeTimer.stop();
@@ -617,6 +632,7 @@ private:
     QPointer<QStackedWidget> originalStack;
     QPointer<QLayout> placeholderLayout;
     bool transferredLayout = false;
+    QPointer<QWidget> transferredSurface;
     bool userHidden = false;
     bool constrain = true;
     bool snapping = true;

@@ -25,10 +25,18 @@ protected:
     bool eventFilter(QObject *object,QEvent *event) override {
         if (object!=page || !running()) return false;
         if (event->type()==QEvent::Hide && active) {
-            active=false; ++generation;
-            if (checkpoint) checkpoint();
-            if (suspend) suspend();
-            logEvent("workspace.edit.suspended",{{"retained",true},{"preset_reloaded",false}});
+            active=false; const auto request=++generation;
+            logEvent("workspace.edit.suspend.request",{{"deferred",true}});
+            // Hide is delivered while Qt can still be walking native children.
+            // Never reparent the footer or restore layouts inside that traversal.
+            QTimer::singleShot(0,this,[this,request] {
+                if (request!=generation || active || !page || page->isVisible() || !running()) return;
+                logEvent("workspace.edit.suspend.begin");
+                if (checkpoint) checkpoint();
+                if (request!=generation || active || !page || page->isVisible() || !running()) return;
+                if (suspend) suspend();
+                logEvent("workspace.edit.suspended",{{"retained",true},{"preset_reloaded",false}});
+            });
         }
         if (event->type()==QEvent::Show && !active) enter();
         return false;

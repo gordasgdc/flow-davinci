@@ -35,11 +35,15 @@ public:
     }
     bool invoke(const QString &id,const QString &origin) {
         auto active=QApplication::activeWindow();
-        const bool eligible=active && !qobject_cast<QDialog *>(active) && !QApplication::activeModalWidget() &&
-            !QApplication::activePopupWidget() && !textEditor(QApplication::focusWidget()) && context && context();
+        const QString blocked=!active ? "no-active-window" : qobject_cast<QDialog *>(active) || QApplication::activeModalWidget() ? "dialog-active" :
+            QApplication::activePopupWidget() ? "menu-active" : textEditor(QApplication::focusWidget()) && !editCommand(id) ? "text-editing" :
+            !context || !context() ? "outside-workspace" : QString();
+        const bool eligible=blocked.isEmpty();
         for (const auto &command:commands) if (command.id==id) {
             const bool accepted=eligible && command.available && command.available();
-            logEvent("command.invoke",{{"command",id},{"origin",origin},{"accepted",accepted}});
+            logEvent("command.invoke",{{"command",id},{"origin",origin},{"accepted",accepted},
+                {"reason",accepted ? "accepted" : !blocked.isEmpty() ? blocked : "command-unavailable"},
+                {"active_window",active ? active->objectName() : QString()}});
             if (accepted && command.invoke) command.invoke();
             return accepted;
         }
@@ -59,8 +63,15 @@ public:
         if (!f.open(QIODevice::WriteOnly) || f.write(bytes)!=bytes.size() || !f.commit()) return "Cannot save shortcut settings.";
         bindings=proposed; conflicts.clear(); logEvent("command.bindings.saved",{{"count",bindings.size()}}); return {};
     }
+    struct NativeMatch { QString command,error; };
+    // Optional read-only adapter. Assignment remains owned by Resolve.
+    std::function<NativeMatch(const QKeySequence &)> nativeMatch;
+    std::function<bool()> legacyBacktickAllowed;
     std::function<bool()> context;
 protected:
+    static bool editCommand(const QString &id) {
+        return id=="edit.timeline.fixed-playhead" || id=="edit.inspector.stabilize";
+    }
     bool eventFilter(QObject *,QEvent *event) override {
         if (event->type()==QEvent::ActionAdded || event->type()==QEvent::ActionChanged || event->type()==QEvent::ActionRemoved) {
             refresh.start(0); return false;
@@ -68,10 +79,37 @@ protected:
         if (event->type()!=QEvent::ShortcutOverride && event->type()!=QEvent::KeyPress) return false;
         auto active=QApplication::activeWindow();
         if (!active || qobject_cast<QDialog *>(active) || active->property("unboundShortcutEditor").toBool() || QApplication::activeModalWidget() ||
-            QApplication::activePopupWidget() || textEditor(QApplication::focusWidget()) || !context || !context()) return false;
+            QApplication::activePopupWidget() || !context || !context()) return false;
         auto key=static_cast<QKeyEvent *>(event);
         const QKeySequence pressed(key->key() | int(key->modifiers() & ~Qt::KeypadModifier));
+        if (nativeMatch) {
+            const auto match=nativeMatch(pressed);
+            if (!match.error.isEmpty()) {
+                logEvent("command.preset.blocked",{{"key",pressed.toString(QKeySequence::PortableText)},{"reason",match.error}});
+                return false;
+            }
+            if (!match.command.isEmpty()) {
+                // Explicit modified Edit commands are usable from Inspector
+                // fields; ordinary typing and unmodified keys remain text.
+                if(textEditor(QApplication::focusWidget()) &&
+                   (!editCommand(match.command) || !(key->modifiers() & (Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier))))return false;
+                // Claim ShortcutOverride before Qt's shortcut map; consume the
+                // matching KeyPress once. No time-window deduplication.
+                event->accept();
+                if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) {
+                    const auto id=match.command;
+                    QTimer::singleShot(0,this,[this,id,pressed] {
+                        // Preset or focus can change between observation and dispatch.
+                        const auto current=nativeMatch ? nativeMatch(pressed):NativeMatch{};
+                        if(current.error.isEmpty() && current.command==id) invoke(id,"resolve-preset-input");
+                    });
+                }
+                return true;
+            }
+        }
+        if(textEditor(QApplication::focusWidget()))return false;
         for (const auto &command : commands) {
+            if(nativeMatch && (command.id!="panel.expand.hovered" || (legacyBacktickAllowed && !legacyBacktickAllowed())))continue;
             const auto configured=QKeySequence::fromString(bindings.value(command.id).toString(),QKeySequence::PortableText);
             if (configured.isEmpty() || configured!=pressed || !command.available || !command.available()) continue;
             // Recheck native conflicts after loading a different Resolve keyboard preset.

@@ -15,7 +15,7 @@ int main(int argc,char **argv) {
     lifecycle.suspend=[&] { ++suspends; }; lifecycle.resume=[&] { ++resumes; };
     lifecycle.observe(edit); QApplication::processEvents(); check(resumes==1,"initial visible Edit binds once");
     lifecycle.observe(edit); QApplication::processEvents(); check(resumes==1,"repeated discovery does not restore twice");
-    pages->setCurrentWidget(color); QApplication::processEvents(); check(snapshots==1 && suspends==1,"leaving Edit snapshots and suspends once");
+    pages->setCurrentWidget(color); check(snapshots==0 && suspends==0,"native Hide traversal never synchronously changes workspace ownership"); QApplication::processEvents(); check(snapshots==1 && suspends==1,"leaving Edit snapshots and suspends once");
     pages->setCurrentWidget(edit); QApplication::processEvents(); check(resumes==2 && modified=="latest unsaved view","return resumes retained view without loading preset");
     pages->setCurrentWidget(color); pages->setCurrentWidget(edit); pages->setCurrentWidget(color); QApplication::processEvents();
     check(resumes==2,"superseded rapid page return cannot restore Edit onto another page");

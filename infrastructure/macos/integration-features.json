@@ -325,6 +325,42 @@
       "commit": "94d5f023797b5916bd04b4648d0f34e5f2606915",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-page-transition-crash-evidence",
+      "commit": "33e788dd85335a88a8a8bc3c8ece7373bcef99c1",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-sidebar-overflow",
+      "commit": "b1faa7a17178c2a3054a321c0e3720572e2b8f3a",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-panel-header-cleanup",
+      "commit": "1a827aa70bf79cbda6f26fdb15e722f707785578",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-workspace-footer",
+      "commit": "ae47749734582b54bd1fa13700d8d7c12f405773",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-shortcut-execution",
+      "commit": "b3e2acc76d53cf88313103c85c593426a1e41618",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "perf/macos-viewer-expansion-latency",
+      "commit": "6a4c2bfa76a63bb817be1bff33c048eaca9c2ec8",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }

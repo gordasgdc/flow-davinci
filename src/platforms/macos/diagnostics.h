@@ -11,6 +11,7 @@
 #include <QHash>
 #include <QTimer>
 #include "diagnosticsink.h"
+#include "crashbreadcrumb.h"
 
 #ifndef UNBOUND_BUILD_ID
 #define UNBOUND_BUILD_ID "development"
@@ -29,14 +30,15 @@ inline void logEvent(const QString &event, QJsonObject details = {})
     details.insert(QStringLiteral("pid"), QCoreApplication::applicationPid());
     details.insert(QStringLiteral("build"), QStringLiteral(UNBOUND_BUILD_ID));
     details.insert(QStringLiteral("process"), QCoreApplication::applicationName());
+    recordCrashBreadcrumb(event,details);
     writeDiagnostic(directory,event,QJsonDocument(details).toJson(QJsonDocument::Compact) + '\n');
 }
 
-inline QJsonObject widgetState(QWidget *widget)
+inline QJsonObject widgetState(QWidget *widget,bool includeLayoutHints=true)
 {
     if (!widget) return {{"exists", false}};
     const QRect r = widget->geometry();
-    const auto minimumHint = widget->minimumSizeHint();
+    const auto minimumHint = includeLayoutHints ? widget->minimumSizeHint() : QSize(-1,-1);
     return {{"exists", true}, {"name", widget->objectName()},
         {"class", widget->metaObject()->className()},
         {"parent", widget->parentWidget() ? widget->parentWidget()->objectName() : QString()},

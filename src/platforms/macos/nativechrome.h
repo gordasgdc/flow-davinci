@@ -40,6 +40,7 @@ bool saveNativeTrafficForTest(QWidget *widget, const QString &path);
 QList<QRect> nativeTrafficFramesForTest(QWidget *widget);
 QRect nativeTitleFrameForTest(QWidget *widget);
 QString nativeTitleTextForTest(QWidget *widget);
+QString nativeTitleToolTipForTest(QWidget *widget);
 void clickNativePinForTest(QWidget *widget);
 void postNativeMoveStartForTest(QWidget *widget);
 void postNativePointerReleaseForTest(QWidget *window);

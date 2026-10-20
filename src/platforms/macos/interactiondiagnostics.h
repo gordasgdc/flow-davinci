@@ -43,8 +43,8 @@ public:
         qApp->installEventFilter(this);
         connect(qApp, &QApplication::focusChanged, this, [](QWidget *before, QWidget *after) {
             if (!related(before) && !related(after)) return;
-            logEvent(QStringLiteral("focus.changed"), {{"before", widgetState(before)}, {"after", widgetState(after)},
-                {"active_window", widgetState(QApplication::activeWindow())}});
+            logEvent(QStringLiteral("focus.changed"), {{"before", widgetState(before,false)}, {"after", widgetState(after,false)},
+                {"active_window", widgetState(QApplication::activeWindow(),false)}});
         });
         QTimer::singleShot(0, this, [this] { scanActions(); });
     }
@@ -65,7 +65,7 @@ protected:
             logEvent(QStringLiteral("input.shortcut"), {{"receiver", object->objectName()},
                 {"class", object->metaObject()->className()}, {"key", shortcut->key().toString()},
                 {"owner", object->parent() ? object->parent()->objectName() : QString()},
-                {"ambiguous", shortcut->isAmbiguous()}, {"focus", widgetState(QApplication::focusWidget())}});
+                {"ambiguous", shortcut->isAmbiguous()}, {"focus", widgetState(QApplication::focusWidget(),false)}});
         }
         if (related(widget) && (event->type() == QEvent::Show || event->type() == QEvent::Polish ||
             event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress))
@@ -73,10 +73,10 @@ protected:
         if (!related(widget)) return false;
         if (event->type() == QEvent::MouseButtonPress) {
             QPointer<QWidget> receiver = widget;
-            logEvent(QStringLiteral("input.click"), {{"receiver", widgetState(widget)}, {"focus_before", widgetState(QApplication::focusWidget())}});
+            logEvent(QStringLiteral("input.click"), {{"receiver", widgetState(widget,false)}, {"focus_before", widgetState(QApplication::focusWidget(),false)}});
             QTimer::singleShot(0, this, [receiver] {
-                logEvent(QStringLiteral("input.click.focus-result"), {{"receiver", widgetState(receiver)},
-                    {"focus", widgetState(QApplication::focusWidget())}, {"active_window", widgetState(QApplication::activeWindow())}});
+                logEvent(QStringLiteral("input.click.focus-result"), {{"receiver", widgetState(receiver,false)},
+                    {"focus", widgetState(QApplication::focusWidget(),false)}, {"active_window", widgetState(QApplication::activeWindow(),false)}});
             });
             auto button = qobject_cast<QAbstractButton *>(widget);
             if (button && (button->text().trimmed() == "Stabilize" || button->text().trimmed() == "Stabilization")) stabilizationContext(button);
@@ -84,8 +84,8 @@ protected:
         if (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) {
             auto key = static_cast<QKeyEvent *>(event);
             const bool typing = textEditor(widget) || textEditor(QApplication::focusWidget());
-            QJsonObject state{{"receiver", widgetState(widget)}, {"focus", widgetState(QApplication::focusWidget())},
-                {"active_window", widgetState(QApplication::activeWindow())}, {"text_editing", typing},
+            QJsonObject state{{"receiver", widgetState(widget,false)}, {"focus", widgetState(QApplication::focusWidget(),false)},
+                {"active_window", widgetState(QApplication::activeWindow(),false)}, {"text_editing", typing},
                 {"event_type", int(event->type())}};
             // Do not record text or key values while the user is editing text.
             if (!typing) { state["key"] = key->key(); state["modifiers"] = int(key->modifiers()); state["repeat"] = key->isAutoRepeat(); }
@@ -112,19 +112,19 @@ private:
                 if (shortcut->key() != key) continue;
                 auto owner = qobject_cast<QWidget *>(shortcut->parent());
                 shortcuts.append(QJsonObject{{"key", key.toString()}, {"enabled", shortcut->isEnabled()},
-                    {"context", int(shortcut->context())}, {"owner", widgetState(owner)}});
+                    {"context", int(shortcut->context())}, {"owner", widgetState(owner,false)}});
             }
             for (auto action : window->findChildren<QAction *>()) {
                 if (!action->shortcuts().contains(key) && !action->text().contains(QStringLiteral("ripple delete"), Qt::CaseInsensitive)) continue;
                 QJsonArray owners;
-                for (auto owner : action->associatedWidgets()) owners.append(widgetState(owner));
+                for (auto owner : action->associatedWidgets()) owners.append(widgetState(owner,false));
                 actions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()},
                     {"enabled", action->isEnabled()}, {"visible", action->isVisible()},
                     {"context", int(action->shortcutContext())}, {"owners", owners}});
             }
         }
         logEvent(QStringLiteral("input.command-context"), {{"key", key.toString()},
-            {"shortcuts", shortcuts}, {"actions", actions}, {"focus", widgetState(QApplication::focusWidget())}});
+            {"shortcuts", shortcuts}, {"actions", actions}, {"focus", widgetState(QApplication::focusWidget(),false)}});
     }
     static bool related(QWidget *widget)
     {
@@ -142,9 +142,9 @@ private:
         buttons.insert(button);
         connect(button, &QObject::destroyed, this, [this, button] { buttons.remove(button); });
         auto record = [button](const QString &event) {
-            logEvent(event, {{"button", widgetState(button)}, {"label", button->text()},
+            logEvent(event, {{"button", widgetState(button,false)}, {"label", button->text()},
                 {"checked", button->isChecked()}, {"tooltip", button->toolTip()},
-                {"focus", widgetState(QApplication::focusWidget())}});
+                {"focus", widgetState(QApplication::focusWidget(),false)}});
         };
         // Press precedes the action; clicked also covers keyboard and programmatic activation.
         connect(button, &QAbstractButton::pressed, this, [record] { record(QStringLiteral("input.button.pressed")); });
@@ -157,7 +157,7 @@ private:
         connect(action, &QObject::destroyed, this, [this, action] { tracked.remove(action); });
         connect(action, &QAction::triggered, this, [this, action] {
             logEvent(QStringLiteral("input.action.triggered"), {{"action", action->objectName()},
-                {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget())}});
+                {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget(),false)}});
             if (action->objectName() == "workspaceViewerModeCinemaViewer" || action->text().contains("Cinema Viewer", Qt::CaseInsensitive)) {
                 viewerDiagnostics->capture("command-triggered", action->objectName());
                 const QString name = action->objectName();
@@ -190,13 +190,13 @@ private:
     static void stabilizationContext(QAbstractButton *button)
     {
         QJsonArray ancestors;
-        for (auto parent = button->parentWidget(); parent && ancestors.size() < 8; parent = parent->parentWidget()) ancestors.append(widgetState(parent));
+        for (auto parent = button->parentWidget(); parent && ancestors.size() < 8; parent = parent->parentWidget()) ancestors.append(widgetState(parent,false));
         QJsonArray actions;
         for (auto window : QApplication::topLevelWidgets()) if (related(window))
             for (auto action : window->findChildren<QAction *>()) if (action->text().contains("stabil", Qt::CaseInsensitive))
                 actions.append(QJsonObject{{"name", action->objectName()}, {"label", action->text()}, {"enabled", action->isEnabled()},
                     {"shortcut", action->shortcut().toString()}, {"context", int(action->shortcutContext())}});
-        logEvent(QStringLiteral("inspector.stabilization.candidate"), {{"button", widgetState(button)}, {"ancestors", ancestors}, {"actions", actions}});
+        logEvent(QStringLiteral("inspector.stabilization.candidate"), {{"button", widgetState(button,false)}, {"ancestors", ancestors}, {"actions", actions}});
     }
     void activationState()
     {
@@ -211,8 +211,8 @@ private:
                     children.append(widgetState(content->findChild<QWidget *>(QLatin1String(child))));
             panels.append(QJsonObject{{"host", widgetState(window)}, {"content", widgetState(content)}, {"viewer_parts", children}});
         }
-        logEvent(QStringLiteral("activation.state"), {{"panels", panels}, {"focus", widgetState(QApplication::focusWidget())},
-            {"active_window", widgetState(QApplication::activeWindow())}, {"native_key", nativeKeyWindowNumber()}});
+        logEvent(QStringLiteral("activation.state"), {{"panels", panels}, {"focus", widgetState(QApplication::focusWidget(),false)},
+            {"active_window", widgetState(QApplication::activeWindow(),false)}, {"native_key", nativeKeyWindowNumber()}});
     }
     ViewerDiagnostics *viewerDiagnostics = nullptr;
     QSet<QAction *> tracked;

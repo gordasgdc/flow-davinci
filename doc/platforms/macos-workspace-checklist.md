@@ -1,3 +1,5 @@
+> Current status: see [the 2026-10-20 task audit](opengate-task-audit-20261020.md). This document retains historical requirements/evidence; old installed-build statements below are not the current installation.
+
 # Mac workspace checklist
 
 Current integration branch: `macos-panel-discovery-and-layout`. Feature ownership,
@@ -585,5 +587,17 @@ The integration source/tests match that verified commit; feature provenance and
 documentation are updated separately. These passes do not close actual Resolve,
 GPU/playback, Single/Cinema Viewer, independent scaling or custom-color storage
 acceptance. Nothing in this follow-up is installed or merged to master.
+
+2026-10-19 post-prototype candidate `9bffd8f`: all 22 reviewed hidden suites pass
+(`build/macos/verification/9bffd8fc66-hidden-20261019T215809Z/receipt.json`). The
+combined widget helper and IO bootstrap build; panel-session, panel-group,
+signal-lifetime and cross-process reopen fixtures compile. This candidate combines
+independently based crash-evidence, sidebar-overflow, header-cleanup and
+workspace-footer branches on `integration/macos-next-pass-review`. The initially
+failing workspace-menu check expected the removed second keyboard control; the
+updated check verifies exactly one placement control and passes. Native/displayed
+narrow-width, pointer-hit, group/tab, docking, cross-process reopen and page-return
+tests remain unexecuted while Resolve is open. No new installation, master merge,
+performance improvement or live crash-resolution claim is made.
 
 2026-10-19 first-install candidate: native arrangement/UI fixtures caught covered tab pages being shown together after recursive empty-branch recovery. Direct stacked pages now follow the selected page; descendants retain logical visibility. Both failing suites pass in isolated reruns. Hidden group native-door invocation now reveals the group. Full integrated verification and live first-install acceptance remain required; normal arrangements are preserved through a separate preview settings profile.

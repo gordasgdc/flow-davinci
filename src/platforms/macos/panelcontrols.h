@@ -42,6 +42,7 @@
 #include "workspacearrangements.h"
 #include "panelcallermenu.h"
 #include "panelcommandcatalog.h"
+#include "panelcommandmenu.h"
 #include "nativeeditcommands.h"
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
@@ -275,10 +276,17 @@ public:
         }, settings.data["footer"].toObject());
         footer->changed = [this] { saveTimer.start(); };
         footer->attachmentOwner=[this]() -> QWidget * {
-            return page() && page()->isVisible() && panels[1].session->active() ?
-                Unbound::panelSurface(page(),panels[1].name) : nullptr;
+            if (!page() || !page()->isVisible()) return nullptr;
+            QWidget *best=nullptr;
+            for (int i=0;i<panels.size();++i) if (panels[i].session->active() && panels[i].name!="unboundWorkspaceToolbar") {
+                auto host=panels[i].session->window()->window();
+                if (host==page()->window() || !host->isVisible()) continue;
+                if (i==1) return host;
+                if (!best || host->width()*host->height()>best->width()*best->height()) best=host;
+            }
+            return best;
         };
-        footer->revealAttachmentOwner=[this] { showPanel(1,true); };
+        footer->revealAttachmentOwner=[this] { if (auto owner=footer->attachmentOwner()) { owner->show();owner->raise(); } };
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
             [this](bool single) {
@@ -318,9 +326,12 @@ public:
             return error;
         });
         auto editCommands=new Unbound::NativeEditCommands(this,[this] { return page(); });
+        editCommands->editActive=[] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow())=="edit"; };
         editCommands->report=[this](QString message) { status->setText(message); };
         editCommands->addTo(commands);
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        auto commandMenu=new Unbound::PanelCommandMenu(this,commands);
+        workspaceMenu->commandsMenu=[commandMenu](QMenu *root) {return commandMenu->menu(root);};
         workspaceMenu->showPanelShortcuts=[this] { commands->showEditor(); };
         auto panelCallers=new Unbound::PanelCallerMenu(this);
         panelCallers->currentPage=[] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };

@@ -2,6 +2,8 @@
 #pragma once
 #include "panelshortcuteditor.h"
 #include "nativekeyboardnavigation.h"
+#include "nativepresetbindings.h"
+#include "pagecontext.h"
 #include <QPointer>
 
 namespace Unbound {
@@ -12,6 +14,23 @@ public:
     PanelCommandCatalog(QWidget *owner, std::function<bool()> running)
         : PanelCommands(owner), nativeEditor(this)
     {
+        // Native assignments must work on an ordinary app launch. Keep an
+        // explicit recovery opt-out; malformed overrides do not enable input.
+        const auto mode=qEnvironmentVariable("OPENGATE_NATIVE_PRESET_SHORTCUTS");
+        const bool enabled=mode.isEmpty() || mode=="1";
+        logEvent("command.preset.provider",{{"enabled",enabled},{"mode",mode.isEmpty()?"normal-launch":mode}});
+        if (enabled) {
+            preset=new NativePresetBindings(this,qEnvironmentVariable("OPENGATE_PRESET_DIRECTORY",
+                QDir::homePath()+"/Library/Preferences/Blackmagic Design/DaVinci Resolve"));
+            nativeMatch=[this](const QKeySequence &pressed) { return matchPreset(pressed); };
+            legacyBacktickAllowed=[this] {
+                const auto &snapshot=preset->snapshot();
+                // An explicitly present native command row is authoritative,
+                // including an empty assignment. Clearing it cannot resurrect
+                // a different binding from the legacy settings file.
+                return snapshot.error.isEmpty() && !snapshot.commands.contains("OpenGate - Maximize-Restore Hovered Panel");
+            };
+        }
         context=[owner,running] {
             auto window=QApplication::activeWindow();
             return running() && window && (window==owner || window->objectName()=="UiMainWindow" ||
@@ -37,6 +56,32 @@ public:
             logEvent("keyboard.native.unavailable",{{"origin","opengate-command-menu"},{"duplicate_editor_opened",false}});
     }
 private:
+    NativeMatch matchPreset(const QKeySequence &pressed) const {
+        if(!preset || currentWorkspacePage(resolveMainWindow())!="edit" || !preset->snapshot().error.isEmpty())return {};
+        const auto &snapshot=preset->snapshot();
+        QString id,label;
+        for(const auto &command:entries()) {
+            auto nativeLabel=command.label;
+            if(command.id=="edit.inspector.stabilize")nativeLabel="Edit - Stabilize";
+            else if(command.id=="edit.timeline.fixed-playhead")nativeLabel="Edit - Toggle Fixed Playhead";
+            else if(command.id=="panel.expand.hovered")nativeLabel="Maximize-Restore Hovered Panel";
+            else nativeLabel.replace(" / ","-");
+            nativeLabel="OpenGate - "+nativeLabel;
+            if(!snapshot.commands.value(nativeLabel).contains(pressed) || !command.available || !command.available())continue;
+            if(!id.isEmpty() && id!=command.id)return {{},"ambiguous-opengate-assignment"};
+            id=command.id;label=nativeLabel;
+        }
+        if(id.isEmpty())return {};
+        if(pressed.count()!=1)return {{},"multi-chord-not-supported"};
+        for(const auto &other:snapshot.owners.value(pressed.toString(QKeySequence::PortableText))) {
+            if(other==label)continue;
+            // This known Fairlight-scoped command cannot run on the Edit page.
+            if(other.startsWith("FairlightTimeline."))continue;
+            return {{},"native-preset-conflict: "+other};
+        }
+        return {id,{}};
+    }
+    NativePresetBindings *preset=nullptr;
     NativeKeyboardNavigation nativeEditor;
 };
 }

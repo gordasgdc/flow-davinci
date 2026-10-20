@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include <QApplication>
+#include <QStyle>
 #include <QPushButton>
 #include "floatinghost.h"
 #include "compacttoolbar.h"
@@ -28,51 +29,80 @@ int main(int argc,char **argv) {
         [&] { return scale; },[&](double value) { scale=value; },[&] { ++floated; }});
     auto settle=[] { QElapsedTimer t;t.start();while (t.elapsed()<90) { QApplication::processEvents();QThread::msleep(1); } };
     headers.schedule();settle();bool ok=first.windowTitle()=="Project A" && second.windowTitle().contains("Source Monitor");
-    project->hide();project->setText("Project B");headers.schedule();settle();ok &= first.windowTitle()=="Project B";
-    QMenu local;headers.populate(&local,&second);ok &= local.actions().size()==2 && local.actions()[1]->text()=="Source Monitor";
-    local.actions()[1]->trigger();settle();ok &= !source && calls==1;
+    project->hide();project->setText("Project B");headers.schedule();settle();do { const bool passed=(first.windowTitle()=="Project B"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()==2 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    local.actions()[1]->trigger();settle();do { const bool passed=(!source && calls==1); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     QMenu primary;headers.populate(&primary,&first);bool shared=false;
     for (auto action:primary.actions()) if (action->menu()) shared |= action->menu()->actions().contains(globalAction);
-    ok &= shared && first.size()==QSize(600,400);
+    do { const bool passed=(shared && first.size()==QSize(600,400)); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     for (auto action:primary.actions()) if (auto controls=action->menu()) if (action->text()=="Workspace Toolbar Controls") {
         for (auto item:controls->actions()) {
             if (item->text()=="Float Separately") item->trigger();
             if (item->menu()) item->menu()->actions().first()->trigger();
         }
     }
-    settle();ok &= floated==1 && qAbs(scale-.9)<.001;
+    settle();do { const bool passed=(floated==1 && qAbs(scale-.9)<.001); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     QWidget compactWrapper;QStackedWidget stack(&compactWrapper);QWidget toolbarRow;
     toolbarRow.setFixedHeight(30);stack.addWidget(&toolbarRow);Unbound::CompactToolbar fit(&compactWrapper,&stack);settle();
-    ok &= compactWrapper.maximumHeight()==30;
+    do { const bool passed=(compactWrapper.maximumHeight()==30); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     toolbarRow.setFixedHeight(24);QEvent relayout(QEvent::LayoutRequest);QApplication::sendEvent(&stack,&relayout);settle();
-    ok &= compactWrapper.maximumHeight()==24;
+    do { const bool passed=(compactWrapper.maximumHeight()==24); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     Unbound::MacFloatingHost chrome(&main);chrome.setAttribute(Qt::WA_DontShowOnScreen);chrome.setChrome(Unbound::WindowChrome::Standard);
-    ok &= chrome.contentsMargins().top()==0;
+    do { const bool passed=(chrome.contentsMargins().top()==0); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     chrome.setChrome(Unbound::WindowChrome::Compact);chrome.show();settle();
     ok &= Unbound::setNativeHeaderMenu(&chrome,true,[] {});
     Unbound::MacFloatingHost strip(&main);strip.setAttribute(Qt::WA_DontShowOnScreen);strip.setProperty("unboundToolbarStrip",true);
     strip.setChrome(Unbound::WindowChrome::Standard);strip.show();settle();
-    ok &= strip.contentsMargins().top()==0 && strip.contentsMargins().left()>=100;
+    do { const bool passed=(strip.contentsMargins().top()==0 && strip.contentsMargins().left()>=100); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     ok &= Unbound::setNativeHeaderMenu(&strip,true,[] {});
     QWidget doorSurface;QWidget doorRow(&doorSurface);doorRow.setObjectName("frameEditTopBarLeftInSSM");new QHBoxLayout(&doorRow);
     bool doorShown=false;int doorCalls=0;Unbound::ToolbarDoors doors(nullptr);
     doors.add({"source","Source Monitor",[&] { return doorShown; },[&] { doorShown=!doorShown;++doorCalls; }});
     doors.wire(&doorSurface);doors.wire(&doorSurface);auto door=doorRow.findChild<QToolButton *>("openGateToolbarDoor_source");
-    ok &= door && doorRow.findChildren<QToolButton *>().size()==1;if (door) door->click();settle();doors.wire(&doorSurface);
-    ok &= doorShown && doorCalls==1 && door->isChecked();
+    do { const bool passed=(door && doorRow.findChildren<QToolButton *>().size()==2); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);if (door) door->click();settle();doors.wire(&doorSurface);
+    do { const bool passed=(doorShown && doorCalls==1 && door->isChecked()); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    // Added controls compress before entering the native project title's area.
+    QWidget crowded;crowded.setAttribute(Qt::WA_DontShowOnScreen);crowded.resize(900,60);
+    QWidget nativeRow(&crowded);nativeRow.setObjectName("frameEditTopBarLeftFixture");nativeRow.setGeometry(0,0,900,40);
+    auto nativeLayout=new QHBoxLayout(&nativeRow);nativeLayout->setContentsMargins(0,0,0,0);
+    auto nativeButton=new QPushButton("Native",&nativeRow);nativeButton->setFixedWidth(260);nativeLayout->addWidget(nativeButton);
+    auto title=new QPushButton("Project title",&crowded);title->setObjectName("btnProjectsMainBarProjectList");title->setGeometry(650,0,150,30);
+    Unbound::ToolbarDoors responsive(nullptr);
+    for(const auto &id:QStringList{"Timeline","SourceMonitor","ProgramMonitor","page-navigation"})responsive.add({id,id,[]{return true;},[]{}});
+    crowded.show();nativeRow.show();title->show();responsive.wire(&crowded);settle();
+    auto owned=nativeRow.findChild<QWidget *>("openGateToolbarDoors");
+    auto limits=owned->findChild<QWidget *>("openGateDoorControls");
+    do { const bool passed=(owned->sizeHint().width()==0 && owned->minimumSizeHint().width()==0); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    const int spacing=nativeLayout->spacing()<0 ? nativeRow.style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing) : nativeLayout->spacing();
+    do { const bool passed=(nativeRow.minimumSizeHint().width()<=nativeButton->width()+qMax(32,spacing)); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    do { const bool passed=(owned && limits->maximumWidth()<=378); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    title->move(440,0);QEvent resized(QEvent::Resize);QApplication::sendEvent(&crowded,&resized);settle();
+    do { const bool passed=(owned->property("openGateDoorMode")=="icons"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    title->move(310,0);QApplication::sendEvent(&crowded,&resized);settle();
+    do { const bool passed=(owned->property("openGateDoorMode")=="overflow"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    do { const bool passed=(limits->mapToGlobal(QPoint(limits->width(),0)).x() <= title->mapToGlobal(QPoint()).x()); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    crowded.resize(1600,60);nativeRow.resize(1600,40);title->move(1300,0);QApplication::sendEvent(&crowded,&resized);settle();
+    do { const bool passed=(owned->property("openGateDoorMode")=="labels"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    do { const bool passed=(limits->mapToGlobal(QPoint(limits->width(),0)).x() <= title->mapToGlobal(QPoint()).x()); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    auto overflowButton=owned->findChild<QToolButton *>("openGateToolbarOverflow");
+    do { const bool passed=(overflowButton->menu()->actions().size()==4 && nativeButton->width()==260 && title->width()==150); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     QWidget scrollOwner;scrollOwner.setAttribute(Qt::WA_DontShowOnScreen);scrollOwner.resize(300,65);
     auto rowContent=new QWidget;rowContent->setMinimumWidth(900);rowContent->setFixedHeight(30);
     auto last=new QPushButton("Last",rowContent);auto contentLayout=new QHBoxLayout(rowContent);contentLayout->addStretch();contentLayout->addWidget(last);
     Unbound::PanelOverflow overflow;auto scroll=qobject_cast<QScrollArea *>(overflow.wrap(rowContent,&scrollOwner,true));
     (new QVBoxLayout(&scrollOwner))->addWidget(scroll);scrollOwner.show();settle();
-    ok &= scroll->horizontalScrollBar()->maximum()>0 && scroll->verticalScrollBarPolicy()==Qt::ScrollBarAlwaysOff && scrollOwner.width()==300;
+    do { const bool passed=(scroll->horizontalScrollBar()->maximum()>0 && scroll->verticalScrollBarPolicy()==Qt::ScrollBarAlwaysOff && scrollOwner.width()==300); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     scroll->horizontalScrollBar()->setValue(scroll->horizontalScrollBar()->maximum());settle();
-    ok &= scroll->viewport()->rect().contains(last->mapTo(scroll->viewport(),last->rect().center()));
+    do { const bool passed=(scroll->viewport()->rect().contains(last->mapTo(scroll->viewport(),last->rect().center()))); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     int clicked=0;Unbound::setNativePin(&first,false,[](bool) {});
     ok &= Unbound::setNativeHeaderMenu(&first,true,[&] { ++clicked; });
+    const QString longTitle="A long project title that should elide by width while controls remain stationary";
+    first.setWindowTitle(longTitle);Unbound::setNativePin(&first,false,[](bool) {});
+    do { const bool passed=(Unbound::nativeTitleToolTipForTest(&first)==longTitle); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     auto button=Unbound::nativeHeaderMenuFrameForTest(&first);auto traffic=Unbound::nativeTrafficFramesForTest(&first);
-    ok &= !button.isEmpty() && traffic.size()==4;
-    for (const auto &frame:traffic) ok &= !frame.intersects(button);
-    Unbound::clickNativeHeaderMenuForTest(&first);ok &= clicked==1;
+    do { const bool passed=(!button.isEmpty() && traffic.size()==4); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    do { const bool passed=(button.height()<=18 && button.width()<=70); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    for (const auto &frame:traffic) do { const bool passed=(!frame.intersects(button)); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    Unbound::clickNativeHeaderMenuForTest(&first);do { const bool passed=(clicked==1); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     std::printf("workspace headers %s\n",ok ? "PASS" : "FAIL");return ok ? 0 : 1;
 }

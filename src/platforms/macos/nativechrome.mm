@@ -231,6 +231,7 @@ bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> 
         if (!NSEqualRects(title.frame,titleFrame)) title.frame = titleFrame;
         NSString *text = window.title ?: @"";
         if (![title.stringValue isEqualToString:text]) title.stringValue = text;
+        if (![title.toolTip isEqualToString:text]) title.toolTip = text;
     }
     [button setChangeCallback:changed];
     if (stateChanged) [button setNeedsDisplay:YES];
@@ -254,13 +255,24 @@ bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()
         objc_setAssociatedObject(window,&headerMenuKey,button,OBJC_ASSOCIATION_RETAIN_NONATOMIC);[button release];
     }
     if (button.superview!=green.superview) { [button removeFromSuperview];[green.superview addSubview:button]; }
-    button.frame=NSMakeRect(MAX(NSMaxX(green.frame)+48,NSWidth(green.superview.bounds)-80),NSMidY(green.frame)-9,70,18);
+    const NSRect bounds=green.superview.bounds;
+    const CGFloat height=MIN(18,MAX(0,NSHeight(bounds)-4));
+    const CGFloat y=MAX(NSMinY(bounds)+2,MIN(NSMidY(green.frame)-height/2,NSMaxY(bounds)-height-2));
+    const CGFloat x=MAX(NSMaxX(green.frame)+48,NSMaxX(bounds)-80);
+    const CGFloat width=MIN(70,MAX(0,NSMaxX(bounds)-x-2));
+    button.frame=NSMakeRect(x,y,width,height);
     button.hidden=NO;[button setOpenCallback:opened];
     auto title=(NSTextField *)objc_getAssociatedObject(window,&titleKey);
     if (title && !title.hidden) { auto frame=title.frame;frame.size.width=MAX(0,NSMinX(button.frame)-8-frame.origin.x);title.frame=frame; }
     return true;
 }
 #ifdef UNBOUND_NATIVE_TESTS
+QString nativeTitleToolTipForTest(QWidget *widget)
+{
+    NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;
+    auto title = (NSTextField *)objc_getAssociatedObject(window, &titleKey);
+    return title ? QString::fromUtf8(title.toolTip.UTF8String) : QString();
+}
 QString nativeTitleTextForTest(QWidget *widget)
 {
     NSWindow *window = reinterpret_cast<NSView *>(widget->winId()).window;

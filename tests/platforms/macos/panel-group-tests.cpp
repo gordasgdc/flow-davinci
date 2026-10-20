@@ -44,6 +44,13 @@ int main(int argc, char **argv)
         check(viewport && viewport->horizontalScrollBar()->maximum()>0 && session.window()->width()==300,
             "narrow Inspector scrolls instead of enlarging its floating host or clipping controls");
         check(inspector->minimumWidth()==700,"overflow does not relax native Inspector control constraints");
+        auto rightHint=viewport->viewport()->findChild<QToolButton *>("openGateScrollRight");
+        auto leftHint=viewport->viewport()->findChild<QToolButton *>("openGateScrollLeft");
+        check(rightHint && rightHint->isVisible() && !rightHint->toolTip().isEmpty(),"narrow Inspector advertises hidden right-edge controls");
+        if(rightHint)rightHint->click();settle();
+        check(viewport->horizontalScrollBar()->value()>0 && leftHint && leftHint->isVisible(),"overflow hint scrolls without consuming panel height");
+        viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->minimum());settle();
+
         inspector->setParent(page); layout->addWidget(inspector); inspector->show(); settle(); settle();
         check(viewport && viewport->widget()==inspector && inspector->parentWidget()==viewport->viewport(),
             "native content reclamation recovers into the retained overflow viewport without duplicating the panel");
@@ -201,13 +208,15 @@ int main(int argc, char **argv)
             "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
         a.setHiddenByUser(true); group.syncVisibility(); settle();
         QToolButton *reveal = nullptr;
-        for (auto candidate : group.window()->findChildren<QToolButton *>("unboundHiddenPanelCaller"))
+        for (auto candidate : group.window()->findChildren<QToolButton *>("unboundDetachPanel"))
             if (candidate->isVisible()) { reveal=candidate; break; }
         check(reveal && reveal->menu(),"hiding a group panel leaves a discoverable caller in its remaining header");
         if (reveal) {
             QMetaObject::invokeMethod(reveal->menu(),"aboutToShow",Qt::DirectConnection);
-            check(reveal->menu()->actions().size() == 1,"hidden-panel menu lists precisely the hidden member");
-            if (!reveal->menu()->actions().isEmpty()) reveal->menu()->actions().first()->trigger();
+            QMenu *hidden=nullptr;
+            for (auto action:reveal->menu()->actions()) if (action->menu() && action->text()=="Show Hidden Panels") hidden=action->menu();
+            check(hidden && hidden->actions().size() == 1,"hidden-panel submenu lists precisely the hidden member");
+            if (hidden && !hidden->actions().isEmpty()) hidden->actions().first()->trigger();
         }
         settle();
         check(!a.hiddenByUser() && group.contains(&a) && group.window()->geometry() == frame,
