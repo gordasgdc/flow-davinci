@@ -17,6 +17,7 @@ public:
         commands->add({"edit.timeline.fixed-playhead","Edit Timeline / Toggle Fixed Playhead",[this] { return ready(); },[this] { fixedPlayhead(); }});
         commands->add({"edit.inspector.stabilize","Edit Inspector / Stabilize",[this] { return ready(); },[this] { stabilize(); }});
     }
+    // Edit-page presentation command: no clip-selection or focused-panel requirement.
     bool fixedPlayhead() {
         QSet<QAction *> matches;
         if (ready()) for (auto widget:QApplication::allWidgets()) if (auto menu=qobject_cast<QMenu *>(widget)) {
@@ -27,7 +28,9 @@ public:
         auto action=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","fixed-playhead"},{"object",action->objectName()},
             {"checkable",action->isCheckable()},{"checked_before",action->isChecked()}});
-        action->trigger(); return true;
+        action->trigger();
+        logEvent("command.edit-target.result",{{"command","fixed-playhead"},{"success",true},{"checked_after",action->isChecked()}});
+        return true;
     }
     bool stabilize() {
         QSet<QAbstractButton *> matches;
@@ -43,7 +46,9 @@ public:
         }
         auto button=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","stabilize"},{"object",button->objectName()},{"method","native-button-click"}});
-        button->click(); return true;
+        button->click();
+        logEvent("command.edit-target.result",{{"command","stabilize"},{"success",true},{"completion","native-button-invoked"}});
+        return true;
     }
 private:
     std::function<QWidget *()> editPage;
@@ -51,6 +56,7 @@ private:
     static QString label(QString text) { text=text.section('\t',0,0); text.remove('&'); return text.trimmed(); }
     bool unavailable(const QString &command,int matches,const QString &message) {
         logEvent("command.edit-target.unavailable",{{"command",command},{"matches",matches},{"reason",message}});
+        logEvent("command.edit-target.result",{{"command",command},{"success",false},{"reason",message}});
         if (report) report(message); return false;
     }
 };
