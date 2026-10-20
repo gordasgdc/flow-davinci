@@ -14,7 +14,7 @@ public:
     ~PanelAccessoryLease() override { release(); }
     bool active() const { return position.active() && viewport; }
     QWidget *ownerSurface() const { return destination; }
-    QString attach(QWidget *accessory,QWidget *nativeRoot,QWidget *owner, Qt::Edge edge=Qt::BottomEdge)
+    QString attach(QWidget *accessory,QWidget *nativeRoot,QWidget *owner, Qt::Edge edge=Qt::BottomEdge,bool resizeContent=false)
     {
         if (active()) return destination==owner ? QString() : QStringLiteral("Detach the accessory before changing its owner.");
         if (viewport || position.content()) return QStringLiteral("The previous accessory position changed; restoration is required.");
@@ -28,7 +28,7 @@ public:
         originalFill=accessory->autoFillBackground();
         position.surface()->hide();
         viewport=new QScrollArea(owner); viewport->setObjectName("unboundAttachedAccessory_"+accessory->objectName());
-        viewport->setFrameShape(QFrame::NoFrame); viewport->setWidgetResizable(false);
+        viewport->setFrameShape(QFrame::NoFrame); viewport->setWidgetResizable(resizeContent);
         viewport->setMinimumWidth(0); viewport->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         viewport->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         viewport->setWidget(accessory); accessory->show(); if(edge==Qt::TopEdge)layout->insertWidget(0,viewport,0);else layout->addWidget(viewport,0);

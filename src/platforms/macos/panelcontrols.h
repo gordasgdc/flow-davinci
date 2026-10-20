@@ -282,6 +282,11 @@ public:
         footer->changed = [this] { saveTimer.start(); };
         footer->primarySurface=[this]() -> QWidget * {
             if (!page() || !page()->isVisible()) return nullptr;
+            auto nativeMain=Unbound::resolveMainWindow();
+            if(nativeMain && nativeMain->isVisible() && !nativeMain->property("unboundBackgroundHidden").toBool())
+                for(const auto &panel:panels)if(!panel.label.endsWith("Toolbar") && !panel.session->active()) {
+                    auto surface=Unbound::panelSurface(page(),panel.name);if(surface && surface->isVisible())return nativeMain;
+                }
             QWidget *best=nullptr;
             for (int i=0;i<panels.size();++i) if (panels[i].session->active() && panels[i].name!="unboundWorkspaceToolbar") {
                 auto host=panels[i].session->window()->window();

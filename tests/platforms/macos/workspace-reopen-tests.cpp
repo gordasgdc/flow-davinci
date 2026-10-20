@@ -66,8 +66,7 @@ int main(int argc,char **argv) {
         for(auto object:controls->children())if(auto model=dynamic_cast<Unbound::FooterPanel *>(object))navigation=model;
         check(navigation!=nullptr,"surface navigation model is available");
         if(navigation){navigation->setPinned(panes[1]->window(),true);navigation->setPinned(panes[0]->window(),!attached);navigation->restore();}
-        check(waitFor([&] {return panes[1]->window()->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");}),"main custom surface has navigation below its group");
-        check(footer->window()==&main,"native footer remains in the native background while custom surfaces mirror it");
+        check(waitFor([&] {return footer->window()==panes[1]->window();}),"primary custom surface receives the complete original native footer");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
         check(footerAction!=nullptr,"footer remains discoverable in native Show Panel menu");
         if (footerAction) footerAction->trigger();
@@ -85,17 +84,16 @@ int main(int argc,char **argv) {
     } else {
         const auto expected=read(expectedPath); check(!expected.isEmpty(),"previous process wrote expectations");
         check(waitFor([&] { return panes[2]->window()!=&main && panes[2]->window()==panes[3]->window() && panes[2]->window()==panes[4]->window() && panes[0]->window()!=&main && panes[1]->window()!=&main; }),"fresh process restores groups and independent windows automatically");
-        check(footer->window()==&main,"fresh process retains native footer ownership");
+        check(footer->window()==&main || footer->window()==panes[1]->window(),"hidden footer retains a reversible native or primary-surface slot");
         settle(650);
         const auto actual=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
         check(actual["footer"]==expected["footer"]&&!footer->isVisible(),"fresh process restores shared visibility and surface placement");
-        auto primaryNavigation=panes[1]->window()->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
-        check(primaryNavigation&&!primaryNavigation->isVisibleTo(panes[1]->window()),"restored primary strip starts globally hidden");
+        check(!footer->isVisible(),"restored original footer starts globally hidden");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
         check(footerAction!=nullptr,"restored hidden footer still has a native menu caller");
         if (footerAction) footerAction->trigger();
         check(waitFor([&] { return footer->isVisible(); }),"native menu retrieves hidden Page Navigation after restart");
-        check(primaryNavigation&&primaryNavigation->isVisibleTo(panes[1]->window()),"native menu shows the mirrored footer after restart");
+        check(waitFor([&] {return footer->window()==panes[1]->window() && footer->isVisible();}),"native menu restores the complete original footer on the primary surface after restart");
         check(actual["groups"]==expected["groups"],"fresh process restores exact group frame, pin, nested tree, tabs and divider proportions");
         check(actual["selected_arrangement"]==expected["selected_arrangement"],"selected workspace identity survives restart");
         for (const auto &name : {names[0],names[1]}) {

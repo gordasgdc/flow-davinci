@@ -13,13 +13,15 @@
 #include "diagnostics.h"
 #include "pagecontext.h"
 #include "surfacepagenavigation.h"
+#include "panelaccessorylease.h"
 namespace Unbound {
 // Global visibility is Resolve's command. Surface placement is OpenGate state.
-// No lease, reparenting, floating session or attachment to a panel's contents.
+// The original complete footer occupies the primary surface through a reversible
+// bottom-band lease; secondary surfaces invoke the original native buttons.
 class FooterPanel : public QObject {
 public:
     FooterPanel(QObject *owner,std::function<QWidget *()> mainWindow,QJsonObject saved)
-        :QObject(owner),root(std::move(mainWindow)),state(std::move(saved)) {
+        :QObject(owner),nativeLease(this),root(std::move(mainWindow)),state(std::move(saved)) {
         timer.setSingleShot(true);timer.setInterval(40);connect(&timer,&QTimer::timeout,this,[this]{refresh();});
         pendingVisibility=state.contains("hidden");qApp->installEventFilter(this);schedule();
     }
@@ -29,7 +31,7 @@ public:
     std::function<void(bool,bool)> placementChanged;
     std::function<QList<QWidget *>()> surfaceHosts;
     void shutdown() {
-        stopped=true;timer.stop();qApp->removeEventFilter(this);
+        stopped=true;timer.stop();qApp->removeEventFilter(this);nativeLease.release();
         for(auto view:views)if(view)delete view;views.clear();
         if(nativeFooter){QScopedValueRollback<bool> guard(applyingPlacement,true);nativeFooter->setVisible(nativeVisibility?nativeVisibility->isChecked():shown);}
     }
@@ -71,7 +73,7 @@ protected:
         const auto type=event->type();
         if(type==QEvent::Show || type==QEvent::Hide || type==QEvent::Resize || type==QEvent::LayoutRequest) {
             auto widget=qobject_cast<QWidget *>(object);
-            if(widget && widget==nativeFooter && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
+            if(widget && widget==nativeFooter && !nativeLease.active() && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
                 shown=!nativeFooter->isHidden();publish();
             }
             if(widget && (widget==nativeFooter || widget->objectName()=="m_PageSwitcherContainer" || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
@@ -106,7 +108,7 @@ private:
     }
     void discover() {
         auto main=root?root():nullptr;if(!main)return;
-        nativeFooter=main->findChild<QWidget *>("m_PageSwitcherContainer");
+        if(auto footer=main->findChild<QWidget *>("m_PageSwitcherContainer"))nativeFooter=footer;
         QSet<QAction *> matches;
         for(auto action:main->findChildren<QAction *>()) {
             QString text=action->text();text.remove('&');
@@ -118,7 +120,7 @@ private:
         }
         // Original page buttons are read-only models and executable targets.
         pages.clear();if(!nativeFooter)return;
-        const QPair<const char *,const char *> definitions[]={{"media","buttonBrowsePanel"},{"cut","buttonFirstCutPanel"},{"edit","buttonConformPanel"},{"fusion","buttonFusionPanel"},{"color","buttonColorPanel"},{"photo","buttonPhotoPanel"},{"fairlight","buttonAudioPanel"},{"deliver","buttonDeliverPanel"}};
+        const QPair<const char *,const char *> definitions[]={{"media","buttonBrowsePanel"},{"cut","buttonFirstCutPanel"},{"edit","buttonConformPanel"},{"fusion","buttonFusionPanel"},{"color","buttonColorPanel"},{"photo","buttonPhotoPanel"},{"fairlight","buttonAudioPanel"},{"deliver","buttonDeliverPanel"},{"home","buttonHome"},{"settings","buttonConfig"}};
         const auto active=currentWorkspacePage(main);
         for(const auto &definition:definitions) {
             QList<QAbstractButton *> buttons;
@@ -129,7 +131,8 @@ private:
             }
             if(buttons.size()!=1)continue;
             auto target=buttons.first();
-            pages.append({definition.first,workspacePageLabel(definition.first),target,active==definition.first || (active.isEmpty() && target->isCheckable() && target->isChecked())});
+            const QString title=QString(definition.first)=="home"?QStringLiteral("Home"):QString(definition.first)=="settings"?QStringLiteral("Project Settings"):workspacePageLabel(definition.first);
+            pages.append({definition.first,title,target,active==definition.first || (active.isEmpty() && target->isCheckable() && target->isChecked())});
         }
     }
     void activatePage(const QString &id) {
@@ -146,9 +149,21 @@ private:
         else if(pendingVisibility && nativeFooter)requestVisibility(!state["hidden"].toBool());
         else if(nativeFooter && !initialized)shown=!nativeFooter->isHidden();
         initialized=true;
+        QPointer<QWidget> destination=primarySurface?primarySurface():nullptr;
+        const auto nativeMain=root?root():nullptr;
         if(nativeFooter) {
             QScopedValueRollback<bool> placement(applyingPlacement,true);
-            nativeFooter->setVisible(shown && pinned(root?root():nullptr));
+            const bool custom=destination && destination!=nativeMain && pinned(destination);
+            if(nativeLease.active() && (!custom || nativeLease.ownerSurface()!=destination)) {
+                if(!nativeLease.release()){logEvent("footer.native.release.failed",{{"reason","native-slot-ownership-changed"}});return;}
+            }
+            if(custom && shown && !nativeLease.active()) {
+                nativeFooter->show();
+                const auto error=nativeLease.attach(nativeFooter,nativeMain,destination,Qt::BottomEdge,true);
+                if(!error.isEmpty())logEvent("footer.native.mount.failed",{{"error",error}});
+            }
+            if(nativeLease.active()){nativeLease.setHidden(!shown);nativeFooter->setVisible(shown);}
+            else nativeFooter->setVisible(shown && pinned(nativeMain));
         }
         // Native main window already has the exact native footer; leave it
         // visible without an overlay or replacement artwork. Only other surfaces
@@ -159,12 +174,13 @@ private:
             if(!host || host==(root?root():nullptr) || host->property("unboundToolbarStrip").toBool())continue;
             auto layout=qobject_cast<QBoxLayout *>(host->layout());if(!layout || layout->direction()!=QBoxLayout::TopToBottom)continue;
             auto view=views.value(host);
+            if(nativeLease.ownerSurface()==host){if(view)view->hide();continue;}
             if(!view) {
                 view=new SurfacePageNavigation(host);views[host]=view;layout->addWidget(view,0);
                 view->activate=[this](QString id){activatePage(id);};
                 connect(host,&QObject::destroyed,this,[this,host]{views.remove(host);});
             }
-            view->updatePages(pages);view->setVisible(shown && pinned(host) && !pages.isEmpty());
+            view->updatePages(pages);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && !pages.isEmpty());
         }
         for(auto it=views.begin();it!=views.end();++it)if(it.value() && !hosts.contains(it.key()))it.value()->hide();
         for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))if(menu->objectName()=="workspaceShowPanel")wireCaller(menu);
@@ -180,6 +196,7 @@ private:
         }
         entry->setChecked(shown);
     }
+    PanelAccessoryLease nativeLease;
     std::function<QWidget *()> root;QJsonObject state;QTimer timer;
     QPointer<QWidget> nativeFooter;QPointer<QAction> nativeVisibility;
     QList<NavigationPage> pages;QHash<QWidget *,QPointer<SurfacePageNavigation>> views;

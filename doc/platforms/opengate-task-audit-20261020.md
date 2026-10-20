@@ -256,3 +256,12 @@ remains unchanged. Full Auto Emulator conversion and track/ruler scale remain op
 this is a candidate for testing the implemented pieces, not task-list completion.
 Build and compile remaining regression fixtures; displayed/live tests await Resolve
 closed. No packaging, main merge or installation.
+
+## Complete native footer follow-up
+
+`fix/macos-complete-native-footer` moves the original complete native footer into the
+primary custom surface via reversible bottom-band ownership. Home/Settings are original
+controls there, with native-painted callable proxies on secondary surfaces. Hidden
+navigation regression passes; restart fixture compiles with updated ownership checks.
+Displayed restart/live testing remains pending. This supersedes the earlier primary
+page-only copy design. No install, main merge or publication. Fusion remains later.
