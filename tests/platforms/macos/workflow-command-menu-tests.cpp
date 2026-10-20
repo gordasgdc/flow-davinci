@@ -1,68 +1,48 @@
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QTemporaryDir>
+#include <QFile>
 #include "workflowcommandmenu.h"
 #include "keyboardlauncher.h"
 #include <cstdio>
 int main(int argc,char **argv) {
     QApplication app(argc,argv); QTemporaryDir logs; qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());
     QWidget main; main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
-    QMenu native,root(&main); auto action=native.addAction("OpenGate - Edit - Stabilize");
-    action->setObjectName("workspaceWIPlugins_0"); action->setShortcut(QKeySequence("Alt+Shift+S"));
-    auto other=native.addAction("CineWaltz Relay"); other->setObjectName("workspaceWIPlugins_1");
-    auto manager=native.addAction("OpenGate"); manager->setObjectName("workspaceWIPlugins_2");
-    int calls=0; QObject::connect(action,&QAction::triggered,[&] { ++calls; });
-    Unbound::WorkflowCommandMenu presentation(nullptr); presentation.wire(&root);
-    auto group=native.findChild<QMenu *>("openGateWorkflowCommands");
-    bool ok=group && !native.actions().contains(action) && group->actions().contains(action) && action->parent()==&native;
-    ok &= native.actions().contains(other) && native.actions().contains(manager);
-    ok &= action->shortcut()==QKeySequence("Alt+Shift+S") && action->isEnabled(); action->trigger(); ok &= calls==1;
-    presentation.wire(&root); ok &= group->actions().count(action)==1;
-    main.show();QApplication::setActiveWindow(&main);QApplication::processEvents();
-    QKeyEvent assigned(QEvent::KeyPress,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&main,&assigned);
-    ok &= calls==2; // Actual Qt shortcut-map dispatch, not QAction::trigger().
-    if (calls!=2) std::fprintf(stderr,"FAIL: assigned native shortcut does not execute after menu regrouping\n");
-    QWidget floating(&main,Qt::Window);floating.setObjectName("unboundFloating_shortcutFixture");
-    floating.setAttribute(Qt::WA_DontShowOnScreen);floating.show();presentation.wire(&root);
-    QApplication::setActiveWindow(&floating);QApplication::processEvents();
-    QKeyEvent floatingKey(QEvent::KeyPress,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&floating,&floatingKey);ok &= calls==3;
-    if (calls!=3) std::fprintf(stderr,"FAIL: assigned key does not execute in a newly created floating window\n");
-    action->setShortcut(QKeySequence("Alt+Shift+T"));
-    QKeyEvent obsolete(QEvent::KeyPress,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&floating,&obsolete);ok &= calls==3;
-    QKeyEvent updated(QEvent::KeyPress,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&floating,&updated);ok &= calls==4;
-    QWidget unrelated;unrelated.setAttribute(Qt::WA_DontShowOnScreen);unrelated.show();
-    QApplication::setActiveWindow(&unrelated);QApplication::processEvents();
-    QKeyEvent outside(QEvent::KeyPress,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&unrelated,&outside);ok &= calls==4;
-    ok &= action->shortcutContext()==Qt::WindowShortcut;
-    native.addAction(action); presentation.wire(&root);
-    ok &= !native.actions().contains(action) && group->actions().count(action)==1;
-    auto keyboard=native.addAction("Keyboard Customization..."); keyboard->setObjectName("resolveCustomizedActions");
-    bool enumerated=false;
-    QObject::connect(keyboard,&QAction::triggered,[&] { enumerated=native.actions().contains(action); });
-    ok &= Unbound::openNativeKeyboardCustomization() && enumerated;
-    ok &= native.actions().contains(action) && !group->actions().contains(action);
-    ok &= !main.actions().contains(action) && !floating.actions().contains(action);
-    presentation.wire(&root); ok &= native.actions().contains(action);
-    QWidget editor; editor.setObjectName("UiActionsEditorDialog");
-    QEvent hidden(QEvent::Hide); QApplication::sendEvent(&editor,&hidden); QApplication::processEvents();
-    ok &= !native.actions().contains(action) && group->actions().contains(action);
-    QApplication::setActiveWindow(&main);QApplication::processEvents();
-    QKeyEvent restored(QEvent::KeyPress,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);
-    QApplication::sendEvent(&main,&restored);ok &= calls==5;
+    QWidget floating; floating.setObjectName("unboundFloating_fixture");
+    QMenu native,root(&main);
+    auto before=native.addAction("Before");
+    auto action=native.addAction("OpenGate - Edit - Stabilize");action->setObjectName("workspaceWIPlugins_0");
+    auto after=native.addAction("After");
+    const auto original=native.actions();const auto hosts=action->associatedWidgets();
+    int calls=0;QObject::connect(action,&QAction::triggered,[&] { ++calls; });
+    bool ok=true;
     {
-        QMenu owner;auto retained=owner.addAction("OpenGate - Show-Hide Inspector");
-        retained->setObjectName("workspaceWIPlugins_retained");main.addAction(retained);
-        {
-            Unbound::WorkflowCommandMenu temporary(nullptr);temporary.wire(&root);
-            ok &= !owner.actions().contains(retained);
-        }
-        ok &= owner.actions().contains(retained) && main.actions().contains(retained) && retained->parent()==&owner;
-        ok &= !owner.findChild<QMenu *>("openGateWorkflowCommands");
+        Unbound::WorkflowCommandMenu observer(nullptr);
+        // Repeated discovery during opening must not emit menu changes, reorder
+        // actions, install shortcuts or associate native actions with new hosts.
+        int changes=0;QObject::connect(action,&QAction::changed,[&] { ++changes; });
+        QObject::connect(&native,&QMenu::aboutToShow,[&] { observer.wire(&root); });
+        for (int i=0;i<50;++i) { observer.wire(&root);QMetaObject::invokeMethod(&native,"aboutToShow",Qt::DirectConnection); }
+        ok &= native.actions()==original && action->associatedWidgets()==hosts;
+        ok &= action->parent()==&native && action->shortcuts().isEmpty() && changes==0;
+        ok &= !main.actions().contains(action) && !floating.actions().contains(action);
+        ok &= !native.findChild<QMenu *>("openGateWorkflowCommands");
+        action->trigger();ok &= calls==1;
+        // Native-owned binding changes remain observable without OpenGate modifying them.
+        action->setShortcut(QKeySequence("Alt+Shift+S"));observer.wire(&root);
+        ok &= action->shortcut()==QKeySequence("Alt+Shift+S") && changes==1;
+        auto keyboard=native.addAction("Keyboard Customization...");keyboard->setObjectName("resolveCustomizedActions");
+        ok &= Unbound::openNativeKeyboardCustomization();
+        ok &= native.actions().mid(0,3)==original;
+        auto ephemeral=native.addAction("OpenGate - Temporary");ephemeral->setObjectName("workspaceWIPlugins_temp");
+        observer.wire(&root);delete ephemeral;observer.wire(&root);
+        QObject::disconnect(&native,nullptr,nullptr,nullptr);
+        QObject::disconnect(action,&QAction::changed,nullptr,nullptr);
     }
-    std::printf("workflow command menu %s\n",ok ? "PASS" : "FAIL"); return ok ? 0 : 1;
+    ok &= native.actions().at(0)==before && native.actions().at(1)==action && native.actions().at(2)==after;
+    ok &= action->associatedWidgets()==hosts;
+    QFile events(logs.path()+"/events.jsonl");events.open(QIODevice::ReadOnly);const auto evidence=events.readAll();
+    ok &= evidence.contains("command.native.action") && evidence.contains("command.native.binding");
+    ok &= evidence.contains("native-unmodified") && !evidence.contains("command.menu.grouped");
+    std::printf("native-unmodified workflow observer %s\n",ok ? "PASS" : "FAIL");return ok ? 0 : 1;
 }
