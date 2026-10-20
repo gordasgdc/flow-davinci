@@ -32,7 +32,8 @@ other command/header/overflow fixes do not depend on them.
 PASS: full helper and bootstrap build; native-preset remapping; native Edit
 command routing; command submenu; tab scrolling; overflow width/scale/redock
 matrix; workspace headers; native keyboard navigation/wrapping; generated
-workflow scripts; deferred workflow dispatch. These are fixtures, not acceptance
+workflow scripts; deferred workflow dispatch; full panel-session regression suite
+with legacy key mode isolated from the real native preset. These are fixtures, not acceptance
 of the actual native Resolve behavior. No live clips were changed.
 
 ## Live test after installation

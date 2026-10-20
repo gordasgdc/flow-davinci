@@ -30,6 +30,9 @@ static void settleFor(int milliseconds)
 
 int main(int argc, char **argv)
 {
+    // This suite exercises the legacy default-key contract. Do not read the
+    // developer's real Resolve preset; native-preset behavior has its own suite.
+    qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS","0");
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
     QTemporaryDir logs;
