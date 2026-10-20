@@ -29,6 +29,15 @@ int main(int argc,char **argv) {
     check(attempts==2 && accepted==1,"unknown command IDs cannot bypass registry whitelist");
     check(QDir(files.path()+"/command-requests").entryList({"*.json"},QDir::Files).isEmpty(),"all requests are consumed once including rejected requests");
     {
+        QWidget popup(nullptr,Qt::Popup);popup.setAttribute(Qt::WA_DontShowOnScreen);popup.show();settle();
+        check(QApplication::activePopupWidget()==&popup,"fixture owns a tracked popup");
+        request("menu.json",json("panel.toggle.source",QDateTime::currentMSecsSinceEpoch()));settle();
+        check(accepted==1 && attempts==2,"workflow request is deferred while menu tracking remains active");
+        check(QFile::exists(files.path()+"/command-requests/menu.json"),"deferred request is not lost or claimed prematurely");
+        popup.hide();settle();check(accepted==2&&attempts==3,"menu close dispatches retained request exactly once");
+        settle();check(accepted==2,"menu and filesystem wakeups cannot replay a deferred request");
+    }
+    {
         const auto directory=files.path()+"/assigned-key";qputenv("UNBOUND_LAUNCH_DIRECTORY",directory.toUtf8());
         qputenv("UNBOUND_SHORTCUTS_FILE",(directory+"/Shortcuts.json").toUtf8());
         QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);

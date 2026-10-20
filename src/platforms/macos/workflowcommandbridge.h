@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QFileSystemWatcher>
+#include <QApplication>
+#include <QSet>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QTimer>
@@ -22,10 +24,10 @@ public:
         queue();
     }
 private:
-    QString directory; std::function<bool(QString)> dispatch; QFileSystemWatcher watcher; bool queued=false;
-    void queue() {
+    QString directory; std::function<bool(QString)> dispatch; QFileSystemWatcher watcher; bool queued=false; QSet<QString> deferred;
+    void queue(int delay=0) {
         if (queued) return; queued=true;
-        QTimer::singleShot(0,this,[this] { queued=false; consume(); });
+        QTimer::singleShot(delay,this,[this] { queued=false; consume(); });
     }
     void consume() {
         auto files=QDir(directory).entryInfoList({"*.json"},QDir::Files|QDir::NoSymLinks,QDir::Time|QDir::Reversed);
@@ -35,13 +37,24 @@ private:
             QFile file(info.absoluteFilePath());
             if (!file.open(QIODevice::ReadOnly)) continue;
             auto bytes=file.read(4097); file.close();
-            // Claim before dispatch: repeated watcher notifications cannot replay.
-            if (!file.remove()) continue;
             const auto object=QJsonDocument::fromJson(bytes).object();
             const auto id=object["command"].toString();
             const auto issued=object["issued_ms"].toDouble(-1);
             const auto age=QDateTime::currentMSecsSinceEpoch()-issued;
             const bool valid=bytes.size()<=4096 && !id.isEmpty() && qIsFinite(age) && age>=0 && age<=15000;
+            // Native workflow handlers can publish inside AppKit's menu-tracking
+            // loop. Retain the request until the popup closes, rather than reject
+            // a valid command or mutate/close the user's native menu ourselves.
+            if(valid && QApplication::activePopupWidget()) {
+                if(!deferred.contains(info.absoluteFilePath())) {
+                    deferred.insert(info.absoluteFilePath());
+                    logEvent("command.workflow.deferred",{{"command",id},{"reason","menu-tracking"}});
+                }
+                queue(25);return;
+            }
+            // Claim only when eligible for dispatch (or expired/invalid).
+            if(!file.remove())continue;
+            deferred.remove(info.absoluteFilePath());
             const bool accepted=valid && dispatch && dispatch(id);
             logEvent("command.workflow.request",{{"command",id},{"valid",valid},{"accepted",accepted},{"age_ms",age}});
         }
