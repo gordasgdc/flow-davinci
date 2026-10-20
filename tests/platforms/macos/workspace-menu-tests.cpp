@@ -8,6 +8,7 @@
 #include "arrangementcontrols.h"
 #include "pagecontext.h"
 #include "vieweractionregistry.h"
+#include "panelcommandmenu.h"
 int main(int argc, char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", "1");
@@ -145,6 +146,14 @@ int main(int argc, char **argv)
         check(!root->findChild<QAction *>("unboundKeyboardCustomization") && !root->findChild<QMenu *>("openGateNativeCommands"),"no duplicate keyboard entry or Commands submenu");
         if (panelShortcuts) panelShortcuts->trigger(); QApplication::processEvents();
         check(shortcutsCalls==1,"shortcut editor menu dispatches once after repeated synchronization");
+        Unbound::PanelCommands commandRegistry(nullptr);
+        commandRegistry.add({"edit.inspector.stabilize","Edit Inspector / Stabilize",[]{return true;},[]{}});
+        Unbound::PanelCommandMenu commandPresentation(nullptr,&commandRegistry);
+        menus.commandsMenu=[&](QMenu *parent){return commandPresentation.menu(parent);};menus.wire();menus.wire();
+        auto commands=root->findChild<QMenu *>("openGateCommands");
+        check(commands&&root->actions().contains(commands->menuAction())&&commands->actions().contains(panelShortcuts),"command submenu includes existing shortcut editor action");
+        check(!root->actions().contains(panelShortcuts)&&root->findChildren<QAction *>("unboundPanelShortcuts").size()==1,"shortcut editor has one presentation, without duplicate actions");
+        panelShortcuts->trigger();QApplication::processEvents();check(shortcutsCalls==2,"nested shortcut editor action retains its original callback");
 
         check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
             "native Edit recovery is first in Workspace UI and separate from native Workspace commands");

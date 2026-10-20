@@ -42,6 +42,7 @@
 #include "workspacearrangements.h"
 #include "panelcallermenu.h"
 #include "panelcommandcatalog.h"
+#include "panelcommandmenu.h"
 #include "nativeeditcommands.h"
 #include "nativepaneltoggles.h"
 #include "pagecontext.h"
@@ -329,6 +330,8 @@ public:
         editCommands->report=[this](QString message) { status->setText(message); };
         editCommands->addTo(commands);
         workspaceMenu = new Unbound::WorkspaceArrangements(this);
+        auto commandMenu=new Unbound::PanelCommandMenu(this,commands);
+        workspaceMenu->commandsMenu=[commandMenu](QMenu *root) {return commandMenu->menu(root);};
         workspaceMenu->showPanelShortcuts=[this] { commands->showEditor(); };
         auto panelCallers=new Unbound::PanelCallerMenu(this);
         panelCallers->currentPage=[] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
