@@ -351,3 +351,17 @@ pinned bars follow the existing primary-surface policy. No extra root-layout con
 is needed for this transition. Earlier notes calling for a separate Auto root conversion
 are superseded by this retained-layout strategy. Hidden page-state tests pass; live
 transition/bar ownership acceptance remains required. No install or publication.
+
+## Read-only lazy page inventory
+
+`research/macos-page-panel-inventory` captures bounded native page hierarchies after
+Show/lazy child construction, including stable within-capture object/parent ids,
+widget geometry/native flags and exposed scale/panel method/property names. It does
+not call layout hints, property getters or methods, read control text, move widgets
+or change native state. Four captures/page/session and 32 retained files bound storage.
+Hidden fixture passes anonymous/duplicate ancestry, limits, no text, no detached
+cross-page window and zero layout-hint calls. Existing startup snapshot only exposes
+Fusion's outer container; actual per-panel ownership still needs a loaded Fusion
+page capture before undocking can be implemented responsibly. Likewise native-painted
+Timeline body scaling has no verified hook. Do not claim either feature implemented
+from invented fixture object names. No install or live Resolve interaction.

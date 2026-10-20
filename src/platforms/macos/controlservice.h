@@ -11,6 +11,7 @@
 #include "clipcolorprobe.h"
 #include "keyboardprobe.h"
 #include "boundarydiagnostics.h"
+#include "pagepanelinventory.h"
 #include "workflowcommandbridge.h"
 #include "workflowcommandresults.h"
 #include "timelinetabscrolling.h"
@@ -32,6 +33,7 @@ public:
         const auto tabScrolling=qEnvironmentVariable("OPENGATE_TIMELINE_TAB_SCROLLING");
         if(tabScrolling.isEmpty() || tabScrolling=="1" || tabScrolling=="smooth")new TimelineTabScrolling(this);
         new BoundaryDiagnostics(this);
+        new PagePanelInventory(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
         QDir().mkpath(directory);
