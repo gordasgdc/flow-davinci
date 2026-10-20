@@ -306,3 +306,12 @@ bindings, hidden interactions and Timeline overflow. Full helper rebuilding and 
 matrix verification follow this checkpoint. Resolve remains running; no install or
 live project interaction. Auto Emulator conversion, full native-painted track/ruler
 scale and later Fusion support remain open; cross-platform stability is unverified.
+
+## Command provider fixture isolation
+
+The combined hidden matrix passed all suites except three legacy command-catalog
+assertions. The fixture expected private bindings while normal-launch native preset
+routing deliberately suppresses that store. `test/macos-command-provider-isolation`
+explicitly selects the existing recovery opt-out only inside that legacy test block.
+The corrected hidden command fixture passes. Production shortcut routing is unchanged;
+ordinary native remapping/alternate/clear tests passed separately in the matrix.
