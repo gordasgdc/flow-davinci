@@ -44,6 +44,13 @@ int main(int argc, char **argv)
         check(viewport && viewport->horizontalScrollBar()->maximum()>0 && session.window()->width()==300,
             "narrow Inspector scrolls instead of enlarging its floating host or clipping controls");
         check(inspector->minimumWidth()==700,"overflow does not relax native Inspector control constraints");
+        auto rightHint=viewport->viewport()->findChild<QToolButton *>("openGateScrollRight");
+        auto leftHint=viewport->viewport()->findChild<QToolButton *>("openGateScrollLeft");
+        check(rightHint && rightHint->isVisible() && !rightHint->toolTip().isEmpty(),"narrow Inspector advertises hidden right-edge controls");
+        if(rightHint)rightHint->click();settle();
+        check(viewport->horizontalScrollBar()->value()>0 && leftHint && leftHint->isVisible(),"overflow hint scrolls without consuming panel height");
+        viewport->horizontalScrollBar()->setValue(viewport->horizontalScrollBar()->minimum());settle();
+
         inspector->setParent(page); layout->addWidget(inspector); inspector->show(); settle(); settle();
         check(viewport && viewport->widget()==inspector && inspector->parentWidget()==viewport->viewport(),
             "native content reclamation recovers into the retained overflow viewport without duplicating the panel");
