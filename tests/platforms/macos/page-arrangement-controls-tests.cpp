@@ -24,6 +24,8 @@ int main(int argc, char **argv)
     controls.restoreRequested = [&] { ++restores; };
     controls.report = [](QString) {};
     check(controls.selection()->count()==2 && controls.selection()->currentData()==edit,"Edit lists and selects only Edit preset");
+    controls.updateState({{"page","edit"},{"layout_mode","native"}});
+    check(owner.findChild<QLabel *>("arrangementState")->text()=="Matches saved arrangement","legacy preset comparison normalizes inferred layout mode");
     controls.setPage("fusion");
     check(controls.selection()->count()==2 && controls.selection()->findData(edit)<0 && controls.selection()->findData(fusion)>=0,"Fusion list excludes Edit");
     controls.invoke("Restore",edit);

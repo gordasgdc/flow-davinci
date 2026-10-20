@@ -12,6 +12,7 @@
 #include "arrangementstore.h"
 #include "panelgroup.h"
 #include "arrangementorder.h"
+#include "../../core/pageworkspacestate.h"
 namespace Unbound {
 class ArrangementControls : public QObject
 {
@@ -75,6 +76,7 @@ public:
 private:
     static QJsonObject normalizedArrangement(QJsonObject value)
     {
+        value["layout_mode"] = PageWorkspaceState::mode(value);
         value["hide_background"] = value.value("hide_background").toBool();
         value["snap_windows"] = value.value("snap_windows").toBool(true);
         value["page"] = value.value("page").toString("edit");
