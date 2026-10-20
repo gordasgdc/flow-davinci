@@ -30,7 +30,7 @@ public:
         new ClipColorProbe(this);
         new KeyboardProbe(this);
         const auto tabScrolling=qEnvironmentVariable("OPENGATE_TIMELINE_TAB_SCROLLING");
-        if(tabScrolling.isEmpty() || tabScrolling=="1")new TimelineTabScrolling(this);
+        if(tabScrolling.isEmpty() || tabScrolling=="1" || tabScrolling=="smooth")new TimelineTabScrolling(this);
         new BoundaryDiagnostics(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
             QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));

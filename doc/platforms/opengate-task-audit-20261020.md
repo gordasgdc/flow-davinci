@@ -210,3 +210,10 @@ its assertion now captures the surface identity before teardown restores native 
 The group fixture explicitly shows its dynamically added native page button.
 Rebuild and backed-up installation follow; hotkey mappings remain untouched.
 Live footer acceptance, main merge and release remain pending.
+
+## Continuous tab viewport experiment
+
+experiment/macos-timeline-tab-viewport replaces arrow stepping with a public Qt scroll
+viewport only in recognized slots. Scrollbar owns a separate padded row; hidden one-pixel,
+trackpad, dynamic-tab, selection, plus-button and restore checks pass. Resolve custom-tab
+parent assumptions still need live acceptance. Branch is not installed or merged.
