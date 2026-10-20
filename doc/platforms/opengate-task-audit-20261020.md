@@ -374,3 +374,14 @@ an already-derived viewport height twice. Hidden integration fixture passes nati
 text fit, separate padded scrollbar/ruler geometry, selection-preserving scroll and
 original-row restoration at 100/150/200/300 percent. It does not establish native-painted
 Timeline track/ruler scaling or actual Resolve tab-layout availability. No install.
+
+## Combined checkpoint before full rebuild
+
+The assembled candidate now includes page workspace state, page-aware preset controls,
+automatic retained-layout mode, read-only lazy page inventory and tab/scale integration.
+Feature lock records each exact source branch tip and the legacy command fixture fix.
+Tests do not close live acceptance. Full Timeline body/ruler scaling and Fusion panel
+undocking remain pending actual native capability/ownership evidence. Older OS/Intel
+and Windows runtime validation remain pending; no universal stability claim. The
+installed 091268b remains unchanged. Run full universal build/audit and updated hidden
+matrix from this clean source. Do not install, publish or merge main at this checkpoint.

@@ -406,13 +406,49 @@
     },
     {
       "branch": "fix/macos-interaction-audit",
-      "commit": "5a51adca59c667f9150b6d784a6cc0a1f2666150",
+      "commit": "7b8ece3892b1080de4526e0e52f7dabbd24ba56d",
       "scope": "implementation",
       "acceptance": "pending"
     },
     {
       "branch": "fix/macos-timeline-overflow",
       "commit": "ac7f7ff1969d130a748ce8c40285bbc71e43c582",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "test/macos-command-provider-isolation",
+      "commit": "53d0088877eb4e38f23c5b1302cda9b34d536ce8",
+      "scope": "verification",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-page-workspace-state",
+      "commit": "26d81420f1fe632890acf5db11a6793554f811f2",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-page-aware-arrangements",
+      "commit": "48c26ec1bbb5854fe27aea2a8fe8d1b68ae12399",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-automatic-workspace-mode",
+      "commit": "257e15d947b8696063e6fb7bc2cf52ac98d130ef",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "research/macos-page-panel-inventory",
+      "commit": "20f35a0538cc372291c926cb8ab014d6570ac063",
+      "scope": "research",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-tab-viewport-scale",
+      "commit": "81b2298c36d8b8d3403607c82695053e1ba9be2c",
       "scope": "implementation",
       "acceptance": "pending"
     }
