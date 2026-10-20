@@ -138,3 +138,14 @@ Resolve layout has a unique scoped owner or that scrolling changes correctly.
 Normal-launch hotkey fixture passed again after the earlier activation failure.
 Treat that first failure as a test stability concern, not evidence of a confirmed
 production command regression. No new installation or live project changes.
+
+## Assembled priority candidate
+
+The four install priorities are assembled on
+`integration/macos-priority-live-candidate`, runtime f03d165, with installed
+541cd25 as ancestor. See `opengate-priority-live-candidate.md` for branch contents,
+passed combined checks, limits and live-test steps. Header and overflow source
+gaps now have candidate fixes and passing fixtures. Native acceptance remains
+for the next live test; it is not a prerequisite to producing that test build.
+GitHub standalone conversion and responsiveness are outside this candidate.
+No new installation, publication, main merge or live-clip operation has occurred.
