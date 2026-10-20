@@ -14,7 +14,9 @@ Preserve arrangements and native keyboard presets. No merges to main from experi
       branch and independent OpenGate presentation without rewriting history.
       Detach only after metadata preservation/review.
 - [ ] Header/artwork: audit all visible symbols; concise acknowledgment, retain MIT.
-- [ ] Responsive header overflow; preserve native ownership.
+- [ ] RELEASE BLOCKER: overlapping project title and Source/Program Monitor controls.
+      Reserve title space; labels -> icons/tooltips -> overflow at narrow widths.
+      No overlap in native, attached, or floating headers; preserve native ownership.
 - [ ] Responsiveness last; bounded measurement before optimization.
 
 Evidence: latest fbfc2a9 input log has Qt::Key_S (83), Qt::Key_W (87),
@@ -33,3 +35,6 @@ policy, not a blanket global veto or silent override. Alt+Shift+S has no
 same-sequence collision in the persisted active preset. Audit parses all six
 presets, retains alternate bindings and distinguishes absent preset from corrupt
 input. Runtime provider remains disabled pending switch-timing validation.
+
+Header title acceptance: elide by available pixel width; show full project name
+in a tooltip. Hover must not move, reflow, or animate neighboring controls.
