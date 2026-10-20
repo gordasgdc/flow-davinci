@@ -58,10 +58,7 @@ protected:
             type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate &&
             type != QEvent::ChildAdded && type != QEvent::ParentChange && type != QEvent::Hide) return false;
         auto widget = qobject_cast<QWidget *>(object);
-        if ((type == QEvent::ChildAdded || type == QEvent::ParentChange) && related(widget) && !controlsScanQueued) {
-            controlsScanQueued = true;
-            QTimer::singleShot(0,this,[this] { controlsScanQueued=false; scanButtons(); });
-        }
+        if ((type == QEvent::ChildAdded || type == QEvent::ParentChange) && related(widget)) queueButtonScan(widget);
         if (widget && widget->objectName().startsWith("WStackPage_") && (type==QEvent::Show || type==QEvent::Hide) && !pageScanQueued) {
             pageScanQueued=true;
             QTimer::singleShot(0,this,[this] { pageScanQueued=false; recordPage(); });
@@ -178,13 +175,34 @@ private:
             }
         });
     }
+    void observeButtonsIn(QWidget *root)
+    {
+        if(!root)return;
+        observeButton(qobject_cast<QAbstractButton *>(root));
+        for(auto button:root->findChildren<QAbstractButton *>())observeButton(button);
+    }
+    void queueButtonScan(QWidget *root)
+    {
+        // Lazy native panels can create many children in one event turn. Scan
+        // their affected subtree once, rather than all Resolve windows per child.
+        for(const auto &pending:controlsScanRoots)
+            if(pending && (pending==root || pending->isAncestorOf(root)))return;
+        for(int i=controlsScanRoots.size()-1;i>=0;--i)
+            if(!controlsScanRoots[i] || root->isAncestorOf(controlsScanRoots[i]))controlsScanRoots.removeAt(i);
+        controlsScanRoots.append(root);
+        if(controlsScanQueued)return;
+        controlsScanQueued=true;
+        QTimer::singleShot(0,this,[this] {
+            controlsScanQueued=false;const auto roots=controlsScanRoots;controlsScanRoots.clear();
+            for(const auto &root:roots)if(root && related(root))observeButtonsIn(root);
+        });
+    }
     void scanButtons()
     {
         // Includes hidden controls: a command can invoke an existing native button
         // without showing its panel. Connections observe signals, never consume input.
         for (auto window : QApplication::topLevelWidgets()) if (related(window)) {
-            observeButton(qobject_cast<QAbstractButton *>(window));
-            for (auto button : window->findChildren<QAbstractButton *>()) observeButton(button);
+            observeButtonsIn(window);
         }
     }
     void recordPage()
@@ -247,6 +265,7 @@ private:
     QSet<QAction *> tracked;
     QSet<QAbstractButton *> buttons;
     QJsonArray lastViewerActions;
+    QList<QPointer<QWidget>> controlsScanRoots;
     QString lastPage;
     bool activationScanQueued = false,controlsScanQueued=false,pageScanQueued=false;
 };
