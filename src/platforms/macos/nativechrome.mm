@@ -255,7 +255,12 @@ bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()
         objc_setAssociatedObject(window,&headerMenuKey,button,OBJC_ASSOCIATION_RETAIN_NONATOMIC);[button release];
     }
     if (button.superview!=green.superview) { [button removeFromSuperview];[green.superview addSubview:button]; }
-    button.frame=NSMakeRect(MAX(NSMaxX(green.frame)+48,NSWidth(green.superview.bounds)-80),NSMidY(green.frame)-9,70,18);
+    const NSRect bounds=green.superview.bounds;
+    const CGFloat height=MIN(18,MAX(0,NSHeight(bounds)-4));
+    const CGFloat y=MAX(NSMinY(bounds)+2,MIN(NSMidY(green.frame)-height/2,NSMaxY(bounds)-height-2));
+    const CGFloat x=MAX(NSMaxX(green.frame)+48,NSMaxX(bounds)-80);
+    const CGFloat width=MIN(70,MAX(0,NSMaxX(bounds)-x-2));
+    button.frame=NSMakeRect(x,y,width,height);
     button.hidden=NO;[button setOpenCallback:opened];
     auto title=(NSTextField *)objc_getAssociatedObject(window,&titleKey);
     if (title && !title.hidden) { auto frame=title.frame;frame.size.width=MAX(0,NSMinX(button.frame)-8-frame.origin.x);title.frame=frame; }
