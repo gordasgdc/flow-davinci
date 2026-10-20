@@ -4,8 +4,16 @@
 #include <QLineEdit>
 #include <QVBoxLayout>
 #include <QTemporaryDir>
+#include <QPainter>
 #include <cstdio>
 #include "nativeeditcommands.h"
+class PaintedMenuRow : public QWidget {
+public:
+    explicit PaintedMenuRow(QString label):caption(std::move(label)) { resize(320,32); }
+    QString caption;
+protected:
+    void paintEvent(QPaintEvent *) override { QPainter painter(this); painter.drawText(rect(),Qt::AlignCenter,caption); }
+};
 int main(int argc,char **argv) {
     QApplication app(argc,argv); QTemporaryDir logs; qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());
     int failures=0; auto check=[&](bool ok,const char *message) { if (!ok) { ++failures; std::fprintf(stderr,"FAIL: %s\n",message); } };
@@ -50,24 +58,34 @@ int main(int argc,char **argv) {
     contentLayout->addWidget(new QLabel("Fixed Playhead",content)); custom->setDefaultWidget(content);
     custom->setCheckable(true); embedded.addAction(custom);
     check(commands.fixedPlayhead() && custom->isChecked(),"blank native action is identified through its embedded row label");
+    contentLayout->takeAt(0)->widget()->deleteLater();QApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+    content->setAccessibleName("Fixed Playhead");
+    check(commands.fixedPlayhead()&&!custom->isChecked(),"custom-painted native row is identified by accessibility metadata without text children");
+    check(commands.fixedPlayhead()&&custom->isChecked(),"semantic row retains both toggle states");
     custom->setEnabled(false);
     check(!commands.fixedPlayhead() && custom->isChecked(),"disabled embedded native action is respected");
     custom->setEnabled(true); embedded.setProperty("unboundOwnMenu",true);
     check(!commands.fixedPlayhead() && custom->isChecked(),"helper-owned menu cannot impersonate a native target");
     QAction nativeFixed(&page);nativeFixed.setObjectName("viewTimelineScrollingFixed");nativeFixed.setCheckable(true);
-    check(commands.fixedPlayhead() && nativeFixed.isChecked(),"exact native Edit View command works without a labeled options row");
-    check(commands.fixedPlayhead() && !nativeFixed.isChecked(),"native scrolling command toggles back without clip selection");
-    QAction duplicateNative(&page);duplicateNative.setObjectName("viewTimelineScrollingFixed");duplicateNative.setCheckable(true);
-    check(!commands.fixedPlayhead()&&!nativeFixed.isChecked()&&!duplicateNative.isChecked(),"duplicate native identities fail closed");
-    duplicateNative.setObjectName("unrelated");
-    QActionGroup styles(&page);styles.setExclusive(true);styles.addAction(&nativeFixed);
-    QAction paged(&page);paged.setObjectName("viewTimelineScrollingPage");paged.setCheckable(true);styles.addAction(&paged);
-    QAction disabled(&page);disabled.setObjectName("viewTimelineScrollingDisabled");disabled.setCheckable(true);styles.addAction(&disabled);
-    paged.setChecked(true);
-    check(commands.fixedPlayhead()&&nativeFixed.isChecked(),"exclusive native scrolling group enters Fixed");
-    check(commands.fixedPlayhead()&&paged.isChecked()&&!nativeFixed.isChecked(),"second invocation restores prior Page scrolling style");
-    disabled.setChecked(true);
-    check(commands.fixedPlayhead()&&nativeFixed.isChecked(),"No Scrolling baseline enters Fixed");
-    check(commands.fixedPlayhead()&&disabled.isChecked(),"previous No Scrolling state is restored");
+    check(!commands.fixedPlayhead()&&!nativeFixed.isChecked(),"global scrolling QAction cannot substitute for real Edit settings");
+    embedded.setProperty("unboundOwnMenu",false);
+    embedded.removeAction(custom);delete custom;
+    custom=new QWidgetAction(&embedded);
+    auto painted=new PaintedMenuRow("Fixed Playhead"); custom->setDefaultWidget(painted);custom->setCheckable(true);embedded.addAction(custom);
+    bool actualMode=false;int nativeCalls=0;
+    QObject::connect(custom,&QAction::triggered,[&] { actualMode=!actualMode;++nativeCalls; });
+    page.hide();preferences.hide();embedded.hide();painted->hide();
+    bool editActive=true;commands.editActive=[&] {return editActive;};
+    auto focusBefore=QApplication::focusWidget();
+    check(commands.fixedPlayhead()&&actualMode&&nativeCalls==1,"hidden custom-painted native row invokes real settings handler");
+    check(!page.isVisible()&&!embedded.isVisible()&&!painted->isVisible(),"invocation does not show timeline, settings menu or its row");
+    check(QApplication::focusWidget()==focusBefore,"invocation does not move focus");
+    check(commands.fixedPlayhead()&&!actualMode&&nativeCalls==2,"same hidden handler switches Fixed Playhead off");
+    editActive=false;
+    check(!commands.fixedPlayhead()&&nativeCalls==2,"active page contract prevents invocation outside Edit");
+    editActive=true;
+    painted->caption="Display Audio Waveforms";
+    const bool result=commands.fixedPlayhead();
+    check(!result&&nativeCalls==2,"different painted caption cannot be treated as Fixed Playhead");
     std::printf("native edit command failures=%d\n",failures); return failures ? 1 : 0;
 }
