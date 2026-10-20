@@ -51,6 +51,7 @@ that stabilization or scrolling actually happened.
 | C4 | Commands appear in a sensible submenu as well as keyboard customization | Current native workflow scripts remain in their original menu locations. OpenGate’s shortcut entry opens the native keyboard editor. | **Not delivered:** a safe command submenu. Do not reintroduce native action regrouping that was implicated in menu-opening crashes. An OpenGate-owned presentation should delegate to the same commands. Exact native registration and presentation must remain distinct. |
 | C5 | One reusable maximize/restore operation; backtick and per-panel commands use it | Registered panels share `PanelExpansionController`; hovered and explicit panel commands exist. | **Partial:** verify exact geometry/group/tab restoration and target behavior live. Current hover lookup does not implement the historical checklist’s last-active fallback when no panel is under the pointer. It is not a generic maximizer for every arbitrary native Resolve window. Clearing a native hovered-panel assignment can re-enable the legacy backtick fallback; clearing/remapping semantics need explicit acceptance. |
 | C6 | Existing native assignments and contextual commands keep working | Page-aware conflict handling and text/dialog guards are fixture-tested. Native preset input is read-only. | **Open:** user’s real conflicts, Source/Program independence and native shortcut behavior in main/floating layouts. Alt+Shift+W has a known native collision; do not silently override it. |
+| C7 | Full command names readable in Keyboard Customization | User screenshot shows native Command-column elision, including OpenGate labels. | **New open item:** widen the command column where safely supported and provide full-name hover text. Preserve native command/model labels and saved binding identities; do not remove prefixes or rename registrations without migration. |
 | S1 | Stop the shortcut/menu crash regression | Native workflow regrouping and host mutation removed; observer fixtures pass. Reported helper stacks implicated the old mutation path. | **Mitigation, not proven resolved:** repeated real menu/editor opening, key use, remapping and lifetime/teardown checks without a new matching crash. Own-menu refresh behavior also needs actual Cocoa acceptance. |
 | S2 | Investigate Fairlight crash and reliable page switching | Evidence review complete: reported fault is native Fairlight code, no helper frame in that stack. Unsafe synchronous Edit Hide ownership work was deferred; fixtures pass. | **Open:** root cause not established. Cycle Edit/Fairlight/other pages, native context menus, project reopen and layout restoration. Do not claim the defensive ordering change fixes the reported crash. |
 | S3 | Log evidence that can identify OpenGate’s involvement in crashes | Build/PID/session, breadcrumbs, clean-shutdown state and bounded native archive correlation implemented. Matching binary/dSYM retained for earlier implicated incidents. | **Open live acceptance:** verify useful incident output and timestamps; time correlation is not causal attribution. Do not replace Resolve’s crash handler. |
@@ -95,3 +96,17 @@ that stabilization or scrolling actually happened.
 Historical custom-color work and unclosed low-level workspace tests remain in
 `macos-workspace-checklist.md` and `opengate-next-pass.md`; they have not silently
 become completed. They do not authorize additional scope or responsiveness work.
+
+## Uninstalled follow-up: normal-launch hotkeys
+
+Branch `fix/macos-normal-launch-hotkeys` changes the native preset provider to
+start without a launch flag, retaining `OPENGATE_NATIVE_PRESET_SHORTCUTS=0` as a
+recovery opt-out. Its fixture passes ordinary launch, remap/preset-switch dispatch,
+shared maximize command dispatch and clearing the native maximize assignment
+without resurrecting a legacy key.
+
+This branch is not installed. Important behavior to review before integration:
+a native maximize command row with no assignment means unassigned. If the current
+preset contains an empty row, bare backtick will need an explicit native-editor
+assignment; silently retaining an independent binding would contradict clearing
+semantics. Do not describe this as preserving every previous backtick default.

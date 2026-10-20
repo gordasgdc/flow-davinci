@@ -14,13 +14,22 @@ public:
     PanelCommandCatalog(QWidget *owner, std::function<bool()> running)
         : PanelCommands(owner), nativeEditor(this)
     {
-        // Explicit opt-in for acceptance testing; never silently enable a new
-        // interpreter in an existing installation.
-        if (qEnvironmentVariableIntValue("OPENGATE_NATIVE_PRESET_SHORTCUTS")==1) {
+        // Native assignments must work on an ordinary app launch. Keep an
+        // explicit recovery opt-out; malformed overrides do not enable input.
+        const auto mode=qEnvironmentVariable("OPENGATE_NATIVE_PRESET_SHORTCUTS");
+        const bool enabled=mode.isEmpty() || mode=="1";
+        logEvent("command.preset.provider",{{"enabled",enabled},{"mode",mode.isEmpty()?"normal-launch":mode}});
+        if (enabled) {
             preset=new NativePresetBindings(this,qEnvironmentVariable("OPENGATE_PRESET_DIRECTORY",
                 QDir::homePath()+"/Library/Preferences/Blackmagic Design/DaVinci Resolve"));
             nativeMatch=[this](const QKeySequence &pressed) { return matchPreset(pressed); };
-            legacyBacktickAllowed=[this] {return preset->snapshot().commands.value("OpenGate - Maximize-Restore Hovered Panel").isEmpty();};
+            legacyBacktickAllowed=[this] {
+                const auto &snapshot=preset->snapshot();
+                // An explicitly present native command row is authoritative,
+                // including an empty assignment. Clearing it cannot resurrect
+                // a different binding from the legacy settings file.
+                return snapshot.error.isEmpty() && !snapshot.commands.contains("OpenGate - Maximize-Restore Hovered Panel");
+            };
         }
         context=[owner,running] {
             auto window=QApplication::activeWindow();

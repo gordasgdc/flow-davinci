@@ -31,7 +31,7 @@ int main(int argc,char **argv){
  check(conflict.owners.value(s.toString(QKeySequence::PortableText)).size()==2,"native conflicts retained");
  auto save=[&](const QString &name,const QByteArray &data){QSaveFile f(dir.path()+'/'+name);f.open(QIODevice::WriteOnly);f.write(data);f.commit();};
  save("config.user.xml",config);save("keyboard.preset.xml",xml);
- qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS","1");qputenv("OPENGATE_PRESET_DIRECTORY",dir.path().toUtf8());
+ qunsetenv("OPENGATE_NATIVE_PRESET_SHORTCUTS");qputenv("OPENGATE_PRESET_DIRECTORY",dir.path().toUtf8());
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
  QWidget edit(&main);edit.setObjectName("WStackPage_Conform");edit.show();main.show();QApplication::setActiveWindow(&main);QApplication::processEvents();
  int calls=0;Unbound::PanelCommandCatalog commands(&main,[]{return true;});
@@ -40,8 +40,11 @@ int main(int argc,char **argv){
  QMenu workflow(&main);auto nativeAction=workflow.addAction(stabilize);nativeAction->setObjectName("workspaceWIPlugins_fixture");
  QObject::connect(nativeAction,&QAction::triggered,[&] {++calls;});
  Unbound::NativeEditCommands editCommands(&main,[&] {return &edit;});editCommands.addTo(&commands);
+ int expanded=0;commands.add({"panel.expand.hovered","Maximize / Restore Hovered Panel",[]{return true;},[&] {++expanded;}});
+ commands.defaultBinding("panel.expand.hovered","`");
  auto press=[&](QWidget *receiver,int key,Qt::KeyboardModifiers mods){QKeyEvent over(QEvent::ShortcutOverride,key,mods);QApplication::sendEvent(receiver,&over);QKeyEvent down(QEvent::KeyPress,key,mods);QApplication::sendEvent(receiver,&down);QApplication::processEvents();};
  press(&main,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==1,"persisted assignment executes registry once");
+ press(&main,Qt::Key_QuoteLeft,Qt::NoModifier);check(expanded==1,"legacy default remains only when native preset has no hovered command row");
  press(&main,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"alternate binding executes");
  QLineEdit typing(&edit);typing.show();typing.setFocus();QApplication::processEvents();
  press(&typing,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"text entry guard retained");typing.clearFocus();
@@ -63,5 +66,12 @@ int main(int argc,char **argv){
  save("keyboard.preset.xml",preset({{stabilize,{t}}}));settle();
  check(watched.snapshot().error.isEmpty()&&watched.snapshot().commands.value(stabilize)==QList<QKeySequence>{t},"watch survives atomic replacements and parse recovery");
  press(&floating,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==5,"restored preset dispatches native API route exactly once after recovery");
+ const QString hovered="OpenGate - Maximize-Restore Hovered Panel";
+ save("keyboard.preset.xml",preset({{stabilize,{t}},{hovered,{QKeySequence("F18")}}}));settle();
+ press(&floating,Qt::Key_QuoteLeft,Qt::NoModifier);check(expanded==1,"native maximize assignment suppresses legacy backtick");
+ press(&floating,Qt::Key_F18,Qt::NoModifier);check(expanded==2,"native maximize assignment reaches shared expansion command");
+ save("keyboard.preset.xml",preset({{stabilize,{t}},{hovered,{}}}));settle();
+ press(&floating,Qt::Key_F18,Qt::NoModifier);press(&floating,Qt::Key_QuoteLeft,Qt::NoModifier);
+ check(expanded==2,"clearing native maximize assignment disables both old key and legacy backtick");
  std::printf("native preset failures=%d\n",failures);return failures?1:0;
 }
