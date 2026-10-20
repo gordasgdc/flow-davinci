@@ -15,10 +15,28 @@ public:
         QString id,label,page;
         std::function<bool()> available,visible;
         std::function<void()> show;
+        std::function<void(bool)> setVisible={};
     };
     explicit PanelCallerMenu(QObject *owner=nullptr) : QObject(owner) {}
     std::function<QString()> currentPage=[] { return QString(); };
     void add(Panel panel) { panels.append(std::move(panel)); }
+    void populateFlat(QMenu *menu) {
+        for(int i=0;i<panels.size();++i) {
+            const auto &panel=panels[i];
+            auto action=menu->addAction(panel.id=="unboundWorkspaceToolbar"?QStringLiteral("Workspace Header"):panel.label);
+            action->setObjectName("openGatePanelToggle_"+panel.id);action->setCheckable(true);
+            const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
+            action->setEnabled(ready);action->setChecked(panel.visible && panel.visible());
+            action->setToolTip("Show or hide "+action->text()+" in its remembered location");
+            connect(action,&QAction::triggered,this,[this,i](bool value) {
+                QTimer::singleShot(0,this,[this,i,value] {
+                    const auto &panel=panels[i];if((panel.page!="global" && currentPage()!=panel.page) || !panel.available || !panel.available())return;
+                    logEvent("workspace.panel.visibility",{{"panel",panel.id},{"requested",value},{"origin","panels-root"}});
+                    if(panel.setVisible)panel.setVisible(value);else if(value && panel.show)panel.show();
+                });
+            });
+        }
+    }
     QMenu *wire(QMenu *root) {
         auto menu=root->findChild<QMenu *>("openGateShowPanel",Qt::FindDirectChildrenOnly);
         if (!menu) {

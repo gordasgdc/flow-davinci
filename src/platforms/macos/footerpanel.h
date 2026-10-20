@@ -59,6 +59,11 @@ public:
         if(!host || host->objectName().isEmpty())return;
         auto choices=state["surfaces"].toObject();choices[host->objectName()]=enabled;state["surfaces"]=choices;refresh();publish();
     }
+    void populatePlacementMenu(QMenu *menu,QWidget *host) {
+        auto placement=menu->addMenu("Page Navigation Placement");placement->setProperty("unboundOwnMenu",true);
+        auto pin=placement->addAction("Pin to This Surface");pin->setCheckable(true);pin->setChecked(pinned(host));
+        QPointer<QWidget> retained(host);connect(pin,&QAction::triggered,this,[this,retained](bool value){defer([this,retained,value]{if(retained)setPinned(retained,value);});});
+    }
     void populateSurfaceMenu(QMenu *menu,QWidget *host) {
         auto navigation=menu->addMenu("Page Navigation");navigation->setProperty("unboundOwnMenu",true);
         auto visibility=navigation->addAction("Show Page Navigation");visibility->setProperty("openGateNavigationProxy",true);visibility->setCheckable(true);visibility->setChecked(shown);

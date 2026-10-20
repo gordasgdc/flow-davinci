@@ -256,3 +256,11 @@ remains unchanged. Full Auto Emulator conversion and track/ruler scale remain op
 this is a candidate for testing the implemented pieces, not task-list completion.
 Build and compile remaining regression fixtures; displayed/live tests await Resolve
 closed. No packaging, main merge or installation.
+
+## Flat Panels menu review
+
+`fix/macos-flat-panels-menu` lists every registered panel directly in each title-bar
+Panels menu and removes All Panels/This Window duplication. Visibility checks and
+Show/Hide delegate to canonical owners. Hidden workspace-header regression passed;
+panel-session compilation passed. No install, main merge or publication. Fusion work
+remains after the existing arrangement task list, isolated on separate branches.

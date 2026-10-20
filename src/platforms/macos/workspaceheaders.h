@@ -30,34 +30,19 @@ public:
     }
     void add(Panel panel) { panels.append(std::move(panel)); }
     std::function<QWidget *()> primary,projectSurface;
-    std::function<QMenu *()> allPanels;
+    std::function<void(QMenu *)> panelEntries;
     std::function<void(QMenu *,QWidget *)> surfaceControls;
     std::function<QList<Window>()> windows;
     void schedule() { if (!timer.isActive()) timer.start(); }
     void populate(QMenu *menu,QWidget *host) {
-        menu->clear();menu->addSection("This Window");
-        for (const auto &panel:panels) if (panel.host && panel.host()==host) {
+        menu->clear();
+        if(panelEntries)panelEntries(menu);
+        else for(const auto &panel:panels) {
             auto action=menu->addAction(panel.title);action->setCheckable(true);action->setChecked(panel.shown && panel.shown());
-            connect(action,&QAction::triggered,this,[this,panel](bool shown) {
-                QTimer::singleShot(0,this,[panel,shown] {
-                    logEvent("header.panel.visibility",{{"panel",panel.id},{"requested",shown}});
-                    if (panel.setShown) panel.setShown(shown);
-                });
-            });
-        }
-        for (const auto &panel:panels) if (panel.id=="unboundWorkspaceToolbar" && panel.host && panel.host()==host) {
-            auto controls=menu->addMenu("Workspace Toolbar Controls");controls->setProperty("unboundOwnMenu",true);
-            if (panel.scale && panel.setScale) {
-                auto size=controls->addMenu("Interface Size");
-                populatePanelScaleMenu(size,this,panel.scale,panel.setScale);
-            }
-
+            connect(action,&QAction::triggered,this,[this,panel](bool shown){QTimer::singleShot(0,this,[panel,shown]{if(panel.setShown)panel.setShown(shown);});});
         }
         if(surfaceControls)surfaceControls(menu,host);
         const bool global=primary && primary()==host;
-        if (auto callers=allPanels ? allPanels() : nullptr) {
-                menu->addSeparator();auto all=menu->addMenu("All Panels");all->setProperty("unboundOwnMenu",true);all->addActions(callers->actions());
-        }
         if (global) {
             if (windows) {
                 auto groups=menu->addMenu("Floating Windows");

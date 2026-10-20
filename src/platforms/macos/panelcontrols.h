@@ -383,10 +383,11 @@ public:
                 auto target=Unbound::panelSurface(page(),panels[i].name);
                 if (panels[i].session->active() || managedOwnerFor(target)) showPanel(i,true);
                 else requestUndock(i);
-            }});
+            },[this,i](bool visible) {showPanel(i,visible);save();}});
         panelCallers->add({"page-navigation","Page Navigation","global",[this] { return !quitting && bool(footer); },
             [this] { return footer && !footer->snapshot()["hidden"].toBool(); },
-            [this] { const auto error=footer->showPanel(); if (!error.isEmpty()) status->setText(error); }});
+            [this] { const auto error=footer->showPanel(); if (!error.isEmpty()) status->setText(error); },
+            [this](bool visible) {status->setText(visible?footer->showPanel():footer->hidePanel());}});
         workspaceMenu->panelMenu=[panelCallers](QMenu *root) { return panelCallers->wire(root); };
         workspaceMenu->showPanelManager = [this] {
             showNormal(); Unbound::keepOnDisplay(this); raise(); activateWindow();
@@ -429,7 +430,7 @@ public:
             [this,i] { return panels[i].session->interfaceScale(); },
             [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
             [this,i] { floatToolbar(i); }});
-        headers->surfaceControls=[this](QMenu *menu,QWidget *host) {workspaceHeader->populateMenu(menu);footer->populateSurfaceMenu(menu,host);};
+        headers->surfaceControls=[this](QMenu *menu,QWidget *host) {footer->populatePlacementMenu(menu,host);};
         headers->projectSurface=[] { return Unbound::resolveMainWindow(); };
         headers->primary=[this]() -> QWidget * {
             if (panels[1].session->active() && panels[1].session->window()->window()->isVisible()) return panels[1].session->window()->window();
@@ -438,11 +439,7 @@ public:
             }
             return best;
         };
-        headers->allPanels=[panelCallers]() -> QMenu * {
-            for (auto widget:QApplication::allWidgets()) if (auto menu=qobject_cast<QMenu *>(widget)) if (menu->objectName()=="unboundWorkspaceUI")
-                return panelCallers->wire(menu)->findChild<QMenu *>("openGatePanelPage_edit",Qt::FindDirectChildrenOnly);
-            return nullptr;
-        };
+        headers->panelEntries=[panelCallers](QMenu *menu) {panelCallers->populateFlat(menu);};
         headers->windows=[this] {
             QList<Unbound::WorkspaceHeaders::Window> result;
             for (auto group:groups) if (group->active()) {
