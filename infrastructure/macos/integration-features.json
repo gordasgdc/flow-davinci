@@ -349,6 +349,12 @@
       "commit": "ae47749734582b54bd1fa13700d8d7c12f405773",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-shortcut-execution",
+      "commit": "b3e2acc76d53cf88313103c85c593426a1e41618",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
