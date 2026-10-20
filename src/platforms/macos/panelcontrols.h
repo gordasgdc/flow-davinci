@@ -284,7 +284,10 @@ public:
                 if (i==1) return host;
                 if (!best || host->width()*host->height()>best->width()*best->height()) best=host;
             }
-            return best;
+            auto main=Unbound::resolveMainWindow();
+            // A lone floating Inspector is not the main docked surface.
+            if(main && main->isVisible() && !main->property("unboundBackgroundHidden").toBool())return main;
+            return best ? best : main;
         };
         footer->surfaceHosts=[this] {
             QList<QWidget *> hosts;

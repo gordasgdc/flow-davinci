@@ -18,6 +18,7 @@ int main(int argc,char **argv) {
  auto middle=new QWidget(originalFooter);middle->setObjectName("frameControlPanelMiddle");auto middleLayout=new QHBoxLayout(middle);middleLayout->setContentsMargins(0,0,0,0);originalLayout->setContentsMargins(0,0,0,0);originalLayout->addWidget(middle);auto home=new QPushButton("Home",originalFooter);originalLayout->addWidget(home);
  const QStringList targets{"buttonBrowsePanel","buttonFirstCutPanel","buttonConformPanel","buttonFusionPanel","buttonColorPanel","buttonPhotoPanel","buttonAudioPanel","buttonDeliverPanel"};
  int pageClicks=0;
+ auto inactiveMode=new QWidget(originalFooter);auto duplicateEdit=new QPushButton("Inactive Edit",inactiveMode);duplicateEdit->setObjectName("buttonConformPanel");inactiveMode->hide();
  for(const auto &id:targets){auto button=new QPushButton(id,middle);button->setObjectName(id);middleLayout->addWidget(button);QObject::connect(button,&QPushButton::clicked,[&,id]{++pageClicks;if(id=="buttonAudioPanel")pages->setCurrentWidget(audio);if(id=="buttonConformPanel")pages->setCurrentWidget(edit);});}
  auto visibility=new QAction("Show Page Navigation",&main);visibility->setCheckable(true);visibility->setChecked(true);int toggles=0;
  QObject::connect(visibility,&QAction::toggled,[&](bool value){++toggles;originalFooter->setVisible(value);});
@@ -28,7 +29,7 @@ int main(int argc,char **argv) {
  QJsonObject saved;QWidget *primary=&first;
  {
   Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.attachmentOwner=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
-  auto a=first.findChild<Unbound::SurfacePageNavigation *>();auto b=second.findChild<Unbound::SurfacePageNavigation *>();
+  auto a=first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");auto b=second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
   check(a&&b&&a->isVisibleTo(&first)&&!b->isVisibleTo(&second),"main surface gets footer by default, secondary remains opt-in");
   check(firstLayout->indexOf(a)==firstLayout->count()-1&&firstLayout->indexOf(group)==0,"footer sits below entire group outside its content");
   const auto render=qEnvironmentVariable("OPENGATE_NAVIGATION_TEST_RENDER_DIR");
@@ -51,23 +52,23 @@ int main(int argc,char **argv) {
   QFont large=first.font();large.setPointSize(20);first.setFont(large);settle();a->horizontalScrollBar()->setValue(a->horizontalScrollBar()->maximum());settle();
   check(a->viewport()->rect().contains(deliver->mapTo(a->viewport(),deliver->rect().center())),"last page remains reachable after font scaling");
   first.resize(1400,500);settle();check(deliver->toolButtonStyle()==Qt::ToolButtonTextUnderIcon,"wide surface restores full page labels");
-  auto nativeStrip=middle->findChild<Unbound::SurfacePageNavigation *>();
+  auto nativeStrip=middle->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
   check(nativeStrip&&nativeStrip->parentWidget()==middle&&home->isVisibleTo(originalFooter),"adaptive native pages preserve adjacent Home controls");
   if(nativeStrip)check(!QRect(nativeStrip->mapTo(originalFooter,QPoint()),nativeStrip->size()).intersects(home->geometry()),"native overlay does not cover neighboring footer controls");
   check(originalFooter->parentWidget()==parent&&native->indexOf(originalFooter)==index&&originalFooter->layout()==originalLayout&&originalFooter->sizePolicy()==policy&&originalFooter->minimumSize()==minimum,"native footer ownership, slot and constraints never change");
   QMenu menu;controller.populateSurfaceMenu(&menu,&second);auto navigation=menu.actions().first()->menu();check(navigation&&navigation->actions().size()==2&&navigation->actions().last()->isChecked(),"Panels exposes global visibility and this-surface placement");
   for(int repeat=0;repeat<5;++repeat)controller.restore();settle();
-  check(first.findChildren<Unbound::SurfacePageNavigation *>().size()==1,"repeated refresh cannot duplicate surface footers");
+  check(first.findChildren<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation").size()==1,"repeated refresh cannot duplicate surface footers");
   controller.setState({{"hidden",true},{"surfaces",controller.snapshot()["surfaces"]}});settle();
   check(visibility->isChecked()&&a->isVisibleTo(&first),"saved arrangement cannot override authoritative native global visibility");
   saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="surface-v1","snapshot migrates old attachment model to surface placement");
   controller.dock();controller.syncAttachment();settle();check(b->isVisibleTo(&second),"arrangement Dock All cannot move footer or erase placement");
  }
- check(!first.findChild<Unbound::SurfacePageNavigation *>()&&!second.findChild<Unbound::SurfacePageNavigation *>(),"teardown removes only owned strips");
+ check(!first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")&&!second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"teardown removes only owned strips");
  check(originalFooter->parentWidget()==&main,"teardown keeps native footer intact");
  {
   Unbound::FooterPanel reopened(nullptr,[&]{return &main;},saved);reopened.attachmentOwner=[&]{return primary;};reopened.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};reopened.restore();settle();
-  check(reopened.pinned(&second)&&second.findChild<Unbound::SurfacePageNavigation *>()->isVisibleTo(&second),"saved surface placement restores independently of layout lease");
+  check(reopened.pinned(&second)&&second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")->isVisibleTo(&second),"saved surface placement restores independently of layout lease");
  }
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;
 }

@@ -78,7 +78,7 @@ protected:
             if(widget==nativeFooter && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
                 shown=!nativeFooter->isHidden();publish();
             }
-            if(widget && (widget==nativeFooter || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
+            if(widget && (widget==nativeFooter || widget->objectName()=="m_PageSwitcherContainer" || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
         }
         return false;
     }

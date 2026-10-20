@@ -184,3 +184,8 @@ Hidden navigation/migration checks pass; full group and cross-process restart
 checks are compiled but deferred while Resolve is running. Build is requested;
 installation, main merge and 0.0.2 publication remain separate. Responsiveness is
 excluded. Do not mark W2/U9 or the historical restore failure live-accepted yet.
+
+Surface navigation build review: hidden fixture covers duplicate inactive native
+page-button modes and keeps Home outside the overlay. Native preset tests still
+pass. Full helper/bootstrap build passed for the first implementation; the final
+primary-surface refinement is being rebuilt. No installation or main merge.

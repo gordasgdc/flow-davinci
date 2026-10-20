@@ -7,7 +7,9 @@ The local footer-preflight experiment ad7780a is excluded.
 ## Behavior
 
 Page Navigation is a surface footer, outside panel splits/tabs. The primary
-custom host gets a strip by default; other content hosts opt in through their
+custom Timeline host gets a strip by default; the visible native main surface
+remains primary when Timeline is docked there. A lone floating Inspector does
+not acquire the primary footer by accident. Other content hosts opt in through their
 Panels > Page Navigation > Pin to This Surface setting. Standalone toolbar strips
 do not gain another footer row. Switching a group's selected panel does not
 reparent the strip or the native page buttons.
