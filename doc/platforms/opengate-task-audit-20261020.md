@@ -295,3 +295,14 @@ Hidden overflow fixture passes horizontal/vertical reachability, dynamic width g
 unchanged native constraints, toolbar reveal and ownership release. Panel-group suite
 compiles. Actual stacked timeline native paint and input still need live acceptance;
 geometry overflow alone did not establish a GPU clipping defect. No install/main merge.
+
+## Updated combined candidate verification
+
+Flat Panels, complete native footer, interaction audit and Timeline overflow are now
+assembled on integration/macos-header-style-live-candidate, with each feature's source
+commit retained separately in the feature lock. The reviewed hidden matrix now includes
+pinned header, complete surface navigation, continuous tab viewport, native preset
+bindings, hidden interactions and Timeline overflow. Full helper rebuilding and hidden
+matrix verification follow this checkpoint. Resolve remains running; no install or
+live project interaction. Auto Emulator conversion, full native-painted track/ruler
+scale and later Fusion support remain open; cross-platform stability is unverified.

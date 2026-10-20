@@ -391,6 +391,30 @@
       "commit": "ff035eca527bde2d7d8436575df495a0cdd860df",
       "scope": "research",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-flat-panels-menu",
+      "commit": "dc7ea5a185cba7468d4aea3e443a0aac1fb905d3",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-complete-native-footer",
+      "commit": "beba1a88d7fce70a6181c22827aa19e56a36a3a8",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-interaction-audit",
+      "commit": "5a51adca59c667f9150b6d784a6cc0a1f2666150",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-timeline-overflow",
+      "commit": "ac7f7ff1969d130a748ce8c40285bbc71e43c582",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
