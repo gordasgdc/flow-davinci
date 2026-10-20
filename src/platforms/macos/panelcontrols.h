@@ -325,6 +325,7 @@ public:
             return error;
         });
         auto editCommands=new Unbound::NativeEditCommands(this,[this] { return page(); });
+        editCommands->editActive=[] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow())=="edit"; };
         editCommands->report=[this](QString message) { status->setText(message); };
         editCommands->addTo(commands);
         workspaceMenu = new Unbound::WorkspaceArrangements(this);

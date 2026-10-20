@@ -15,48 +15,43 @@ class NativeEditCommands : public QObject {
 public:
     NativeEditCommands(QObject *owner,std::function<QWidget *()> page) : QObject(owner),editPage(std::move(page)) {}
     std::function<void(QString)> report;
+    std::function<bool()> editActive;
     void addTo(PanelCommands *commands) {
         commands->add({"edit.timeline.fixed-playhead","Edit Timeline / Toggle Fixed Playhead",[this] { return ready(); },[this] { fixedPlayhead(); }});
         commands->add({"edit.inspector.stabilize","Edit Inspector / Stabilize",[this] { return ready(); },[this] { stabilize(); }});
     }
     // Edit-page presentation command: no clip-selection or focused-panel requirement.
     bool fixedPlayhead() {
-        QSet<QAction *> matches;
-        // This Edit action identity is present in Resolve's own keyboard preset.
-        // Prefer its native View-menu command over custom-painted options rows.
-        if (ready()) for (auto widget:QApplication::allWidgets()) {
-            auto actions=widget->actions();actions.append(widget->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly));
-            for(auto action:actions)if(action->objectName()=="viewTimelineScrollingFixed")matches.insert(action);
+        if(!ready())return unavailable("fixed-playhead",0,"Fixed Playhead requires the Edit page.");
+        // Native UiMenuButton prepares its menu through this signal before
+        // displaying it. Invoke only that preparation phase: no click, popup,
+        // timeline focus, native key mapping or visible-panel prerequisite.
+        QList<QPointer<QWidget>> buttons;
+        for(auto widget:QApplication::allWidgets())
+            if(widget->objectName()=="btnEditToolbarPreferences")buttons.append(widget);
+        if(buttons.size()>1)return unavailable("fixed-playhead",buttons.size(),"Edit timeline settings owner is ambiguous.");
+        if(buttons.size()==1 && buttons.front()) {
+            auto button=buttons.front();
+            if(button->metaObject()->indexOfSignal("MenuAboutToShow()")>=0)
+                QMetaObject::invokeMethod(button,"MenuAboutToShow",Qt::DirectConnection);
         }
-        if(matches.isEmpty() && ready()) for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget)) {
+        QSet<QAction *> matches;
+        // Prefer the native Timeline Options row that owns the actual setting.
+        // A different View action's Qt checked flag changed without the
+        // custom-painted popup's mode changing; it is not acceptance evidence.
+        if(ready())for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget)) {
             if(!nativeTimelineOptionsMenu(menu))continue;
-            for(auto action:menu->actions())if(nativeEditActionLabel(action,"Fixed Playhead"))matches.insert(action);
+            for(auto action:menu->actions())if(nativeEditActionLabel(action,"Fixed Playhead",true))matches.insert(action);
         }
         if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("fixed-playhead",matches.size(),"Edit's native Fixed Playhead action is unavailable or ambiguous; no scrolling state was changed.");
         auto action=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","fixed-playhead"},{"object",action->objectName()},
             {"checkable",action->isCheckable()},{"checked_before",action->isChecked()}});
-        // Resolve may expose this as an exclusive scrolling-style choice,
-        // rather than a simple checkable toggle. Preserve the previously selected
-        // sibling when entering Fixed; return to it on the second invocation.
         QAction *target=action;
-        if(auto group=action->actionGroup())if(group->isExclusive()) {
-            if(!action->isChecked()) {
-                auto checked=group->checkedAction();
-                previousScrolling=checked!=action ? checked:nullptr;
-            } else {
-                target=previousScrolling;
-                if(!target || target->actionGroup()!=group || !target->isEnabled()) {
-                    target=nullptr;
-                    for(auto sibling:group->actions())if(sibling->objectName()=="viewTimelineScrollingDisabled" && sibling->isEnabled())target=sibling;
-                }
-                if(!target)return unavailable("fixed-playhead",1,"No native return scrolling style is available; scrolling state was retained.");
-            }
-        }
         QPointer<QAction> retained(action);const auto targetName=target->objectName();
         target->trigger();
         logEvent("command.edit-target.result",{{"command","fixed-playhead"},{"success",true},
-            {"checked_after",retained ? retained->isChecked():false},{"action_retained",bool(retained)},{"native_target",targetName}});
+            {"checked_after",retained ? retained->isChecked():false},{"action_retained",bool(retained)},{"native_target",targetName},{"completion","native-action-triggered"},{"native_mode_verified",false}});
         return true;
     }
     bool stabilize() {
@@ -78,9 +73,8 @@ public:
         return true;
     }
 private:
-    QPointer<QAction> previousScrolling;
     std::function<QWidget *()> editPage;
-    bool ready() const { auto page=editPage ? editPage() : nullptr; return page && page->isVisible(); }
+    bool ready() const { if(editActive)return editActive(); auto page=editPage ? editPage() : nullptr; return page && page->isVisible(); }
     static QString label(QString text) { text=text.section('\t',0,0); text.remove('&'); return text.trimmed(); }
     bool unavailable(const QString &command,int matches,const QString &message) {
         logEvent("command.edit-target.unavailable",{{"command",command},{"matches",matches},{"reason",message}});

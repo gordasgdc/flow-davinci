@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QAbstractButton>
+#include <QAccessible>
+#include <QMetaProperty>
+#include <QMetaMethod>
 #include <QLabel>
 #include <QGraphicsView>
 #include <QGraphicsObject>
@@ -27,7 +30,19 @@ inline void inspectTimelineOptions(QMenu *menu) {
             {"class",action->metaObject()->className()},{"enabled",action->isEnabled()},
             {"checkable",action->isCheckable()},{"checked",action->isChecked()}};
         if (auto custom=qobject_cast<QWidgetAction *>(action)) if (auto contents=custom->defaultWidget()) {
-            record["contents"]=editControlIdentity(contents); QJsonArray children;
+            record["contents"]=editControlIdentity(contents);
+            record["accessible_name"]=contents->accessibleName();
+            record["tooltip"]=contents->toolTip();
+            record["text_property"]=contents->property("text").toString();
+            record["title_property"]=contents->property("title").toString();
+            if(auto accessible=QAccessible::queryAccessibleInterface(contents))record["accessible_label"]=accessible->text(QAccessible::Name);
+            QJsonArray properties,methods;
+            for(int i=contents->metaObject()->propertyOffset();i<contents->metaObject()->propertyCount()&&properties.size()<32;++i)
+                properties.append(QString::fromLatin1(contents->metaObject()->property(i).name()));
+            for(int i=contents->metaObject()->methodOffset();i<contents->metaObject()->methodCount()&&methods.size()<32;++i)
+                methods.append(QString::fromLatin1(contents->metaObject()->method(i).methodSignature()));
+            record["property_names"]=properties;record["method_signatures"]=methods;
+            QJsonArray children;
             for (auto child:contents->findChildren<QWidget *>()) {
                 if (children.size()>=32) break;
                 children.append(editControlIdentity(child));
