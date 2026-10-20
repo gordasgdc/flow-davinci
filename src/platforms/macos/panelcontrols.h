@@ -649,7 +649,7 @@ private:
     void wireNativeToggles() { if (!quitting) nativeToggles->wire(page()); }
     QJsonObject arrangement() const
     {
-        auto result = settings.data;
+        auto result = settings.pageView("edit");
         result["page"] = "edit";
         result.remove(QStringLiteral("controls"));
         result.remove(QStringLiteral("selected_arrangement"));
@@ -845,6 +845,9 @@ private:
         outcome("dock", i, error); updateRow(i); save();
     }
     void dockAll() {
+        // Individual sessions can emit save callbacks while native return is
+        // in progress. Retain the last complete custom view until it settles.
+        const QScopedValueRollback<bool> transaction(restoringNative,true);
         if (workspaceRestore) workspaceRestore->cancel();
         if(workspaceHeader && !workspaceHeader->release()){status->setText("Could not restore the workspace header.");return;}
         if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
@@ -1042,10 +1045,19 @@ private:
         snapshot.selected=presets->currentData().toString(); snapshot.chrome=style->currentIndex();
         snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
         snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
-        settings.data=snapshot.json();
-        const bool success = settings.save();
+        auto captured=snapshot.json();captured["page"]="edit";
+        QString pageError;
+        if(restoringNative) {
+            const auto pages=settings.data["page_workspaces"].toObject();
+            settings.data=captured;
+            if(!pages.isEmpty())settings.data["page_workspaces"]=pages;
+        } else pageError=settings.recordPage("edit",captured);
+        const bool success = pageError.isEmpty() && settings.save();
+        if(!pageError.isEmpty())Unbound::logEvent("workspace.page-state.failed",{{"page","edit"},{"error",pageError}});
         if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
-        Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success}});
+        Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success},{"page","edit"},
+            {"layout_mode",Unbound::PageWorkspaceState::mode(captured)},{"selected",snapshot.selected},
+            {"page_state_checkpoint",!restoringNative}});
         updatePresetState();
         if (headers) headers->schedule();
         if(workspaceHeader)workspaceHeader->schedule();
@@ -1108,7 +1120,7 @@ private:
     Unbound::FooterPanel *footer = nullptr;
     Unbound::PinnedWorkspaceHeader *workspaceHeader=nullptr;
     QTimer saveTimer, restoreTimer;
-    bool quitting = false;
+    bool quitting = false,restoringNative=false;
     bool toggleScanQueued = false;
     unsigned bulkVersion = 0;
     QList<Unbound::PanelGroup *> groups;

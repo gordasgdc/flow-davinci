@@ -315,3 +315,15 @@ routing deliberately suppresses that store. `test/macos-command-provider-isolati
 explicitly selects the existing recovery opt-out only inside that legacy test block.
 The corrected hidden command fixture passes. Production shortcut routing is unchanged;
 ordinary native remapping/alternate/clear tests passed separately in the matrix.
+## Shared page workspace state foundation
+
+`fix/macos-page-workspace-state` adds a shared Qt-only PageWorkspaceState module and
+routes Edit's existing last-view saves through it. Each page retains independent
+last mode, selected arrangement and modified view; explicit Native return preserves
+the previous managed view. Saved arrangement captures exclude the per-page ledger.
+Native-return intermediate saves cannot replace the last complete page checkpoint.
+Legacy Edit fields remain readable, and unknown page-state versions fail closed.
+Core persistence fixture passes migration, independent Edit/Fusion mode/selection,
+cross-page rejection, restart, interrupted-transition recovery and no recursive capture.
+Panel-session/restart integration compilation passes. Fusion panel/coordinator wiring
+is not enabled or claimed complete. No install, main merge or publication.
