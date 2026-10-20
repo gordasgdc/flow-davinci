@@ -353,7 +353,10 @@ public:
         const bool scrollToolbar=widget->objectName()==QLatin1String("frameEditToolbarTop") ||
             widget->findChild<QWidget *>("pageSingleScreenModeTools");
         const bool scrollMediaPool=widget->objectName()==QLatin1String("frameEditPageMediaPool");
-        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool;
+        const bool scrollViewer=widget->objectName()==QLatin1String("widgetEditSourcePlayer") ||
+            widget->objectName()==QLatin1String("widgetEditTimelinePlayer") ||
+            widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
+        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
         box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
             widget->objectName() == QLatin1String("widgetEditInspector") ||

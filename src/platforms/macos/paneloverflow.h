@@ -59,7 +59,7 @@ public:
                     {"minimum",minimum},{"maximum",maximum},{"overflow",maximum>minimum}});
             });
         }
-        if(content->objectName()=="widgetEditInspector")new HorizontalOverflowHint(area);
+        new HorizontalOverflowHint(area);
         logEvent("panel.overflow.attach",{{"panel",id},{"native_minimum_width",content->minimumWidth()}});
         return area;
     }
