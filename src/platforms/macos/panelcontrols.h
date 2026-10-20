@@ -559,7 +559,12 @@ private:
             auto target=Unbound::panelSurface(page(),panels[i].name);
             if (!handled && panels[i].name=="frameEditToolbarTop" && managedOwnerFor(target)) {
                 if (visible) showPanel(1,true);
-                target->setVisible(visible); handled=true;
+                if(visible) {
+                    QWidget *timeline=nullptr;
+                    for(auto ancestor=target->parentWidget();ancestor;ancestor=ancestor->parentWidget())
+                        if(ancestor->objectName()=="frameConformTimelines"){timeline=ancestor;break;}
+                    handled=target->isVisible() || Unbound::revealAttachedTimelineToolbar(page(),target,timeline);
+                } else {target->hide();handled=true;}
             }
             Unbound::logEvent("panel.visibility.native-request",{{"panel",panels[i].name},{"requested",visible},{"handled",handled}});
             return;

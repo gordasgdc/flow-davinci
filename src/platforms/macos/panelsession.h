@@ -356,7 +356,8 @@ public:
         const bool scrollViewer=widget->objectName()==QLatin1String("widgetEditSourcePlayer") ||
             widget->objectName()==QLatin1String("widgetEditTimelinePlayer") ||
             widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
-        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
+        const bool scrollTimeline=widget->objectName()==QLatin1String("frameConformTimelines");
+        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer || scrollTimeline;
         box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
             widget->objectName() == QLatin1String("widgetEditInspector") ||

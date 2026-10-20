@@ -284,3 +284,14 @@ the session id and bounded native-ownership/page breadcrumbs; no fatal signal ha
 are replaced and signal observations do not assert native success or root cause.
 Hidden interaction and crash-correlation tests pass; durable flush/rotation tests pass;
 existing reliability suite compiles. No install, main merge or publication.
+
+## Timeline cramped/stacked content follow-up
+
+`fix/macos-timeline-overflow` uses the established PanelOverflow wrapper for Timeline
+instead of relaxing its native width with no scroll path. Original native constraints
+remain intact; dynamic stacked content can extend the range. Show attached Timeline
+Toolbar now reveals its hidden ancestor chain through the existing recovery helper.
+Hidden overflow fixture passes horizontal/vertical reachability, dynamic width growth,
+unchanged native constraints, toolbar reveal and ownership release. Panel-group suite
+compiles. Actual stacked timeline native paint and input still need live acceptance;
+geometry overflow alone did not establish a GPU clipping defect. No install/main merge.
