@@ -5,10 +5,40 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QTimer>
+#include <QToolButton>
 #include "diagnostics.h"
 namespace Unbound {
 // A presentation wrapper, not a scale transform. Native control constraints stay
 // intact; narrow floating sidebars can scroll to controls outside their width.
+class HorizontalOverflowHint : public QObject {
+public:
+    explicit HorizontalOverflowHint(QScrollArea *area):QObject(area),area(area) {
+        area->viewport()->installEventFilter(this);
+        left=new QToolButton(area->viewport());right=new QToolButton(area->viewport());
+        left->setObjectName("openGateScrollLeft");right->setObjectName("openGateScrollRight");
+        left->setText(QString::fromUtf8("‹"));right->setText(QString::fromUtf8("›"));
+        for(auto button:{left,right}) {button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);button->setFixedSize(18,24);}
+        left->setToolTip("More controls to the left. Scroll horizontally or widen this panel.");
+        right->setToolTip("More controls to the right. Scroll horizontally or widen this panel.");
+        left->setAccessibleName("Scroll panel left");right->setAccessibleName("Scroll panel right");
+        auto bar=area->horizontalScrollBar();
+        connect(left,&QToolButton::clicked,this,[bar]{bar->setValue(bar->value()-qMax(32,bar->pageStep()/2));});
+        connect(right,&QToolButton::clicked,this,[bar]{bar->setValue(bar->value()+qMax(32,bar->pageStep()/2));});
+        connect(bar,&QScrollBar::rangeChanged,this,[this]{update();});
+        connect(bar,&QScrollBar::valueChanged,this,[this]{update();});update();
+    }
+protected:
+    bool eventFilter(QObject *,QEvent *event)override {if(event->type()==QEvent::Resize||event->type()==QEvent::Show)update();return false;}
+private:
+    void update(){
+        const auto viewport=area->viewport();const auto bar=area->horizontalScrollBar();
+        const bool fits=viewport->width()>=40 && viewport->height()>=24;
+        left->move(0,qMax(0,(viewport->height()-24)/2));right->move(qMax(0,viewport->width()-18),qMax(0,(viewport->height()-24)/2));
+        left->setVisible(fits&&bar->value()>bar->minimum());right->setVisible(fits&&bar->value()<bar->maximum());
+        left->raise();right->raise();
+    }
+    QScrollArea *area;QToolButton *left,*right;
+};
 class PanelOverflow {
 public:
     QWidget *wrap(QWidget *content,QWidget *owner,bool horizontalOnly=false) {
@@ -29,6 +59,7 @@ public:
                     {"minimum",minimum},{"maximum",maximum},{"overflow",maximum>minimum}});
             });
         }
+        if(content->objectName()=="widgetEditInspector")new HorizontalOverflowHint(area);
         logEvent("panel.overflow.attach",{{"panel",id},{"native_minimum_width",content->minimumWidth()}});
         return area;
     }
