@@ -157,3 +157,15 @@ authorized merging to main. This supersedes the earlier main-merge hold for this
 candidate. It is not blanket acceptance of every UI/page/restoration case. The
 installed runtime and feature branches are retained; main receives the combined
 candidate with the repository landing page and upstream notices preserved.
+
+## Isolated Source docking live test
+
+Jordan requested installation for testing after the arrangement investigation.
+The candidate is based on main plus 71a2886, retaining the installed a6fdcf6
+hotkey/UI foundation. The only production-source delta from that installed
+build is NativeArrangement's retained initialization-page identity.
+Footer preflight ad7780a is explicitly excluded because its broader regression
+checks failed. First-click arrangement restore is still an open issue.
+The new Source ownership fixture passes; compile/bootstrap, native-preset and
+full panel-session checks are required before installation. Preserve current
+settings and snapshot the installed runtime for rollback. 0.0.2 remains on hold.
