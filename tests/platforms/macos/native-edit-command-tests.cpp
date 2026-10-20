@@ -93,11 +93,21 @@ int main(int argc,char **argv) {
     check(!page.isVisible()&&!embedded.isVisible()&&!painted->isVisible(),"invocation does not show timeline, settings menu or its row");
     check(QApplication::focusWidget()==focusBefore,"invocation does not move focus");
     check(commands.fixedPlayhead()&&!actualMode&&nativeCalls==2,"same hidden handler switches Fixed Playhead off");
+    QWidget editTimeline;editTimeline.setObjectName("frameConformTimelines");
+    preferences.setParent(&editTimeline);
+    QWidget otherPreferences;otherPreferences.setObjectName("btnEditToolbarPreferences");
+    QMenu otherMenu(&otherPreferences);auto otherFixed=otherMenu.addAction("Fixed Playhead");otherFixed->setCheckable(true);
+    check(commands.fixedPlayhead()&&actualMode&&nativeCalls==3&&!otherFixed->isChecked(),"hidden Edit-owned settings disambiguate an unrelated duplicate button");
+    QWidget duplicateEditPreferences(&editTimeline);duplicateEditPreferences.setObjectName("btnEditToolbarPreferences");
+    check(!commands.fixedPlayhead()&&nativeCalls==3,"two actual Edit owners fail closed instead of selecting by focus or visibility");
+    duplicateEditPreferences.setObjectName("inactive-fixture");
+    preferences.setParent(nullptr);otherPreferences.setObjectName("inactive-fixture");
+    check(commands.fixedPlayhead()&&!actualMode&&nativeCalls==4,"same native handler restores state after scoped dispatch");
     editActive=false;
-    check(!commands.fixedPlayhead()&&nativeCalls==2,"active page contract prevents invocation outside Edit");
+    check(!commands.fixedPlayhead()&&nativeCalls==4,"active page contract prevents invocation outside Edit");
     editActive=true;
     painted->caption="Display Audio Waveforms";
     const bool result=commands.fixedPlayhead();
-    check(!result&&nativeCalls==2,"different painted caption cannot be treated as Fixed Playhead");
+    check(!result&&nativeCalls==4,"different painted caption cannot be treated as Fixed Playhead");
     std::printf("native edit command failures=%d\n",failures); return failures ? 1 : 0;
 }

@@ -26,9 +26,18 @@ public:
         // Native UiMenuButton prepares its menu through this signal before
         // displaying it. Invoke only that preparation phase: no click, popup,
         // timeline focus, native key mapping or visible-panel prerequisite.
-        QList<QPointer<QWidget>> buttons;
+        QList<QPointer<QWidget>> buttons,editButtons;
         for(auto widget:QApplication::allWidgets())
-            if(widget->objectName()=="btnEditToolbarPreferences")buttons.append(widget);
+            if(widget->objectName()=="btnEditToolbarPreferences") {
+                buttons.append(widget);
+                // Page and timeline ownership survive hiding and reparenting
+                // into a floating group; visibility/focus must not pick a mode.
+                for(auto parent=widget->parentWidget();parent;parent=parent->parentWidget())
+                    if(parent==(editPage?editPage():nullptr) || parent->objectName()=="frameConformTimelines") {
+                        editButtons.append(widget);break;
+                    }
+            }
+        if(!editButtons.isEmpty())buttons=editButtons;
         if(buttons.size()>1)return unavailable("fixed-playhead",buttons.size(),"Edit timeline settings owner is ambiguous.");
         if(buttons.size()==1 && buttons.front()) {
             auto button=buttons.front();
@@ -41,6 +50,7 @@ public:
         // custom-painted popup's mode changing; it is not acceptance evidence.
         if(ready())for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget)) {
             if(!nativeTimelineOptionsMenu(menu))continue;
+            if(!editButtons.isEmpty() && menu->parentWidget()!=buttons.front())continue;
             for(auto action:menu->actions())if(nativeEditActionLabel(action,"Fixed Playhead",true))matches.insert(action);
         }
         if (matches.size()!=1 || !(*matches.begin())->isEnabled()) return unavailable("fixed-playhead",matches.size(),"Edit's native Fixed Playhead action is unavailable or ambiguous; no scrolling state was changed.");
