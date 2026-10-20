@@ -63,6 +63,10 @@ public:
         if (!f.open(QIODevice::WriteOnly) || f.write(bytes)!=bytes.size() || !f.commit()) return "Cannot save shortcut settings.";
         bindings=proposed; conflicts.clear(); logEvent("command.bindings.saved",{{"count",bindings.size()}}); return {};
     }
+    struct NativeMatch { QString command,error; };
+    // Optional read-only adapter. Assignment remains owned by Resolve.
+    std::function<NativeMatch(const QKeySequence &)> nativeMatch;
+    std::function<bool()> legacyBacktickAllowed;
     std::function<bool()> context;
 protected:
     bool eventFilter(QObject *,QEvent *event) override {
@@ -75,7 +79,29 @@ protected:
             QApplication::activePopupWidget() || textEditor(QApplication::focusWidget()) || !context || !context()) return false;
         auto key=static_cast<QKeyEvent *>(event);
         const QKeySequence pressed(key->key() | int(key->modifiers() & ~Qt::KeypadModifier));
+        if (nativeMatch) {
+            const auto match=nativeMatch(pressed);
+            if (!match.error.isEmpty()) {
+                logEvent("command.preset.blocked",{{"key",pressed.toString(QKeySequence::PortableText)},{"reason",match.error}});
+                return false;
+            }
+            if (!match.command.isEmpty()) {
+                // Claim ShortcutOverride before Qt's shortcut map; consume the
+                // matching KeyPress once. No time-window deduplication.
+                event->accept();
+                if(event->type()==QEvent::KeyPress && !key->isAutoRepeat()) {
+                    const auto id=match.command;
+                    QTimer::singleShot(0,this,[this,id,pressed] {
+                        // Preset or focus can change between observation and dispatch.
+                        const auto current=nativeMatch ? nativeMatch(pressed):NativeMatch{};
+                        if(current.error.isEmpty() && current.command==id) invoke(id,"resolve-preset-input");
+                    });
+                }
+                return true;
+            }
+        }
         for (const auto &command : commands) {
+            if(nativeMatch && (command.id!="panel.expand.hovered" || (legacyBacktickAllowed && !legacyBacktickAllowed())))continue;
             const auto configured=QKeySequence::fromString(bindings.value(command.id).toString(),QKeySequence::PortableText);
             if (configured.isEmpty() || configured!=pressed || !command.available || !command.available()) continue;
             // Recheck native conflicts after loading a different Resolve keyboard preset.
