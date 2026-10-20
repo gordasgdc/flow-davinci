@@ -355,6 +355,12 @@
       "commit": "b3e2acc76d53cf88313103c85c593426a1e41618",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "perf/macos-viewer-expansion-latency",
+      "commit": "6a4c2bfa76a63bb817be1bff33c048eaca9c2ec8",
+      "scope": "implementation",
+      "acceptance": "pending"
     }
   ]
 }
