@@ -1,115 +1,46 @@
-# OpenGate — by CineWaltz
+# OpenGate
 
-OpenGate is the CineWaltz macOS panel/workspace fork, built on **Unbound by Wolfgang Woehl**. Wolfgang created the foundation; his MIT copyright and license remain in [LICENSE](LICENSE). OpenGate is a separate project and should not be confused with the original Unbound. Historical Windows instructions and internal compatibility identifiers below retain the original name.
+OpenGate by CineWaltz makes DaVinci Resolve’s Edit panels movable, groupable windows with saved workspaces.
 
-See the explicit [OpenGate next-pass acceptance list](doc/platforms/opengate-next-pass.md), including **restoring the last view when Resolve reopens**.
+**[Download CineWaltz OpenGate 0.0.1 Prototype](https://github.com/jordantetewsky/OpenGate/releases/tag/opengate-v0.0.1-prototype)**
 
-## Current integration work — October 18, 2026
+This is an early macOS prototype. The release page contains the installer, requirements, release notes, recovery instructions, and known limitations.
 
-`macos-panel-discovery-and-layout` combines separate feature branches for ongoing
-work. It is **not a completed or newly installed release**. See the
-[integration ledger](doc/platforms/macos-integration-ledger.md) for each feature's
-implementation and verification status. Build manifests identify the exact
-included feature commits; they do not certify acceptance. The preserved installed
-snapshot is described below. Master and upstream have not been merged.
+## Install
 
-The current candidate starts with Panel Manager closed and the native workspace
-visible on a fresh configuration. Nested tab-door selection and reversible narrow
-Inspector scrolling have fixture coverage. Original-window rearrangement, live
-Resolve acceptance and the responsiveness target remain unfinished.
+1. Download the `.pkg` from the release’s Assets section.
+2. Save your project and quit Resolve.
+3. Run the installer, then reopen Resolve and use the **OpenGate UI** menu.
 
-## Preserved experimental macOS snapshot — October 17, 2026
+The published package requires **Apple Silicon, macOS 27 or later, and Resolve 21 in its standard application location**. It was tested with Resolve Studio 21.1.1. The package is unsigned and not notarized. These requirements describe the current binaries; broader macOS support is planned.
 
-This branch, `macos-responsive-group-transfers`, is an experimental macOS build
-shared for ongoing development; it has not been merged into main. Arrangement
-and docking flow still need refinement, which Jordan plans to address in the next
-pass. A reported clipping issue can let Timeline content overlap Inspector in a
-combined window; that issue is not fixed in this snapshot.
+Existing arrangements are preserved. On a new profile, **Native Emulator** provides a modular Edit starting arrangement. Two additional saved arrangements are included. **Native Edit UI** remains available for returning to the native layout.
 
-The previous `macos-tethered-timeline-and-viewers` build contains useful experiments
-and remains available for comparison and rollback. Jordan reports that it feels
-less snappy than this iteration. That is user feedback, not a completed performance
-validation: this branch's responsiveness target and full live regression checklist
-remain open. See the [current development status](doc/platforms/macos-next-pass-status.md)
-and [verification checklist](doc/platforms/macos-workspace-checklist.md).
+## Prototype features
 
-Unbound lets you undock DaVinci Resolve panels into independent, resizable windows.
-Arrange them across your displays and restore your custom workspace between sessions.
-Unbound remembers window positions, sizes, docking and panel-toggle states.
+- Move panels between independent windows and magnetic split or tab groups.
+- Save and restore workspace arrangements.
+- Separate Source and Program Monitors, with backtick maximize/restore for the hovered panel.
+- Show or hide panels in their remembered locations.
+- Float the Workspace Toolbar and adjust supported panel interface sizes.
 
-For now we have builds for Windows 10/11. No MacOS and Linux builds yet.
+**Custom hotkey execution is still in development.** An assignment appearing in Resolve’s Keyboard Customization does not guarantee execution. Layout, overflow, page transitions, and responsiveness also need broader testing. This repository’s default view represents the published prototype; experimental branches are not interchangeable releases.
 
-## How to use
+## Roadmap
 
-Download from [Releases](../../releases), unzip and run
-`Unbound.exe`. Or start Resolve and _then_ run `Unbound.exe`. Unbound waits
-silently if Resolve is not running yet. This will add a Dock/Undock button
-to supported panels.
+1. Reliable custom hotkeys that follow Resolve’s assignments.
+2. Stable panel recovery and page transitions; clear, compact headers without overlapping controls.
+3. More natural arranging and measured workflow responsiveness improvements.
+4. Broader macOS compatibility, signing, and notarization.
 
-Open a project, then use a panel's Dock/Undock button. Resolve's native panel
-toggles remain available to control the space in the main window.
+See the [prototype release notes](https://github.com/jordantetewsky/OpenGate/releases/tag/opengate-v0.0.1-prototype) for the full status. Historical development documents may describe older experiments.
 
-Native minimum panel sizes apply. Nodes may need panning after docking into a
-narrower area.
+## Recovery
 
-Settings are stored in `%LOCALAPPDATA%\Unbound\Unbound.json`.
-See [settings documentation](<doc/Unbound settings.md>).
+Choose **OpenGate UI → Native Edit UI** for layout recovery. To uninstall the resident helper, quit Resolve and follow the release’s uninstall instructions; removing the launcher alone does not remove it. Settings and arrangements are retained by the supplied recovery flow.
 
-## Compatibility
+## Development and acknowledgments
 
-Unbound is unofficial and depends on Resolve's internal widget hierarchy and layouts.
-The oldest tested configuration is Resolve 21.1.0.14 on Windows x64 (10 and 11);
-other tested versions include 21.1.1.10. Save work before testing a new configuration.
+OpenGate is developed by CineWaltz. Thanks to [Wolfgang Woehl’s Unbound](https://github.com/wolfgangw/unbound) for the foundation. Original copyright and MIT notices remain in [LICENSE](LICENSE). Internal Unbound identifiers remain for compatibility; they are not the product name.
 
-Windows may nag about the Unbound helper when running it. That's a good thing - OS
-should notice and say something when DLLs attach to applications. That said: Unbound is
-minimally intrusive - does not do any harm - does not phone home. If unsure: let your
-agent check the open source.
-
-## Build
-
-Requires Windows x64, Visual Studio 2022 C++ build tools and Windows SDK, CMake on
-PATH, PowerShell, and **Qt 5.15.2 MSVC x64 development files** (headers, import
-libraries and CMake configuration).
-
-```powershell
-.\build-unbound-release.cmd
-```
-
-The script regenerates icons from `src/assets/unbound-symbol.svg`, builds,
-runs regression tests and audits imports, then puts the two release binaries in
-`release/win/<version>/`. The default semantic version comes from `VERSION`
-(currently `0.1.0`); `-Version 0.2.0-dev.1` overrides it. Existing releases are
-never overwritten. Use `-QtPath` to override the default
-`%USERPROFILE%\Qt\5.15.2\msvc2019_64`. Windows build output is in `build/windows/`.
-The root command delegates to `infrastructure/windows/`.
-
-Packaging is a separate, explicit step after committing and tagging the release:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File infrastructure/windows/package-release.ps1
-```
-
-This creates `release/packages/Unbound-0.1.0-windows-x64.zip` with a single enclosing
-folder, ready to attach to GitHub release `v0.1.0`.
-
-## Source layout
-
-- `src/core/`: shared Qt pane behavior, settings and snapping calculations.
-- `src/platform/`: contracts used by shared code.
-- `src/platforms/windows/`: the Windows launcher, bootstrap, native window backend
-  and resources.
-- `src/platforms/macos/`: experimental Mac helper, panel sessions and launcher;
-  the full release backend is unfinished.
-- `infrastructure/<platform>/`: platform build, audit and packaging workflows.
-- `tests/core/`: shared fixtures; `tests/platforms/<platform>/`: native adapters,
-  launcher tests and diagnostic tools.
-
-See [architecture](doc/architecture.md), [Windows development](doc/platforms/windows.md)
-and [macOS development status](doc/platforms/macos.md). The root CMake project
-selects one backend; macOS configuration currently stops with an explicit
-not-implemented message.
-
-## License
-
-Unbound source and symbol artwork: [MIT](LICENSE).
+The [historical upstream README](doc/upstream-readme.md) preserves the inherited Windows build and usage documentation. OpenGate’s macOS source, tests, and build scripts are under `src/platforms/macos`, `tests/platforms/macos`, and `infrastructure/macos`. Automated fixtures do not replace live Resolve acceptance testing. OpenGate is not affiliated with Blackmagic Design.
