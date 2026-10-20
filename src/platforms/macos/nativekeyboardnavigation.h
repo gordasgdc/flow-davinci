@@ -5,6 +5,7 @@
 #include <QTimer>
 #include "keyboardlauncher.h"
 #include "nativekeyboardinspection.h"
+#include "keyboardcommandreadability.h"
 namespace Unbound {
 // Navigate Resolve's real editor rather than edit a second shortcut database.
 // Only its command search is changed; bindings/preset/conflict/save stay native.
@@ -30,7 +31,7 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
-        if (pending.isEmpty() || event->type()!=QEvent::Show) return false;
+        if (event->type()!=QEvent::Show) return false;
         auto widget=qobject_cast<QWidget *>(object);
         if (!widget || widget->objectName()!="UiActionsEditorDialog") return false;
         QPointer<QWidget> alive=widget;
@@ -44,8 +45,10 @@ private:
         for (auto widget:dialog->findChildren<QWidget *>()) if (QByteArray(widget->metaObject()->className())=="UiActionsEditorCommandsWidgetImp") {
             if (commands) { commands=nullptr; break; } commands=widget;
         }
-        const bool filtered=filterNativeKeyboardCommands(commands,query);
+        const bool filtered=!query.isEmpty() && filterNativeKeyboardCommands(commands,query);
+        const bool readable=wireKeyboardCommandReadability(commands);
         logEvent("keyboard.native.search",{{"query",query},{"filtered",filtered},{"binding_store","resolve-native"}});
+        logEvent("keyboard.native.readability",{{"attached",readable},{"labels_changed",false},{"binding_store","resolve-native"}});
         QPointer<QWidget> alive=dialog;
         QTimer::singleShot(0,this,[alive] { if (alive && alive->isVisible()) inspectNativeKeyboardCommands(alive); });
     }
