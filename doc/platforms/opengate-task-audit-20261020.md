@@ -210,3 +210,17 @@ its assertion now captures the surface identity before teardown restores native 
 The group fixture explicitly shows its dynamically added native page button.
 Rebuild and backed-up installation follow; hotkey mappings remain untouched.
 Live footer acceptance, main merge and release remain pending.
+
+## Pinned header source candidate (not installed)
+
+Installed baseline remains 091268b. feature/macos-pinned-workspace-header isolates
+permanent native/custom title-bar Panels access and a dedicated native-toolbar
+controller. Header visibility routes share one state; the toolbar is reserved above
+custom content, restores to its native sibling-of-page slot on departure, and old
+floating-toolbar groups migrate in memory. Required native-tree toolbar restoration
+remains compatible. Hidden ownership, migration, page-return, visibility/recovery and
+accessory regression fixtures pass; panel-session and native-workspace suites compile.
+Resolve is running, so displayed combined suites remain deferred. Automatic full
+Native Emulator transition is not claimed complete; current header follows existing
+primary surfaces without loading a starter preset. Native styling and compatibility
+follow on isolated branches. No installation, main merge or publication.

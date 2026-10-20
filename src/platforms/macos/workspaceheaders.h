@@ -51,16 +51,14 @@ public:
                 auto size=controls->addMenu("Interface Size");
                 populatePanelScaleMenu(size,this,panel.scale,panel.setScale);
             }
-            if (panel.floatPanel) connect(controls->addAction("Float Separately"),&QAction::triggered,this,[this,panel] {
-                QTimer::singleShot(0,this,[panel] { if (!QApplication::activeModalWidget()) panel.floatPanel(); });
-            });
+
         }
         if(surfaceControls)surfaceControls(menu,host);
         const bool global=primary && primary()==host;
-        if (global) {
-            if (auto callers=allPanels ? allPanels() : nullptr) {
+        if (auto callers=allPanels ? allPanels() : nullptr) {
                 menu->addSeparator();auto all=menu->addMenu("All Panels");all->setProperty("unboundOwnMenu",true);all->addActions(callers->actions());
-            }
+        }
+        if (global) {
             if (windows) {
                 auto groups=menu->addMenu("Floating Windows");
                 for (const auto &entry:windows()) {
@@ -104,9 +102,12 @@ private:
         projectScanned=true;lastProject=project;QSet<QWidget *> current;
         for (const auto &panel:panels) if (auto host=panel.host ? panel.host() : nullptr)
             if (host->objectName().startsWith("unboundFloating_")) current.insert(host);
+        // Recovery must survive hiding the workspace controls. Native main and
+        // every retained surface get their own independent title-bar access.
+        if (auto main=projectSurface ? projectSurface() : nullptr) current.insert(main->window());
         for (auto host:current) {
             if (!host->property("unboundHeaderOriginalTitle").isValid()) host->setProperty("unboundHeaderOriginalTitle",host->windowTitle());
-            if (!project.isEmpty()) {
+            if (!project.isEmpty() && host->objectName().startsWith("unboundFloating_")) {
                 QString title=project;
                 if (!primary || primary()!=host) {
                     QStringList names;for (const auto &panel:panels) if (panel.host && panel.host()==host) names.append(panel.title);

@@ -30,8 +30,10 @@ int main(int argc,char **argv) {
     auto settle=[] { QElapsedTimer t;t.start();while (t.elapsed()<90) { QApplication::processEvents();QThread::msleep(1); } };
     headers.schedule();settle();bool ok=first.windowTitle()=="Project A" && second.windowTitle().contains("Source Monitor");
     project->hide();project->setText("Project B");headers.schedule();settle();do { const bool passed=(first.windowTitle()=="Project B"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
-    QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()==2 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()>=2 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     local.actions()[1]->trigger();settle();do { const bool passed=(!source && calls==1); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    bool secondaryRecovery=false;for(auto action:local.actions())if(action->menu())secondaryRecovery |= action->menu()->actions().contains(globalAction);
+    ok &= secondaryRecovery;
     QMenu primary;headers.populate(&primary,&first);bool shared=false;
     for (auto action:primary.actions()) if (action->menu()) shared |= action->menu()->actions().contains(globalAction);
     do { const bool passed=(shared && first.size()==QSize(600,400)); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
@@ -41,7 +43,7 @@ int main(int argc,char **argv) {
             if (item->menu()) item->menu()->actions().first()->trigger();
         }
     }
-    settle();do { const bool passed=(floated==1 && qAbs(scale-.9)<.001); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    settle();do { const bool passed=(floated==0 && qAbs(scale-.9)<.001); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     QWidget compactWrapper;QStackedWidget stack(&compactWrapper);QWidget toolbarRow;
     toolbarRow.setFixedHeight(30);stack.addWidget(&toolbarRow);Unbound::CompactToolbar fit(&compactWrapper,&stack);settle();
     do { const bool passed=(compactWrapper.maximumHeight()==30); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
