@@ -361,6 +361,36 @@
       "commit": "6a4c2bfa76a63bb817be1bff33c048eaca9c2ec8",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "feature/macos-pinned-workspace-header",
+      "commit": "7e0946fb9c18011e76c4e36524f0824c2336bf92",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-native-footer-style",
+      "commit": "337ef35615f7c4e559ced40b0b1bcfe1340db969",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "research/macos-platform-compatibility",
+      "commit": "4b2385a69757eed3f72d98f4d737e601e4fb5527",
+      "scope": "verification",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "experiment/macos-timeline-tab-viewport",
+      "commit": "0ff42cde47dccbe830d507b2f43ff28dd8c5e30a",
+      "scope": "research",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "experiment/macos-timeline-scale-range",
+      "commit": "ff035eca527bde2d7d8436575df495a0cdd860df",
+      "scope": "research",
+      "acceptance": "pending"
     }
   ]
 }

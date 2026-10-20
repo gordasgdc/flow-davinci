@@ -246,3 +246,13 @@ Native font/control scale accepts 70–300 percent in experiment/macos-timeline-
 fixture verifies 150/200/300 metrics, signal identity, no baseline drift and restoration.
 Custom-painted track body and ruler scaling remain unimplemented and explicitly labelled.
 Installed runtime unchanged. No claim of full timeline scaling or older OS live support.
+
+## Combined header/style build review
+
+The integration/macos-header-style-live-candidate combines the isolated header, native
+footer style, compatibility, continuous scrolling and 300% metric branches. All six
+combined hidden suites passed, including native preset hotkeys. The installed 091268b
+remains unchanged. Full Auto Emulator conversion and track/ruler scale remain open;
+this is a candidate for testing the implemented pieces, not task-list completion.
+Build and compile remaining regression fixtures; displayed/live tests await Resolve
+closed. No packaging, main merge or installation.
