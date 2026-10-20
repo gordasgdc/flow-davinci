@@ -92,6 +92,9 @@ int main(int argc,char **argv) {
     ok &= scroll->viewport()->rect().contains(last->mapTo(scroll->viewport(),last->rect().center()));
     int clicked=0;Unbound::setNativePin(&first,false,[](bool) {});
     ok &= Unbound::setNativeHeaderMenu(&first,true,[&] { ++clicked; });
+    const QString longTitle="A long project title that should elide by width while controls remain stationary";
+    first.setWindowTitle(longTitle);Unbound::setNativePin(&first,false,[](bool) {});
+    ok &= Unbound::nativeTitleToolTipForTest(&first)==longTitle;
     auto button=Unbound::nativeHeaderMenuFrameForTest(&first);auto traffic=Unbound::nativeTrafficFramesForTest(&first);
     ok &= !button.isEmpty() && traffic.size()==4;
     for (const auto &frame:traffic) ok &= !frame.intersects(button);
