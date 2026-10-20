@@ -18,7 +18,7 @@ manifest=[]
 for command,label in commands:
     filename='OpenGate - '+label+'.py'
     source='''# OpenGate by CineWaltz; native Workflow Integration command bridge.
-import ctypes, json, os, pathlib, time, uuid
+import json, os, pathlib, time, uuid
 base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/Unbound")))
 directory=base/"command-requests"
 directory.mkdir(parents=True,exist_ok=True)
@@ -28,11 +28,12 @@ temporary.write_text(json.dumps({"command":COMMAND,"issued_ms":int(time.time()*1
 os.replace(temporary,directory/(token+".json"))
 # Wake the GUI main queue immediately; directory watching remains a fallback.
 try:
+    import ctypes
     post=ctypes.CDLL(None).notify_post
     post.argtypes=[ctypes.c_char_p]
     post.restype=ctypes.c_uint32
     post(b"com.cinewaltz.opengate.command-request")
-except (AttributeError,OSError):
+except (ImportError,AttributeError,OSError):
     pass
 '''.replace('COMMAND',repr(command))
     (output/filename).write_text(source)

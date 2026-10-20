@@ -35,11 +35,15 @@ public:
     }
     bool invoke(const QString &id,const QString &origin) {
         auto active=QApplication::activeWindow();
-        const bool eligible=active && !qobject_cast<QDialog *>(active) && !QApplication::activeModalWidget() &&
-            !QApplication::activePopupWidget() && !textEditor(QApplication::focusWidget()) && context && context();
+        const QString blocked=!active ? "no-active-window" : qobject_cast<QDialog *>(active) || QApplication::activeModalWidget() ? "dialog-active" :
+            QApplication::activePopupWidget() ? "menu-active" : textEditor(QApplication::focusWidget()) ? "text-editing" :
+            !context || !context() ? "outside-workspace" : QString();
+        const bool eligible=blocked.isEmpty();
         for (const auto &command:commands) if (command.id==id) {
             const bool accepted=eligible && command.available && command.available();
-            logEvent("command.invoke",{{"command",id},{"origin",origin},{"accepted",accepted}});
+            logEvent("command.invoke",{{"command",id},{"origin",origin},{"accepted",accepted},
+                {"reason",accepted ? "accepted" : !blocked.isEmpty() ? blocked : "command-unavailable"},
+                {"active_window",active ? active->objectName() : QString()}});
             if (accepted && command.invoke) command.invoke();
             return accepted;
         }
