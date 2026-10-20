@@ -97,6 +97,7 @@ int main(int argc,char **argv) {
     ok &= Unbound::nativeTitleToolTipForTest(&first)==longTitle;
     auto button=Unbound::nativeHeaderMenuFrameForTest(&first);auto traffic=Unbound::nativeTrafficFramesForTest(&first);
     ok &= !button.isEmpty() && traffic.size()==4;
+    ok &= button.height()<=18 && button.width()<=70;
     for (const auto &frame:traffic) ok &= !frame.intersects(button);
     Unbound::clickNativeHeaderMenuForTest(&first);ok &= clicked==1;
     std::printf("workspace headers %s\n",ok ? "PASS" : "FAIL");return ok ? 0 : 1;
