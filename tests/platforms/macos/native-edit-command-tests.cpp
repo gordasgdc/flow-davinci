@@ -54,5 +54,10 @@ int main(int argc,char **argv) {
     check(!commands.fixedPlayhead() && custom->isChecked(),"disabled embedded native action is respected");
     custom->setEnabled(true); embedded.setProperty("unboundOwnMenu",true);
     check(!commands.fixedPlayhead() && custom->isChecked(),"helper-owned menu cannot impersonate a native target");
+    QAction nativeFixed(&page);nativeFixed.setObjectName("viewTimelineScrollingFixed");nativeFixed.setCheckable(true);
+    check(commands.fixedPlayhead() && nativeFixed.isChecked(),"exact native Edit View command works without a labeled options row");
+    check(commands.fixedPlayhead() && !nativeFixed.isChecked(),"native scrolling command toggles back without clip selection");
+    QAction duplicateNative(&page);duplicateNative.setObjectName("viewTimelineScrollingFixed");duplicateNative.setCheckable(true);
+    check(!commands.fixedPlayhead()&&!nativeFixed.isChecked()&&!duplicateNative.isChecked(),"duplicate native identities fail closed");
     std::printf("native edit command failures=%d\n",failures); return failures ? 1 : 0;
 }
