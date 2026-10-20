@@ -264,3 +264,12 @@ Panels menu and removes All Panels/This Window duplication. Visibility checks an
 Show/Hide delegate to canonical owners. Hidden workspace-header regression passed;
 panel-session compilation passed. No install, main merge or publication. Fusion work
 remains after the existing arrangement task list, isolated on separate branches.
+
+## Complete native footer follow-up
+
+`fix/macos-complete-native-footer` moves the original complete native footer into the
+primary custom surface via reversible bottom-band ownership. Home/Settings are original
+controls there, with native-painted callable proxies on secondary surfaces. Hidden
+navigation regression passes; restart fixture compiles with updated ownership checks.
+Displayed restart/live testing remains pending. This supersedes the earlier primary
+page-only copy design. No install, main merge or publication. Fusion remains later.

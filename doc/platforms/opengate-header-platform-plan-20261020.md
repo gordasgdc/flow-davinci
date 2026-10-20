@@ -120,3 +120,18 @@ separately invented Fusion controls. Reuse Resolve's native page semantics.
 - Verify Edit → Fusion → Edit, hidden/shown bands, saved arrangement restoration and
   repeated switching. Keep Fusion-specific discovery/adapters on its functional
   branches; shared controller changes remain separately reviewable dependencies.
+
+## Diagnostics and release acceptance
+
+Jordan requests logging throughout the existing fixes and Fusion extension. Log
+page identity/transitions, saved arrangement id and operation, native panel/source
+identity, transfer/restore outcome, header/footer placement/visibility, command route,
+and failure reason. Include build/session identity and correlate lifecycle operations
+so retained crash reports and the preceding event trail can be compared. Use bounded,
+coalesced diagnostics rather than per-paint/per-frame spam; do not capture project
+content or keystroke text. Tests must assert meaningful success and failure events.
+
+Target a live-testable candidate this evening, not an unverified cross-platform
+stability claim. 0.0.2 packaging follows live acceptance. Older macOS/Intel hardware
+and Windows require their own build/runtime evidence; universal binaries alone do
+not establish support. Keep unfinished Fusion functionality out of release claims.

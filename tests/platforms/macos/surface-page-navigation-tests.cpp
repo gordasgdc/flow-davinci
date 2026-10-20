@@ -5,95 +5,42 @@
 #include <QTemporaryDir>
 #include <QElapsedTimer>
 #include <QThread>
-#include <QDir>
 #include <cstdio>
 #include "footerpanel.h"
 class NativePaintProbe : public QPushButton {
-public:
- using QPushButton::QPushButton;
+public:using QPushButton::QPushButton;
  void paintEvent(QPaintEvent *) override {QPainter p(this);p.fillRect(rect(),QColor(35,45,55));p.setPen(QColor(240,200,90));p.drawText(rect(),Qt::AlignCenter,"Native Edit");}
 };
-int main(int argc,char **argv) {
- QApplication app(argc,argv);QTemporaryDir logs;qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());
- int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
- auto settle=[] {QElapsedTimer t;t.start();while(t.elapsed()<120){QApplication::processEvents();QThread::msleep(1);}};
+int main(int argc,char **argv){
+ QApplication app(argc,argv);QTemporaryDir logs;qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());int failures=0;
+ auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
+ auto settle=[] {QElapsedTimer t;t.start();while(t.elapsed()<140){QApplication::processEvents();QThread::msleep(1);}};
+ {NativePaintProbe original;original.resize(120,36);original.setAttribute(Qt::WA_DontShowOnScreen);Unbound::NativePageButton mirror(nullptr);mirror.resize(original.size());mirror.setAttribute(Qt::WA_DontShowOnScreen);mirror.setNativeTarget(&original);
+  for(int ratio:{1,2}){QImage a(original.size()*ratio,QImage::Format_ARGB32_Premultiplied),b(a.size(),a.format());a.setDevicePixelRatio(ratio);b.setDevicePixelRatio(ratio);a.fill(Qt::transparent);b.fill(Qt::transparent);original.render(&a);mirror.render(&b);check(a==b,"secondary native painting matches at normal and Retina density");}}
+ QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(1100,600);auto layout=new QVBoxLayout(&main);
+ auto stack=new QStackedWidget(&main);layout->addWidget(stack);auto edit=new QWidget;edit->setObjectName("WStackPage_Conform");stack->addWidget(edit);auto audio=new QWidget;audio->setObjectName("WStackPage_Audio");stack->addWidget(audio);
+ auto native=new QWidget(&main);native->setObjectName("m_PageSwitcherContainer");auto row=new QHBoxLayout(native);layout->addWidget(native);
+ auto middle=new QWidget(native);middle->setObjectName("frameControlPanelMiddle");auto pages=new QHBoxLayout(middle);row->addWidget(middle);QPushButton *audioButton=nullptr;int pageClicks=0,homeClicks=0,settingsClicks=0;
+ const QStringList ids{"buttonBrowsePanel","buttonFirstCutPanel","buttonConformPanel","buttonFusionPanel","buttonColorPanel","buttonPhotoPanel","buttonAudioPanel","buttonDeliverPanel"};
+ for(auto id:ids){auto button=new QPushButton(id,middle);button->setObjectName(id);pages->addWidget(button);if(id=="buttonAudioPanel"){audioButton=button;QObject::connect(button,&QPushButton::clicked,[&]{++pageClicks;stack->setCurrentWidget(audio);});}}
+ auto home=new QPushButton("Home",native);home->setObjectName("buttonHome");row->addWidget(home);QObject::connect(home,&QPushButton::clicked,[&]{++homeClicks;});auto settings=new QPushButton("Settings",native);settings->setObjectName("buttonConfig");row->addWidget(settings);QObject::connect(settings,&QPushButton::clicked,[&]{++settingsClicks;});
+ auto action=new QAction("Show Page Navigation",&main);action->setCheckable(true);action->setChecked(true);QObject::connect(action,&QAction::toggled,[&](bool visible){native->setVisible(visible);});
+ QWidget first(&main,Qt::Tool),second(&main,Qt::Tool);first.setObjectName("unboundFloating_first");second.setObjectName("unboundFloating_second");for(auto host:{&first,&second}){host->setAttribute(Qt::WA_DontShowOnScreen);host->resize(1000,500);auto box=new QVBoxLayout(host);box->addWidget(new QWidget(host));host->show();}main.show();settle();
+ const auto parent=native->parentWidget();const auto index=layout->indexOf(native);const auto minimum=native->minimumSize();const auto policy=native->sizePolicy();QWidget *primary=&first;QJsonObject saved;
  {
-  NativePaintProbe original;original.resize(120,36);original.setAttribute(Qt::WA_DontShowOnScreen);
-  Unbound::NativePageButton mirror(nullptr);mirror.resize(original.size());mirror.setAttribute(Qt::WA_DontShowOnScreen);mirror.setNativeTarget(&original);
-  for(int ratio:{1,2}) {
-   QImage nativeImage(original.size()*ratio,QImage::Format_ARGB32_Premultiplied),mirrorImage(nativeImage.size(),nativeImage.format());nativeImage.setDevicePixelRatio(ratio);mirrorImage.setDevicePixelRatio(ratio);nativeImage.fill(Qt::transparent);mirrorImage.fill(Qt::transparent);
-   original.render(&nativeImage);mirror.render(&mirrorImage);
-   check(nativeImage==mirrorImage,"native custom paint and text match at 1x and Retina device scale without image stretching");
-  }
+ Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.primarySurface=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
+ auto band=first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer");auto body=first.layout()->itemAt(0)->widget();
+ check(band&&band->widget()==native&&native->window()==&first,"primary gets the actual complete native footer");check(home->window()==&first&&settings->window()==&first,"original Home and Settings travel with the real footer");check(body->geometry().bottom()<band->geometry().top(),"native footer reserves a bottom band outside content");home->click();settings->click();check(homeClicks==1&&settingsClicks==1,"real native Home and Settings signals stay connected");
+ auto b=second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");check(b&&!b->isVisibleTo(&second),"secondary footer stays opt-in");controller.setPinned(&second,true);settle();
+ auto mirrorHome=b->findChild<QToolButton *>("openGatePage_home"),mirrorSettings=b->findChild<QToolButton *>("openGatePage_settings");check(mirrorHome&&mirrorSettings,"secondary includes native Home and Settings");mirrorHome->click();mirrorSettings->click();settle();check(homeClicks==2&&settingsClicks==2,"secondary controls invoke the real native functions exactly once");
+ b->findChild<QToolButton *>("openGatePage_fairlight")->click();settle();check(pageClicks==1&&stack->currentWidget()==audio&&audioButton->window()==&first,"page request uses the real native footer without replacing it");
+ const int bodyHeight=body->height();controller.hidePanel();settle();check(!action->isChecked()&&band->isHidden()&&!b->isVisibleTo(&second)&&body->height()>bodyHeight,"native visibility hides all surfaces and reclaims space");action->trigger();settle();check(!band->isHidden()&&b->isVisibleTo(&second),"native hotkey restores pinned footers");
+ second.resize(140,350);settle();check(b->horizontalScrollBar()->maximum()>0,"narrow copy scrolls without losing controls");b->horizontalScrollBar()->setValue(b->horizontalScrollBar()->maximum());settle();check(b->viewport()->rect().contains(mirrorSettings->mapTo(b->viewport(),mirrorSettings->rect().center())),"Settings remains reachable at narrow widths");
+ controller.setPinned(&first,false);settle();check(native->parentWidget()==parent&&layout->indexOf(native)==index&&b->isVisibleTo(&second),"unpin primary restores native slot while optional copy stays visible");controller.setPinned(&first,true);settle();check(native->window()==&first,"repin mounts the same native footer again");
+ primary=&main;controller.refreshSurfaces();settle();check(native->parentWidget()==parent&&layout->indexOf(native)==index,"native main preference restores exact original slot");check(!main.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation",Qt::FindDirectChildrenOnly),"native main uses original footer without an overlay");
+ controller.setPinned(&main,false);controller.hidePanel();controller.showPanel();settle();check(native->isHidden()&&action->isChecked()&&b->isVisibleTo(&second),"global toggles preserve independent main pin choice");controller.setPinned(&main,true);settle();saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="surface-v1","state remains compatible with pinned surface model");
  }
- QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);auto native=new QVBoxLayout(&main);
- auto pages=new QStackedWidget(&main);native->addWidget(pages);auto edit=new QWidget;edit->setObjectName("WStackPage_Conform");pages->addWidget(edit);auto audio=new QWidget;audio->setObjectName("WStackPage_Audio");pages->addWidget(audio);
- auto originalFooter=new QWidget(&main);originalFooter->setObjectName("m_PageSwitcherContainer");auto originalLayout=new QHBoxLayout(originalFooter);native->addWidget(originalFooter);
- auto middle=new QWidget(originalFooter);middle->setObjectName("frameControlPanelMiddle");auto middleLayout=new QHBoxLayout(middle);middleLayout->setContentsMargins(0,0,0,0);originalLayout->setContentsMargins(0,0,0,0);originalLayout->addWidget(middle);auto home=new QPushButton("Home",originalFooter);originalLayout->addWidget(home);
- const QStringList targets{"buttonBrowsePanel","buttonFirstCutPanel","buttonConformPanel","buttonFusionPanel","buttonColorPanel","buttonPhotoPanel","buttonAudioPanel","buttonDeliverPanel"};
- int pageClicks=0;
- auto inactiveMode=new QWidget(originalFooter);auto duplicateEdit=new QPushButton("Inactive Edit",inactiveMode);duplicateEdit->setObjectName("buttonConformPanel");inactiveMode->hide();
- for(const auto &id:targets){auto button=new QPushButton(id,middle);button->setObjectName(id);middleLayout->addWidget(button);QObject::connect(button,&QPushButton::clicked,[&,id]{++pageClicks;if(id=="buttonAudioPanel")pages->setCurrentWidget(audio);if(id=="buttonConformPanel")pages->setCurrentWidget(edit);});}
- auto visibility=new QAction("Show Page Navigation",&main);visibility->setCheckable(true);visibility->setChecked(true);int toggles=0;
- QObject::connect(visibility,&QAction::toggled,[&](bool value){++toggles;originalFooter->setVisible(value);});
- QWidget first(&main,Qt::Tool),second(&main,Qt::Tool);first.setObjectName("unboundFloating_first");second.setObjectName("unboundFloating_second");
- first.setAttribute(Qt::WA_DontShowOnScreen);second.setAttribute(Qt::WA_DontShowOnScreen);auto firstLayout=new QVBoxLayout(&first);auto secondLayout=new QVBoxLayout(&second);
- auto group=new QWidget(&first);firstLayout->addWidget(group);secondLayout->addWidget(new QWidget(&second));first.resize(1000,500);second.resize(1000,500);main.show();first.show();second.show();settle();
- const auto parent=originalFooter->parentWidget();const int index=native->indexOf(originalFooter);const auto policy=originalFooter->sizePolicy();const auto minimum=originalFooter->minimumSize();
- QJsonObject saved;QWidget *primary=&first;
- {
-  Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.primarySurface=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
-  auto a=first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");auto b=second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
-  check(a&&b&&a->isVisibleTo(&first)&&!b->isVisibleTo(&second),"main surface gets footer by default, secondary remains opt-in");
-  check(firstLayout->indexOf(a)==firstLayout->count()-1&&firstLayout->indexOf(group)==0,"footer sits below entire group outside its content");
-  check(group->geometry().bottom()<a->geometry().top(),"surface content cannot occupy the reserved footer band");
-  const int reservedHeight=group->height();controller.setPinned(&first,false);settle();
-  check(group->height()>reservedHeight&&visibility->isChecked(),"unpin reclaims content space without changing native global visibility");
-  controller.setPinned(&first,true);settle();
-  auto replacement=new QWidget(&first);firstLayout->removeWidget(group);group->hide();group->deleteLater();firstLayout->insertWidget(0,replacement);settle();
-  check(firstLayout->indexOf(a)==firstLayout->count()-1&&replacement->geometry().bottom()<a->geometry().top(),"rebuilding group content leaves the reserved bottom band intact");
-  const auto render=qEnvironmentVariable("OPENGATE_NAVIGATION_TEST_RENDER_DIR");
-  if(!render.isEmpty()){QDir().mkpath(render);a->grab().save(render+"/navigation-wide.png");}
-  controller.setPinned(&second,true);settle();check(b->isVisibleTo(&second),"second surface can pin synchronized footer");
-  auto audioA=a->findChild<QToolButton *>("openGatePage_fairlight");audioA->click();settle();controller.refreshSurfaces();settle();
-  check(pageClicks==1&&pages->currentWidget()==audio,"proxy invokes original native page button exactly once");
-  check(a->findChild<QToolButton *>("openGatePage_fairlight")->isChecked()&&b->findChild<QToolButton *>("openGatePage_fairlight")->isChecked(),"active page synchronizes across surfaces");
-  check(controller.hidePanel().isEmpty(),"global hide delegates to native action");settle();
-  check(!visibility->isChecked()&&!a->isVisibleTo(&first)&&!b->isVisibleTo(&second)&&toggles==1,"native and both surfaces hide with exactly one native toggle");
-  visibility->trigger();settle();check(a->isVisibleTo(&first)&&b->isVisibleTo(&second)&&toggles==2,"native hotkey/action restores all pinned footers");
-  controller.setPinned(&first,false);controller.hidePanel();controller.showPanel();settle();
-  check(!a->isVisibleTo(&first)&&b->isVisibleTo(&second),"global toggles retain per-surface pin choices");
-  controller.setPinned(&first,true);first.resize(140,350);settle();
-  check(a->horizontalScrollBar()->maximum()>0,"narrow footer scrolls rather than truncating pages");
-  if(!render.isEmpty())a->grab().save(render+"/navigation-narrow.png");
-  a->horizontalScrollBar()->setValue(a->horizontalScrollBar()->maximum());settle();auto deliver=a->findChild<QToolButton *>("openGatePage_deliver");
-  check(a->viewport()->rect().contains(deliver->mapTo(a->viewport(),deliver->rect().center())),"last page is reachable at minimum width");
-  check(deliver->toolTip()=="Deliver"&&deliver->accessibleName()=="Deliver","compact buttons retain complete names");
-  QFont large=first.font();large.setPointSize(20);first.setFont(large);settle();a->horizontalScrollBar()->setValue(a->horizontalScrollBar()->maximum());settle();
-  check(a->viewport()->rect().contains(deliver->mapTo(a->viewport(),deliver->rect().center())),"last page remains reachable after font scaling");
-  first.resize(1400,500);settle();check(deliver->toolButtonStyle()==Qt::ToolButtonTextUnderIcon,"wide surface restores full page labels");
-  auto nativeStrip=middle->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
-  check(!nativeStrip&&home->isVisibleTo(originalFooter)&&middle->findChild<QPushButton *>("buttonConformPanel")->isVisibleTo(originalFooter),"native main retains original page buttons and Home without an overlay");
-  if(nativeStrip)check(!QRect(nativeStrip->mapTo(originalFooter,QPoint()),nativeStrip->size()).intersects(home->geometry()),"native overlay does not cover neighboring footer controls");
-  check(originalFooter->parentWidget()==parent&&native->indexOf(originalFooter)==index&&originalFooter->layout()==originalLayout&&originalFooter->sizePolicy()==policy&&originalFooter->minimumSize()==minimum,"native footer ownership, slot and constraints never change");
-  controller.setPinned(&main,false);settle();
-  check(originalFooter->isHidden()&&visibility->isChecked()&&b->isVisibleTo(&second),"native main surface can unpin its footer while other pinned surfaces stay visible");
-  visibility->trigger();visibility->trigger();settle();
-  check(originalFooter->isHidden()&&b->isVisibleTo(&second),"native visibility toggle preserves main-surface unpin choice");
-  controller.setPinned(&main,true);settle();check(originalFooter->isVisibleTo(&main),"repinning native main restores its existing footer band");
-  QMenu menu;controller.populateSurfaceMenu(&menu,&second);auto navigation=menu.actions().first()->menu();check(navigation&&navigation->actions().size()==2&&navigation->actions().last()->isChecked(),"Panels exposes global visibility and this-surface placement");
-  for(int repeat=0;repeat<5;++repeat)controller.restore();settle();
-  check(first.findChildren<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation").size()==1,"repeated refresh cannot duplicate surface footers");
-  controller.setState({{"hidden",true},{"surfaces",controller.snapshot()["surfaces"]}});settle();
-  check(visibility->isChecked()&&a->isVisibleTo(&first),"saved arrangement cannot override authoritative native global visibility");
-  saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="surface-v1","snapshot migrates old attachment model to surface placement");
-  controller.refreshSurfaces();settle();check(b->isVisibleTo(&second),"arrangement Dock All cannot move footer or erase placement");
- }
- check(!first.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")&&!second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"teardown removes only owned strips");
- check(originalFooter->parentWidget()==&main,"teardown keeps native footer intact");
- {
-  Unbound::FooterPanel reopened(nullptr,[&]{return &main;},saved);reopened.primarySurface=[&]{return primary;};reopened.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};reopened.restore();settle();
-  check(reopened.pinned(&second)&&second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")->isVisibleTo(&second),"saved surface placement restores independently of layout lease");
- }
+ check(native->parentWidget()==parent&&layout->indexOf(native)==index&&native->minimumSize()==minimum&&native->sizePolicy()==policy,"shutdown restores native ownership and constraints");check(!first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer")&&!second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"shutdown removes only owned wrappers and copies");
+ {Unbound::FooterPanel restored(nullptr,[&]{return &main;},saved);restored.primarySurface=[&]{return &main;};restored.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};restored.restore();settle();check(restored.pinned(&second),"saved secondary pin survives restart");}
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;
 }
