@@ -1,6 +1,6 @@
 # Active work
 
-Installed baseline: fbfc2a9. Never replace the running helper or close Resolve.
+Installed baseline: 92e6e6c. Never replace the running helper or close Resolve.
 Preserve arrangements and native keyboard presets. No merges to main from experiments.
 
 - [x] Isolate native menu mutations implicated in repeated crashes; candidate installed.
@@ -8,8 +8,10 @@ Preserve arrangements and native keyboard presets. No merges to main from experi
 - [x] Native-preset adapter implemented and fixture-tested (explicit opt-in only).
 - [ ] Live preset save/switch timing, selected-clip Stabilize execution and duplicate
       routing acceptance. Never claim unsupported native dispatch from absence alone.
-- [x] Fixed Playhead exact native Edit action lookup, prior-style restore and target-result logs.
-- [ ] Live Fixed Playhead action discovery/state acceptance.
+- [x] Fixed Playhead candidate prepares the actual Edit settings menu without display, reads custom-painted captions and dispatches its native row. Ineffective global QAction fallback removed.
+- [ ] Live Fixed Playhead acceptance with timeline hidden, another panel focused, both toggle states and remapped keys. Candidate built on fix/macos-fixed-playhead-native-target; not installed.
+- [x] Workflow menu request deferral implemented; retain valid requests until native popup tracking ends, then claim once.
+- [ ] Stabilize visibility-independent API transport: separate branch, not merged. Main merge remains paused.
 - [x] Inspector overflow arrow/hint and scrolling fixture.
 - [ ] Live Inspector appearance/reachability acceptance.
 - [x] GitHub default `main`/OpenGate landing page and release/metadata/history backup.

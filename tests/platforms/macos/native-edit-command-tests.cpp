@@ -75,9 +75,11 @@ int main(int argc,char **argv) {
     bool actualMode=false;int nativeCalls=0;
     QObject::connect(custom,&QAction::triggered,[&] { actualMode=!actualMode;++nativeCalls; });
     page.hide();preferences.hide();embedded.hide();painted->hide();
+    painted->resize(640,480);const auto unlaidOutSize=painted->size();
     bool editActive=true;commands.editActive=[&] {return editActive;};
     auto focusBefore=QApplication::focusWidget();
     check(commands.fixedPlayhead()&&actualMode&&nativeCalls==1,"hidden custom-painted native row invokes real settings handler");
+    check(painted->size()==unlaidOutSize,"caption reading preserves unlaid-out native geometry");
     check(!page.isVisible()&&!embedded.isVisible()&&!painted->isVisible(),"invocation does not show timeline, settings menu or its row");
     check(QApplication::focusWidget()==focusBefore,"invocation does not move focus");
     check(commands.fixedPlayhead()&&!actualMode&&nativeCalls==2,"same hidden handler switches Fixed Playhead off");
