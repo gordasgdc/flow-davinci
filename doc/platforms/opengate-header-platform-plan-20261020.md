@@ -52,3 +52,48 @@ hide/reclaim, menu recovery, primary transfer, original-slot restoration and sib
 native-toolbar placement pass. Header access and bottom-accessory regressions pass.
 Full session/native workspace compile passes; displayed checks deferred while Resolve
 runs. Full automatic emulator conversion remains separate from header placement.
+
+## Fusion follow-up (after arrangement work)
+
+Jordan requested a page-aware sweep of Fusion panels and viewers after arrangement
+reliability is finished. Inventory actual widgets and ownership; classify supported
+undock/dock, group, Show/Hide, persistence, page-return and shortcut behavior. Use the
+same Panels model and native styling as Edit, with page-specific availability.
+Cross-page Fusion viewers alongside Edit are a later experiment only: prove current
+rendering, context ownership, focus, shortcut routing and safe page transitions first.
+Do not advertise mixed-page viewers or implement them as part of the initial sweep.
+
+Fusion scope clarification: reuse the established Edit structure and native styling;
+no new interaction design or mixed-page experiment. FIRST make workspace storage,
+selected arrangement, save/restore validation and menus page-aware so Fusion cannot
+overwrite or activate Edit state. THEN apply the same panel behavior to Fusion.
+Cross-page windows are explicitly out of scope for this pass.
+
+## Fusion implementation and review requirements
+
+Priority: finish the existing arrangement/header/footer task list before Fusion work.
+Fusion is an extension of the established Edit behavior, not a new interaction model.
+
+- Route backtick (`), often called tilde, through the same maximize/restore command
+  and target resolution used by Edit. Do not introduce a separate Fusion toggle.
+- Reuse the existing window minimize/maximize/restore, docking/undocking, grouping,
+  Show/Hide and page-return functions. Fusion Panels / Show Panel entries must expose
+  the same operations and state semantics, filtered to the current page.
+- Keep native content ownership, constraints, focus, key routing and saved state under
+  the existing session/coordinator contracts. Add page-specific discovery/adapters
+  where needed; do not duplicate working Edit machinery or invent alternative UI.
+- Organize Fusion modules to mirror Edit's discovery, session, decoration, command and
+  workspace boundaries. Extract shared behavior when necessary; preserve Edit behavior.
+- Separate branches by functional responsibility, not one broad Fusion branch:
+  page-aware workspace persistence/menu/selection; Fusion panel discovery and reversible
+  docking; Fusion panel/window command integration; and Fusion saved-layout/page-return
+  integration. Adjust boundaries to actual dependencies, documenting the base commits.
+- Each branch needs a concrete scope, relevant verification and an explicit dependency
+  list so it can be evaluated independently. Assemble dependent changes on a test
+  integration branch for live evaluation; keep feature commits separately removable.
+- Verify shared backtick targeting, window commands, Panels visibility, docking and
+  restoration on both Edit and Fusion. No cross-page content mixing in this pass.
+
+Future only: panels may eventually be called across pages. That requires explicit
+source-page lifecycle, rendering and ownership support; do not weaken current page
+isolation to simulate it.
