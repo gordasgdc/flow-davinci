@@ -77,6 +77,7 @@ public:
         showFooter=new QPushButton("Show",body); showFooter->setObjectName("showPageNavigation"); panelGrid->addWidget(showFooter,row,3);
         hideFooter=new QPushButton("Hide",body); hideFooter->setObjectName("hidePageNavigation"); panelGrid->addWidget(hideFooter,row,4);
         attachFooter=new QPushButton("Attach to Workspace",body); attachFooter->setObjectName("attachPageNavigation"); panelGrid->addWidget(attachFooter,row,5,1,2);
+        floatFooter->hide();dockFooter->hide();attachFooter->setText("Pin to Main Surface");
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }

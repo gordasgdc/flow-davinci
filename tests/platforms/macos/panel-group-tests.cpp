@@ -151,35 +151,17 @@ int main(int argc, char **argv)
         auto nativeFooter = new QWidget(&main); nativeFooter->setObjectName("m_PageSwitcherContainer");
         (new QHBoxLayout(nativeFooter))->addWidget(new QLabel("Native page buttons", nativeFooter));
         layout->addWidget(nativeFooter); main.show(); settle();
-        Unbound::FooterPanel footer(nullptr, [&] { return &main; }, {});
-        footer.wireMenu();
-        check(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation"), "native footer exposes a discoverable undock control");
-        check(footer.floatPanel().isEmpty() && nativeFooter->window() != &main,
-            "native footer floats independently of the page content");
-        check(nativeFooter->layout()->indexOf(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation")) < 0,
-            "footer action does not consume an extra native layout row");
-        check(nativeFooter->window()->height() < 100,
-            "floating navigation fits its native controls rather than retaining a tall empty host");
-        page->hide(); settle();
-        check(nativeFooter->isVisible(), "switching away from a page does not hide global navigation");
-        QMenu menu(&main); menu.setObjectName("workspaceShowPanel"); menu.show(); settle();
-        QAction *caller = nullptr;
-        for (auto action : menu.actions()) if (action->objectName() == "unboundPageNavigation") caller = action;
-        check(caller && caller->isChecked(), "native Show Panel submenu exposes shared footer visibility");
-        menu.hide(); if (caller) caller->trigger(); settle();
-        check(footer.snapshot()["hidden"].toBool(), "submenu caller hides the floating footer");
-        if (caller) caller->trigger(); settle();
-        check(!footer.snapshot()["hidden"].toBool(), "submenu caller reopens the same footer");
-        auto footerHost=static_cast<Unbound::MacFloatingHost *>(nativeFooter->window()); footerHost->setPinned(true); settle();
-        check(footer.snapshot()["pinned"].toBool(),"Page Navigation snapshot retains its pin state");
-        const auto saved = footer.snapshot(); footer.dock(); settle();
-        check(nativeFooter->parentWidget() == &main && layout->indexOf(nativeFooter) >= 0,
-            "footer docking restores the original native layout slot");
-        footer.setState(saved); settle();
-        check(nativeFooter->window() != &main && footer.snapshot()["floating"].toBool(),
-            "saved footer arrangement restores independently of the hidden page");
-        check(static_cast<Unbound::MacFloatingHost *>(nativeFooter->window())->pinned(),"Page Navigation pin restores with its floating view");
-        footer.dock();
+        auto pageButton=new QPushButton("Edit",nativeFooter);pageButton->setObjectName("buttonConformPanel");nativeFooter->layout()->addWidget(pageButton);
+        Unbound::FooterPanel footer(nullptr,[&] {return &main;},{});footer.wireMenu();
+        check(nativeFooter->window()==&main,"surface footer keeps native page navigation in its original window");
+        check(nativeFooter->findChild<Unbound::SurfacePageNavigation *>(),"native slot receives an adaptive page strip");
+        page->hide();settle();check(nativeFooter->isVisible(),"navigation visibility is independent of the current page");
+        QMenu menu(&main);menu.setObjectName("workspaceShowPanel");footer.wireMenu();
+        auto caller=menu.findChild<QAction *>("unboundPageNavigation");check(caller&&caller->isChecked(),"Panels caller reflects shared native visibility");
+        if(caller)caller->trigger();settle();check(footer.snapshot()["hidden"].toBool(),"Panels caller hides global navigation");
+        if(caller)caller->trigger();settle();check(!footer.snapshot()["hidden"].toBool(),"Panels caller restores global navigation");
+        const auto saved=footer.snapshot();footer.dock();footer.setState(saved);settle();
+        check(nativeFooter->parentWidget()==&main&&!footer.snapshot()["floating"].toBool(),"restore never transfers native footer ownership");
     }
     {
         QWidget main; main.resize(1400,700); auto outer = new QVBoxLayout(&main);

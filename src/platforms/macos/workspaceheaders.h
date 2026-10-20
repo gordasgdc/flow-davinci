@@ -31,6 +31,7 @@ public:
     void add(Panel panel) { panels.append(std::move(panel)); }
     std::function<QWidget *()> primary,projectSurface;
     std::function<QMenu *()> allPanels;
+    std::function<void(QMenu *,QWidget *)> surfaceControls;
     std::function<QList<Window>()> windows;
     void schedule() { if (!timer.isActive()) timer.start(); }
     void populate(QMenu *menu,QWidget *host) {
@@ -54,6 +55,7 @@ public:
                 QTimer::singleShot(0,this,[panel] { if (!QApplication::activeModalWidget()) panel.floatPanel(); });
             });
         }
+        if(surfaceControls)surfaceControls(menu,host);
         const bool global=primary && primary()==host;
         if (global) {
             if (auto callers=allPanels ? allPanels() : nullptr) {

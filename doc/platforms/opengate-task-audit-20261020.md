@@ -169,3 +169,18 @@ checks failed. First-click arrangement restore is still an open issue.
 The new Source ownership fixture passes; compile/bootstrap, native-preset and
 full panel-session checks are required before installation. Preserve current
 settings and snapshot the installed runtime for rollback. 0.0.2 remains on hold.
+
+## Surface footer redesign requested
+
+Jordan requested a build of synchronized surface footers: default at the bottom
+of the primary docked surface, optional on other surfaces, accessible through
+Panels, synchronized to native Show Page Navigation/hotkey, and never truncated.
+Work is isolated on feature/macos-surface-page-navigation, based on installed
+ca505c1. It retains hotkeys and Source docking and excludes failed footer-preflight
+experiment ad7780a. The new design removes native-footer lease/reparenting rather
+than weakening ownership guards. See opengate-surface-page-navigation.md.
+
+Hidden navigation/migration checks pass; full group and cross-process restart
+checks are compiled but deferred while Resolve is running. Build is requested;
+installation, main merge and 0.0.2 publication remain separate. Responsiveness is
+excluded. Do not mark W2/U9 or the historical restore failure live-accepted yet.

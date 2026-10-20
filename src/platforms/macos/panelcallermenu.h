@@ -29,7 +29,7 @@ public:
             const auto &panel=panels[i];
             auto page=menu->findChild<QMenu *>("openGatePanelPage_"+panel.page,Qt::FindDirectChildrenOnly);
             if (!page) {
-                page=new QMenu(workspacePageLabel(panel.page),menu); page->setObjectName("openGatePanelPage_"+panel.page);
+                page=new QMenu(panel.page=="global"?QStringLiteral("Workspace"):workspacePageLabel(panel.page),menu); page->setObjectName("openGatePanelPage_"+panel.page);
                 page->setProperty("unboundOwnMenu",true); menu->addMenu(page);
             }
             auto action=page->findChild<QAction *>("openGateShowPanel_"+panel.id,Qt::FindDirectChildrenOnly);
@@ -37,13 +37,13 @@ public:
                 action=page->addAction(panel.label); action->setObjectName("openGateShowPanel_"+panel.id); action->setCheckable(true);
                 connect(action,&QAction::triggered,this,[this,i] {
                     QTimer::singleShot(0,this,[this,i] {
-                        const auto &panel=panels[i]; const bool ready=currentPage()==panel.page && panel.available && panel.available();
+                        const auto &panel=panels[i]; const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
                         logEvent("workspace.panel.show",{{"panel",panel.id},{"page",panel.page},{"accepted",ready},{"origin","opengate-ui-menu"}});
                         if (ready && panel.show) panel.show();
                     });
                 });
             }
-            action->setEnabled(currentPage()==panel.page && panel.available && panel.available());
+            action->setEnabled((panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available());
             action->setChecked(panel.visible && panel.visible());
             action->setToolTip("Show "+panel.label+" in its current arrangement");
         }

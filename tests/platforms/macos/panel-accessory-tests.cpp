@@ -4,6 +4,7 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "footerpanel.h"
+#include "panelaccessorylease.h"
 
 int main(int argc,char **argv)
 {
@@ -48,48 +49,13 @@ int main(int argc,char **argv)
         delete timeline; timeline=nullptr;
         check(footer && footer->parentWidget()==&main && !lease.active(),"owner destruction restores footer instead of deleting native content");
     }
-    timeline=new QWidget(&main); timeline->setObjectName("frameConformTimelines"); new QVBoxLayout(timeline);
-    native->insertWidget(0,timeline); timeline->show(); QApplication::processEvents();
     {
-        bool available=true;QWidget *owner=timeline;
-        Unbound::FooterPanel panel(nullptr,[&] { return &main; },{});
-        panel.attachmentOwner=[&]() -> QWidget * { return available ? owner : nullptr; };
-        QMenu workspace(&main);auto navigation=workspace.addAction("Show Page Navigation");navigation->setCheckable(true);
-        navigation->setShortcut(QKeySequence(Qt::Key_F12));
-        panel.restore();
-        check(navigation->isChecked(),"native Page Navigation action reflects the attached footer");
-        navigation->trigger();QApplication::processEvents();
-        check(panel.snapshot()["hidden"].toBool(),"native Page Navigation action hides the attached footer");
-        navigation->trigger();QApplication::processEvents();
-        check(!panel.snapshot()["hidden"].toBool(),"native Page Navigation action restores the attached footer");
-        check(panel.snapshot()["attachment"]=="workspace" && timeline->isAncestorOf(footer),"default Page Navigation travels with its available workspace owner");
-        // Never enter the floating fallback in this hidden-only fixture.
-        if (!footer || !timeline->isAncestorOf(footer)) return 1;
-        panel.toggleVisibility(); const auto saved=panel.snapshot();
-        check(saved["hidden"].toBool() && !saved["floating"].toBool(),"attached hidden door persists independently of floating state");
-        available=false; panel.syncAttachment();
-        check(footer->parentWidget()==&main,"leaving Edit returns Page Navigation to its native position");
-        available=true; panel.syncAttachment();
-        check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"returning owner restores attachment and hidden door");
-        QWidget other(&main);auto otherLayout=new QVBoxLayout(&other);other.show();
-        owner=&other;panel.syncAttachment();
-        check(other.isAncestorOf(footer) && panel.snapshot()["hidden"].toBool() && otherLayout->count()==1,
-            "switching workspace owners moves the same footer and preserves its hidden state");
-        owner=timeline;panel.syncAttachment();
-        check(timeline->isAncestorOf(footer) && otherLayout->count()==0,"old workspace retains no orphaned footer viewport");
-        panel.dock(); panel.syncAttachment();
-        check(footer->parentWidget()==&main && panel.snapshot()["attachment"]=="native","explicit native placement suppresses automatic attachment");
-        panel.hidePanel(); check(footer->isHidden(),"manager can hide native Page Navigation");
-        check(panel.showPanel().isEmpty() && footer->isVisible() && footer->parentWidget()==&main,
-            "manager reopens native Page Navigation without floating or reparenting it");
-        panel.setState(saved);
-        check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"saved attachment restores without invoking floating geometry");
-        auto legacy=saved;legacy["attachment"]="timeline";panel.setState(legacy);
-        check(panel.snapshot()["attachment"]=="workspace","legacy Timeline attachment migrates on load without rewriting presets");
-        available=false;panel.setState({});panel.hidePanel();panel.showPanel();
-        check(footer->parentWidget()==&main && footer->isVisible() && !panel.floatingWindow(),
-            "unavailable modular workspace uses the native footer instead of unexpectedly floating");
-        check(panel.releaseAttachment(),"shutdown can return attached footer without changing saved preference");
+        Unbound::FooterPanel panel(nullptr,[&] {return &main;},{{"floating",true},{"attachment","timeline"}});
+        panel.restore();QApplication::processEvents();
+        check(footer->parentWidget()==&main&&!panel.snapshot()["floating"].toBool(),"legacy floating footer state migrates without moving native content");
+        check(panel.hidePanel().isEmpty()&&footer->isHidden(),"global hide retains native slot");
+        check(panel.showPanel().isEmpty()&&footer->isVisible(),"global show restores native visibility");
+        check(panel.releaseAttachment()&&footer->parentWidget()==&main,"shutdown releases presentation without a native lease");
     }
     Unbound::flushDiagnostics();
     if (!failures) std::puts("PASS: accessory ownership, overflow, native restoration, owner destruction and footer attachment state");

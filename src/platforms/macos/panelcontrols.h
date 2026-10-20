@@ -286,6 +286,14 @@ public:
             }
             return best;
         };
+        footer->surfaceHosts=[this] {
+            QList<QWidget *> hosts;
+            for(const auto &panel:panels)if(panel.session->active() && panel.session->window()) {
+                auto host=panel.session->window()->window();
+                if(host && !hosts.contains(host) && !host->property("unboundToolbarStrip").toBool())hosts.append(host);
+            }
+            return hosts;
+        };
         footer->revealAttachmentOwner=[this] { if (auto owner=footer->attachmentOwner()) { owner->show();owner->raise(); } };
         viewerMode = new Unbound::ViewerModeCommand(this,
             [this] { return page() && page()->isVisible() && panels[2].session->active() && panels[3].session->active(); },
@@ -348,7 +356,7 @@ public:
                 if (panels[i].session->active() || managedOwnerFor(target)) showPanel(i,true);
                 else requestUndock(i);
             }});
-        panelCallers->add({"page-navigation","Page Navigation","edit",[this] { return !quitting && bool(footer); },
+        panelCallers->add({"page-navigation","Page Navigation","global",[this] { return !quitting && bool(footer); },
             [this] { return footer && !footer->snapshot()["hidden"].toBool(); },
             [this] { const auto error=footer->showPanel(); if (!error.isEmpty()) status->setText(error); }});
         workspaceMenu->panelMenu=[panelCallers](QMenu *root) { return panelCallers->wire(root); };
@@ -393,9 +401,7 @@ public:
             [this,i] { return panels[i].session->interfaceScale(); },
             [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
             [this,i] { floatToolbar(i); }});
-        headers->add({"page-navigation","Page Navigation",[this] { return footer->floatingWindow(); },
-            [this] { return !footer->snapshot()["hidden"].toBool(); },
-            [this](bool visible) { if (!quitting) status->setText(visible ? footer->showPanel() : footer->hidePanel()); }});
+        headers->surfaceControls=[this](QMenu *menu,QWidget *host) {footer->populateSurfaceMenu(menu,host);};
         headers->projectSurface=[] { return Unbound::resolveMainWindow(); };
         headers->primary=[this]() -> QWidget * {
             if (panels[1].session->active() && panels[1].session->window()->window()->isVisible()) return panels[1].session->window()->window();
