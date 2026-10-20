@@ -30,7 +30,7 @@ public:
     std::function<QList<QWidget *>()> surfaceHosts;
     void shutdown() {
         stopped=true;timer.stop();qApp->removeEventFilter(this);
-        for(auto view:views)if(view)delete view;views.clear();delete nativeView.data();nativeView=nullptr;
+        for(auto view:views)if(view)delete view;views.clear();
         if(nativeFooter){QScopedValueRollback<bool> guard(applyingPlacement,true);nativeFooter->setVisible(nativeVisibility?nativeVisibility->isChecked():shown);}
     }
     void refreshSurfaces(){refresh();}
@@ -150,21 +150,9 @@ private:
             QScopedValueRollback<bool> placement(applyingPlacement,true);
             nativeFooter->setVisible(shown && pinned(root?root():nullptr));
         }
-        if(nativeFooter && !pages.isEmpty()) {
-            QWidget *slot=nativeFooter;
-            for(auto parent=pages.first().target?pages.first().target->parentWidget():nullptr;parent && parent!=nativeFooter;parent=parent->parentWidget())
-                if(parent->objectName()=="frameControlPanelMiddle"){slot=parent;break;}
-            if(!nativeView || nativeView->parentWidget()!=slot) {
-                delete nativeView.data();nativeView=new SurfacePageNavigation(slot,true);
-                nativeView->activate=[this](QString id){activatePage(id);};
-            }
-            // Overlay only the native page-button region. Home/Settings and
-            // adjacent native footer controls remain untouched and reachable.
-            const QRect inFooter(slot->mapTo(nativeFooter,QPoint()),slot->size());
-            const auto visible=inFooter.intersected(nativeFooter->rect());
-            const QRect local(slot->mapFrom(nativeFooter,visible.topLeft()),visible.size());
-            nativeView->updatePages(pages);nativeView->setNativeSlotGeometry(local);nativeView->show();nativeView->raise();
-        }
+        // Native main window already has the exact native footer; leave it
+        // visible without an overlay or replacement artwork. Only other surfaces
+        // need an owned navigation view.
         auto hosts=surfaceHosts?surfaceHosts():QList<QWidget *>{};
         if(auto primary=primarySurface?primarySurface():nullptr)if(!hosts.contains(primary))hosts.append(primary);
         for(auto host:hosts) {
@@ -194,7 +182,6 @@ private:
     }
     std::function<QWidget *()> root;QJsonObject state;QTimer timer;
     QPointer<QWidget> nativeFooter;QPointer<QAction> nativeVisibility;
-    QPointer<SurfacePageNavigation> nativeView;
     QList<NavigationPage> pages;QHash<QWidget *,QPointer<SurfacePageNavigation>> views;
     bool shown=true,pendingVisibility=true,initialized=false,refreshing=false,applyingPlacement=false,stopped=false;
 };

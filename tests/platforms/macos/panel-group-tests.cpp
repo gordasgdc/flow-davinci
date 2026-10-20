@@ -154,7 +154,7 @@ int main(int argc, char **argv)
         auto pageButton=new QPushButton("Edit",nativeFooter);pageButton->setObjectName("buttonConformPanel");nativeFooter->layout()->addWidget(pageButton);pageButton->show();settle();
         Unbound::FooterPanel footer(nullptr,[&] {return &main;},{});footer.wireMenu();
         check(nativeFooter->window()==&main,"surface footer keeps native page navigation in its original window");
-        check(nativeFooter->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"native slot receives an adaptive page strip");
+        check(!nativeFooter->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")&&pageButton->isVisible(),"native footer keeps original page controls without an overlay");
         page->hide();settle();check(nativeFooter->isVisible(),"navigation visibility is independent of the current page");
         QMenu menu(&main);menu.setObjectName("workspaceShowPanel");footer.wireMenu();
         auto caller=menu.findChild<QAction *>("unboundPageNavigation");check(caller&&caller->isChecked(),"Panels caller reflects shared native visibility");

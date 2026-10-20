@@ -8,10 +8,24 @@
 #include <QDir>
 #include <cstdio>
 #include "footerpanel.h"
+class NativePaintProbe : public QPushButton {
+public:
+ using QPushButton::QPushButton;
+ void paintEvent(QPaintEvent *) override {QPainter p(this);p.fillRect(rect(),QColor(35,45,55));p.setPen(QColor(240,200,90));p.drawText(rect(),Qt::AlignCenter,"Native Edit");}
+};
 int main(int argc,char **argv) {
  QApplication app(argc,argv);QTemporaryDir logs;qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
  auto settle=[] {QElapsedTimer t;t.start();while(t.elapsed()<120){QApplication::processEvents();QThread::msleep(1);}};
+ {
+  NativePaintProbe original;original.resize(120,36);original.setAttribute(Qt::WA_DontShowOnScreen);
+  Unbound::NativePageButton mirror(nullptr);mirror.resize(original.size());mirror.setAttribute(Qt::WA_DontShowOnScreen);mirror.setNativeTarget(&original);
+  for(int ratio:{1,2}) {
+   QImage nativeImage(original.size()*ratio,QImage::Format_ARGB32_Premultiplied),mirrorImage(nativeImage.size(),nativeImage.format());nativeImage.setDevicePixelRatio(ratio);mirrorImage.setDevicePixelRatio(ratio);nativeImage.fill(Qt::transparent);mirrorImage.fill(Qt::transparent);
+   original.render(&nativeImage);mirror.render(&mirrorImage);
+   check(nativeImage==mirrorImage,"native custom paint and text match at 1x and Retina device scale without image stretching");
+  }
+ }
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);auto native=new QVBoxLayout(&main);
  auto pages=new QStackedWidget(&main);native->addWidget(pages);auto edit=new QWidget;edit->setObjectName("WStackPage_Conform");pages->addWidget(edit);auto audio=new QWidget;audio->setObjectName("WStackPage_Audio");pages->addWidget(audio);
  auto originalFooter=new QWidget(&main);originalFooter->setObjectName("m_PageSwitcherContainer");auto originalLayout=new QHBoxLayout(originalFooter);native->addWidget(originalFooter);
@@ -59,7 +73,7 @@ int main(int argc,char **argv) {
   check(a->viewport()->rect().contains(deliver->mapTo(a->viewport(),deliver->rect().center())),"last page remains reachable after font scaling");
   first.resize(1400,500);settle();check(deliver->toolButtonStyle()==Qt::ToolButtonTextUnderIcon,"wide surface restores full page labels");
   auto nativeStrip=middle->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");
-  check(nativeStrip&&nativeStrip->parentWidget()==middle&&home->isVisibleTo(originalFooter),"adaptive native pages preserve adjacent Home controls");
+  check(!nativeStrip&&home->isVisibleTo(originalFooter)&&middle->findChild<QPushButton *>("buttonConformPanel")->isVisibleTo(originalFooter),"native main retains original page buttons and Home without an overlay");
   if(nativeStrip)check(!QRect(nativeStrip->mapTo(originalFooter,QPoint()),nativeStrip->size()).intersects(home->geometry()),"native overlay does not cover neighboring footer controls");
   check(originalFooter->parentWidget()==parent&&native->indexOf(originalFooter)==index&&originalFooter->layout()==originalLayout&&originalFooter->sizePolicy()==policy&&originalFooter->minimumSize()==minimum,"native footer ownership, slot and constraints never change");
   controller.setPinned(&main,false);settle();
