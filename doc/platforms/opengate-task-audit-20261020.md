@@ -110,3 +110,18 @@ a native maximize command row with no assignment means unassigned. If the curren
 preset contains an empty row, bare backtick will need an explicit native-editor
 assignment; silently retaining an independent binding would contradict clearing
 semantics. Do not describe this as preserving every previous backtick default.
+
+## Latest runtime investigation (2026-10-20, PID 40430)
+
+The user's subsequent normal restart still loaded installed 541cd25, but no
+`command.preset.loaded` event appears for that process. The installed version
+requires the opt-in launch flag; this explains the lost adapter path on normal
+restart. One Stabilize result reports attempted=1, completed=1, success=true at
+15:34:41 UTC. Its origin is not established by that result alone. Fixed Playhead
+failed independently with two matching settings owners at 15:40:37 UTC. Do not
+select the first owner or infer successful native mode switching.
+
+Normal-launch branch bb178ce has now compiled the full helper and passed bootstrap
+checks. The native-preset fixture passed on rerun; an earlier hidden activation
+run failed dispatch assertions, so fixture activation stability remains under
+review. Nothing from this branch has been installed or merged.
