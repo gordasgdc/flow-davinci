@@ -306,3 +306,16 @@ bindings, hidden interactions and Timeline overflow. Full helper rebuilding and 
 matrix verification follow this checkpoint. Resolve remains running; no install or
 live project interaction. Auto Emulator conversion, full native-painted track/ruler
 scale and later Fusion support remain open; cross-platform stability is unverified.
+
+## Shared page workspace state foundation
+
+`fix/macos-page-workspace-state` adds a shared Qt-only PageWorkspaceState module and
+routes Edit's existing last-view saves through it. Each page retains independent
+last mode, selected arrangement and modified view; explicit Native return preserves
+the previous managed view. Saved arrangement captures exclude the per-page ledger.
+Native-return intermediate saves cannot replace the last complete page checkpoint.
+Legacy Edit fields remain readable, and unknown page-state versions fail closed.
+Core persistence fixture passes migration, independent Edit/Fusion mode/selection,
+cross-page rejection, restart, interrupted-transition recovery and no recursive capture.
+Panel-session/restart integration compilation passes. Fusion panel/coordinator wiring
+is not enabled or claimed complete. No install, main merge or publication.
