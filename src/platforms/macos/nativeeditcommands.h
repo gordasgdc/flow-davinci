@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QAbstractButton>
+#include <QActionGroup>
+#include <QPointer>
 #include <QMenu>
 #include <QSet>
 #include "panelcommands.h"
@@ -34,8 +36,27 @@ public:
         auto action=*matches.begin();
         logEvent("command.edit-target.invoke",{{"command","fixed-playhead"},{"object",action->objectName()},
             {"checkable",action->isCheckable()},{"checked_before",action->isChecked()}});
-        action->trigger();
-        logEvent("command.edit-target.result",{{"command","fixed-playhead"},{"success",true},{"checked_after",action->isChecked()}});
+        // Resolve may expose this as an exclusive scrolling-style choice,
+        // rather than a simple checkable toggle. Preserve the previously selected
+        // sibling when entering Fixed; return to it on the second invocation.
+        QAction *target=action;
+        if(auto group=action->actionGroup())if(group->isExclusive()) {
+            if(!action->isChecked()) {
+                auto checked=group->checkedAction();
+                previousScrolling=checked!=action ? checked:nullptr;
+            } else {
+                target=previousScrolling;
+                if(!target || target->actionGroup()!=group || !target->isEnabled()) {
+                    target=nullptr;
+                    for(auto sibling:group->actions())if(sibling->objectName()=="viewTimelineScrollingDisabled" && sibling->isEnabled())target=sibling;
+                }
+                if(!target)return unavailable("fixed-playhead",1,"No native return scrolling style is available; scrolling state was retained.");
+            }
+        }
+        QPointer<QAction> retained(action);const auto targetName=target->objectName();
+        target->trigger();
+        logEvent("command.edit-target.result",{{"command","fixed-playhead"},{"success",true},
+            {"checked_after",retained ? retained->isChecked():false},{"action_retained",bool(retained)},{"native_target",targetName}});
         return true;
     }
     bool stabilize() {
@@ -57,6 +78,7 @@ public:
         return true;
     }
 private:
+    QPointer<QAction> previousScrolling;
     std::function<QWidget *()> editPage;
     bool ready() const { auto page=editPage ? editPage() : nullptr; return page && page->isVisible(); }
     static QString label(QString text) { text=text.section('\t',0,0); text.remove('&'); return text.trimmed(); }

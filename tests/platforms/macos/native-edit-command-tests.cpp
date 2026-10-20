@@ -59,5 +59,15 @@ int main(int argc,char **argv) {
     check(commands.fixedPlayhead() && !nativeFixed.isChecked(),"native scrolling command toggles back without clip selection");
     QAction duplicateNative(&page);duplicateNative.setObjectName("viewTimelineScrollingFixed");duplicateNative.setCheckable(true);
     check(!commands.fixedPlayhead()&&!nativeFixed.isChecked()&&!duplicateNative.isChecked(),"duplicate native identities fail closed");
+    duplicateNative.setObjectName("unrelated");
+    QActionGroup styles(&page);styles.setExclusive(true);styles.addAction(&nativeFixed);
+    QAction paged(&page);paged.setObjectName("viewTimelineScrollingPage");paged.setCheckable(true);styles.addAction(&paged);
+    QAction disabled(&page);disabled.setObjectName("viewTimelineScrollingDisabled");disabled.setCheckable(true);styles.addAction(&disabled);
+    paged.setChecked(true);
+    check(commands.fixedPlayhead()&&nativeFixed.isChecked(),"exclusive native scrolling group enters Fixed");
+    check(commands.fixedPlayhead()&&paged.isChecked()&&!nativeFixed.isChecked(),"second invocation restores prior Page scrolling style");
+    disabled.setChecked(true);
+    check(commands.fixedPlayhead()&&nativeFixed.isChecked(),"No Scrolling baseline enters Fixed");
+    check(commands.fixedPlayhead()&&disabled.isChecked(),"previous No Scrolling state is restored");
     std::printf("native edit command failures=%d\n",failures); return failures ? 1 : 0;
 }
