@@ -21,6 +21,13 @@ int main(int argc,char **argv) {
     int clicks=0; QObject::connect(button,&QPushButton::clicked,[&] { ++clicks; }); button->click(); check(clicks==1,"original action signal remains connected");
     scale.attach(&first,1.2); scale.attach(&first,0.8);
     check(button->minimumSize()==QSize(80,32),"repeated scaling derives from baseline without drift");
+    for(double factor:{1.5,2.0,3.0}) {
+        check(scale.attach(&first,factor),"larger scale attaches without a raster transform");
+        check(qAbs(button->font().pointSizeF()-12*factor)<0.01&&button->iconSize()==QSize(qRound(20*factor),qRound(20*factor)),"native font and icon metrics retain full-size resolution through 300 percent");
+        check(button->minimumSize()==QSize(qRound(100*factor),qRound(40*factor)),"native control geometry scales through 300 percent");
+    }
+    Unbound::MacPanelSession session;check(session.setInterfaceScale(3.0)&&session.interfaceScale()==3.0&&!session.setInterfaceScale(3.1),"session preserves 300 percent and rejects out-of-range values");
+    scale.attach(&first,0.8);
     auto lazy=new QPushButton("Lazy control",&first); lazy->setFixedSize(50,30); QApplication::processEvents(); QApplication::processEvents();
     check(lazy->minimumSize()==QSize(40,24),"lazy native controls join the scoped scale");
     check(qAbs(lazy->font().pointSizeF()-first.font().pointSizeF())<0.01,"lazy inherited fonts are not scaled twice");

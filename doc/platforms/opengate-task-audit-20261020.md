@@ -210,3 +210,10 @@ its assertion now captures the surface identity before teardown restores native 
 The group fixture explicitly shows its dynamically added native page button.
 Rebuild and backed-up installation follow; hotkey mappings remain untouched.
 Live footer acceptance, main merge and release remain pending.
+
+## Timeline scale range experiment
+
+Native font/control scale accepts 70–300 percent in experiment/macos-timeline-scale-range;
+fixture verifies 150/200/300 metrics, signal identity, no baseline drift and restoration.
+Custom-painted track body and ruler scaling remain unimplemented and explicitly labelled.
+Installed runtime unchanged. No claim of full timeline scaling or older OS live support.

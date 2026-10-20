@@ -22,7 +22,7 @@ public:
     ~PanelMetricScale() override { restore(); }
     double factor() const { return amount; }
     bool attach(QWidget *surface,double scale) {
-        if (!surface || !qIsFinite(scale) || scale<0.7 || scale>1.5) return false;
+        if (!surface || !qIsFinite(scale) || scale<0.7 || scale>3.0) return false;
         if (root!=surface) { restore(); root=surface; }
         amount=scale; scan(surface); apply();
         logEvent("panel.scale.applied",{{"panel",surface->objectName()},{"factor",amount},

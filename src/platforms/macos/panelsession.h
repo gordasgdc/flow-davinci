@@ -167,7 +167,7 @@ public:
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     double interfaceScale() const { return metricFactor; }
     bool setInterfaceScale(double value) {
-        if (!qIsFinite(value) || value<0.7 || value>1.5) return false;
+        if (!qIsFinite(value) || value<0.7 || value>3.0) return false;
         metricFactor=value; refreshMetricScale();
         if (arrangementChanged) arrangementChanged();
         return true;
