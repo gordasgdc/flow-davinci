@@ -471,3 +471,14 @@ background-flow fixture passes default/legacy migration, hidden advanced control
 explicit override persistence and return to automatic. Header/footer Show/Hide and
 saved arrangements remain. This is flow policy, not a claim all viewport placement
 or Native-return live acceptance is complete. Added fixture to hidden matrix.
+
+## Native return transaction and result
+
+Native Edit now receives an explicit dockAll result, reports/logs incomplete
+restoration and does not continue as if a failed return succeeded. Band release
+precedes panel transfers; each panel no longer performs a full workspace save
+inside the Native return transaction. One completed native result is persisted
+after transfer. Main-window maximized state is preserved; showNormal is used only
+for a minimized window. Saved arrangements remain untouched. Native workspace UI
+fixture compilation passes; displayed/live acceptance remains required. No install.
+Confirmed single-entry flow recorded in header/platform plan.

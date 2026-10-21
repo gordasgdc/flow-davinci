@@ -81,7 +81,8 @@ public:
             return nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
         };
         workspaceRestore->dock=[this] {
-            ++bulkVersion; ++groupVersion; restoreExpanded(); dockAll();
+            ++bulkVersion; ++groupVersion; restoreExpanded();
+            const auto error=dockAll();if(!error.isEmpty())return error;
             for (const auto &panel:panels) if (panel.session->active()) return panel.name;
             return QString();
         };
@@ -413,11 +414,21 @@ public:
             presetsUi->invoke(operation, id);
         };
         workspaceMenu->nativeWorkspace = [this](const QString &activePage) {
-            if (activePage == "edit") { ++bulkVersion; restoreExpanded(); dockAll(); save(); }
-            else footer->refreshSurfaces();
+            if (activePage == "edit") {
+                Unbound::logEvent("workspace.native-return.request",{{"page",activePage}});
+                ++bulkVersion;restoreExpanded();
+                const auto error=dockAll();
+                if(!error.isEmpty()) {
+                    status->setText(error);
+                    Unbound::logEvent("workspace.native-return.failed",{{"page",activePage},{"error",error}});
+                    return;
+                }
+                Unbound::logEvent("workspace.native-return.complete",{{"page",activePage}});
+            } else footer->refreshSurfaces();
             if (auto main = Unbound::resolveMainWindow()) {
                 Unbound::setNativeBackgroundHidden(main,{},false);
-                main->showNormal(); main->raise(); main->activateWindow();
+                if(main->isMinimized())main->showNormal();else main->show();
+                main->raise(); main->activateWindow();
             }
         };
         workspaceMenu->wire();
@@ -846,25 +857,36 @@ private:
         ++p.requestVersion; p.pending = false;
         const QString error = p.session->active() ? p.session->dock() : QString();
         if (error.isEmpty()) p.desired = false;
-        outcome("dock", i, error); updateRow(i); save();
+        outcome("dock", i, error); updateRow(i); if(!restoringNative)save();
     }
     QString releaseWorkspaceBands() {
         if(footer && !footer->releaseNative())return QStringLiteral("Could not restore page navigation before changing the workspace.");
         if(workspaceHeader && !workspaceHeader->release())return QStringLiteral("Could not restore the workspace header before changing the workspace.");
         return {};
     }
-    void dockAll() {
-        // Individual sessions can emit save callbacks while native return is
-        // in progress. Retain the last complete custom view until it settles.
-        const QScopedValueRollback<bool> transaction(restoringNative,true);
-        if (workspaceRestore) workspaceRestore->cancel();
-        const auto bandError=releaseWorkspaceBands();
-        if(!bandError.isEmpty()){status->setText(bandError);return;}
-        if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
-        nativePresentation.restore();
-        if (nativeSizing) nativeSizing->restore();
-        background->setChecked(false); ++groupVersion; pendingGroups = {};
-        for (int i = panels.size() - 1; i >= 0; --i) dockOne(i);
+    QString dockAll() {
+        QString error;
+        {
+            // Intermediate session callbacks must not replace the last complete
+            // layout. Persist one complete native result after all transfers.
+            const QScopedValueRollback<bool> transaction(restoringNative,true);
+            if (workspaceRestore) workspaceRestore->cancel();
+            error=releaseWorkspaceBands();
+            if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->release(true))
+                error=QStringLiteral("The native layout changed; restoration was stopped.");
+            if(error.isEmpty()) {
+                nativePresentation.restore();
+                if (nativeSizing) nativeSizing->restore();
+                {const QSignalBlocker block(background);background->setChecked(false);}
+                applyBackgroundVisibility(false);++groupVersion;pendingGroups={};
+                for(int i=panels.size()-1;i>=0;--i)dockOne(i);
+                for(const auto &panel:panels)if(panel.session->active()) {
+                    error=QStringLiteral("Could not restore native panel: ")+panel.label;break;
+                }
+            }
+        }
+        if(!error.isEmpty()){status->setText(error);return error;}
+        saveTimer.stop();save();return {};
     }
     bool applyBackgroundVisibility(bool hidden)
     {

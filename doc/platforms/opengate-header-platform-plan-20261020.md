@@ -160,3 +160,15 @@ Jordan confirmed behavioral consistency with Edit as the requirement:
 
 Working cadence: report verified progress and unresolved issues, then continue the
 next authorized task. A status update is not a request to pause implementation.
+
+## Confirmed single entry flow — replaces emulator mode
+
+Native Edit is the normal entry point, with native appearance/controls and OpenGate
+Panels access. Rearrange directly from that surface; Native Emulator is not a
+required separate mode. Existing saved arrangements remain available. Unsaved
+changes persist as the page's current layout. Choosing Native Edit explicitly
+restores Resolve's original Edit layout, while choosing an arrangement restores
+that arrangement. Each page retains its independent current state. Active-page
+native header controls and complete native footer occupy reserved outer bands
+when shown; both remain hideable. The optional Panel Manager is an advanced tool,
+not a required step. Do not delete or rewrite user-named legacy emulator presets.
