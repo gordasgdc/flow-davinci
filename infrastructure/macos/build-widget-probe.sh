@@ -17,7 +17,7 @@ cp "$qt/src/gui/qtgui-config.h" "$generated/QtGui/"
 cp "$qt/src/widgets/qtwidgets-config.h" "$generated/QtWidgets/"
 revision="$(git -C "$root" rev-parse --short HEAD)"
 if [[ -n "$(git -C "$root" status --porcelain)" ]]; then revision="$revision-dirty"; fi
-python3 "$root/infrastructure/macos/build-manifest.py" "$generated"
+OPENGATE_RESOLVE_APP="$app" python3 "$root/infrastructure/macos/build-manifest.py" "$generated"
 objects="$root/build/macos/widget-probe-objects"
 mkdir -p "$objects"
 for source in "$root/tests/platforms/macos/qt-widget-probe.cpp" "$root/src/platforms/macos/nativechrome.mm"; do

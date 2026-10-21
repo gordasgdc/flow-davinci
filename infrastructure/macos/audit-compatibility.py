@@ -20,4 +20,4 @@ for file in files:
     rows.append({'file':file,'architectures':sorted(arches),'minimum_macos':minimums})
 info=plistlib.loads((root/'build/macos/OpenGate.app/Contents/Info.plist').read_bytes())
 assert info['LSMinimumSystemVersion']==target
-print(json.dumps({'build_audit':'PASS','artifacts':rows,'live_older_macos':'not tested','live_intel':'not tested','windows_feature_parity':'not established'},indent=2))
+print(json.dumps({'build_audit':'PASS','artifacts':rows,'resolve_build_host':manifest.get('resolve_build_host',{}),'qt_runtime_contract':manifest.get('qt_runtime_contract','unspecified'),'meaning':'Helper deployment target does not lower the Resolve application OS requirement.','live_older_macos':'not tested','live_intel':'not tested','windows_feature_parity':'not established'},indent=2))

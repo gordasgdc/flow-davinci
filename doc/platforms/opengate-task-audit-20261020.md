@@ -393,3 +393,12 @@ malformed or unknown-version Workspace.json input. Original bytes remain availab
 for recovery; failure appears in the page-state log. Hidden persistence fixture passes
 both malformed and future-version preservation in addition to page isolation/restart.
 This matches the existing arrangement-store preservation policy. No install.
+
+## Resolve host compatibility provenance
+
+Installed Resolve Info.plist identifies version 21.1.1 (build 21.1.10010), with macOS
+15.0 minimum. `build/macos-resolve-host-provenance` records the build host's app/version,
+minimum OS and Info.plist hash plus the current Qt 5.15.2 runtime contract. Compatibility
+reports distinguish that application requirement from the helper's target 11.0.
+Manifest fixture passes using an isolated fake application; no other Resolve version
+or older OS is thereby validated. No install or publication.
