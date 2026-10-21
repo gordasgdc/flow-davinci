@@ -1054,7 +1054,7 @@ private:
             if(!pages.isEmpty())settings.data["page_workspaces"]=pages;
         } else pageError=settings.recordPage("edit",captured);
         const bool success = pageError.isEmpty() && settings.save();
-        if(!pageError.isEmpty())Unbound::logEvent("workspace.page-state.failed",{{"page","edit"},{"error",pageError}});
+        if(!pageError.isEmpty() || !settings.error().isEmpty())Unbound::logEvent("workspace.page-state.failed",{{"page","edit"},{"error",pageError.isEmpty()?settings.error():pageError}});
         if(success && !restoringNative && previousMode!=Unbound::PageWorkspaceState::mode(captured))
             Unbound::logEvent("workspace.mode.changed",{{"page","edit"},{"before",previousMode},
                 {"mode",Unbound::PageWorkspaceState::mode(captured)},{"preset_loaded",false},

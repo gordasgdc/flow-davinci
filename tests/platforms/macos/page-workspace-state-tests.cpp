@@ -36,5 +36,11 @@ int main(int argc,char **argv) {
  check(!recovered.data.contains("intermediate") && recovered.pageView("fusion")==reopened.pageView("fusion"),"restart ignores intermediate legacy projection and preserves other page");
  auto future=root;auto pages=future["page_workspaces"].toObject();pages["fusion"]=QJsonObject{{"version",99}};future["page_workspaces"]=pages;const auto original=future;
  check(!Unbound::PageWorkspaceState::record(future,"fusion",fusion).isEmpty() && future==original,"unknown page state version preserved");
+ for(const auto &invalid:{QByteArray("broken-json"),QByteArray("{\"version\":99,\"do_not_lose\":true}")}) {
+  QFile damaged(dir.path()+"/Workspace.json");check(damaged.open(QIODevice::WriteOnly),"open damaged fixture");damaged.write(invalid);damaged.close();
+  Unbound::WorkspaceSettings protectedState;protectedState.data={{"version",1}};
+  check(!protectedState.error().isEmpty() && !protectedState.save(),"invalid/unknown workspace blocks automatic overwrite");
+  damaged.open(QIODevice::ReadOnly);check(damaged.readAll()==invalid,"original invalid bytes remain recoverable");damaged.close();
+ }
  std::printf("page workspace state failures=%d\n",failures);return failures?1:0;
 }

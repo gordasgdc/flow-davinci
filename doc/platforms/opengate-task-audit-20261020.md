@@ -385,3 +385,11 @@ undocking remain pending actual native capability/ownership evidence. Older OS/I
 and Windows runtime validation remain pending; no universal stability claim. The
 installed 091268b remains unchanged. Run full universal build/audit and updated hidden
 matrix from this clean source. Do not install, publish or merge main at this checkpoint.
+
+## Preserve invalid workspace files
+
+`fix/macos-preserve-invalid-workspace` refuses automatic writes after unreadable,
+malformed or unknown-version Workspace.json input. Original bytes remain available
+for recovery; failure appears in the page-state log. Hidden persistence fixture passes
+both malformed and future-version preservation in addition to page isolation/restart.
+This matches the existing arrangement-store preservation policy. No install.
