@@ -270,11 +270,11 @@ int main(int argc, char **argv)
             check(timelineFloat && timelineToolbar->layout()->indexOf(timelineFloat) < 0,
                 "toolbar float control occupies no additional native layout row");
             auto workspaceFloat = mode->findChild<QToolButton *>("unboundUndockToolbar_unboundWorkspaceToolbar");
-            check(timelineFloat && workspaceFloat, "both native toolbar surfaces have discoverable undock buttons");
-            if (timelineFloat) timelineFloat->click(); if (workspaceFloat) workspaceFloat->click(); settle(250);
-            check(timelineToolbar->window() != &main && toolbarModes->window() != &main,
-                "both toolbar rows float through native surface controls");
-            check(toolbarModes->currentWidget() == mode, "floating workspace toolbar preserves native mode selection");
+            check(timelineFloat && !workspaceFloat, "Timeline tools can float while Workspace Header stays pinned");
+            if (timelineFloat) timelineFloat->click();settle(250);
+            check(timelineToolbar->window()!=&main && toolbarModes->window()==&main,
+                "floating Timeline tools do not detach the reserved workspace header");
+            check(toolbarModes->currentWidget()==mode,"pinned workspace header preserves native mode selection");
             bool timelineCaller = false, workspaceCaller = false;
             for (auto action : nativeMenu.actions()) {
                 timelineCaller |= action->text() == "Timeline Toolbar";

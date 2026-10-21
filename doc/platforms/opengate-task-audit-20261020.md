@@ -519,3 +519,10 @@ background preference assertions. Updated those to the confirmed automatic polic
 adding explicit manual-hidden and automatic-policy cases; no runtime behavior
 changed to satisfy the old expectations. No installation. Continue all displayed
 native-window tests, then rebuild exact final source and verify fresh startup.
+
+Displayed panel-sessions passes after policy assertion update. Group fixture still
+expected Workspace Header to have a float control; updated to assert pinned header
+has none, Timeline Toolbar can float, native mode selection and Native return are
+preserved. This updates the fixture contract only, not production behavior. Run all
+remaining suites even when an independent suite fails, but never install until the
+combined receipt passes.
