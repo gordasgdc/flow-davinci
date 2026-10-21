@@ -5,6 +5,7 @@
 #include <cstdio>
 #include "footerpanel.h"
 #include "panelaccessorylease.h"
+#include "panelsession.h"
 
 int main(int argc,char **argv)
 {
@@ -58,6 +59,36 @@ int main(int argc,char **argv)
         panel.shutdown();check(footer->parentWidget()==&main,"shutdown releases presentation without a native lease");
     }
     Unbound::flushDiagnostics();
+    {
+        QWidget root;root.setObjectName("UiMainWindow");root.setAttribute(Qt::WA_DontShowOnScreen);
+        auto outer=new QVBoxLayout(&root);
+        auto page=new QWidget(&root);page->setObjectName("WStackPage_Conform");outer->addWidget(page);
+        auto pageLayout=new QVBoxLayout(page);
+        auto panel=new QWidget(page);panel->setObjectName("frameConformTimelines");
+        auto panelLayout=new QVBoxLayout(panel);panelLayout->addWidget(new QPushButton("Native timeline",panel));pageLayout->addWidget(panel);
+        auto tools=new QWidget(&root);tools->setObjectName("NativeWorkspaceTools");tools->setFixedHeight(32);outer->addWidget(tools);
+        auto pages=new QWidget(&root);pages->setObjectName("NativePageNavigation");pages->setFixedHeight(32);outer->addWidget(pages);
+        root.resize(800,600);root.show();QApplication::processEvents();
+        Unbound::MacPanelSession session(nullptr);
+        check(session.undock(panel,page,"Timeline",false,true).isEmpty(),"prepare a hidden standalone panel host");
+        auto originalHost=session.window();originalHost->setAttribute(Qt::WA_DontShowOnScreen);
+        Unbound::PanelAccessoryLease top(nullptr),bottom(nullptr);
+        check(top.attach(tools,&root,originalHost,Qt::TopEdge).isEmpty() && bottom.attach(pages,&root,originalHost).isEmpty(),"reserve both workspace bands before grouping");
+        QWidget group(&root,Qt::Tool);group.setAttribute(Qt::WA_DontShowOnScreen);
+        auto groupLayout=new QVBoxLayout(&group);auto cell=new QWidget(&group);groupLayout->addWidget(cell);
+        int releases=0;session.beforeLayoutTransfer=[&]() -> QString {
+            ++releases;
+            return top.release() && bottom.release() ? QString() : QString("band release failed");
+        };
+        check(session.attachToGroup(cell,true).isEmpty(),"grouping releases workspace bands before donating its layout");
+        check(releases==1 && tools->parentWidget()==&root && pages->parentWidget()==&root &&
+              !cell->isAncestorOf(tools) && !cell->isAncestorOf(pages),"group leaf contains panel content only, never workspace bands");
+        check(top.attach(tools,&root,&group,Qt::TopEdge).isEmpty() && bottom.attach(pages,&root,&group).isEmpty(),"bands mount at the outer group surface after transfer");
+        check(top.release() && bottom.release(),"both bands restore without ownership rejection after grouping");
+        session.detachFromGroup(true);check(session.dock().isEmpty(),"Native return restores the original timeline after band transfer");
+        check(panel->parentWidget()==page && pageLayout->indexOf(panel)>=0,"native panel slot survives grouping and return");
+        session.beforeLayoutTransfer={};
+    }
     if (!failures) std::puts("PASS: accessory ownership, overflow, native restoration, owner destruction and footer attachment state");
     return failures ? 1 : 0;
 }

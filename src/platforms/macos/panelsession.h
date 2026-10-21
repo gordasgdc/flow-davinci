@@ -60,6 +60,8 @@ public:
     std::function<void()> expandedClosed;
     std::function<void()> arrangementChanged;
     std::function<void()> releaseGroup;
+    // Workspace bands belong to the outer host, never to a donated panel layout.
+    std::function<QString()> beforeLayoutTransfer;
     std::function<QString()> releaseOriginalPosition;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
     QString panelTitle() const { return host ? host->property("unboundPanelTitle").toString() : QString(); }
@@ -92,6 +94,9 @@ public:
         const bool nativeContainer=container && container->window()==originalMain && NativeRootLayout::contains(originalPage,container);
         if (!host || !host->layout() || grouped() || !container || container->layout() || (!floatingContainer && !nativeContainer))
             return QStringLiteral("Panel cannot join this group.");
+        if (beforeLayoutTransfer) {
+            const auto error=beforeLayoutTransfer();if(!error.isEmpty())return error;
+        }
         metricScale.restore();
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);

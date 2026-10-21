@@ -231,6 +231,7 @@ public:
             panel.saved = savedPanels[panel.name].toObject();
             panel.desired = panel.saved["floating"].toBool();
             panel.session = new Unbound::MacPanelSession(this);
+            panel.session->beforeLayoutTransfer=[this] {return releaseWorkspaceBands();};
             panel.session->setInterfaceScale(panel.saved["interface_scale"].toDouble(1.0));
             nativeWorkspace->registerPanel(panel.name,panel.session,panel.label);
             panel.session->attachRequested = [this, i](QWidget *target, Qt::Edge edge) {
@@ -508,7 +509,7 @@ public:
         qDeleteAll(groups); groups.clear();
         delete nativeMenus;
         qApp->removeEventFilter(this);
-        for (auto &panel : panels) { panel.session->expandedClosed = {}; panel.session->changed = {}; panel.session->arrangementChanged = {}; panel.session->attachRequested = {}; }
+        for (auto &panel : panels) { panel.session->expandedClosed = {}; panel.session->changed = {}; panel.session->arrangementChanged = {}; panel.session->attachRequested = {}; panel.session->beforeLayoutTransfer = {}; }
     }
 protected:
     void closeEvent(QCloseEvent *event) override
@@ -847,12 +848,18 @@ private:
         if (error.isEmpty()) p.desired = false;
         outcome("dock", i, error); updateRow(i); save();
     }
+    QString releaseWorkspaceBands() {
+        if(footer && !footer->releaseNative())return QStringLiteral("Could not restore page navigation before changing the workspace.");
+        if(workspaceHeader && !workspaceHeader->release())return QStringLiteral("Could not restore the workspace header before changing the workspace.");
+        return {};
+    }
     void dockAll() {
         // Individual sessions can emit save callbacks while native return is
         // in progress. Retain the last complete custom view until it settles.
         const QScopedValueRollback<bool> transaction(restoringNative,true);
         if (workspaceRestore) workspaceRestore->cancel();
-        if(workspaceHeader && !workspaceHeader->release()){status->setText("Could not restore the workspace header.");return;}
+        const auto bandError=releaseWorkspaceBands();
+        if(!bandError.isEmpty()){status->setText(bandError);return;}
         if (nativeWorkspace && !nativeWorkspace->release(true)) { status->setText("The native layout changed; restoration was stopped."); return; }
         nativePresentation.restore();
         if (nativeSizing) nativeSizing->restore();

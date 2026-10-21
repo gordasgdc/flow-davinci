@@ -35,6 +35,7 @@ public:
         for(auto view:views)if(view)delete view;views.clear();
         if(nativeFooter){QScopedValueRollback<bool> guard(applyingPlacement,true);nativeFooter->setVisible(nativeVisibility?nativeVisibility->isChecked():shown);}
     }
+    bool releaseNative(){return nativeLease.release();}
     void refreshSurfaces(){refresh();}
     void restore(){refresh();}
     void wireMenu(){refresh();}

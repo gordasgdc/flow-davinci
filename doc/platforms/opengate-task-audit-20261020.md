@@ -434,3 +434,16 @@ Full per-key command-context inventories require OPENGATE_VERBOSE_INPUT_CONTEXT=
 ordinary key metadata and command routing logs remain. Hidden audit passes hidden
 button, dynamically created hidden button, dynamically added action and page change
 with one event each. No runtime installation or speed claim.
+
+## Band transfer boundary
+
+Live attach records identify standalone Timeline as band owner; MacPanelSession
+attachToGroup subsequently donates its entire layout to a group cell. This carries
+band wrappers into the leaf while the lease retains the old host as owner. Added
+beforeLayoutTransfer boundary releases both native bands before donation; dockAll
+also restores footer as well as header before Native return. Hidden fixture passes
+standalone bands -> grouping -> outer group bands -> native slot restoration.
+Fixture also exposed native-window recreation warnings in QScrollArea::takeWidget;
+Qt5.15.2 source confirms it temporarily sets the native content parent to null.
+Address this separately before live acceptance. No installation or claim the entire
+workspace-band topology is complete.
