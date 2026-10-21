@@ -693,3 +693,11 @@ publication occurred. Installed6f395c4 and best091268b checkpoint are unchanged.
   required legal notices; inspect the exact reported folder before deletion.
 - Verify which shortcut branches are actually pushed before telling external
   users they are available. Local feature branches are not publication evidence.
+
+External-report evidence: the locally installed CodecPlugin/README.txt states its
+plugins are supported in Resolve Studio; Workflow Integrations/README.txt likewise
+describes Studio. OpenGate currently uses both routes. This makes Free-edition
+bootstrap availability a leading compatibility question, not a proven diagnosis
+of Wolfgang's machine. Installer currently checks major Resolve version but does
+not establish edition capability before reporting success. Add capability-aware
+preflight/clear unsupported-edition reporting to the packaging audit.
