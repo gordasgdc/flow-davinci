@@ -402,3 +402,13 @@ minimum OS and Info.plist hash plus the current Qt 5.15.2 runtime contract. Comp
 reports distinguish that application requirement from the helper's target 11.0.
 Manifest fixture passes using an isolated fake application; no other Resolve version
 or older OS is thereby validated. No install or publication.
+
+## Final persistence/provenance review checkpoint
+
+Clean source 94e8704 passed all 31 hidden suites with source unchanged and full universal
+build/self-tests/audit. Subsequent isolated fixes preserve invalid Workspace.json bytes
+and record the real Resolve build host; both dedicated fixtures pass. The candidate
+notes now distinguish implemented fixes, live acceptance, missing Fusion/Timeline
+capability evidence, platform limitations and standalone GitHub status. GitHub read-only
+check confirms default main and isFork=true. No installation, main merge or release.
+Run the final assembled rebuild and hidden matrix after committing this checkpoint.

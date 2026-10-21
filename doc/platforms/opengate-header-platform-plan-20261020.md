@@ -18,9 +18,10 @@ owns toolbar placement/visibility; panel sessions retain native ownership restor
 workspace coordinator chooses transitions; native platform adapter owns OS windows.
 Shared cross-platform policy must not acquire Cocoa dependencies.
 
-Recovery implementation: All Panels is reachable from secondary surfaces too; native main
-receives title-bar access without replacing its title. Existing primary-only floating-window
-list remains primary-only. Installed runtime is not changed by source work.
+Recovery implementation: every registered panel appears directly in each surface's
+Panels menu, without an All Panels submenu. Native main receives title-bar access
+without replacing its title. Existing primary-only floating-window list remains
+primary-only. Installed runtime is not changed by source work.
 
 ## Additional timeline scaling requirement
 
@@ -51,7 +52,9 @@ Header verification: hidden native-control identity/signal routing, reserved geo
 hide/reclaim, menu recovery, primary transfer, original-slot restoration and sibling
 native-toolbar placement pass. Header access and bottom-accessory regressions pass.
 Full session/native workspace compile passes; displayed checks deferred while Resolve
-runs. Full automatic emulator conversion remains separate from header placement.
+runs. Automatic Native/managed mode now retains the current native/managed layout;
+it does not load a starter preset or require a second root-layout conversion. Live
+header/footer ownership acceptance is still pending.
 
 ## Fusion follow-up (after arrangement work)
 

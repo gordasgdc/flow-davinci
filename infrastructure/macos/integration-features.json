@@ -451,6 +451,18 @@
       "commit": "81b2298c36d8b8d3403607c82695053e1ba9be2c",
       "scope": "implementation",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/macos-preserve-invalid-workspace",
+      "commit": "780848f084858002ea9c16dfb6af4b093b08fa44",
+      "scope": "implementation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "build/macos-resolve-host-provenance",
+      "commit": "8bd4b6fa172b17df3c5882ee0588de24583a8d5b",
+      "scope": "verification",
+      "acceptance": "pending"
     }
   ]
 }
