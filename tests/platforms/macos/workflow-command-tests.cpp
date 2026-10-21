@@ -32,7 +32,11 @@ int main(int argc,char **argv) {
     {
         Unbound::WorkflowCommandResults results(nullptr,files.path());
         const auto reportPath=files.path()+"/command-results/stabilize.json";
-        auto publish=[&](QJsonObject value) {QSaveFile out(reportPath);out.open(QIODevice::WriteOnly);out.write(QJsonDocument(value).toJson());out.commit();settle();};
+        auto publish=[&](QJsonObject value) {QSaveFile out(reportPath);out.open(QIODevice::WriteOnly);out.write(QJsonDocument(value).toJson());out.commit();
+            // Directory notifications may coalesce beyond one fixed 250ms turn.
+            // Wait for consumption, preserving a bounded failure if it never arrives.
+            QElapsedTimer deadline;deadline.start();while(QFile::exists(reportPath)&&deadline.elapsed()<2000){QApplication::processEvents();QThread::msleep(1);}
+            settle();};
         const auto record=QJsonObject{{"command","edit.inspector.stabilize"},{"success",true},
             {"issued_ms",double(QDateTime::currentMSecsSinceEpoch())},{"method","timeline-item-api"},{"attempted",2},{"completed",2}};
         auto logged=[&] {QFile file(files.path()+"/events.jsonl");file.open(QIODevice::ReadOnly);return file.readAll().count("selected-timeline-api-returned");};

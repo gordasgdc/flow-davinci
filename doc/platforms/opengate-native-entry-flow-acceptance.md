@@ -1,47 +1,48 @@
-# Native entry flow: acceptance contract
+# OpenGate workspace entry: current acceptance contract
 
-This is the user-visible flow, not a list of implementation modules. Passing a
-component fixture does not establish this flow. Keep installed software separate.
+This supersedes the earlier native-slot-first interpretation. Implementation and
+fixture results are not live Resolve acceptance. Detailed evidence and gaps live
+in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
 
-1. Fresh launch uses normal Resolve UI unless restoring the last modified layout.
-   No emulator selection, Panel Manager or background checkbox is required.
-2. On Native Edit, the native header retains its controls and styling. Source and
-   Program Monitor controls work there, including drag-to-place from the header.
-   Native panel placement handles also work before loading any arrangement.
-3. Added header controls fit their allocated space, preserve the project title,
-   and have a reachable overflow route at narrow widths. Native buttons keep their
-   original identity and signal wiring. No unbounded startup discovery in filters.
-4. Both title-bar Panels and OpenGate UI > Panels directly list current-page
-   panels plus Header and Footer. No Edit/Workspace/All Panels category layer.
-   Visibility changes never undock a native panel or load a preset.
-5. Header and Footer mean pinned or hidden. They reserve outer space in the
-   workspace and never become a panel-group leaf. Hide reclaims that space; Show
-   restores the same native controls. Panels remains accessible with both hidden.
-   Docked/grouped/maximized content respects visible bands and uses their freed
-   space when hidden. Maximize fills the current workspace viewport between its
-   visible header/footer; hiding either removes that boundary. Do not substitute
-   a monitor-wide rectangle when the workspace viewport is smaller.
-   Detached floating windows may deliberately overlap bands.
-6. All visibility entry points use one state. Footer follows Resolve's native page
-   navigation visibility command and includes native Home and Settings. Header
-   and footer are excluded from ordinary panel dragging/docking/maximize targets.
-7. Rearrange directly from Native Edit, save an optional named arrangement, or
-   leave it unsaved. Last modifications survive restart. Named arrangements remain
-   selectable independently of the optional advanced Panel Manager.
-   For clean-start testing, old arrangements may be hidden without deletion;
-   Save Arrangement As is directly available, new arrangements appear normally,
-   and Advanced can reveal the hidden records without changing the current layout.
-   The manual background override is not a visible user-flow requirement.
-8. Native Edit explicitly returns the original native layout from a modified,
-   grouped or maximized state. Original layout slots and controls survive. An
-   incomplete return reports failure and is not presented as success.
-9. Page departure/return retains each page's independent current state. Unsupported
-   Fusion arrangements are not claimed complete; no cross-page native ownership.
-10. Demonstrate the sequence from (1) through (8) in one assembled fixture using
-    public controls/menus and native drag callbacks, including hidden bands and a
-    narrow header. Add restart coverage. Then live-test native rendering, actual
-    pointer dragging, maximize response and Relay > Deliver before release claims.
-
-Before stating ready: reread every numbered item, link it to its test evidence,
-and mark anything not actually demonstrated pending. Do not substitute separate
-menu tests or a generic accessory fixture for the assembled flow.
+1. First launch enters OpenGate in Resolve Layout, reusing the existing emulator
+   panel tree and real native controls. No emulator selection, background switch
+   or Panel Manager setup. Later launches restore the last working state for each
+   supported page, including unsaved modifications while Resolve Layout is selected.
+2. OpenGate Workspaces lists the immutable Resolve Layout first, then saved user
+   workspaces. Update Current Workspace is disabled for that built-in and unnamed
+   views, enforced below the UI. Save as New creates a writable user workspace.
+3. Use Original Resolve UI restores the real native layout/owners, preserving the
+   last complete OpenGate checkpoint. Selecting an OpenGate workspace re-enters it.
+4. Hotkeys and temporary backtick maximize/restore remain usable in Native mode;
+   temporary expansion does not switch modes or load a default arrangement.
+5. A persistent title drag, detach or grouping action in Native enters OpenGate
+   and completes the gesture without loading Resolve Layout or resetting unrelated
+   panel positions. Native-origin changes form an unnamed working arrangement.
+6. One primary workspace owns the native-style Workspace Header above its panel
+   area and complete native Page Navigation below it, including Home and Settings.
+   Floating groups never take ownership based on size, focus or Timeline location.
+7. Each band is independently pinned or hidden. Hiding releases its height;
+   showing reserves it. Docked content and maximize use the actual content viewport
+   with both bands, either one or neither. Ordinary floating windows may overlap.
+8. Drag visible panel titles as well as detach buttons. Ordinary native clicks
+   retain their behavior. Remaining docked content reclaims vacated space; native
+   visibility updates cannot reopen empty leased slots. Detach does not shrink
+   the user's primary window. Native return restores exact owners and constraints.
+9. Panels is a flat current-page inventory including Workspace Header and Page
+   Navigation. Optional parked panels must be reachable. No All Panels, Edit,
+   Workspace or Floating Windows inventory subtrees. Header controls cannot overlap
+   title/Inspector or become unreachable. Menubar Panels remains available with
+   the header hidden; check titlebar/button discoverability in live Resolve.
+10. Native painting must remain correct throughout resize, stacked timelines,
+    docking and maximize. A blank timeline until a width threshold is a live bug;
+    dummy-widget fixtures cannot prove this fixed. Preserve native minima or
+    provide reachable overflow instead of breaking painting.
+11. Supported pages retain their independent working state on departure/return.
+    Unsupported pages keep native behavior. Fusion adapters follow separately,
+    sharing these contracts; Windows parity needs its own integration and tests.
+12. Exercise the assembled first-open -> title drag -> vacancy reclaim -> band
+    combinations -> maximize/restore -> Save/Update protection -> restart -> Native
+    -> temporary maximize -> persistent Native gesture -> OpenGate selection flow.
+    Then live-test actual pointer gestures, native GPU rendering, page switching,
+    remapped keys and Relay/Deliver before release acceptance. Keep build, fixture,
+    installation and live acceptance evidence separate. No overstatement.

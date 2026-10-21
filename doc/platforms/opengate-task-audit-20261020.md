@@ -919,3 +919,17 @@ Python clean-preparation regression proves unchanged profile/workspace/shortcuts
 record/layout preservation, byte-preserving backup and rejection of a modified
 workspace. Hidden workspace-menu suite passes. User now explicitly authorized
 installation after final checks; no further review stop is required.
+
+## Current OpenGate / Native flow correction — 2026-10-21
+
+The installed 85fc822 build failed live vacancy reclamation and header overlap.
+It is not accepted. The agreed flow now defaults to the existing emulator-shaped
+OpenGate workspace, with immutable Resolve Layout, independent Native recovery,
+one primary band owner, persistent working state and Native gesture transitions.
+See the updated opengate-native-entry-flow-acceptance.md and implementation/evidence
+in opengate-workspace-flow-v2.md. Work is isolated on feature/macos-opengate-default-flow.
+No new installation or publication has happened. Source checkpoint61679a9 builds;
+its expanded hidden matrix had38 passes and a completion-log timing failure that
+passed in isolation. A bounded event-consumption wait is being verified in that
+fixture; working hotkey production code was not changed for that failure. Final
+matrix/displayed checks and live rendering remain open. Do not mark flow complete.

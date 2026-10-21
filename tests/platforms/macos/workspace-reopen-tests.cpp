@@ -68,7 +68,7 @@ int main(int argc,char **argv) {
         check(navigation!=nullptr,"surface navigation model is available");
         if(navigation){if(attached)navigation->setState({{"surfaces",QJsonObject{{panes[0]->window()->objectName(),false}}}});navigation->restore();}
         check(navigation&&navigation->pinned(panes[0]->window()),"legacy per-surface pin choice does not override reserved-band visibility");
-        check(waitFor([&] {return footer->window()==panes[1]->window();}),"primary custom surface receives the complete original native footer");
+        check(waitFor([&] {return footer->window()==&main;}),"primary main workspace keeps the complete original native footer while panels float");
         auto footerAction=showPanelMenu->findChild<QAction *>("unboundPageNavigation");
         check(footerAction!=nullptr,"footer remains discoverable in native Show Panel menu");
         if (footerAction) footerAction->trigger();
@@ -84,7 +84,7 @@ int main(int argc,char **argv) {
     } else {
         const auto expected=read(expectedPath); check(!expected.isEmpty(),"previous process wrote expectations");
         check(waitFor([&] { return panes[2]->window()!=&main && panes[2]->window()==panes[3]->window() && panes[2]->window()==panes[4]->window() && panes[0]->window()!=&main && panes[1]->window()!=&main; }),"fresh process restores groups and independent windows automatically");
-        check(footer->window()==&main || footer->window()==panes[1]->window(),"hidden footer retains a reversible native or primary-surface slot");
+        check(footer->window()==&main,"hidden footer retains a reversible native or primary-surface slot");
         settle(650);
         const auto actual=read(qEnvironmentVariable("UNBOUND_WORKSPACE_FILE"));
         check(actual["footer"]==expected["footer"]&&!footer->isVisible(),"fresh process restores shared visibility and surface placement");
@@ -93,7 +93,7 @@ int main(int argc,char **argv) {
         check(footerAction!=nullptr,"restored hidden footer still has a native menu caller");
         if (footerAction) footerAction->trigger();
         check(waitFor([&] { return footer->isVisible(); }),"native menu retrieves hidden Page Navigation after restart");
-        check(waitFor([&] {return footer->window()==panes[1]->window() && footer->isVisible();}),"native menu restores the complete original footer on the primary surface after restart");
+        check(waitFor([&] {return footer->window()==&main && footer->isVisible();}),"native menu restores the complete original footer on the primary surface after restart");
         check(actual["groups"]==expected["groups"],"fresh process restores exact group frame, pin, nested tree, tabs and divider proportions");
         check(actual["selected_arrangement"]==expected["selected_arrangement"],"selected workspace identity survives restart");
         for (const auto &name : {names[0],names[1]}) {
