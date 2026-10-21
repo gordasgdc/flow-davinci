@@ -34,10 +34,14 @@ int main(int argc,char **argv)
     steps.clear(); blocked.clear(); application="Native position changed"; restore.preset(preset,true);
     check(steps==QStringList({"validate","dock","apply"}) && message==application,"failed application cannot resume partially applied state");
     steps.clear(); application.clear(); pending=true; restore.preset(preset,true);
-    check(steps==QStringList({"validate","dock","apply","resume","unavailable"}) && message=="Restoring panel groups…",
+    check(steps==QStringList({"validate","dock","apply","resume","unavailable"}) && message=="Restoring arrangement…",
         "valid restore preserves preflight, docking, application and resume ordering");
-    steps.clear(); missing=QStringList{QStringLiteral("Source Monitor")}; restore.preset(preset,true);
+    steps.clear(); pending=false; missing=QStringList{QStringLiteral("Source Monitor")}; restore.preset(preset,true);
     check(message=="Unavailable: Source Monitor","unavailable panels are reported rather than counted as restored");
+    missing.clear(); restore.finishPreset();
+    check(message=="Arrangement restored.","success is reported only after required panels and groups complete");
+    pending=true;restore.preset(preset,true);restore.cancel();pending=false;restore.finishPreset();
+    check(message=="Restoring arrangement…","cancelled restore cannot report later success");
     const auto settle=[] {
         QElapsedTimer clock; clock.start();
         while (clock.elapsed()<230) { QCoreApplication::processEvents(); QThread::msleep(1); }

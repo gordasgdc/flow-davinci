@@ -9,6 +9,34 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Follow-up after approved baseline — preset restore failure
+
+Jordan reports selecting saved OpenGate presets or Resolve Layout after a project
+switch leaves separate floating panels with the native workspace exposed. Original
+Resolve UI recovery works. The best-so-far tag remains a preserved checkpoint,
+not a claim that this newly reported case works. No repair installed yet.
+
+Incident logs at 22:01 UTC show Media Pool activation fails, no native-plan assembly
+request follows, yet arrangement.restore is logged. The saved Jordan Tetewsky
+Preset exists with a managed tree, proportions, tabs and visibility; backed up
+locally along with logs. Do not overwrite it or ask the user to rebuild it.
+
+Repair isolated on fix/project-switch-workspace-restore: sequentially acquire
+native surfaces so mutually exclusive sidebar activation cannot hide another
+pending surface; resolve native callers from the main window (toolbar may be a
+page sibling). Resume assembly after each acquisition. Report completion only when
+required sessions/groups are ready; preserve last complete checkpoint while pending.
+The new deferred-sidebar regression fails against the installed baseline and passes
+with the repair. Assembled first-open and restore ordering checks pass. Live acceptance
+and broader checks remain pending.
+
+Next requirements: each page retains its own mode/unsaved state; unsupported pages
+stay Native; an OpenGate arrangement must not leave native background or placeholders
+exposed. Bundle only Jordan's saved preset, retain Resolve Layout. Existing viewer
+callers need visibility/overflow review. Multi-display snapshots must preserve screen
+identity and placement across n screens with reversible missing-display fallback.
+No install before user review; next install must use a backed-up fresh-user profile.
+
 ## User-approved baseline — 2026-10-21
 
 Jordan reports installed 32e3be1 is working very well and explicitly approves
