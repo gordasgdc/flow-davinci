@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert workspace['groups']==[] and workspace['layout_mode']=='managed'
     assert workspace['native_arrangement']['kind']=='managed'
     records=json.loads((base/'Arrangements.json').read_text())['arrangements']
-    assert len(records)==3 and all(e['hidden'] for e in records)
+    assert len(records)==1 and records[0]['name']=='Jordan Tetewsky Preset' and not records[0].get('hidden',False)
     assert not any(e['id']==bundle['default'] for e in records)
     assert 'unboundWorkspaceToolbar' not in workspace['native_arrangement']['panels']
     # The compiled adapter and installer use the same existing panel recipe.
@@ -30,4 +30,4 @@ with tempfile.TemporaryDirectory() as directory:
     compiled=json.loads(re.search(r'R"layout\((.*)\)layout"',source).group(1))
     selected=next(e for e in bundle['arrangements'] if e['id']==bundle['default'])
     assert compiled==selected['workspace']
-print('PASS: immutable managed Resolve Layout seed, native bands, hidden preserved legacy records, recipe consistency and no overwrite')
+print('PASS: immutable managed Resolve Layout seed, native bands, only the selected visible user preset, recipe consistency and no overwrite')

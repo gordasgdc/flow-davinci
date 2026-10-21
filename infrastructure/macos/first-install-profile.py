@@ -20,7 +20,7 @@ def seed(directory, bundle):
     chosen=next(e for e in bundle['arrangements'] if e['id']==bundle['default'])
     state=dict(chosen['workspace']); state['selected_arrangement']=chosen['id']
     # The immutable default is supplied by the runtime, never a writable record.
-    legacy=[dict(entry,hidden=True) for entry in bundle['arrangements'] if not entry.get('read_only')]
+    legacy=[dict(entry) for entry in bundle['arrangements'] if not entry.get('read_only')]
     atomic_json(arrangements,{'version':1,'arrangements':legacy})
     atomic_json(workspace,state)
 

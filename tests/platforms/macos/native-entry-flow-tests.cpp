@@ -57,9 +57,12 @@ int main(int argc,char **argv) {
  for(auto action:flat.actions()){check(action->text()!="Edit"&&action->text()!="Workspace"&&action->text()!="All Panels","no category submenu in Panels");sawHeader|=action->text()=="Workspace Toolbar";sawFooter|=action->text()=="Page Navigation";}
  check(sawHeader&&sawFooter,"Panels directly exposes Header and Footer");
  auto menuBarPanels=ui->findChild<QMenu *>("openGateShowPanel");check(menuBarPanels&&menuBarPanels->findChildren<QMenu *>().isEmpty(),"menubar Panels has no page/category layers");
- left->setFixedWidth(nativeButton->sizeHint().width()+leftRow->contentsMargins().left()+leftRow->contentsMargins().right()+leftRow->spacing()+44);settle();auto overflow=main.findChild<QToolButton *>("openGateToolbarOverflow");
+ left->setFixedWidth(nativeButton->sizeHint().width()+leftRow->contentsMargins().left()+leftRow->contentsMargins().right()+leftRow->spacing()+44);settle();
+ auto callerStrip=tools->findChild<QWidget *>("openGateToolbarDoors");
+ check(callerStrip&&callerStrip->parentWidget()==tools&&callerStrip->width()>28,"viewer callers use the existing toolbar's available space outside the bounded native button row");
+ if(callerStrip)callerStrip->setFixedWidth(32);settle();auto overflow=main.findChild<QToolButton *>("openGateToolbarOverflow");
  check(overflow&&overflow->isVisible()&&overflow->menu()->actions().size()==2,"cramped native header retains both monitors in overflow");
- left->setMinimumWidth(0);left->setMaximumWidth(QWIDGETSIZE_MAX);settle();
+ left->setMinimumWidth(0);left->setMaximumWidth(QWIDGETSIZE_MAX);if(callerStrip){callerStrip->setMinimumWidth(0);callerStrip->setMaximumWidth(QWIDGETSIZE_MAX);}settle();
  auto menuFor=[&]{auto menu=new QMenu(&main);registry->populateFlat(menu);return menu;};
  auto trigger=[&](const QString &label){auto menu=menuFor();bool found=false;for(auto action:menu->actions())if(action->text()==label){action->trigger();found=true;break;}settle();delete menu;check(found,qPrintable("Panels action "+label));};
  trigger("Source Monitor");check(source->isHidden()&&source->parentWidget()==page,"Panels Hide retains native source ownership");

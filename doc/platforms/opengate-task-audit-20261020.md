@@ -9,6 +9,21 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Toolbar/preset follow-up evidence
+
+Branch feature/workspace-toolbar-viewer-buttons integrates the isolated restore fix.
+Existing Source/Program callers are reused, moved into available space in the same
+native toolbar rather than the bounded native left-button row. No duplicate caller
+or panel commands added. Hidden assembled entry fixture passes readable allocation,
+constrained-width overflow, native show/hide, drag and Native-return behavior.
+
+Bundle now contains only immutable Resolve Layout and the captured saved Jordan
+Tetewsky Preset (stable shipped id opengate.preset.jordan-tetewsky.edit). Other
+local arrangements are untouched. Fresh-profile and prototype-installer fixtures
+pass visibility, single user-preset inventory and no-overwrite checks. No package
+was built, installed, merged to main or published. Preset rendering still needs
+Jordan's live comparison after review. Multi-display work follows separately.
+
 ## Follow-up after approved baseline — preset restore failure
 
 Jordan reports selecting saved OpenGate presets or Resolve Layout after a project

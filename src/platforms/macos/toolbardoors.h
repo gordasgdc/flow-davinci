@@ -46,9 +46,10 @@ public:
     void wire(QWidget *surface){
         if(!surface)return;
         for(auto row:surface->findChildren<QWidget *>())if(row->objectName().startsWith("frameEditTopBarLeft")&&row->layout()){
-            auto strip=row->findChild<QWidget *>("openGateToolbarDoors",Qt::FindDirectChildrenOnly);
+            QWidget *strip=nullptr;
+            for(auto existing:strips)if(existing && existing->property("openGateNativeToolbarRow").value<QObject *>()==row){strip=existing;break;}
             if(!strip){
-                strip=new ToolbarDoorStrip(row);strip->setObjectName("openGateToolbarDoors");strip->setMinimumWidth(0);strip->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
+                strip=new ToolbarDoorStrip(row);strip->setProperty("openGateNativeToolbarRow",QVariant::fromValue<QObject *>(row));strip->setObjectName("openGateToolbarDoors");strip->setMinimumWidth(0);strip->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Preferred);
                 auto slot=new QHBoxLayout(strip);slot->setSizeConstraint(QLayout::SetNoConstraint);slot->setContentsMargins(0,0,0,0);slot->setSpacing(0);
                 auto controls=new QWidget(strip);controls->setObjectName("openGateDoorControls");controls->setMinimumWidth(0);controls->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
                 auto layout=new QHBoxLayout(controls);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);slot->addWidget(controls);slot->addStretch();
@@ -61,7 +62,15 @@ public:
                 auto more=new QToolButton(controls);more->setObjectName("openGateToolbarOverflow");more->setText(QString::fromUtf8("⋯"));more->setToolTip("More OpenGate panels");more->setAccessibleName(more->toolTip());more->setAutoRaise(true);more->setPopupMode(QToolButton::InstantPopup);
                 auto menu=new QMenu(more);menu->setProperty("unboundOwnMenu",true);more->setMenu(menu);
                 for(const auto &door:doors){auto action=menu->addAction(door.title);action->setCheckable(true);connect(action,&QAction::triggered,this,[this,door]{QTimer::singleShot(0,this,[door]{if(door.toggle)door.toggle();});});}
-                layout->addWidget(more);row->layout()->addWidget(strip);strips.append(strip);
+                layout->addWidget(more);
+                // Resolve bounds its native left button row to the native buttons.
+                // Reuse the adjacent slot in that same toolbar's box layout;
+                // putting our callers inside the bounded row gives them zero space.
+                auto parentRow=row->parentWidget();auto box=parentRow?qobject_cast<QBoxLayout *>(parentRow->layout()):nullptr;
+                if(box && box->indexOf(row)>=0 && (box->direction()==QBoxLayout::LeftToRight || box->direction()==QBoxLayout::RightToLeft))
+                    box->insertWidget(box->indexOf(row)+1,strip,1);
+                else row->layout()->addWidget(strip);
+                strips.append(strip);
             }
             for(int i=0;i<doors.size();++i){const auto &door=doors[i];auto button=strip->findChild<QToolButton *>("openGateToolbarDoor_"+door.id);QSignalBlocker block(button);button->setChecked(door.shown&&door.shown());
                 auto more=strip->findChild<QToolButton *>("openGateToolbarOverflow");if(i<more->menu()->actions().size())more->menu()->actions()[i]->setChecked(button->isChecked());}
@@ -79,11 +88,11 @@ private:
     void schedule(){if(!timer.isActive())timer.start();}
     void fit(){for(auto strip:strips)if(strip){
         auto row=strip->parentWidget();int start=0;
-        for(int i=0;i<row->layout()->count();++i){auto item=row->layout()->itemAt(i);auto widget=item->widget();if(widget&&widget!=strip&&widget->isVisible())start=qMax(start,widget->geometry().right()+1+row->layout()->spacing());}
+        for(int i=0;i<row->layout()->count();++i){auto item=row->layout()->itemAt(i);auto widget=item->widget();if(widget&&widget!=strip&&widget->isVisible()&&widget->geometry().right()<strip->geometry().left())start=qMax(start,widget->geometry().right()+1+row->layout()->spacing());}
         // Use the accessory's actual slot, not the ideal position inferred
         // from sibling hints. Native stretch/alignment can leave a later origin.
         start=qMax(start,strip->geometry().left());
-        int available=qMax(0,row->width()-start);
+        int available=qMax(0,qMin(strip->width(),row->width()-start));
         for(auto title:row->window()->findChildren<QAbstractButton *>("btnProjectsMainBarProjectList"))if(title->isVisible()){
             const QRect titleRect(title->mapToGlobal(QPoint()),title->size());
             const QRect rowRect(row->mapToGlobal(QPoint()),row->size());

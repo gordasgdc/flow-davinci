@@ -136,507 +136,181 @@
       }
     },
     {
-      "id": "opengate-native-emulator-v1",
-      "name": "Native Emulator",
+      "id": "opengate.preset.jordan-tetewsky.edit",
+      "name": "Jordan Tetewsky Preset",
       "page": "edit",
       "workspace": {
-        "version": 1,
-        "page": "edit",
-        "fit_first_display": true,
-        "hide_background": true,
-        "native_workspace_mode": "floating",
-        "native_arrangement": {},
-        "window_chrome": 0,
-        "panel_hierarchy": true,
-        "keep_on_screen": true,
-        "snap_windows": true,
-        "pin_controls": false,
+        "background_policy": "automatic",
         "footer": {
+          "attachment": "surfaces",
           "floating": false,
-          "attachment": "timeline",
-          "hidden": false
+          "hidden": false,
+          "model": "reserved-native-bands-v2"
         },
-        "panels": {
-          "unboundWorkspaceToolbar": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "frameEditPageMediaPool": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "frameEditPageEditIndex": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "widgetEditSourcePlayer": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "widgetEditTimelinePlayer": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "frameConformTimelines": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          },
-          "widgetEditInspector": {
-            "floating": true,
-            "hidden": false,
-            "pinned": false,
-            "interface_scale": 1
-          }
+        "groups": [],
+        "header": {
+          "model": "pinned-top-v1",
+          "visible": true
         },
-        "groups": [
-          {
-            "x": 0,
-            "y": 33,
-            "width": 1728,
-            "height": 1084,
-            "panels": [
-              "unboundWorkspaceToolbar",
-              "frameEditPageMediaPool",
-              "frameEditPageEditIndex",
-              "widgetEditSourcePlayer",
-              "widgetEditTimelinePlayer",
-              "frameConformTimelines",
-              "widgetEditInspector"
-            ],
-            "orientation": "vertical",
-            "sizes": [
-              44,
-              1000
-            ],
-            "tree": {
-              "orientation": "vertical",
-              "children": [
-                {
-                  "panel": "unboundWorkspaceToolbar"
-                },
-                {
-                  "orientation": "horizontal",
-                  "children": [
-                    {
-                      "orientation": "tabs",
-                      "selected": 0,
-                      "children": [
-                        {
-                          "panel": "frameEditPageMediaPool"
-                        },
-                        {
-                          "panel": "frameEditPageEditIndex"
-                        }
-                      ]
-                    },
-                    {
-                      "orientation": "vertical",
-                      "children": [
-                        {
-                          "orientation": "horizontal",
-                          "children": [
-                            {
-                              "panel": "widgetEditSourcePlayer"
-                            },
-                            {
-                              "panel": "widgetEditTimelinePlayer"
-                            }
-                          ],
-                          "sizes": [
-                            1,
-                            1
-                          ]
-                        },
-                        {
-                          "panel": "frameConformTimelines"
-                        }
-                      ],
-                      "sizes": [
-                        3,
-                        2
-                      ]
-                    },
-                    {
-                      "panel": "widgetEditInspector"
-                    }
-                  ],
-                  "sizes": [
-                    2,
-                    6,
-                    2
-                  ]
-                }
-              ],
-              "sizes": [
-                44,
-                1000
-              ]
-            },
-            "pinned": false
-          }
-        ]
-      }
-    },
-    {
-      "id": "fbdc0ba1-02ed-4925-8b34-617df3a7803a",
-      "name": "Jordan Arrangmement",
-      "workspace": {
-        "footer": {
-          "floating": null
-        },
-        "groups": [
-          {
-            "height": 1025,
-            "orientation": "horizontal",
-            "panels": [
-              "frameConformTimelines",
-              "widgetEditTimelinePlayer",
-              "frameEditPageMediaPool",
-              "widgetEditInspector",
-              "widgetEditSourcePlayer"
-            ],
-            "pinned": false,
-            "sizes": [
-              1088,
-              800
-            ],
-            "tree": {
-              "children": [
-                {
-                  "children": [
-                    {
-                      "panel": "frameEditPageMediaPool"
-                    },
-                    {
-                      "children": [
-                        {
-                          "panel": "frameConformTimelines"
-                        },
-                        {
-                          "panel": "widgetEditInspector"
-                        }
-                      ],
-                      "orientation": "horizontal",
-                      "sizes": [
-                        985,
-                        413
-                      ]
-                    }
-                  ],
-                  "orientation": "horizontal",
-                  "sizes": [
-                    542,
-                    540
-                  ]
-                },
-                {
-                  "children": [
-                    {
-                      "panel": "widgetEditSourcePlayer"
-                    },
-                    {
-                      "panel": "widgetEditTimelinePlayer"
-                    }
-                  ],
-                  "orientation": "horizontal",
-                  "sizes": [
-                    397,
-                    397
-                  ]
-                }
-              ],
-              "orientation": "horizontal",
-              "sizes": [
-                1088,
-                800
-              ]
-            },
-            "width": 1894,
-            "x": 625,
-            "y": 38
-          }
-        ],
         "hide_background": false,
         "keep_on_screen": true,
-        "native_arrangement": {},
+        "layout_mode": "managed",
+        "native_arrangement": {
+          "kind": "managed",
+          "page": "edit",
+          "panels": {
+            "frameConformTimelines": {
+              "hidden": false
+            },
+            "frameEditAudioMeter": {
+              "hidden": true
+            },
+            "frameEditPageEditIndex": {
+              "hidden": true
+            },
+            "frameEditPageMediaPool": {
+              "hidden": true
+            },
+            "widgetEditInspector": {
+              "hidden": true
+            },
+            "widgetEditSourcePlayer": {
+              "hidden": false
+            },
+            "widgetEditTimelinePlayer": {
+              "hidden": false
+            }
+          },
+          "tree": {
+            "children": [
+              {
+                "children": [
+                  {
+                    "panel": "frameEditPageMediaPool"
+                  },
+                  {
+                    "panel": "frameEditPageEditIndex"
+                  }
+                ],
+                "orientation": "tabs",
+                "selected": 1
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "panel": "frameConformTimelines"
+                      },
+                      {
+                        "panel": "widgetEditInspector"
+                      }
+                    ],
+                    "orientation": "horizontal",
+                    "sizes": [
+                      560,
+                      240
+                    ]
+                  },
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "panel": "widgetEditTimelinePlayer"
+                          },
+                          {
+                            "panel": "frameEditAudioMeter"
+                          }
+                        ],
+                        "orientation": "horizontal",
+                        "sizes": [
+                          847,
+                          240
+                        ]
+                      },
+                      {
+                        "panel": "widgetEditSourcePlayer"
+                      }
+                    ],
+                    "orientation": "tabs",
+                    "selected": 0
+                  }
+                ],
+                "orientation": "horizontal",
+                "sizes": [
+                  629,
+                  1093
+                ]
+              }
+            ],
+            "orientation": "horizontal",
+            "sizes": [
+              244,
+              1478
+            ]
+          },
+          "version": 1
+        },
         "native_workspace_mode": "native",
         "page": "edit",
         "panel_hierarchy": true,
         "panels": {
           "frameConformTimelines": {
             "floating": true,
-            "height": 1050,
-            "hidden": false,
-            "pinned": false,
-            "width": 1240,
-            "x": 823,
-            "y": 30
-          },
-          "frameEditAudioMeter": {
-            "floating": false,
-            "hidden": false
-          },
-          "frameEditPageEditIndex": {
-            "floating": false,
-            "height": 254,
-            "hidden": false,
-            "width": 447,
-            "x": 1147,
-            "y": 552
-          },
-          "frameEditPageEffectsLibrary": {
-            "floating": false,
-            "height": 761,
-            "hidden": false,
-            "width": 447,
-            "x": 640,
-            "y": 194
-          },
-          "frameEditPageKeyframeEditor": {
-            "floating": false,
-            "height": 1016,
-            "hidden": false,
-            "width": 447,
-            "x": 0,
-            "y": 65
-          },
-          "frameEditPageMediaPool": {
-            "floating": true,
-            "height": 509,
-            "hidden": true,
-            "pinned": false,
-            "width": 433,
-            "x": 1035,
-            "y": 402
-          },
-          "frameEditPageMetadata": {
-            "floating": false,
-            "height": 509,
-            "hidden": false,
-            "width": 574,
-            "x": 654,
-            "y": 320
-          },
-          "frameEditPageSoundLibrary": {
-            "floating": false,
-            "height": 1016,
-            "hidden": false,
-            "width": 447,
-            "x": 0,
-            "y": 63
-          },
-          "frameEditToolbarTop": {
-            "floating": false
-          },
-          "unboundWorkspaceToolbar": {
-            "floating": false
-          },
-          "widgetEditInspector": {
-            "floating": true,
-            "height": 959,
-            "hidden": true,
-            "pinned": false,
-            "width": 700,
-            "x": 1328,
-            "y": 377
-          },
-          "widgetEditSourcePlayer": {
-            "floating": true,
-            "height": 959,
-            "hidden": true,
-            "pinned": false,
-            "width": 800,
-            "x": 1663,
-            "y": 235
-          },
-          "widgetEditTimelinePlayer": {
-            "floating": true,
-            "height": 1039,
-            "hidden": false,
-            "pinned": false,
-            "width": 1753,
-            "x": 1910,
-            "y": 201
-          }
-        },
-        "pin_controls": true,
-        "snap_windows": true,
-        "version": 1,
-        "window_chrome": 1,
-        "fit_first_display": true
-      },
-      "page": "edit"
-    },
-    {
-      "id": "7c610fc4-4264-47bf-9d27-59e079fb3785",
-      "name": "Jordan Source Monitor below Media Pool",
-      "page": "edit",
-      "workspace": {
-        "footer": {
-          "attachment": "timeline",
-          "floating": false,
-          "hidden": false
-        },
-        "groups": [
-          {
-            "height": 1084,
-            "orientation": "horizontal",
-            "panels": [
-              "frameConformTimelines",
-              "widgetEditInspector",
-              "widgetEditTimelinePlayer",
-              "frameEditPageMediaPool",
-              "widgetEditSourcePlayer"
-            ],
-            "pinned": false,
-            "sizes": [
-              1061,
-              661
-            ],
-            "tree": {
-              "children": [
-                {
-                  "children": [
-                    {
-                      "children": [
-                        {
-                          "children": [
-                            {
-                              "panel": "frameEditPageMediaPool"
-                            },
-                            {
-                              "panel": "widgetEditSourcePlayer"
-                            }
-                          ],
-                          "orientation": "vertical",
-                          "sizes": [
-                            497,
-                            553
-                          ]
-                        },
-                        {
-                          "panel": "frameConformTimelines"
-                        }
-                      ],
-                      "orientation": "horizontal",
-                      "sizes": [
-                        300,
-                        755
-                      ]
-                    },
-                    {
-                      "panel": "widgetEditInspector"
-                    }
-                  ],
-                  "orientation": "horizontal",
-                  "sizes": [
-                    791,
-                    264
-                  ]
-                },
-                {
-                  "panel": "widgetEditTimelinePlayer"
-                }
-              ],
-              "orientation": "horizontal",
-              "sizes": [
-                1061,
-                661
-              ]
-            },
-            "width": 1728,
-            "x": 0,
-            "y": 33
-          }
-        ],
-        "hide_background": true,
-        "keep_on_screen": true,
-        "native_arrangement": {},
-        "native_workspace_mode": "floating",
-        "page": "edit",
-        "panel_hierarchy": true,
-        "panels": {
-          "frameConformTimelines": {
-            "floating": true,
-            "height": 1050,
+            "height": 381,
             "hidden": false,
             "interface_scale": 1,
             "pinned": false,
-            "width": 1240,
-            "x": 823,
+            "width": 1728,
+            "x": -353,
+            "y": 413
+          },
+          "frameEditAudioMeter": {
+            "floating": true,
+            "height": 892,
+            "hidden": true,
+            "interface_scale": 1,
+            "pinned": false,
+            "width": 320,
+            "x": 1626,
+            "y": 295
+          },
+          "frameEditPageEditIndex": {
+            "floating": true,
+            "height": 761,
+            "hidden": true,
+            "interface_scale": 1,
+            "pinned": false,
+            "width": 447,
+            "x": 646,
+            "y": 194
+          },
+          "frameEditPageEffectsLibrary": {
+            "floating": false,
+            "interface_scale": 1
+          },
+          "frameEditPageKeyframeEditor": {
+            "floating": false,
+            "interface_scale": 1
+          },
+          "frameEditPageMediaPool": {
+            "floating": true,
+            "height": 1016,
+            "hidden": true,
+            "interface_scale": 1,
+            "pinned": false,
+            "width": 447,
+            "x": 0,
             "y": 57
           },
-          "frameEditAudioMeter": {
-            "floating": false,
-            "hidden": false,
-            "interface_scale": 1
-          },
-          "frameEditPageEditIndex": {
-            "floating": false,
-            "height": 254,
-            "hidden": false,
-            "interface_scale": 1,
-            "width": 447,
-            "x": 1147,
-            "y": 552
-          },
-          "frameEditPageEffectsLibrary": {
-            "floating": false,
-            "height": 761,
-            "hidden": false,
-            "interface_scale": 1,
-            "width": 447,
-            "x": 640,
-            "y": 194
-          },
-          "frameEditPageKeyframeEditor": {
-            "floating": false,
-            "height": 1016,
-            "hidden": false,
-            "interface_scale": 1,
-            "width": 447,
-            "x": 0,
-            "y": 65
-          },
-          "frameEditPageMediaPool": {
-            "floating": true,
-            "height": 622,
-            "hidden": false,
-            "interface_scale": 1,
-            "pinned": false,
-            "width": 1061,
-            "x": -13,
-            "y": 764
-          },
           "frameEditPageMetadata": {
             "floating": false,
-            "height": 509,
-            "hidden": false,
-            "interface_scale": 1,
-            "width": 574,
-            "x": 654,
-            "y": 320
+            "interface_scale": 1
           },
           "frameEditPageSoundLibrary": {
             "floating": false,
-            "height": 1016,
-            "hidden": false,
-            "interface_scale": 1,
-            "width": 447,
-            "x": 0,
-            "y": 63
+            "interface_scale": 1
           },
           "frameEditToolbarTop": {
             "floating": false,
@@ -648,40 +322,39 @@
           },
           "widgetEditInspector": {
             "floating": true,
-            "height": 959,
+            "height": 634,
             "hidden": true,
-            "interface_scale": 0.7,
+            "interface_scale": 1,
             "pinned": false,
-            "width": 700,
-            "x": 1328,
-            "y": 377
+            "width": 420,
+            "x": 654,
+            "y": 219
           },
           "widgetEditSourcePlayer": {
             "floating": true,
-            "height": 649,
+            "height": 426,
             "hidden": false,
             "interface_scale": 1,
             "pinned": false,
-            "width": 755,
-            "x": 67,
-            "y": 1061
+            "width": 793,
+            "x": 1067,
+            "y": 565
           },
           "widgetEditTimelinePlayer": {
             "floating": true,
-            "height": 1039,
+            "height": 634,
             "hidden": false,
-            "interface_scale": 1.2,
+            "interface_scale": 1,
             "pinned": false,
-            "width": 1753,
-            "x": 1632,
-            "y": 201
+            "width": 1307,
+            "x": 216,
+            "y": 258
           }
         },
-        "pin_controls": true,
+        "pin_controls": false,
         "snap_windows": true,
         "version": 1,
-        "window_chrome": 1,
-        "fit_first_display": true
+        "window_chrome": 0
       }
     }
   ]
