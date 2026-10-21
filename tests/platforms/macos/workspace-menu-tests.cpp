@@ -115,14 +115,13 @@ int main(int argc, char **argv)
         check(root->title()=="OpenGate UI","top-level product menu is named OpenGate UI");
         Unbound::PanelCallerMenu callers; int panelShows=0; bool visible=false;
         callers.currentPage=[&] { return activePage; };
-        callers.add({"source","Source Monitor","edit",[] { return true; },[&] { return visible; },[&] { visible=true; ++panelShows; }});
+        callers.add({"source","Source Monitor","edit",[] { return true; },[&] { return visible; },[&] { visible=true; ++panelShows; },[&](bool value){visible=value;++panelShows;}});
         menus.panelMenu=[&](QMenu *menu) { return callers.wire(menu); }; menus.wire(); menus.wire();
         auto show=root->findChild<QMenu *>("openGateShowPanel");
-        auto edit=show ? show->findChild<QMenu *>("openGatePanelPage_edit") : nullptr;
-        auto source=edit ? edit->findChild<QAction *>("openGateShowPanel_source") : nullptr;
-        check(show && show->title()=="Show Panel in Workspace" && edit && edit->title()=="Edit" && source && source->isEnabled(),"Show Panel groups Edit callers by native page");
+        auto source=show ? show->findChild<QAction *>("openGateShowPanel_source",Qt::FindDirectChildrenOnly) : nullptr;
+        check(show && show->title()=="Panels" && show->findChildren<QMenu *>().isEmpty() && source && source->isEnabled(),"Panels directly exposes current-page controls without category submenus");
         if (source) { source->trigger(); QApplication::processEvents(); menus.wire(); source->trigger(); QApplication::processEvents(); menus.wire(); }
-        check(panelShows==2 && visible && source && source->isChecked(),"repeated show calls reveal rather than toggle-hide and do not duplicate dispatch");
+        check(panelShows==2 && !visible && source && !source->isChecked(),"both entry points use the same Show/Hide state without placement changes");
         activePage="color"; menus.wire();
         check(source && !source->isEnabled(),"Edit-only callers are disabled on other pages");
         activePage="edit"; menus.wire(); if (source) source->trigger(); activePage="color"; QApplication::processEvents();

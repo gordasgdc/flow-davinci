@@ -46,7 +46,7 @@ int main(int argc,char **argv) {
     for(auto action:flat.actions())ok &= !action->menu();
     flat.actions().first()->trigger();settle();ok &= !shown&&visibilityCalls==1&&showOnlyCalls==0;
     QMenu other;registry.populateFlat(&other);ok &= !other.actions().first()->isChecked();other.actions().first()->trigger();settle();ok &= shown&&visibilityCalls==2;
-    QMenu originalRoot;auto originalMenu=registry.wire(&originalRoot);auto originalPage=originalMenu->findChild<QMenu *>("openGatePanelPage_edit");originalPage->actions().first()->trigger();settle();ok &= shown&&showOnlyCalls==1;
+    QMenu originalRoot;auto originalMenu=registry.wire(&originalRoot);auto originalAction=originalMenu->findChild<QAction *>("openGateShowPanel_source",Qt::FindDirectChildrenOnly);ok &= originalMenu->findChildren<QMenu *>().isEmpty();originalAction->trigger();settle();ok &= !shown&&visibilityCalls==3&&showOnlyCalls==0;
     QWidget compactWrapper;QStackedWidget stack(&compactWrapper);QWidget toolbarRow;
     toolbarRow.setFixedHeight(30);stack.addWidget(&toolbarRow);Unbound::CompactToolbar fit(&compactWrapper,&stack);settle();
     do { const bool passed=(compactWrapper.maximumHeight()==30); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);

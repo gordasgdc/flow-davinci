@@ -533,3 +533,17 @@ New Timeline wrapper similarly invalidates the direct-parent expectation. Update
 assertions to require same retained host ancestry/window plus visibility, retaining
 original-slot Dock assertions and repeated page-return cycles. This does not relax
 ownership to an arbitrary visible widget or claim a production Cinema fix.
+
+## User rejected incomplete Native entry flow
+
+Jordan explicitly requires direct drags/controls from Native Edit, one flat Panels
+entry with Header/Footer, reserved hideable outer bands, unsaved persistence and
+Native Edit return. New acceptance contract lists observable steps and requires an
+assembled fixture plus live evidence; no narrower component interpretation may be
+substituted. Native-entry-flow removes Edit/Workspace categories from the menu-bar
+Panels route and uses the same Show/Hide dispatch as title-bar Panels. Visibility
+no longer calls requestUndock from the menu-bar caller. Removes the ordinary footer
+placement submenu from title-bar access. Hidden workspace-menu and workspace-header
+fixtures pass flat structure, shared state and page-switch cancellation. Remaining
+Native header drags, native visibility and assembled proof are not yet implemented
+by this menu change alone. Installed6f395c4 unchanged.

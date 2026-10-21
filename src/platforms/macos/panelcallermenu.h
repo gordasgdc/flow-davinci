@@ -7,8 +7,8 @@
 #include "diagnostics.h"
 #include "workspacepages.h"
 namespace Unbound {
-// Page-grouped, show-only callers. Commands never toggle an already visible
-// panel off, change its saved placement or silently switch Resolve pages.
+// One current-page visibility model for native and custom workspace entry points.
+// Showing/hiding never changes placement or switches Resolve pages.
 class PanelCallerMenu : public QObject {
 public:
     struct Panel {
@@ -20,62 +20,57 @@ public:
     explicit PanelCallerMenu(QObject *owner=nullptr) : QObject(owner) {}
     std::function<QString()> currentPage=[] { return QString(); };
     void add(Panel panel) { panels.append(std::move(panel)); }
+    static QString label(const Panel &panel) {
+        if(panel.id=="unboundWorkspaceToolbar")return QStringLiteral("Header");
+        if(panel.id=="page-navigation")return QStringLiteral("Footer");
+        return panel.label;
+    }
     void populateFlat(QMenu *menu) {
         for(int i=0;i<panels.size();++i) {
             const auto &panel=panels[i];
-            auto action=menu->addAction(panel.id=="unboundWorkspaceToolbar"?QStringLiteral("Workspace Header"):panel.label);
-            action->setObjectName("openGatePanelToggle_"+panel.id);action->setCheckable(true);
-            const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
-            action->setEnabled(ready);action->setChecked(panel.visible && panel.visible());
-            action->setToolTip("Show or hide "+action->text()+" in its remembered location");
-            connect(action,&QAction::triggered,this,[this,i](bool value) {
-                QTimer::singleShot(0,this,[this,i,value] {
-                    const auto &panel=panels[i];
-                    const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
-                    logEvent("workspace.panel.visibility.request",{{"panel",panel.id},{"page",currentPage()},{"requested",value},{"accepted",ready},{"origin","panels-root"}});
-                    if(!ready){logEvent("workspace.panel.visibility.failed",{{"panel",panel.id},{"reason","page-or-panel-unavailable"}});return;}
-                    if(panel.setVisible)panel.setVisible(value);else if(value && panel.show)panel.show();
-                    logEvent("workspace.panel.visibility.dispatched",{{"panel",panel.id},{"requested",value},{"observed_visible",panel.visible && panel.visible()}});
-                });
-            });
+            if(panel.page!="global" && panel.page!=currentPage())continue;
+            auto action=menu->addAction(label(panel));action->setObjectName("openGatePanelToggle_"+panel.id);
+            bind(action,i);update(action,panel);
         }
     }
     QMenu *wire(QMenu *root) {
         auto menu=root->findChild<QMenu *>("openGateShowPanel",Qt::FindDirectChildrenOnly);
-        if (!menu) {
-            menu=new QMenu("Show Panel in Workspace",root); menu->setObjectName("openGateShowPanel"); menu->setProperty("unboundOwnMenu",true);
-            root->addMenu(menu);
+        if(!menu) {
+            menu=new QMenu("Panels",root);menu->setObjectName("openGateShowPanel");menu->setProperty("unboundOwnMenu",true);root->addMenu(menu);
         }
-        for (int i=0;i<panels.size();++i) {
+        for(int i=0;i<panels.size();++i) {
             const auto &panel=panels[i];
-            auto page=menu->findChild<QMenu *>("openGatePanelPage_"+panel.page,Qt::FindDirectChildrenOnly);
-            if (!page) {
-                page=new QMenu(panel.page=="global"?QStringLiteral("Workspace"):workspacePageLabel(panel.page),menu); page->setObjectName("openGatePanelPage_"+panel.page);
-                page->setProperty("unboundOwnMenu",true); menu->addMenu(page);
-            }
-            auto action=page->findChild<QAction *>("openGateShowPanel_"+panel.id,Qt::FindDirectChildrenOnly);
-            if (!action) {
-                action=page->addAction(panel.label); action->setObjectName("openGateShowPanel_"+panel.id); action->setCheckable(true);
-                connect(action,&QAction::triggered,this,[this,i] {
-                    QTimer::singleShot(0,this,[this,i] {
-                        const auto &panel=panels[i]; const bool ready=(panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
-                        logEvent("workspace.panel.show",{{"panel",panel.id},{"page",panel.page},{"accepted",ready},{"origin","opengate-ui-menu"}});
-                        if (ready && panel.show) panel.show();
-                    });
-                });
-            }
-            action->setEnabled((panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available());
-            action->setChecked(panel.visible && panel.visible());
-            action->setToolTip("Show "+panel.label+" in its current arrangement");
+            auto action=menu->findChild<QAction *>("openGateShowPanel_"+panel.id,Qt::FindDirectChildrenOnly);
+            if(!action){action=menu->addAction(label(panel));action->setObjectName("openGateShowPanel_"+panel.id);bind(action,i);}
+            update(action,panel);
         }
-        if (!watched.contains(menu)) {
-            watched.append(menu); connect(menu,&QMenu::aboutToShow,this,[this,root] { wire(root); });
-            for (auto page:menu->findChildren<QMenu *>(QString(),Qt::FindDirectChildrenOnly))
-                connect(page,&QMenu::aboutToShow,this,[this,root] { wire(root); });
+        if(!watched.contains(menu)) {
+            watched.append(menu);connect(menu,&QMenu::aboutToShow,this,[this,root]{wire(root);});
         }
         return menu;
     }
+
 private:
+    void update(QAction *action,const Panel &panel) {
+        const bool pageAvailable=panel.page=="global" || panel.page==currentPage();
+        action->setText(label(panel));action->setCheckable(true);action->setVisible(pageAvailable);
+        action->setEnabled(pageAvailable && panel.available && panel.available());
+        action->setChecked(panel.visible && panel.visible());
+        action->setToolTip("Show or hide "+label(panel)+" in its remembered location");
+    }
+    void bind(QAction *action,int index) {
+        connect(action,&QAction::triggered,this,[this,index](bool value) {
+            const auto requestedPage=currentPage();
+            QTimer::singleShot(0,this,[this,index,value,requestedPage] {
+                const auto &panel=panels[index];
+                const bool ready=currentPage()==requestedPage && (panel.page=="global" || currentPage()==panel.page) && panel.available && panel.available();
+                logEvent("workspace.panel.visibility.request",{{"panel",panel.id},{"page",currentPage()},{"requested",value},{"accepted",ready},{"origin","panels-menu"}});
+                if(!ready){logEvent("workspace.panel.visibility.failed",{{"panel",panel.id},{"reason","page-or-panel-unavailable"}});return;}
+                if(panel.setVisible)panel.setVisible(value);else if(value && panel.show)panel.show();
+                logEvent("workspace.panel.visibility.dispatched",{{"panel",panel.id},{"requested",value},{"observed_visible",panel.visible && panel.visible()}});
+            });
+        });
+    }
     QList<Panel> panels; QList<QPointer<QMenu>> watched;
 };
 }

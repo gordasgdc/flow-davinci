@@ -388,9 +388,7 @@ public:
             },
             [this,i] {
                 if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(true);return;}
-                auto target=Unbound::panelSurface(page(),panels[i].name);
-                if (panels[i].session->active() || managedOwnerFor(target)) showPanel(i,true);
-                else requestUndock(i);
+                showPanel(i,true);
             },[this,i](bool visible) {showPanel(i,visible);save();}});
         panelCallers->add({"page-navigation","Page Navigation","global",[this] { return !quitting && bool(footer); },
             [this] { return footer && !footer->snapshot()["hidden"].toBool(); },
@@ -448,7 +446,9 @@ public:
             [this,i] { return panels[i].session->interfaceScale(); },
             [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
             [this,i] { floatToolbar(i); }});
-        headers->surfaceControls=[this](QMenu *menu,QWidget *host) {footer->populatePlacementMenu(menu,host);};
+        // Header/Footer are direct visibility actions in the one Panels model.
+        // Pinning is structural, not another ordinary navigation submenu.
+        headers->surfaceControls=[](QMenu *,QWidget *){};
         headers->projectSurface=[] { return Unbound::resolveMainWindow(); };
         headers->primary=[this]() -> QWidget * {
             if (panels[1].session->active() && panels[1].session->window()->window()->isVisible()) return panels[1].session->window()->window();
