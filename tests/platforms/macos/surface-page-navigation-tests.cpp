@@ -71,6 +71,9 @@ int main(int argc,char **argv){
  auto lateAction=new QAction("Show Page Navigation",&lateMain);lateAction->setCheckable(true);lateAction->setChecked(true);QObject::connect(lateAction,&QAction::toggled,lateFooter,&QWidget::setVisible);
  settle();delayed.refreshSurfaces();settle();
  check(!lateAction->isChecked()&&lateFooter->isHidden(),"late native command adopts saved hidden intent instead of overwriting it");
+ QMenu lateMenu(&lateMain);lateMenu.setObjectName("workspaceShowPanel");delayed.wireMenu();
+ auto lateCaller=lateMenu.findChild<QAction *>("unboundPageNavigation");check(lateCaller&&!lateCaller->isChecked(),"explicit wiring discovers a native caller menu created after initial discovery");
+ if(lateCaller)lateCaller->trigger();settle();check(lateAction->isChecked()&&!lateFooter->isHidden(),"late caller controls the same native footer visibility");
  }
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;
 }

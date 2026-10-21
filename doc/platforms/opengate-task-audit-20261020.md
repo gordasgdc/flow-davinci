@@ -741,3 +741,60 @@ standalone primary frame stability, fully rearranged group-local viewport bounds
 grouped restore, saved arrangement/Native return and fresh-process unsaved state.
 This remains synthetic Qt evidence. Production build/full regression recheck and
 physical/live Resolve checks are separate gates, not implied by this pass.
+
+## Wolfgang follow-up — updated task scope and acceptance
+
+Wolfgang clarified the main report is that OpenGate would not load. A conflicting
+path remains his hypothesis, not a diagnosis. He encourages obsolete-code cleanup,
+OpenGate's own copyright identity and a fresh standalone repository. He is willing
+to retry0.0.2. Jordan's work order remains basic-flow live test/possible baseline
+merge, then separate Fusion branches, then the requested identity/repository cleanup.
+
+Post-Fusion cleanup acceptance:
+- OpenGate/CineWaltz copyright for original contributions appears in the project
+  and installer; inherited portions retain applicable Wolfgang MIT notices.
+- Audit obsolete code, copied artwork and installer/runtime entry points by actual
+  references and build coverage before removing them. No blind folder deletion or
+  global replacement of compatibility identifiers. Preserve working foundations.
+- Propose a fresh/standalone repository migration only after backing up all refs,
+  branches, tags, local changes and relevant repository metadata. Verify the new
+  default branch presents OpenGate. Keep the old repository recoverable until the
+  migration is verified; no force-push/history loss or fork detach by assumption.
+
+Release compatibility acceptance (separate from branding priority):
+- Trace cold-start bootstrap/helper/menu logs on known Mac/Resolve edition/build.
+  Investigate actual loading capability on Free versus Studio before claiming
+  Free support; missing log directory alone does not prove helper never loaded.
+- Audit shared Unbound runtime/script/settings paths, backups, uninstall behavior
+  and both installation orders. OpenGate must not unexpectedly retire/overwrite
+  the other product or user settings. A path conflict remains unproven.
+- Provide Wolfgang a0.0.2 candidate only after the relevant compatibility checks,
+  with accurate tested requirements and useful diagnostics.
+
+## Displayed basic-flow regression findings and corrections
+
+First displayed run at332f79a had three failing suites: panel-sessions synthetic
+regional-preview case, panel-groups late native footer caller discovery, and viewer
+expansion timing's old screen-width readiness assumption. Native-arrangements,
+native-workspace-ui, workspace-reopen, reliability and controls-hidden passed.
+
+- Production correction: explicit FooterPanel::wireMenu now invalidates the
+  one-time caller search, preferring the current native root's menu. This discovers
+  late-created menus without reinstating full-tree scans on ordinary refresh.
+  New hidden late-caller regression and displayed group suite pass.
+- Synthetic-drag fixture correction: a native hover with no physical button held
+  arrived while the fixture yielded230 ms, finished its synthetic drag and grouped
+  the windows before the regional-preview assertion. Diagnostic logs show
+  button-no-longer-down and both old hosts hidden. The fixture now excludes
+  spontaneous mouse moves only during its explicit held-button synthetic sequence.
+  Explicit Qt moves, covering-window occlusion, native-release tests and all
+  production drag handlers remain intact. Displayed panel-session suite passes.
+- Timing-fixture correction: stateReady now checks exact originating workspace
+  viewport bounds, rather than host.width>=original frame.width. The latter is
+  false when maximizing a large floating panel into a smaller workspace, which is
+  now the agreed behavior. Retain host identity, expansion property, original-frame
+  restore, no synchronous saves, exact tree restore and observed proxy-paint checks.
+  Timing rerun passes with zero timeouts. First Qt proxy-paint p50 expand/restore:
+  standalone7.93/2.86 ms, split27.99/27.50 ms, tabs28.37/25.15 ms. These measure a
+  fixture and changed viewport geometry, not physical-key/GPU/Resolve latency;
+  they do not establish a live speed improvement.

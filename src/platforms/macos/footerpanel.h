@@ -46,7 +46,7 @@ public:
     bool releaseNative(){return nativeLease.release();}
     void refreshSurfaces(){refresh();}
     void restore(){refresh();}
-    void wireMenu(){refresh();}
+    void wireMenu(){searchedCaller=false;refresh();}
     QString pinPrimarySurface(bool enabled) {
         auto host=primarySurface?primarySurface():nullptr;
         if(!host)return QStringLiteral("No workspace surface is available yet.");
@@ -129,7 +129,8 @@ private:
         }
         if(!searchedCaller) {
             searchedCaller=true;
-            for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))
+            nativeCaller=main->findChild<QMenu *>("workspaceShowPanel");
+            if(!nativeCaller)for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))
                 if(menu->objectName()=="workspaceShowPanel"){nativeCaller=menu;break;}
         }
     }

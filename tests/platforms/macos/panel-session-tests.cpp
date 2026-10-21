@@ -12,6 +12,16 @@
 #include "nativeworkspacesizing.h"
 #include "controlservice.h"
 
+// This fixture sends explicit held-button Qt moves. A native hover generated
+// while the synthetic gesture yields to WindowServer has no physically held
+// button and must not terminate that synthetic sequence. Real/native release
+// handling remains covered separately; production input code is unchanged.
+class SyntheticDragMoves : public QObject {
+public:
+    bool eventFilter(QObject *,QEvent *event) override {
+        return event->type()==QEvent::MouseMove && event->spontaneous();
+    }
+};
 static int failures = 0;
 static void check(bool condition, const char *message)
 {
@@ -591,6 +601,7 @@ int main(int argc, char **argv)
             if (!presented) { settle(); QThread::msleep(2); }
         } while (!presented && presentation.elapsed() < 500);
         check(presented, "native drag fixture windows reach the on-screen stack before pointer input");
+        SyntheticDragMoves syntheticMoves;qApp->installEventFilter(&syntheticMoves);
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;
@@ -634,7 +645,7 @@ int main(int argc, char **argv)
         check((!dockTarget || !dockTarget->isVisible()) && (!attachmentPreview || !attachmentPreview->isVisible()), "covering non-dockable window blocks targets on panels behind it");
         covering.hide(); QApplication::sendEvent(draggedSource, &move);
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
-        QApplication::sendEvent(draggedSource, &up); settle(); settle();
+        QApplication::sendEvent(draggedSource, &up); settle(); settle();qApp->removeEventFilter(&syntheticMoves);
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
             "releasing grip beside a panel creates an actual single-host group");
         Unbound::WorkspaceSettings groupSettings;

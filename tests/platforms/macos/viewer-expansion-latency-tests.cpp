@@ -74,8 +74,12 @@ int main(int argc,char **argv) {
                 QElapsedTimer timer;bool painted=false; qint64 firstPaint=-1,ready=-1;
                 auto stateReady=[&] {
                     auto host=panes[3]->window();
-                    return expanding ? host->property("unboundExpanded").toBool() && host->width()>=frame.width() :
-                        host==original && !host->property("unboundExpanded").toBool() && host->geometry()==frame;
+                    if(!expanding)return host==original && !host->property("unboundExpanded").toBool() && host->geometry()==frame;
+                    if(!host->property("unboundExpanded").toBool())return false;
+                    auto owner=placement=="standalone"?&main:original;
+                    const auto margins=host->windowHandle()?host->windowHandle()->frameMargins():QMargins();
+                    const auto viewport=Unbound::workspaceViewportBounds(owner,owner==&main?page:nullptr);
+                    return host->geometry()==viewport.adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
                 };
                 pixels->painted=[&] { if (!painted && stateReady()) { painted=true;firstPaint=timer.nsecsElapsed(); } };
                 Unbound::logEvent("benchmark.viewer-expansion",{{"placement",placement},{"iteration",iteration},{"expanding",expanding}});
