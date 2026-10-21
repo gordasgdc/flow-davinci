@@ -647,3 +647,25 @@ rather than being discarded by early construction. Complete-native mirror clicks
 log both request and dispatch. The assembled hidden flow passes after this cleanup;
 a focused delayed-action startup test is included. These reduce avoidable work by
 inspection; no measured live latency improvement is claimed.
+
+## Review checkpoint — production source9545bb4
+
+All34 hidden regression suites pass on clean unchanged9545bb4, receipt
+`build/macos/verification/9545bb47d6-hidden-20261021T093444Z/receipt.json`.
+Universal helper/bootstrap/launcher and30 workflow wrappers built; signature and
+architecture audit passes. Minimum helper target11.0 does not lower installed
+Resolve21.1.1's macOS15.0 requirement. Displayed group/reopen/reliability compile;
+not run on this candidate. A further test-only assembled sequence passes fully
+detaching Source/Program/Timeline through native drag callbacks, mounting original
+bands on the outer primary surface, regrouping without donating bands into leaves,
+and restoring original native panel+band slots via Native Edit.
+
+User clarified that detached windows may overlap deliberately. Maximize of a
+workspace smaller than the monitor is still awaiting a choice of workspace bounds
+versus monitor expansion; do not claim that UX decision is settled. Current code
+retains monitor expansion with visible-band gates. No physical-pointer, native
+Resolve rendering, newly built startup or Relay/Deliver validation has occurred.
+Secondary footers are complete native-painted mirrors with original-button click
+dispatch, not independent native widget instances; hover/pressed feedback and
+custom native painting need live review. No installation, main merge, push or
+publication occurred. Installed6f395c4 and best091268b checkpoint are unchanged.

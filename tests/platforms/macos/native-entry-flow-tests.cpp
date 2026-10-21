@@ -77,6 +77,19 @@ int main(int argc,char **argv) {
  check(savedRestore,"named arrangement remains directly selectable after Native return");if(savedRestore)savedRestore->trigger();settle(650);
  check(page->findChild<QWidget *>("unboundNativePanelPosition_frameConformTimelines")&&source->window()==&main,"saved arrangement restores original scoped group through menu");
  if(nativeReturn)nativeReturn->trigger();settle(550);
+ auto programDoor=dynamic_cast<Unbound::NativeUndockButton *>(main.findChild<QToolButton *>("openGateToolbarDoor_widgetEditTimelinePlayer"));
+ auto timelineDoor=dynamic_cast<Unbound::NativeUndockButton *>(main.findChild<QToolButton *>("unboundTimelineUndock"));
+ check(programDoor&&programDoor->drag&&timelineDoor&&timelineDoor->drag,"remaining native controls expose direct drag callbacks");
+ if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(QPoint());settle(450);
+ if(programDoor&&programDoor->drag)programDoor->drag(QPoint());settle(450);
+ if(timelineDoor&&timelineDoor->drag)timelineDoor->drag(QPoint());settle(450);
+ auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::MacFloatingHost *>(program->window());
+ check(timelineHost!=&main&&toolbar->window()==timelineHost&&footer->window()==timelineHost,"fully rearranged workspace reserves actual native bands on its outer primary surface");
+ if(programHost&&programHost->attachRequested)programHost->attachRequested(timelineHost,Qt::RightEdge);settle(550);
+ check(timeline->window()==program->window()&&toolbar->window()==timeline->window()&&footer->window()==timeline->window(),"grouping remounts native bands at the outer group surface");
+ check(!timeline->isAncestorOf(toolbar)&&!timeline->isAncestorOf(footer)&&!program->isAncestorOf(toolbar)&&!program->isAncestorOf(footer),"native bands never become borrowed panel leaf content");
+ if(nativeReturn)nativeReturn->trigger();settle(650);
+ check(timeline->parentWidget()==page&&source->parentWidget()==page&&program->parentWidget()==page&&toolbar->parentWidget()==&main&&footer->parentWidget()==&main,"Native Edit restores native panel and band slots after full rearrangement");
  trigger("Source Monitor");trigger("Header");trigger("Footer");settle(500);
  }
  QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();check(child.waitForFinished(30000),"fresh-process restart fixture completes");std::fprintf(stderr,"%s",child.readAllStandardError().constData());check(child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0,"unsaved native changes survive actual process restart");
