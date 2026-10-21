@@ -468,37 +468,43 @@
       "branch": "perf/macos-defer-expansion-persistence",
       "commit": "dbcb2536604d76d33c6d32031858e6a2b78c9224",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
     },
     {
       "branch": "perf/macos-targeted-input-diagnostics",
       "commit": "536ff1403661a6c00c17c3c4772fc07b3650718b",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/macos-workspace-band-transfers",
       "commit": "399dbf969f34453ad05bf40be32e86abe8f1dd33",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/macos-native-band-release",
       "commit": "65c7973a9c3ea3774f5bc930b3fc3f11f108f367",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/macos-automatic-background-flow",
       "commit": "12ecf47c53caeec07d8fb4075a6b9827d44ec178",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/macos-native-return-result",
       "commit": "baf8478f44c5e710693792013848597ba0f1d81c",
       "scope": "native-flow-speed",
-      "acceptance": "live acceptance pending"
+      "acceptance": "pending"
+    },
+    {
+      "branch": "perf/macos-native-expansion-checkpoint",
+      "commit": "e1c6196d700416d5bc9acbcc552c42d0875820bf",
+      "scope": "native-flow-speed",
+      "acceptance": "pending"
     }
   ]
 }
