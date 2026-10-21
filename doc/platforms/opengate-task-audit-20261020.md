@@ -9,6 +9,21 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## User-approved baseline — 2026-10-21
+
+Jordan reports installed 32e3be1 is working very well and explicitly approves
+merging this basic-flow checkpoint to main, pushing to the personal OpenGate
+repository and tagging it as best so far. This supersedes earlier merge/publication
+holds for this checkpoint only. This is user-reported live acceptance, not a claim
+that every prior case or platform has been tested. Installed source: 32e3be1;
+startup helper match and Ready verified. Fresh-profile reset did not complete;
+do not claim the current session was a pristine first launch.
+
+Next isolated branch: add Program Monitor and Source Monitor buttons to the
+existing Workspace Toolbar. Discuss placement/behavior before implementation;
+reuse existing panel commands and native styling. Keep this approved baseline.
+Fusion and platform validation remain separate. Private clip-color notes stay private.
+
 ## Latest status — 2026-10-21 preinstall repair review
 
 This section supersedes historical “current state” and install-authorization notes
