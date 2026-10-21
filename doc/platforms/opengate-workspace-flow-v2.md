@@ -18,6 +18,14 @@ Status: implementation in progress. Installed 85fc822 fails native vacancy recla
 
 ## Evidence required before ready-for-install
 
+Embedded panels reuse GroupPanelHeader, matching existing floating groups. A
+tabbed panel presents its name only in the tab; an untabbed panel has one
+draggable title row. Older injected title/undock rows are hidden while embedded.
+The first-open fixture checks this and exercises 1400, 1000 and 760 requested
+window widths, verifying band separation and header-control bounds. It also
+checks restart and page transitions. This verifies Qt geometry, not Resolve's
+GPU painting or whether its private widgets honor every narrow size.
+
 Record implementation paths, relevant regression results, and unresolved live gates separately. Exercise the assembled first-launch -> title drag -> vacancy reclamation -> hide/show bands -> maximize/restore -> save/update protection -> restart -> Native -> hotkeys -> drag into OpenGate sequence. Do not close a live failure with a component fixture. Review this contract and the user discussion before claiming readiness. Current install remains unchanged during development.
 
 ## Current implementation checkpoint (not ready for installation)

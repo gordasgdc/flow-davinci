@@ -10,6 +10,7 @@ class NativeWorkspaceBinding : public QObject {
 public:
     explicit NativeWorkspaceBinding(QObject *owner) : QObject(owner),arrangement(this) {
         arrangement.restored=[this] { if (changed) changed(); };
+        arrangement.detachRequested=[this](const QString &id){detach(id);};
         arrangement.tearOff=[this](const QString &id,QPoint pointer) {
             QPointer<MacPanelSession> session=registry.value(id);
             if (!detach(id) || !session || !session->floating()) return;

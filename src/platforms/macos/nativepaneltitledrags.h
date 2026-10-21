@@ -13,6 +13,7 @@ public:
     void wire(QWidget *surface,const QString &id,const QString &title,std::function<void(QPoint)> move) {
         if(!surface)return;
         for(auto widget:surface->findChildren<QWidget *>()) {
+            if(widget->property("openGatePanelTitleGesture").toBool())continue;
             QString text;
             if(auto label=qobject_cast<QLabel *>(widget)) {
                 if(label->textInteractionFlags()!=Qt::NoTextInteraction)continue;

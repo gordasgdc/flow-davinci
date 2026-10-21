@@ -50,7 +50,9 @@ public:
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
         auto button = buttons.value(id);
-        if (panel->window()->objectName().startsWith("unboundFloating_group_")) { if (button) button->hide();return; }
+        bool grouped=panel->window()->objectName().startsWith("unboundFloating_group_");
+        for(auto parent=panel;parent&&!grouped;parent=parent->parentWidget())grouped=parent->objectName().startsWith("unboundGroupCell_");
+        if(grouped){if(button)button->hide();return;}
         if (!button) {
             const QStringList anchors{"btnMediaPoolOptions","btnTitleOptions","btnAudioMixerOptions", "btnOptions",
                 "m_BtnDisplayOptions","btnEdlOptions","tbtnPlayerOptions","metadataSelectionMenuBtn","btnCurveSettingsOptions"};

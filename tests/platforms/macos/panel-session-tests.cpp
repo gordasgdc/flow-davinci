@@ -740,12 +740,12 @@ int main(int argc, char **argv)
             file.write(QJsonDocument(value).toJson()); check(file.commit(),"startup preference fixture commits");
             prepareNativeFixture();PanelControls controls;
             check(controls.findChild<QCheckBox *>("hideResolveBackground")->isChecked()==hidden,
-                "automatic background flow ignores legacy modes and retains explicit advanced overrides");
+                "primary workspace ignores legacy modes and manual-hide policies");
         };
         verifyStartupMode({{"hide_background",true}},false);
         verifyStartupMode({{"native_workspace_mode","native"},{"hide_background",true}},false);
         verifyStartupMode({{"native_workspace_mode","floating"},{"hide_background",false}},false);
-        verifyStartupMode({{"background_policy","manual-hidden"}},true);
+        verifyStartupMode({{"background_policy","manual-hidden"}},false);
         verifyStartupMode({{"background_policy","automatic"},{"hide_background",true}},false);
     }
     qputenv("UNBOUND_WORKSPACE_FILE",(logs.path()+"/Workspace.json").toUtf8());

@@ -33,9 +33,32 @@ int main(int argc,char **argv){
  }
  check(binding&&binding->active(),"first open mounts existing panel tree in the primary workspace");
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");
+ auto timelineHeader=timelineCell?timelineCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
+ check(timelineHeader&&timelineHeader->isVisible(),"embedded Timeline reuses the visible draggable group title");
+ auto legacyTimeline=timelineCell?timelineCell->findChild<QWidget *>("unboundTimelineHeader"):nullptr;
+ check(!legacyTimeline||legacyTimeline->isHidden(),"embedded Timeline does not show a duplicate older title row");
+ auto mediaCell=main.findChild<QWidget *>("unboundGroupCell_frameEditPageMediaPool");
+ auto mediaHeader=mediaCell?mediaCell->findChild<QWidget *>("openGateGroupHeaderBar"):nullptr;
+ check(mediaHeader&&mediaHeader->isHidden(),"tabbed Media Pool has a tab title without a repeated panel title row");
  auto primary=component<Unbound::FooterPanel>(&controls);check(primary&&primary->primarySurface()==&main,"primary band owner is the main workspace");
  check(toolbar->window()==&main&&footer->window()==&main,"native header and footer stay in primary window");
  auto panelsButton=right->findChild<QToolButton *>("openGatePrimaryPanels");check(panelsButton&&right->layout()->indexOf(panelsButton)>=0,"primary Panels button occupies a real header slot instead of overlaying native content");
+ // Exercise the actual assembled layout at several widths, rather than merely
+ // checking its initial size. Native GPU painting remains a separate live gate.
+ for(int width:{1400,1000,760,1400}){
+  main.resize(width,900);settle(100);
+  const QRect body(page->mapTo(&main,QPoint()),page->size());
+  const QRect top(toolbar->mapTo(&main,QPoint()),toolbar->size());
+  const QRect bottom(footer->mapTo(&main,QPoint()),footer->size());
+  check(!body.intersects(top)&&!body.intersects(bottom),"resizing keeps panel content outside visible header/footer bands");
+  if(panelsButton)check(right->rect().contains(QRect(panelsButton->mapTo(right,QPoint()),panelsButton->size())),"Panels control remains inside its allocated header slot");
+  if(timelineHeader&&timelineHeader->parentWidget()){
+   auto row=timelineHeader->parentWidget();
+   check(timelineCell->rect().contains(QRect(row->mapTo(timelineCell,QPoint()),row->size())),"single Timeline title row remains within its panel cell");
+  }
+ }
+ main.setGeometry(frame);settle(100);
  auto update=menu?menu->findChild<QAction *>("unboundUpdateWorkspace"):nullptr;check(update&&!update->isEnabled(),"Resolve Layout cannot be updated from the menu");
  auto choices=menu?menu->findChild<QMenu *>("openGateWorkspaces"):nullptr;check(choices&&!choices->actions().isEmpty()&&choices->actions().first()->text()=="Resolve Layout","read-only Resolve Layout is pinned first");
  auto nativeTitle=left->findChild<QPushButton *>();
