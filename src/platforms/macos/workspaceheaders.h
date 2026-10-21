@@ -4,6 +4,8 @@
 #include <QAbstractButton>
 #include "panelscalecontrols.h"
 #include <QMenu>
+#include <QBoxLayout>
+#include <QToolButton>
 #include <QPointer>
 #include <QSet>
 #include <QTimer>
@@ -27,51 +29,26 @@ public:
     ~WorkspaceHeaders() override {
         qApp->removeEventFilter(this);
         for (auto host:known) if (host) setNativeHeaderMenu(host,false,{});
+        delete primaryButton.data();
     }
     void add(Panel panel) { panels.append(std::move(panel)); }
-    std::function<QWidget *()> primary,projectSurface;
-    std::function<QMenu *()> allPanels;
+    std::function<QWidget *()> primary,projectSurface,primaryHeader;
+    std::function<void(QMenu *)> panelEntries;
+    std::function<void(QMenu *,QWidget *)> surfaceControls;
     std::function<QList<Window>()> windows;
     void schedule() { if (!timer.isActive()) timer.start(); }
     void populate(QMenu *menu,QWidget *host) {
-        menu->clear();menu->addSection("This Window");
-        for (const auto &panel:panels) if (panel.host && panel.host()==host) {
+        menu->clear();
+        if(panelEntries)panelEntries(menu);
+        else for(const auto &panel:panels) {
             auto action=menu->addAction(panel.title);action->setCheckable(true);action->setChecked(panel.shown && panel.shown());
-            connect(action,&QAction::triggered,this,[this,panel](bool shown) {
-                QTimer::singleShot(0,this,[panel,shown] {
-                    logEvent("header.panel.visibility",{{"panel",panel.id},{"requested",shown}});
-                    if (panel.setShown) panel.setShown(shown);
-                });
-            });
+            connect(action,&QAction::triggered,this,[this,panel](bool shown){QTimer::singleShot(0,this,[panel,shown]{if(panel.setShown)panel.setShown(shown);});});
         }
-        for (const auto &panel:panels) if (panel.id=="unboundWorkspaceToolbar" && panel.host && panel.host()==host) {
-            auto controls=menu->addMenu("Workspace Toolbar Controls");controls->setProperty("unboundOwnMenu",true);
-            if (panel.scale && panel.setScale) {
-                auto size=controls->addMenu("Interface Size");
-                populatePanelScaleMenu(size,this,panel.scale,panel.setScale);
-            }
-            if (panel.floatPanel) connect(controls->addAction("Float Separately"),&QAction::triggered,this,[this,panel] {
-                QTimer::singleShot(0,this,[panel] { if (!QApplication::activeModalWidget()) panel.floatPanel(); });
-            });
-        }
+        if(surfaceControls)surfaceControls(menu,host);
         const bool global=primary && primary()==host;
-        if (global) {
-            if (auto callers=allPanels ? allPanels() : nullptr) {
-                menu->addSeparator();auto all=menu->addMenu("All Panels");all->setProperty("unboundOwnMenu",true);all->addActions(callers->actions());
-            }
-            if (windows) {
-                auto groups=menu->addMenu("Floating Windows");
-                for (const auto &entry:windows()) {
-                    auto action=groups->addAction(entry.title);action->setCheckable(true);action->setChecked(entry.shown && entry.shown());
-                    connect(action,&QAction::triggered,this,[this,entry](bool shown) {
-                        QTimer::singleShot(0,this,[entry,shown] {
-                            logEvent("header.window.visibility",{{"window",entry.title},{"requested",shown}});
-                            if (entry.setShown) entry.setShown(shown);
-                        });
-                    });
-                }
-            }
-        }
+        // Panel entries already expose every panel, including those in floating
+        // groups. Do not add a second inventory below a Floating Windows subtree.
+
         logEvent("header.menu.open",{{"scope",global ? "workspace" : "window"},{"host",host->objectName()}});
     }
 protected:
@@ -102,16 +79,21 @@ private:
         projectScanned=true;lastProject=project;QSet<QWidget *> current;
         for (const auto &panel:panels) if (auto host=panel.host ? panel.host() : nullptr)
             if (host->objectName().startsWith("unboundFloating_")) current.insert(host);
+        // Recovery must survive hiding the workspace controls. Native main and
+        // every retained surface get their own independent title-bar access.
+        if (auto main=projectSurface ? projectSurface() : nullptr) current.insert(main->window());
         for (auto host:current) {
             if (!host->property("unboundHeaderOriginalTitle").isValid()) host->setProperty("unboundHeaderOriginalTitle",host->windowTitle());
-            if (!project.isEmpty()) {
-                QString title=project;
-                if (!primary || primary()!=host) {
-                    QStringList names;for (const auto &panel:panels) if (panel.host && panel.host()==host) names.append(panel.title);
-                    if (!names.isEmpty()) title+=" — "+names.first()+(names.size()>1 ? QString(" +%1").arg(names.size()-1) : QString());
-                }
-                if (host->windowTitle()!=title) { host->setWindowTitle(title);logEvent("header.project.updated",{{"project",project},{"host",host->objectName()}}); }
+            const bool mainSurface=projectSurface && projectSurface() && projectSurface()->window()==host;
+            if(!mainSurface) {
+                setNativeHeaderMenu(host,false,{});
+                const auto original=host->property("unboundHeaderOriginalTitle").toString();
+                if(!original.isEmpty()&&host->windowTitle()!=original)host->setWindowTitle(original);
+                if(!known.contains(host))known.append(host);
+                continue;
             }
+            // Panels belongs to the main title bar, independently of Header.
+            // Native title-bar layout reserves space; never overlay panel input.
             QPointer<WorkspaceHeaders> alive(this);QPointer<QWidget> window(host);
             setNativeHeaderMenu(host,true,[alive,window] {
                 if (!alive || !window || QApplication::activeModalWidget()) return;
@@ -125,6 +107,7 @@ private:
         else if (!current.contains(known[i])) { setNativeHeaderMenu(known[i],false,{});known.removeAt(i); }
     }
     QList<Panel> panels;QList<QPointer<QWidget>> known;QPointer<QWidget> projectLabel;
+    QPointer<QToolButton> primaryButton;
     QString lastProject;QTimer timer,projectWatch;bool projectScanned=false;
 };
 }

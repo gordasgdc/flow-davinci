@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QElapsedTimer>
@@ -44,7 +45,7 @@ int main(int argc,char **argv)
         grid->addWidget(pane,i/3,i%3);
     }
     QAction viewer("Single Viewer Mode",&main); viewer.setObjectName("workspaceSingleViewerModeToggle"); viewer.setCheckable(true);
-    main.show(); settle(); PanelControls controls; controls.show(); settle();
+    main.show(); settle(); prepareNativeFixture();PanelControls controls; controls.show(); settle();
     for (const auto &name : names) { controls.findChild<QPushButton *>("undock_"+name)->click(); settle(130); }
     const auto host = [](const QString &name) -> Unbound::MacFloatingHost * {
         for (auto window : QApplication::topLevelWidgets()) if (window->objectName() == "unboundFloating_"+name)

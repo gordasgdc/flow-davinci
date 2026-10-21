@@ -70,11 +70,9 @@ private:
         // minima are lowered just to make the outer window appear smaller.
         const auto required=layout->minimumSize().expandedTo(QSize(320,200));
         main->setMinimumSize(required); layout->activate();
-        if (!main->isMaximized() && !main->isFullScreen()) {
-            const auto preferred=layout->sizeHint().expandedTo(required);
-            main->resize(before.size().boundedTo(preferred).expandedTo(required));
-            lastAutomaticGeometry=main->geometry(); automaticGeometry=true;
-        }
+        // Reclaim space inside the user's frame. Lower the resize floor, but
+        // never shrink the main workspace just because a panel was detached.
+
         logEvent("workspace.native-sizing.applied",{{"managed_panel_count",managedPanels.size()},
             {"minimum_width",required.width()},{"minimum_height",required.height()},
             {"width_before",before.width()},{"height_before",before.height()},

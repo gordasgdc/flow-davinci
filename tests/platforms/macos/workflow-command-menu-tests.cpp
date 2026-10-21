@@ -23,6 +23,8 @@ int main(int argc,char **argv) {
         int changes=0;QObject::connect(action,&QAction::changed,[&] { ++changes; });
         QObject::connect(&native,&QMenu::aboutToShow,[&] { observer.wire(&root); });
         for (int i=0;i<50;++i) { observer.wire(&root);QMetaObject::invokeMethod(&native,"aboutToShow",Qt::DirectConnection); }
+        Unbound::flushDiagnostics();QFile discovery(logs.path()+"/events.jsonl");discovery.open(QIODevice::ReadOnly);
+        ok &= discovery.readAll().count("\"event\":\"command.menu.discovery\"")==1;
         ok &= native.actions()==original && action->associatedWidgets()==hosts;
         ok &= action->parent()==&native && action->shortcuts().isEmpty() && changes==0;
         ok &= !main.actions().contains(action) && !floating.actions().contains(action);

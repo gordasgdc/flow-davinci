@@ -3,6 +3,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <objc/runtime.h>
 #include <notify.h>
+#include <cmath>
 #include <QWidget>
 #include <QApplication>
 #include <QCursor>
@@ -167,6 +168,24 @@ void setNativeExpansionPriority(QWidget *widget, bool expanded)
         window.level = prior.integerValue;
         objc_setAssociatedObject(window, &expansionLevelKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
+}
+int nativeWorkspaceTopInset(QWidget *page)
+{
+    if(!page)return 0;
+    auto main=page->window();
+    NSView *view=reinterpret_cast<NSView *>(main->winId());
+    NSWindow *window=view.window;
+    int top=0;
+    if(window && (window.styleMask&NSWindowStyleMaskFullSizeContentView)) {
+        const NSRect safe=[view convertRect:window.contentLayoutRect fromView:nil];
+        const double distance=view.isFlipped?NSMinY(safe)-NSMinY(view.bounds):NSMaxY(view.bounds)-NSMaxY(safe);
+        top=qMax(0,int(std::ceil(distance)));
+    }
+    // Resolve can draw its project strip inside Qt's client rectangle even
+    // when AppKit reports no full-size title-bar inset. Preserve that real row.
+    for(auto strip:main->findChildren<QWidget *>("UiProjectsMainBarImp",Qt::FindDirectChildrenOnly))
+        if(strip->isVisible())top=qMax(top,strip->mapTo(main,QPoint(0,strip->height())).y());
+    return qMax(0,top-page->mapTo(main,QPoint()).y());
 }
 void applyNativeChrome(QWidget *widget, bool compact)
 {

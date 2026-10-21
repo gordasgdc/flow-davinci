@@ -30,6 +30,9 @@ int main(int argc,char **argv)
     check(read(path).isEmpty(),"routine telemetry waits for the bounded flush");
     Unbound::logEvent("input.button.clicked",{{"sequence",-2}});
     check(read(path).count('\n') == 2,"button activation immediately flushes itself and preceding telemetry");
+    const auto activation=QJsonDocument::fromJson(read(path).split('\n')[1]).object();
+    check(!activation["session"].toString().isEmpty() && activation["event_sequence"].toInt()>0,
+        "activation records carry session identity and ordered event identity");
     Unbound::logEvent("panel.undock.request",{{"sequence",-3}});
     check(read(path).count('\n') == 3,"ownership-change request is durable before the operation begins");
     const QString payload(262144,'x');

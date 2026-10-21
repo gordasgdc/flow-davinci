@@ -11,37 +11,45 @@
 #include <QTemporaryDir>
 #include <QVBoxLayout>
 #include "workspaceheaders.h"
+#include "panelcallermenu.h"
 #include <cstdio>
 int main(int argc,char **argv) {
     QApplication app(argc,argv);QTemporaryDir logs;qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());
     QWidget main,first(&main,Qt::Tool),second(&main,Qt::Tool),toolbar(&main),center(&toolbar);
     first.setObjectName("unboundFloating_primary");second.setObjectName("unboundFloating_secondary");
+    first.setWindowTitle("Timeline");second.setWindowTitle("Source Monitor");
     for (auto widget:{&main,&first,&second}) { widget->setAttribute(Qt::WA_DontShowOnScreen);widget->resize(600,400);widget->show(); }
     center.setObjectName("UiProjectsMainBarImp");auto project=new QPushButton("Project A",&center);project->setObjectName("btnProjectsMainBarProjectList");
     (new QVBoxLayout(&center))->addWidget(project);(new QVBoxLayout(&toolbar))->addWidget(&center);toolbar.show();center.show();project->show();
     double scale=1.;int floated=0;
     bool source=true;int calls=0;QMenu global;auto globalAction=global.addAction("Show Source Monitor");
     Unbound::WorkspaceHeaders headers(nullptr);
-    headers.primary=[&] { return &first; };headers.projectSurface=[&] { return &toolbar; };headers.allPanels=[&] { return &global; };
+    headers.primary=[&] { return &first; };headers.projectSurface=[&] { return &toolbar; };
     headers.add({"timeline","Timeline",[&] { return &first; },[] { return true; },[](bool) {}});
     headers.add({"source","Source Monitor",[&] { return &second; },[&] { return source; },[&](bool shown) { source=shown;++calls; }});
     headers.add({"unboundWorkspaceToolbar","Workspace Toolbar",[&] { return &first; },[] { return true; },[](bool) {},
         [&] { return scale; },[&](double value) { scale=value; },[&] { ++floated; }});
     auto settle=[] { QElapsedTimer t;t.start();while (t.elapsed()<90) { QApplication::processEvents();QThread::msleep(1); } };
-    headers.schedule();settle();bool ok=first.windowTitle()=="Project A" && second.windowTitle().contains("Source Monitor");
-    project->hide();project->setText("Project B");headers.schedule();settle();do { const bool passed=(first.windowTitle()=="Project B"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
-    QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()==2 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    headers.schedule();settle();bool ok=first.windowTitle()=="Timeline" && second.windowTitle()=="Source Monitor";
+    ok &= !Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty()&&Unbound::nativeHeaderMenuFrameForTest(&first).isEmpty()&&Unbound::nativeHeaderMenuFrameForTest(&second).isEmpty();
+    toolbar.hide();headers.schedule();settle();ok &= !Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty();toolbar.show();
+    project->hide();project->setText("Project B");headers.schedule();settle();do { const bool passed=(first.windowTitle()=="Timeline"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()==3 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     local.actions()[1]->trigger();settle();do { const bool passed=(!source && calls==1); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
-    QMenu primary;headers.populate(&primary,&first);bool shared=false;
-    for (auto action:primary.actions()) if (action->menu()) shared |= action->menu()->actions().contains(globalAction);
-    do { const bool passed=(shared && first.size()==QSize(600,400)); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
-    for (auto action:primary.actions()) if (auto controls=action->menu()) if (action->text()=="Workspace Toolbar Controls") {
-        for (auto item:controls->actions()) {
-            if (item->text()=="Float Separately") item->trigger();
-            if (item->menu()) item->menu()->actions().first()->trigger();
-        }
-    }
-    settle();do { const bool passed=(floated==1 && qAbs(scale-.9)<.001); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
+    headers.panelEntries=[&](QMenu *menu){menu->addAction(globalAction);};
+    QMenu primary;headers.populate(&primary,&first);QMenu secondary;headers.populate(&secondary,&second);
+    ok &= primary.actions().contains(globalAction)&&secondary.actions().contains(globalAction);
+    for(auto action:primary.actions())ok &= action->text()!="All Panels" && action->text()!="This Window";
+    settle();ok &= floated==0 && qAbs(scale-1.)<.001;
+    Unbound::PanelCallerMenu registry(nullptr);registry.currentPage=[] {return QStringLiteral("edit");};
+    bool shown=true;int visibilityCalls=0,showOnlyCalls=0;
+    registry.add({"source","Source Monitor","edit",[]{return true;},[&]{return shown;},[&]{shown=true;++showOnlyCalls;},[&](bool value){shown=value;++visibilityCalls;}});
+    registry.add({"inspector","Inspector","edit",[]{return true;},[]{return false;},[]{}});
+    QMenu flat;registry.populateFlat(&flat);ok &= flat.actions().size()==2&&flat.actions().first()->isChecked();
+    for(auto action:flat.actions())ok &= !action->menu();
+    flat.actions().first()->trigger();settle();ok &= !shown&&visibilityCalls==1&&showOnlyCalls==0;
+    QMenu other;registry.populateFlat(&other);ok &= !other.actions().first()->isChecked();other.actions().first()->trigger();settle();ok &= shown&&visibilityCalls==2;
+    QMenu originalRoot;auto originalMenu=registry.wire(&originalRoot);auto originalAction=originalMenu->findChild<QAction *>("openGateShowPanel_source",Qt::FindDirectChildrenOnly);ok &= originalMenu->findChildren<QMenu *>().isEmpty();originalAction->trigger();settle();ok &= !shown&&visibilityCalls==3&&showOnlyCalls==0;
     QWidget compactWrapper;QStackedWidget stack(&compactWrapper);QWidget toolbarRow;
     toolbarRow.setFixedHeight(30);stack.addWidget(&toolbarRow);Unbound::CompactToolbar fit(&compactWrapper,&stack);settle();
     do { const bool passed=(compactWrapper.maximumHeight()==30); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);

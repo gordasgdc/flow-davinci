@@ -20,10 +20,12 @@ public:
     void restoreForEditor() {} // Compatibility with existing callers; no restoration needed.
     void wire(QMenu *root) {
         Q_UNUSED(root);
-        if (wiring) return;
+        if (wiring || !dirty) return;
         QScopedValueRollback<bool> guard(wiring,true);
+        dirty=false;
         QList<QPointer<QWidget>> widgets;
         for (auto widget:QApplication::allWidgets()) widgets.append(widget);
+        logEvent("command.menu.discovery",{{"widget_count",widgets.size()}});
         for (const auto &widget:widgets) if (auto menu=qobject_cast<QMenu *>(widget.data())) {
             QList<QPointer<QAction>> actions;
             for (auto action:menu->actions()) actions.append(action);
@@ -50,6 +52,7 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
+        if((event->type()==QEvent::ActionAdded || event->type()==QEvent::ActionRemoved)&&qobject_cast<QMenu *>(object))dirty=true;
         if (event->type()==QEvent::Shortcut)
             if (auto action=qobject_cast<QAction *>(object)) if (isCommand(action))
                 logEvent("command.native.shortcut",{{"action",action->objectName()},{"label",action->text()}});
@@ -74,6 +77,6 @@ private:
     }
     QSet<QAction *> observed;
     QHash<QAction *,QString> bindingStates;
-    bool wiring=false;
+    bool wiring=false,dirty=true;
 };
 }

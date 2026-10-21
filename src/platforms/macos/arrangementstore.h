@@ -6,6 +6,7 @@
 #include <QUuid>
 #include "workspacesettings.h"
 #include "workspacepages.h"
+#include "../../core/workspacepresetpolicy.h"
 
 namespace Unbound {
 class ArrangementStore
@@ -37,6 +38,16 @@ public:
     QJsonArray list() const { return entries; }
     QJsonArray list(const QString &page) const
     { QJsonArray result; for (const auto &entry : entries) if (workspacePage(entry.toObject()) == page) result.append(entry); return result; }
+    QJsonArray visibleList(const QString &page = {}) const {
+        QJsonArray result;for(const auto &value:entries){const auto entry=value.toObject();
+            if(!entry["hidden"].toBool() && (page.isEmpty() || workspacePage(entry)==page))result.append(entry);
+        }return result;
+    }
+    bool hasHidden() const {for(const auto &entry:entries)if(entry.toObject()["hidden"].toBool())return true;return false;}
+    QString revealHidden() {
+        auto next=entries;for(int i=0;i<next.size();++i){auto entry=next[i].toObject();entry.remove("hidden");next[i]=entry;}
+        return write(next);
+    }
     QString error() const { return failure; }
     QJsonObject find(const QString &id) const
     { for (const auto &entry : entries) if (entry.toObject()["id"] == id) return entry.toObject(); return {}; }
@@ -71,16 +82,17 @@ public:
     }
     QString reorderPage(const QString &page,const QStringList &order)
     {
-        if (order.size() != list(page).size()) return "Arrangement order does not match this page's saved presets.";
-        for (const auto &id : order) if (workspacePage(find(id)) != page) return "Arrangement belongs to another page.";
+        if (order.size() != visibleList(page).size()) return "Arrangement order does not match this page's saved presets.";
+        for (const auto &id : order) if (workspacePage(find(id)) != page || find(id)["hidden"].toBool()) return "Arrangement belongs to another page or is hidden.";
         QStringList all; int next = 0;
-        for (const auto &entry : entries) all.append(workspacePage(entry.toObject()) == page ? order[next++] : entry.toObject()["id"].toString());
+        for (const auto &entry : entries) all.append(workspacePage(entry.toObject()) == page && !entry.toObject()["hidden"].toBool() ? order[next++] : entry.toObject()["id"].toString());
         return reorder(all);
     }
 private:
     QString validName(const QString &name, const QString &except = {}, const QString &page = "edit") const
     {
         if (name.trimmed().isEmpty()) return "Enter an arrangement name.";
+        if (name.trimmed().compare("Resolve Layout",Qt::CaseInsensitive)==0) return "Resolve Layout is reserved. Choose a name for your workspace.";
         for (auto value : entries) {
             auto entry = value.toObject();
             if (entry["id"] != except && workspacePage(entry) == page && entry["name"].toString().compare(name.trimmed(), Qt::CaseInsensitive) == 0)
@@ -90,6 +102,7 @@ private:
     }
     QString change(const QString &id, const QString &name, const QJsonObject &workspace, bool erase)
     {
+        if (WorkspacePresetPolicy::builtIn(id)) return "Resolve Layout is read-only. Save as a new workspace instead.";
         auto next = entries;
         for (int i = 0; i < next.size(); ++i) {
             auto entry = next[i].toObject();

@@ -72,6 +72,10 @@ int main(int argc, char **argv)
         QMouseEvent release(QEvent::MouseButtonRelease,QPointF(4,4),QPointF(100,100),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
         QApplication::sendEvent(button,&press); QApplication::sendEvent(button,&move); QApplication::sendEvent(button,&release);
         check(drags==1 && toggles==1,"native undock drag crosses threshold once and cannot become a dock click on release");
+        QWidget floatingGroup;floatingGroup.setObjectName("unboundFloating_group_timeline_inspector");
+        nativePanel.setParent(&floatingGroup);decoration.wire(&nativePanel,"pool","Media Pool",false,[&]{++toggles;});
+        check(button&&!button->isHidden(),"a native panel nested inside a floating group keeps its own placement control");
+        nativePanel.setParent(nullptr);
     }
     {
         QMenu nativeCommands; int opened=0;
@@ -115,14 +119,13 @@ int main(int argc, char **argv)
         check(root->title()=="OpenGate UI","top-level product menu is named OpenGate UI");
         Unbound::PanelCallerMenu callers; int panelShows=0; bool visible=false;
         callers.currentPage=[&] { return activePage; };
-        callers.add({"source","Source Monitor","edit",[] { return true; },[&] { return visible; },[&] { visible=true; ++panelShows; }});
+        callers.add({"source","Source Monitor","edit",[] { return true; },[&] { return visible; },[&] { visible=true; ++panelShows; },[&](bool value){visible=value;++panelShows;}});
         menus.panelMenu=[&](QMenu *menu) { return callers.wire(menu); }; menus.wire(); menus.wire();
         auto show=root->findChild<QMenu *>("openGateShowPanel");
-        auto edit=show ? show->findChild<QMenu *>("openGatePanelPage_edit") : nullptr;
-        auto source=edit ? edit->findChild<QAction *>("openGateShowPanel_source") : nullptr;
-        check(show && show->title()=="Show Panel in Workspace" && edit && edit->title()=="Edit" && source && source->isEnabled(),"Show Panel groups Edit callers by native page");
+        auto source=show ? show->findChild<QAction *>("openGateShowPanel_source",Qt::FindDirectChildrenOnly) : nullptr;
+        check(show && show->title()=="Panels" && show->findChildren<QMenu *>().isEmpty() && source && source->isEnabled(),"Panels directly exposes current-page controls without category submenus");
         if (source) { source->trigger(); QApplication::processEvents(); menus.wire(); source->trigger(); QApplication::processEvents(); menus.wire(); }
-        check(panelShows==2 && visible && source && source->isChecked(),"repeated show calls reveal rather than toggle-hide and do not duplicate dispatch");
+        check(panelShows==2 && !visible && source && !source->isChecked(),"both entry points use the same Show/Hide state without placement changes");
         activePage="color"; menus.wire();
         check(source && !source->isEnabled(),"Edit-only callers are disabled on other pages");
         activePage="edit"; menus.wire(); if (source) source->trigger(); activePage="color"; QApplication::processEvents();
@@ -155,15 +158,15 @@ int main(int argc, char **argv)
         check(!root->actions().contains(panelShortcuts)&&root->findChildren<QAction *>("unboundPanelShortcuts").size()==1,"shortcut editor has one presentation, without duplicate actions");
         panelShortcuts->trigger();QApplication::processEvents();check(shortcutsCalls==2,"nested shortcut editor action retains its original callback");
 
-        check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
-            "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
+        check(root->actions().first()->text() == "OpenGate Workspaces" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
+            "OpenGate Workspaces is first; original Resolve recovery remains separate from native Workspace commands");
         check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
-        auto original = root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly);
+        auto original = root->findChild<QAction *>("unboundWorkspaceRestore_"+second);
         original->trigger(); QApplication::processEvents(); menus.wire();
         check(restores == 1 && selected == second && preset->menuAction()->isChecked(), "menu restores stable ID once and synchronizes selection");
         store.rename(second,"Mix"); store.reorder({second,first}); menus.wire();
         QList<QString> ids; for (auto action : submenu->actions()) if (action->menu()) ids.append(action->menu()->property("unboundArrangementId").toString());
-        check(preset->title() == "Mix" && root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly) == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
+        check(preset->title() == "Mix" && root->findChild<QAction *>("unboundWorkspaceRestore_"+second) == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
         original->trigger(); QApplication::processEvents();
         check(restores == 2, "repeated menu synchronization creates no duplicate restore callbacks");
         preset->findChild<QAction *>("unboundUpdateArrangement")->trigger(); QApplication::processEvents();
@@ -174,12 +177,12 @@ int main(int argc, char **argv)
         check(nativeCalls == 1, "native recovery remains callable after deleting the selected preset");
         QString color; store.create("Color Review",{{"page","color"},{"version",1}},color);
         activePage = "color"; menus.wire();
-        auto colorRecall = root->findChild<QAction *>("unboundWorkspaceRestore_"+color,Qt::FindDirectChildrenOnly);
-        check(root->actions().first()->text() == "Native Color UI" && colorRecall && root->actions().contains(colorRecall) &&
-            !root->actions().contains(root->findChild<QAction *>("unboundWorkspaceRestore_"+first,Qt::FindDirectChildrenOnly)),
+        auto colorRecall = root->findChild<QAction *>("unboundWorkspaceRestore_"+color);
+        check(root->actions().first()->text() == "OpenGate Workspaces" && colorRecall && root->findChild<QMenu *>("openGateWorkspaces")->actions().contains(colorRecall) &&
+            !root->actions().contains(root->findChild<QAction *>("unboundWorkspaceRestore_"+first)),
             "page switching relabels native recovery and filters saved workspaces without mixing Edit and Color");
         check(!colorRecall->isEnabled(),"unimplemented page backends cannot restore Edit content under another page's name");
-        root->actions().first()->trigger(); QApplication::processEvents();
+        root->findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
         check(nativeCalls == 2 && nativePage == "color","native recovery receives the page shown in its label");
         menus.supportedPage = [](QString) { return true; }; menus.wire();
         colorRecall->trigger(); activePage = "edit"; QApplication::processEvents();

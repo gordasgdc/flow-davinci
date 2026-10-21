@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QVBoxLayout>
 #include "diagnostics.h"
+#include "nativechrome.h"
 namespace Unbound {
 // Lease a page's layout as one unit, keeping its native slot graph intact for
 // restoration. Only a custom arrangement occupies the page while the lease is
@@ -13,6 +14,13 @@ public:
     explicit NativeRootLayout(QObject *owner=nullptr) : QObject(owner) {}
     ~NativeRootLayout() override { restore(); }
     bool active() const { return page && nativeLayout && customLayout; }
+    static bool ownsParkedWidget(QWidget *widget,QWidget *nativePage) {
+        if(!widget || !nativePage || widget==nativePage)return false;
+        for(auto parent=widget->parentWidget();parent;parent=parent->parentWidget())
+            if(parent->objectName()=="unboundNativeLayoutStash" && parent->parentWidget()==nativePage->window() &&
+               parent->property("unboundParkedNativePage").value<QObject *>()==nativePage && parent->layout())return true;
+        return false;
+    }
     static bool contains(QWidget *nativePage,QWidget *container) {
         if (!nativePage || !container || container==nativePage) return false;
         for (auto ancestor=container; ancestor && ancestor!=nativePage; ancestor=ancestor->parentWidget()) {
@@ -33,7 +41,7 @@ public:
             ? retained : originalParent;
     }
     static QWidget *logicalParent(QWidget *nativePage,QWidget *currentParent) {
-        return currentParent && currentParent->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,currentParent)
+        return currentParent && ((currentParent->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,currentParent)) || (currentParent->objectName()=="unboundNativeLayoutStash" && currentParent->property("unboundParkedNativePage").value<QObject *>()==nativePage))
             ? nativePage : currentParent;
     }
     QString mount(QWidget *nativePage,QWidget *arrangement) {
@@ -50,6 +58,7 @@ public:
             if (child!=surface && !child->isWindow()) baselineVisibility.append({child,child->isHidden(),child->geometry()});
         const auto margins=nativeLayout->contentsMargins();
         stash=new QWidget(main); stash->setObjectName("unboundNativeLayoutStash"); stash->hide();
+        stash->setProperty("unboundParkedNativePage",QVariant::fromValue<QObject *>(page));
         stash->setLayout(nativeLayout);
         if (page->layout() || stash->layout()!=nativeLayout) {
             if (!page->layout() && stash->layout()==nativeLayout) page->setLayout(nativeLayout);
@@ -63,7 +72,8 @@ public:
         // widgets are not necessarily represented by a QLayoutItem.
         for (auto child : page->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly))
             if (child!=surface && !child->isWindow()) { visibility.append({child,child->isHidden(),child->geometry()}); child->hide(); }
-        customLayout=new QVBoxLayout(page); customLayout->setContentsMargins(margins); customLayout->setSpacing(0);
+        auto safeMargins=margins;safeMargins.setTop(qMax(margins.top(),nativeWorkspaceTopInset(page)));
+        customLayout=new QVBoxLayout(page); customLayout->setContentsMargins(safeMargins); customLayout->setSpacing(0);
         customLayout->addWidget(surface);
         rootProperty=surface->property("unboundNativeArrangementRoot");
         surface->setProperty("unboundNativeArrangementRoot",true);

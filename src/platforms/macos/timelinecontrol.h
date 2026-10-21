@@ -38,8 +38,8 @@ public:
         }
         invoke=std::move(toggle); button->drag=std::move(drag);
         bool grouped=false;
-        for (auto parent=timeline->parentWidget();parent;parent=parent->parentWidget())
-            grouped |= parent->objectName().startsWith("unboundGroupCell_");
+        for (auto parent=timeline;parent;parent=parent->parentWidget())
+            grouped |= parent->objectName()=="unboundGroupCell_frameConformTimelines";
         row->setVisible(!grouped && !timeline->window()->objectName().startsWith("unboundFloating_"));
     }
 private:

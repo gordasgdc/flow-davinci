@@ -3,6 +3,7 @@
 #include <QCheckBox>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QToolButton>
 #include "arrangementcontrols.h"
 #include "controlscroll.h"
 #include "productidentity.h"
@@ -27,9 +28,24 @@ public:
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
         snap=new QCheckBox("Snap window edges (Option bypasses)",owner); snap->setObjectName("snapWindows");
         snap->setChecked(saved["snap_windows"].toBool(true)); options->addWidget(snap);
-        background=new QCheckBox("Floating workspace (hide native background)",owner); background->setObjectName("hideResolveBackground");
-        const auto mode=saved["native_workspace_mode"].toString();
-        background->setChecked(mode=="floating" || (mode.isEmpty() && saved["hide_background"].toBool(false))); options->addWidget(background);
+        // Ordinary arrangements use automatic shell visibility. Historical
+        // hide_background/native_workspace_mode values describe the old flow;
+        // only an explicit current policy restores a manual override.
+        auto advanced=new QToolButton(owner);advanced->setText("Advanced");advanced->setCheckable(true);
+        advanced->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);advanced->setArrowType(Qt::RightArrow);
+        options->addWidget(advanced);
+        auto advancedBody=new QWidget(owner);auto advancedLayout=new QVBoxLayout(advancedBody);
+        advancedLayout->setContentsMargins(0,0,0,0);
+        background=new QCheckBox("Hide native shell (manual override)",advancedBody);background->setObjectName("hideResolveBackground");
+        background->setToolTip("Normally OpenGate handles the native background automatically. Use this override only for a fully floating workspace.");
+        background->setChecked(saved["background_policy"]=="manual-hidden");advancedLayout->addWidget(background);
+        options->addWidget(advancedBody);advancedBody->hide();
+        // Retain recovery state and wiring, but do not expose the old shell
+        // switch as part of the Native Edit flow.
+        background->hide();advanced->hide();
+        connect(advanced,&QToolButton::toggled,advancedBody,[advanced,advancedBody](bool expanded) {
+            advanced->setArrowType(expanded?Qt::DownArrow:Qt::RightArrow);advancedBody->setVisible(expanded);
+        });
         hierarchy=new QCheckBox("Use panel hierarchy",owner); hierarchy->setObjectName("panelHierarchy");
         hierarchy->setChecked(saved["panel_hierarchy"].toBool(true)); bodyLayout->addWidget(hierarchy);
         auto styleRow=new QHBoxLayout; styleRow->addWidget(new QLabel("Panel title bars",owner));
@@ -72,11 +88,9 @@ public:
     void addFooter()
     {
         const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel("Page Navigation",body),row,0);
-        floatFooter=new QPushButton("Float",body); floatFooter->setObjectName("floatPageNavigation"); panelGrid->addWidget(floatFooter,row,1);
-        dockFooter=new QPushButton("Native Dock",body); dockFooter->setObjectName("dockPageNavigation"); panelGrid->addWidget(dockFooter,row,2);
-        showFooter=new QPushButton("Show",body); showFooter->setObjectName("showPageNavigation"); panelGrid->addWidget(showFooter,row,3);
-        hideFooter=new QPushButton("Hide",body); hideFooter->setObjectName("hidePageNavigation"); panelGrid->addWidget(hideFooter,row,4);
-        attachFooter=new QPushButton("Attach to Workspace",body); attachFooter->setObjectName("attachPageNavigation"); panelGrid->addWidget(attachFooter,row,5,1,2);
+        showFooter=new QPushButton("Show",body);showFooter->setObjectName("showPageNavigation");panelGrid->addWidget(showFooter,row,1);
+        hideFooter=new QPushButton("Hide",body);hideFooter->setObjectName("hidePageNavigation");panelGrid->addWidget(hideFooter,row,2);
+        pinFooter=new QPushButton("Pin to Main Surface",body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip("Reserve or remove the Page Navigation band on the main surface");pinFooter->hide(); // Compatibility object only; Footer uses Show/Hide, never optional pinning.
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }
@@ -86,7 +100,7 @@ public:
     QCheckBox *pin=nullptr,*constrain=nullptr,*snap=nullptr,*background=nullptr,*hierarchy=nullptr;
     QComboBox *style=nullptr,*first=nullptr,*second=nullptr;
     QList<QPushButton *> bulkButtons,groupButtons;
-    QPushButton *floatFooter=nullptr,*dockFooter=nullptr,*showFooter=nullptr,*hideFooter=nullptr,*attachFooter=nullptr;
+    QPushButton *pinFooter=nullptr,*showFooter=nullptr,*hideFooter=nullptr;
 private:
     QWidget *owner,*body=nullptr;
     QVBoxLayout *bodyLayout=nullptr;

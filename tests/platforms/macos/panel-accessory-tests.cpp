@@ -4,7 +4,19 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "footerpanel.h"
+#include "panelaccessorylease.h"
+#include "panelsession.h"
 
+class ParentlessNativeGuard : public QObject {
+public:
+    int parentless=0;
+protected:
+    bool eventFilter(QObject *object,QEvent *event) override {
+        if(event->type()==QEvent::ParentChange)if(auto widget=qobject_cast<QWidget *>(object))
+            if(!widget->parentWidget())++parentless;
+        return false;
+    }
+};
 int main(int argc,char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM","1");
@@ -48,50 +60,48 @@ int main(int argc,char **argv)
         delete timeline; timeline=nullptr;
         check(footer && footer->parentWidget()==&main && !lease.active(),"owner destruction restores footer instead of deleting native content");
     }
-    timeline=new QWidget(&main); timeline->setObjectName("frameConformTimelines"); new QVBoxLayout(timeline);
-    native->insertWidget(0,timeline); timeline->show(); QApplication::processEvents();
     {
-        bool available=true;QWidget *owner=timeline;
-        Unbound::FooterPanel panel(nullptr,[&] { return &main; },{});
-        panel.attachmentOwner=[&]() -> QWidget * { return available ? owner : nullptr; };
-        QMenu workspace(&main);auto navigation=workspace.addAction("Show Page Navigation");navigation->setCheckable(true);
-        navigation->setShortcut(QKeySequence(Qt::Key_F12));
-        panel.restore();
-        check(navigation->isChecked(),"native Page Navigation action reflects the attached footer");
-        navigation->trigger();QApplication::processEvents();
-        check(panel.snapshot()["hidden"].toBool(),"native Page Navigation action hides the attached footer");
-        navigation->trigger();QApplication::processEvents();
-        check(!panel.snapshot()["hidden"].toBool(),"native Page Navigation action restores the attached footer");
-        check(panel.snapshot()["attachment"]=="workspace" && timeline->isAncestorOf(footer),"default Page Navigation travels with its available workspace owner");
-        // Never enter the floating fallback in this hidden-only fixture.
-        if (!footer || !timeline->isAncestorOf(footer)) return 1;
-        panel.toggleVisibility(); const auto saved=panel.snapshot();
-        check(saved["hidden"].toBool() && !saved["floating"].toBool(),"attached hidden door persists independently of floating state");
-        available=false; panel.syncAttachment();
-        check(footer->parentWidget()==&main,"leaving Edit returns Page Navigation to its native position");
-        available=true; panel.syncAttachment();
-        check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"returning owner restores attachment and hidden door");
-        QWidget other(&main);auto otherLayout=new QVBoxLayout(&other);other.show();
-        owner=&other;panel.syncAttachment();
-        check(other.isAncestorOf(footer) && panel.snapshot()["hidden"].toBool() && otherLayout->count()==1,
-            "switching workspace owners moves the same footer and preserves its hidden state");
-        owner=timeline;panel.syncAttachment();
-        check(timeline->isAncestorOf(footer) && otherLayout->count()==0,"old workspace retains no orphaned footer viewport");
-        panel.dock(); panel.syncAttachment();
-        check(footer->parentWidget()==&main && panel.snapshot()["attachment"]=="native","explicit native placement suppresses automatic attachment");
-        panel.hidePanel(); check(footer->isHidden(),"manager can hide native Page Navigation");
-        check(panel.showPanel().isEmpty() && footer->isVisible() && footer->parentWidget()==&main,
-            "manager reopens native Page Navigation without floating or reparenting it");
-        panel.setState(saved);
-        check(timeline->isAncestorOf(footer) && panel.snapshot()["hidden"].toBool(),"saved attachment restores without invoking floating geometry");
-        auto legacy=saved;legacy["attachment"]="timeline";panel.setState(legacy);
-        check(panel.snapshot()["attachment"]=="workspace","legacy Timeline attachment migrates on load without rewriting presets");
-        available=false;panel.setState({});panel.hidePanel();panel.showPanel();
-        check(footer->parentWidget()==&main && footer->isVisible() && !panel.floatingWindow(),
-            "unavailable modular workspace uses the native footer instead of unexpectedly floating");
-        check(panel.releaseAttachment(),"shutdown can return attached footer without changing saved preference");
+        Unbound::FooterPanel panel(nullptr,[&] {return &main;},{{"floating",true},{"attachment","timeline"}});
+        panel.restore();QApplication::processEvents();
+        check(footer->parentWidget()==&main&&!panel.snapshot()["floating"].toBool(),"legacy floating footer state migrates without moving native content");
+        check(panel.hidePanel().isEmpty()&&footer->isHidden(),"global hide retains native slot");
+        check(panel.showPanel().isEmpty()&&footer->isVisible(),"global show restores native visibility");
+        panel.shutdown();check(footer->parentWidget()==&main,"shutdown releases presentation without a native lease");
     }
     Unbound::flushDiagnostics();
+    {
+        QWidget root;root.setObjectName("UiMainWindow");root.setAttribute(Qt::WA_DontShowOnScreen);
+        auto outer=new QVBoxLayout(&root);
+        auto page=new QWidget(&root);page->setObjectName("WStackPage_Conform");outer->addWidget(page);
+        auto pageLayout=new QVBoxLayout(page);
+        auto panel=new QWidget(page);panel->setObjectName("frameConformTimelines");
+        auto panelLayout=new QVBoxLayout(panel);panelLayout->addWidget(new QPushButton("Native timeline",panel));pageLayout->addWidget(panel);
+        auto tools=new QWidget(&root);tools->setObjectName("NativeWorkspaceTools");tools->setFixedHeight(32);outer->addWidget(tools);
+        auto pages=new QWidget(&root);pages->setObjectName("NativePageNavigation");pages->setFixedHeight(32);outer->addWidget(pages);
+        ParentlessNativeGuard ownershipGuard;tools->installEventFilter(&ownershipGuard);pages->installEventFilter(&ownershipGuard);
+        root.resize(800,600);root.show();QApplication::processEvents();
+        Unbound::MacPanelSession session(nullptr);
+        check(session.undock(panel,page,"Timeline",false,true).isEmpty(),"prepare a hidden standalone panel host");
+        auto originalHost=session.window();originalHost->setAttribute(Qt::WA_DontShowOnScreen);
+        Unbound::PanelAccessoryLease top(nullptr),bottom(nullptr);
+        check(top.attach(tools,&root,originalHost,Qt::TopEdge).isEmpty() && bottom.attach(pages,&root,originalHost).isEmpty(),"reserve both workspace bands before grouping");
+        QWidget group(&root,Qt::Tool);group.setAttribute(Qt::WA_DontShowOnScreen);
+        auto groupLayout=new QVBoxLayout(&group);auto cell=new QWidget(&group);groupLayout->addWidget(cell);
+        int releases=0;session.beforeLayoutTransfer=[&]() -> QString {
+            ++releases;
+            return top.release() && bottom.release() ? QString() : QString("band release failed");
+        };
+        check(session.attachToGroup(cell,true).isEmpty(),"grouping releases workspace bands before donating its layout");
+        check(releases==1 && tools->parentWidget()==&root && pages->parentWidget()==&root &&
+              !cell->isAncestorOf(tools) && !cell->isAncestorOf(pages),"group leaf contains panel content only, never workspace bands");
+        check(top.attach(tools,&root,&group,Qt::TopEdge).isEmpty() && bottom.attach(pages,&root,&group).isEmpty(),"bands mount at the outer group surface after transfer");
+        check(top.release() && bottom.release(),"both bands restore without ownership rejection after grouping");
+        session.detachFromGroup(true);check(session.dock().isEmpty(),"Native return restores the original timeline after band transfer");
+        check(panel->parentWidget()==page && pageLayout->indexOf(panel)>=0,"native panel slot survives grouping and return");
+        check(ownershipGuard.parentless==0,"native workspace controls never become temporary top-level windows during release");
+        tools->removeEventFilter(&ownershipGuard);pages->removeEventFilter(&ownershipGuard);
+        session.beforeLayoutTransfer={};
+    }
     if (!failures) std::puts("PASS: accessory ownership, overflow, native restoration, owner destruction and footer attachment state");
     return failures ? 1 : 0;
 }

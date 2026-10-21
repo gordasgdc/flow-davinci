@@ -12,5 +12,9 @@ int main(int argc,char **argv) {
  previous["started"]=now.addSecs(10).toString(Qt::ISODateWithMs);ok &= !Unbound::CrashSession::assess(previous,report,now)["native_report_time_match"].toBool();
  Unbound::CrashSession session(nullptr);Unbound::logEvent("workspace.edit.suspend.begin");
  QFile f(dir.path()+"/active-session.json");f.open(QIODevice::ReadOnly);ok &= QJsonDocument::fromJson(f.readAll()).object()["ownership_breadcrumbs"].toArray().size()==1;
+ f.close();Unbound::logEvent("accessory.attach.request",{{"panel","nativeFooter"}});
+ f.open(QIODevice::ReadOnly);auto marker=QJsonDocument::fromJson(f.readAll()).object();
+ ok &= !marker["session"].toString().isEmpty() && marker["ownership_breadcrumbs"].toArray().size()==2;
+ ok &= marker["ownership_breadcrumbs"].toArray().last().toObject()["event"]=="accessory.attach.request";
  std::printf("crash correlation %s\n",ok ? "PASS" : "FAIL");return ok ? 0 : 1;
 }

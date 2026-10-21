@@ -17,6 +17,7 @@ public:
         int index=-1;
         QString name;
         MacPanelSession *session=nullptr;
+        QPointer<QWidget> workspace;
         PanelGroup *group=nullptr;
         QJsonObject saved,native;
         std::function<bool()> pending;
@@ -26,8 +27,34 @@ public:
     };
     std::function<bool()> running;
     std::function<void(int)> update;
-    std::function<void()> save;
+    std::function<void()> save,presentationChanged;
     std::function<void(QString)> report;
+    std::function<QRect(QWidget *)> contentBounds;
+    QWidget *workspace() const {return current>=0?target.workspace.data():nullptr;}
+    bool refreshGeometry() {
+        auto window=current>=0?host():nullptr;if(!window)return true;
+        // A standalone primary surface already fills its own workspace. Its
+        // layout expands/reclaims content when bands are hidden or shown; never
+        // resize that window into its own child rectangle (recursive shrinking).
+        if(target.workspace==window)return true;
+        const auto margins=window->windowHandle()?window->windowHandle()->frameMargins():QMargins();
+        QRect bounds;
+        if(contentBounds) {
+            if(!target.workspace){if(report)report(QStringLiteral("The original workspace is no longer available."));return false;}
+            bounds=contentBounds(target.workspace);
+        } else {
+            // Legacy standalone controller fixtures do not supply a workspace.
+            auto screen=window->screen();if(!screen)screen=QApplication::primaryScreen();
+            if(screen)bounds=screen->availableGeometry();
+        }
+        if(!bounds.isEmpty())bounds=bounds.adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
+        if(bounds.isEmpty()){report(QStringLiteral("The workspace content area is unavailable for this panel."));return false;}
+        if(window->geometry()!=bounds) {
+            window->setGeometry(bounds);
+            logEvent("panel.expand.bounds",{{"panel",target.name},{"x",bounds.x()},{"y",bounds.y()},{"width",bounds.width()},{"height",bounds.height()},{"scope",contentBounds?"workspace-viewport":"legacy-screen"}});
+        }
+        return true;
+    }
     int index() const { return current; }
     void sessionInactive(int index) { if (current==index) current=-1; }
     QJsonObject panelSnapshot(int index,const QJsonObject &value) const { return current==index ? target.saved : value; }
@@ -56,10 +83,9 @@ public:
                     restore(); report(QStringLiteral("Could not expand the panel; its previous arrangement was restored."));
                     return;
                 }
-                auto screen=window->screen(); if (!screen) screen=QApplication::primaryScreen();
-                const auto margins=window->windowHandle() ? window->windowHandle()->frameMargins() : QMargins();
-                window->setGeometry(screen->availableGeometry().adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom()));
+                if(!refreshGeometry()){restore();return;}
                 target.session->setHiddenByUser(false); priority.foreground(window); update(target.index);
+                if(presentationChanged)presentationChanged();
                 logEvent("panel.expand",{{"panel",target.name},{"originally_floating",wasFloating}});
             });
         update(target.index);
@@ -92,7 +118,7 @@ public:
         }
         target.session->restoreOverflowOffset(originalOffset);
         target.restored();
-        update(index); save();
+        update(index); save();if(presentationChanged)presentationChanged();
         logEvent("panel.expand.restore",{{"panel",target.name},{"success",error.isEmpty()},{"error",error},{"group_rebuilt",groupRebuilt}});
         if (!error.isEmpty()) report(error);
     }

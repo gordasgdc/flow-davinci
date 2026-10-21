@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QElapsedTimer>
@@ -51,7 +52,7 @@ int main(int argc,char **argv) {
         }
         main.show();settle();
         {
-            PanelControls controls;controls.show();settle();
+            prepareNativeFixture();PanelControls controls;controls.show();settle();
             auto click=[&](const QString &name) {
                 auto button=controls.findChild<QPushButton *>(name);check(button,"fixture command exists");if (button) button->click();
             };
@@ -74,12 +75,28 @@ int main(int argc,char **argv) {
                 QElapsedTimer timer;bool painted=false; qint64 firstPaint=-1,ready=-1;
                 auto stateReady=[&] {
                     auto host=panes[3]->window();
-                    return expanding ? host->property("unboundExpanded").toBool() && host->width()>=frame.width() :
-                        host==original && !host->property("unboundExpanded").toBool() && host->geometry()==frame;
+                    if(!expanding)return host==original && !host->property("unboundExpanded").toBool() && host->geometry()==frame;
+                    if(!host->property("unboundExpanded").toBool())return false;
+                    auto owner=placement=="standalone"?&main:original;
+                    const auto margins=host->windowHandle()?host->windowHandle()->frameMargins():QMargins();
+                    const auto viewport=Unbound::workspaceViewportBounds(owner,owner==&main?page:nullptr);
+                    return host->geometry()==viewport.adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
                 };
                 pixels->painted=[&] { if (!painted && stateReady()) { painted=true;firstPaint=timer.nsecsElapsed(); } };
                 Unbound::logEvent("benchmark.viewer-expansion",{{"placement",placement},{"iteration",iteration},{"expanding",expanding}});
+                const auto saveCount=[&] {
+                    Unbound::flushDiagnostics();
+                    QFile events(files.path()+"/events.jsonl");events.open(QIODevice::ReadOnly);
+                    int count=0;
+                    while(!events.atEnd()) {
+                        const auto event=QJsonDocument::fromJson(events.readLine()).object();
+                        if(event["event"]=="ui.work.begin" && event["operation"]=="workspace.save")++count;
+                    }
+                    return count;
+                };
+                const auto savesBefore=saveCount();
                 app.setProbeEnabled(iteration>0);timer.start();toggle->click();const auto dispatch=timer.nsecsElapsed();
+                check(saveCount()==savesBefore,"maximize/restore dispatch does not synchronously persist or refresh workspace menus");
                 if (stateReady()) ready=timer.nsecsElapsed();
                 while (timer.elapsed()<1500 && (ready<0 || !painted)) {
                     QApplication::processEvents(QEventLoop::AllEvents,5);

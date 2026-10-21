@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QElapsedTimer>
@@ -55,7 +56,7 @@ int main(int argc,char **argv) {
     auto callers=new QMenu(&main); callers->setObjectName("workspaceShowPanel");
     main.resize(1100,650); main.show(); settle();
     {
-        PanelControls controls; settle(300);
+        prepareNativeFixture();PanelControls controls; settle(300);
         auto undock=controls.findChild<QPushButton *>("undock_widgetEditInspector"); if (undock) undock->click(); settle();
         auto floating=dynamic_cast<Unbound::MacFloatingHost *>(inspectorControl->window());
         check(floating && floating->attachRequested && Unbound::nativeDockSurfaces(&main).contains(media),
@@ -82,7 +83,7 @@ int main(int argc,char **argv) {
     check(media->parentWidget()==page && page->layout()==native && inspector->parentWidget()==page,
         "scoped native shutdown returns both panels to their original native slots");
     {
-        PanelControls controls; settle(400);
+        prepareNativeFixture();PanelControls controls; settle(400);
         check(page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool") &&
             mediaControl->window()==&main && inspectorControl->window()==&main && page->layout()==native,
             "ordinary helper reopening restores a scoped native first-drop arrangement");
@@ -104,7 +105,7 @@ int main(int argc,char **argv) {
     }
     settle();
     {
-        PanelControls controls; settle(400);
+        prepareNativeFixture();PanelControls controls; settle(400);
         check(page->findChild<QWidget *>("unboundNativePanelPosition_frameEditPageMediaPool") &&
             page->findChild<QTabWidget *>("unboundPanelTabs") && inspectorControl->isVisible() && !mediaControl->isVisible(),
             "saved first-drop tabs restore their native anchor and selected panel");
@@ -114,7 +115,7 @@ int main(int argc,char **argv) {
     }
     settle();
     {
-        PanelControls controls; settle(400);
+        prepareNativeFixture();PanelControls controls; settle(400);
         if (!mediaControl || !inspectorControl) {
             files.setAutoRemove(false); std::fprintf(stderr,"FAIL: saved scoped restoration deleted a native control; diagnostics: %s\n",qPrintable(files.path())); return 1;
         }
@@ -128,7 +129,7 @@ int main(int argc,char **argv) {
     }
     settle();
     {
-        PanelControls controls; settle(300);
+        prepareNativeFixture();PanelControls controls; settle(300);
         auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");
         check(undock && undock->isEnabled(),"native Media Pool has a callable undock command");
         if (undock) undock->click(); settle();
@@ -181,7 +182,7 @@ int main(int argc,char **argv) {
     check(workspace["native_arrangement"].toObject()["panels"].toObject().contains("frameEditPageMediaPool"),
         "normal workspace saving retains the native arrangement plan");
     {
-        PanelControls controls; settle(400);
+        prepareNativeFixture();PanelControls controls; settle(400);
         check(mediaControl->window()==&main && page->findChild<QWidget *>("unboundNativeArrangement") && remaining->isVisible(),
             "helper reopening restores saved native placement through ordinary startup commands");
         auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");
@@ -189,8 +190,9 @@ int main(int argc,char **argv) {
         if (undock) undock->click(); settle();
         check(mediaControl->window()!=&main && mediaControl->isVisible() && inspectorControl->window()==&main,
             "native arrangement Undock reveals its floating content while leaving other native tabs in place");
-        auto glyph=main.findChild<QToolButton *>("unboundNativeUndock_widgetEditInspector");
-        check(glyph && glyph->isVisible(),"embedded Inspector retains its native header Undock glyph");
+        auto inspectorCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditInspector");
+        auto glyph=inspectorCell?inspectorCell->findChild<QToolButton *>("unboundDetachPanel"):nullptr;
+        check(glyph && glyph->isVisible(),"embedded Inspector exposes the shared single-header Undock glyph");
         if (glyph) glyph->click(); settle();
         check(inspectorControl->window()!=&main && inspectorControl->isVisible() && !page->findChild<QWidget *>("unboundNativeArrangement"),
             "native header Undock floats the final tab and releases the empty custom arrangement");

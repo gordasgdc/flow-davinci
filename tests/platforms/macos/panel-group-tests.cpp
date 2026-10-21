@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 #include <QApplication>
 #include <QTemporaryDir>
 #include <QElapsedTimer>
@@ -115,8 +116,11 @@ int main(int argc, char **argv)
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
-        Unbound::activateNativeWindowForTest(&main); settle();
-        const auto key = Unbound::nativeKeyWindowNumber();
+        Unbound::activateNativeWindowForTest(&main);
+        const auto key = Unbound::nativeWindowNumber(&main);
+        QElapsedTimer activation;activation.start();
+        while(Unbound::nativeKeyWindowNumber()!=key && activation.elapsed()<1000)settle(10);
+        check(key && Unbound::nativeKeyWindowNumber()==key,"group reserve fixture has acquired its intended key window before preparation");
         Unbound::GroupHostReserve reserve(&main); reserve.request(&main);
         QElapsedTimer readiness; readiness.start();
         while (!main.findChild<QWidget *>("unboundPreparedGroupHost") && readiness.elapsed()<1500) settle(10);
@@ -127,6 +131,7 @@ int main(int argc, char **argv)
             qPrintable(QApplication::activeModalWidget() ? QApplication::activeModalWidget()->objectName() : QString()));
         check(prepared && !prepared->isVisible() && !(Unbound::nativeVisibilityFlags(prepared) & 1),
             "preparing an empty group never exposes another native window");
+        if(Unbound::nativeKeyWindowNumber()!=key)std::fprintf(stderr,"Group reserve focus: expected=%lld actual=%lld prepared=%lld\n",(long long)key,(long long)Unbound::nativeKeyWindowNumber(),(long long)Unbound::nativeWindowNumber(prepared));
         check(Unbound::nativeKeyWindowNumber() == key,
             "preparing group chrome preserves the user's key window");
         auto taken = reserve.take(&main);
@@ -151,35 +156,17 @@ int main(int argc, char **argv)
         auto nativeFooter = new QWidget(&main); nativeFooter->setObjectName("m_PageSwitcherContainer");
         (new QHBoxLayout(nativeFooter))->addWidget(new QLabel("Native page buttons", nativeFooter));
         layout->addWidget(nativeFooter); main.show(); settle();
-        Unbound::FooterPanel footer(nullptr, [&] { return &main; }, {});
-        footer.wireMenu();
-        check(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation"), "native footer exposes a discoverable undock control");
-        check(footer.floatPanel().isEmpty() && nativeFooter->window() != &main,
-            "native footer floats independently of the page content");
-        check(nativeFooter->layout()->indexOf(nativeFooter->findChild<QToolButton *>("unboundUndockPageNavigation")) < 0,
-            "footer action does not consume an extra native layout row");
-        check(nativeFooter->window()->height() < 100,
-            "floating navigation fits its native controls rather than retaining a tall empty host");
-        page->hide(); settle();
-        check(nativeFooter->isVisible(), "switching away from a page does not hide global navigation");
-        QMenu menu(&main); menu.setObjectName("workspaceShowPanel"); menu.show(); settle();
-        QAction *caller = nullptr;
-        for (auto action : menu.actions()) if (action->objectName() == "unboundPageNavigation") caller = action;
-        check(caller && caller->isChecked(), "native Show Panel submenu exposes shared footer visibility");
-        menu.hide(); if (caller) caller->trigger(); settle();
-        check(footer.snapshot()["hidden"].toBool(), "submenu caller hides the floating footer");
-        if (caller) caller->trigger(); settle();
-        check(!footer.snapshot()["hidden"].toBool(), "submenu caller reopens the same footer");
-        auto footerHost=static_cast<Unbound::MacFloatingHost *>(nativeFooter->window()); footerHost->setPinned(true); settle();
-        check(footer.snapshot()["pinned"].toBool(),"Page Navigation snapshot retains its pin state");
-        const auto saved = footer.snapshot(); footer.dock(); settle();
-        check(nativeFooter->parentWidget() == &main && layout->indexOf(nativeFooter) >= 0,
-            "footer docking restores the original native layout slot");
-        footer.setState(saved); settle();
-        check(nativeFooter->window() != &main && footer.snapshot()["floating"].toBool(),
-            "saved footer arrangement restores independently of the hidden page");
-        check(static_cast<Unbound::MacFloatingHost *>(nativeFooter->window())->pinned(),"Page Navigation pin restores with its floating view");
-        footer.dock();
+        auto pageButton=new QPushButton("Edit",nativeFooter);pageButton->setObjectName("buttonConformPanel");nativeFooter->layout()->addWidget(pageButton);pageButton->show();settle();
+        Unbound::FooterPanel footer(nullptr,[&] {return &main;},{});footer.wireMenu();
+        check(nativeFooter->window()==&main,"surface footer keeps native page navigation in its original window");
+        check(!nativeFooter->findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation")&&pageButton->isVisible(),"native footer keeps original page controls without an overlay");
+        page->hide();settle();check(nativeFooter->isVisible(),"navigation visibility is independent of the current page");
+        QMenu menu(&main);menu.setObjectName("workspaceShowPanel");footer.wireMenu();
+        auto caller=menu.findChild<QAction *>("unboundPageNavigation");check(caller&&caller->isChecked(),"Panels caller reflects shared native visibility");
+        if(caller)caller->trigger();settle();check(footer.snapshot()["hidden"].toBool(),"Panels caller hides global navigation");
+        if(caller)caller->trigger();settle();check(!footer.snapshot()["hidden"].toBool(),"Panels caller restores global navigation");
+        const auto saved=footer.snapshot();footer.refreshSurfaces();footer.setState(saved);settle();
+        check(nativeFooter->parentWidget()==&main&&!footer.snapshot()["floating"].toBool(),"restore never transfers native footer ownership");
     }
     {
         QWidget main; main.resize(1400,700); auto outer = new QVBoxLayout(&main);
@@ -202,7 +189,7 @@ int main(int argc, char **argv)
         group.window()->resize(620,400); settle();
         const auto frame = group.window()->geometry();
         auto splitter = group.window()->findChild<QSplitter *>();
-        check(frame.width() == 620 && splitter, "native minimum widths do not force the magnetic host wider");
+        check(frame.width() >= 900 && splitter && timeline->minimumWidth() == 900, "Timeline preserves its native painting minimum instead of forcing a narrow outer viewport");
         if (splitter) { splitter->setSizes({1,1000}); settle(); }
         check(group.window()->geometry() == frame && timeline->width() >= 240 && inspector->width() >= 240,
             "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
@@ -238,7 +225,7 @@ int main(int argc, char **argv)
         singleViewer->setShortcut(QKeySequence(Qt::Key_F9));
         stack->setCurrentWidget(empty); main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer")->click(); settle();
             check(stack->window() != &main && stack->window()->objectName() == "unboundFloating_widgetEditSourcePlayer",
                 "Source Undock works with the offline surface and no clip loaded");
@@ -283,16 +270,15 @@ int main(int argc, char **argv)
         QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel");
         QMenuBar menuBar(&main); QMenu nativeWorkspace(&menuBar); nativeWorkspace.setObjectName("workspace"); menuBar.addMenu(&nativeWorkspace); main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle(400);
+            prepareNativeFixture();PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
-            check(timelineFloat && timelineToolbar->layout()->indexOf(timelineFloat) < 0,
-                "toolbar float control occupies no additional native layout row");
+            check(!timelineFloat, "attached Timeline toolbar has no independent float control");
             auto workspaceFloat = mode->findChild<QToolButton *>("unboundUndockToolbar_unboundWorkspaceToolbar");
-            check(timelineFloat && workspaceFloat, "both native toolbar surfaces have discoverable undock buttons");
-            if (timelineFloat) timelineFloat->click(); if (workspaceFloat) workspaceFloat->click(); settle(250);
-            check(timelineToolbar->window() != &main && toolbarModes->window() != &main,
-                "both toolbar rows float through native surface controls");
-            check(toolbarModes->currentWidget() == mode, "floating workspace toolbar preserves native mode selection");
+            check(!timelineFloat && !workspaceFloat, "Timeline tools remain attached and Workspace Toolbar remains pinned");
+            if (timelineFloat) timelineFloat->click();settle(250);
+            check(timelineToolbar->window()==&main && toolbarModes->window()==&main,
+                "Timeline toolbar and Workspace Toolbar retain their native owners");
+            check(toolbarModes->currentWidget()==mode,"pinned workspace header preserves native mode selection");
             bool timelineCaller = false, workspaceCaller = false;
             for (auto action : nativeMenu.actions()) {
                 timelineCaller |= action->text() == "Timeline Toolbar";
@@ -300,7 +286,7 @@ int main(int argc, char **argv)
             }
             check(timelineCaller && workspaceCaller, "both toolbars remain discoverable in Show Panel in Workspace");
             auto nativeRecall = menuBar.findChild<QAction *>("unboundRestoreNativeWorkspace");
-            check(nativeRecall && nativeRecall->text() == "Native Edit UI", "permanent native-workspace recall is prepopulated in Workspace UI");
+            check(nativeRecall && nativeRecall->text() == "Use Original Resolve UI", "permanent native-workspace recall is prepopulated in Workspace UI");
             controls.hide();
             if (nativeRecall) nativeRecall->trigger(); settle(200);
             check(timelineToolbar->parentWidget() == page && toolbarModes->parentWidget() == page,
@@ -312,8 +298,8 @@ int main(int argc, char **argv)
             PanelControls reopened; reopened.show(); settle(400);
             auto button = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
             if (button) button->click(); settle(200);
-            check(button && timelineToolbar->window() != &main && timelineToolbar->findChildren<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop").size() == 1,
-                "native toolbar control rebinds after reopening Unbound without duplication");
+            check(!button && timelineToolbar->window() == &main,
+                "reopening does not restore a forbidden independent Timeline toolbar control");
             reopened.findChild<QPushButton *>("bulk_1")->click(); settle();
         }
     }
@@ -474,7 +460,7 @@ int main(int argc, char **argv)
         }
         main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             const auto combine = [&](int first, int second, int direction) {
                 controls.findChild<QComboBox *>("groupFirst")->setCurrentIndex(first);
                 controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(second);
@@ -505,7 +491,7 @@ int main(int argc, char **argv)
         }
         settle();
         {
-            PanelControls controls; controls.show(); settle(650);
+            prepareNativeFixture();PanelControls controls; controls.show(); settle(650);
             for (auto label : content) check(label->window() == content.first()->window() && label->window() != &main,
                 "reloaded workspace restores all four panels into the same native group");
             controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
@@ -640,7 +626,7 @@ int main(int argc, char **argv)
         auto inner = new QVBoxLayout(media); inner->addWidget(new QLabel("Native Media Pool", media));
         main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("undock_widgetEditInspector")->click(); settle(100);
             toggle->click(); settle(120);
             check(!inspector->window()->isVisible() && !toggle->isChecked(), "native click hides floating Inspector once despite toggled and clicked signals");

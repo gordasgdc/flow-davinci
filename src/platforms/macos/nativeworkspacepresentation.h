@@ -27,7 +27,7 @@ public:
     }
     struct Surface { QString id; QWidget *native=nullptr; MacPanelSession *session=nullptr; bool toolbar=false; };
     void reconcile(QWidget *main,QWidget *page,NativeWorkspaceSizing *sizing,bool nativeArrangement,
-                   const QList<Surface> &surfaces,bool manualHide) {
+                   const QList<Surface> &surfaces,bool manualHide,bool keepPrimary=false) {
         QList<QWidget *> floating,vacancies; QSet<QString> managed; bool timelineKnown=false;
         for (const auto &surface:surfaces) {
             auto session=surface.session; if (!session) continue;
@@ -44,7 +44,7 @@ public:
         bool retained=false;
         for (const auto &surface:surfaces) if (surface.session && !surface.session->active() && !surface.toolbar)
             retained |= surface.native && surface.native->isVisible();
-        update(main,true,page && page->isVisible() && timelineKnown,nativeArrangement,retained,managed.size(),floating,manualHide);
+        update(main,true,page && page->isVisible() && timelineKnown,nativeArrangement || keepPrimary,retained,managed.size(),floating,manualHide);
     }
     void restore() {
         if (window && automaticallyHidden) visibility(window,{},false);

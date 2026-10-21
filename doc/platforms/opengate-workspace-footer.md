@@ -1,3 +1,7 @@
+> Historical attachment design. Superseded on the surface-page-navigation branch
+> by [Surface Page Navigation](opengate-surface-page-navigation.md). The native
+> footer is no longer moved or leased in that implementation.
+
 # Workspace footer candidate
 
 Page Navigation attaches at the bottom of the primary modular workspace host,

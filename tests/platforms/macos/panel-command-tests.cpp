@@ -63,7 +63,14 @@ int main(int argc,char **argv) {
     }
     {
         qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Catalog.json").toUtf8());
+        // This block verifies the explicit legacy recovery provider. Ordinary
+        // launch and live native remapping are covered by native-preset-bindings.
+        const auto previousProvider=qgetenv("OPENGATE_NATIVE_PRESET_SHORTCUTS");
+        qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS","0");
         Unbound::PanelCommandCatalog catalog(&main,[&] { return ready; });
+        if(previousProvider.isNull())qunsetenv("OPENGATE_NATIVE_PRESET_SHORTCUTS");
+        else qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS",previousProvider);
+        check(!catalog.nativeMatch,"legacy fixture explicitly selects recovery provider");
         int calls=0,expansions=0,footerCalls=0;
         catalog.addPanel("source","Source Monitor",[&] { return editVisible; },[&] { ++calls; },[&] { ++expansions; });
         catalog.addNavigation([] { return true; },[&] { ++footerCalls; return QString(); });

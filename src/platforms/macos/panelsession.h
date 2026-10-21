@@ -19,6 +19,7 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "paneloverflow.h"
+#include "timelinetoolbarviewport.h"
 #include "panelmetricscale.h"
 #include "nativegroupslot.h"
 #include "nativepanelposition.h"
@@ -60,6 +61,8 @@ public:
     std::function<void()> expandedClosed;
     std::function<void()> arrangementChanged;
     std::function<void()> releaseGroup;
+    // Workspace bands belong to the outer host, never to a donated panel layout.
+    std::function<QString()> beforeLayoutTransfer;
     std::function<QString()> releaseOriginalPosition;
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
     QString panelTitle() const { return host ? host->property("unboundPanelTitle").toString() : QString(); }
@@ -92,6 +95,9 @@ public:
         const bool nativeContainer=container && container->window()==originalMain && NativeRootLayout::contains(originalPage,container);
         if (!host || !host->layout() || grouped() || !container || container->layout() || (!floatingContainer && !nativeContainer))
             return QStringLiteral("Panel cannot join this group.");
+        if (beforeLayoutTransfer) {
+            const auto error=beforeLayoutTransfer();if(!error.isEmpty())return error;
+        }
         metricScale.restore();
         detachedGeometry = host->geometry();
         QScopedValueRollback<bool> moving(recovering, true);
@@ -167,7 +173,7 @@ public:
     void setSnapping(bool enabled) { snapping = enabled; if (host) static_cast<MacFloatingHost *>(host.data())->setSnapping(enabled); }
     double interfaceScale() const { return metricFactor; }
     bool setInterfaceScale(double value) {
-        if (!qIsFinite(value) || value<0.7 || value>1.5) return false;
+        if (!qIsFinite(value) || value<0.7 || value>3.0) return false;
         metricFactor=value; refreshMetricScale();
         if (arrangementChanged) arrangementChanged();
         return true;
@@ -234,7 +240,7 @@ public:
     QString undockContents(QWidget *slot, QWidget *page, const QString &title,QWidget *managedOwner=nullptr)
     {
         if (active()) return QStringLiteral("This panel is already floating.");
-        if (!panelInManagedScope(slot,page,managedOwner) || !slot->isVisible() || !slot->layout())
+        if (!panelInManagedScope(slot,page,managedOwner) || (!slot->isVisible() && !NativeRootLayout::ownsParkedWidget(slot,page)) || !slot->layout())
             return QStringLiteral("Show this panel on the Edit page first.");
         originalParent = slot;
         originalPage = page;
@@ -289,7 +295,7 @@ public:
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
         if (!panelInManagedScope(widget,page,managedOwner) ||
-            (!widget->isVisible() && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
+            (!widget->isVisible() && !NativeRootLayout::ownsParkedWidget(widget,page) && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
             return QStringLiteral("Show this panel on the Edit page first.");
         QWidget *parent = widget->parentWidget();
         auto splitter = qobject_cast<QSplitter *>(parent);
@@ -300,6 +306,7 @@ public:
             return QStringLiteral("This panel's layout is not supported yet.");
         if ((layout && layout->indexOf(widget) < 0) || (splitter && splitter->indexOf(widget) < 0))
             return QStringLiteral("The panel is not in its expected layout.");
+        timelineToolbar.attach(widget);
 
         content = widget;
         originalParent = NativeRootLayout::logicalParent(page,parent);
@@ -358,8 +365,7 @@ public:
             widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
         const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
         box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
-        relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
-            widget->objectName() == QLatin1String("widgetEditInspector") ||
+        relaxedWidth = widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
         // Relax the viewport, never the native controls inside it. Ignoring the
         // Media Pool's minimum width makes its toolbar overlap before it scrolls.
@@ -450,6 +456,7 @@ public:
             overflow.releaseInto(host);
         }
         metricScale.restore();
+        if(!timelineToolbar.restore())return QStringLiteral("Could not restore the attached Timeline toolbar safely.");
         const bool reclaimed = content->parentWidget() == destinationParent;
         QLayout *currentLayout = destinationParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
@@ -573,6 +580,9 @@ private:
             }
             QScopedValueRollback<bool> recovery(recovering, true);
             QWidget *surface = window();
+            if(transferredLayout && surface==host && (!surface->layout() || surface->layout()->count()==0)) {
+                logEvent("panel.recover.deferred",{{"reason","empty-transfer-host"},{"host",host->objectName()}});return;
+            }
             if (!transferredLayout && content) {
                 if (content->parentWidget() != surface && !overflow.owns(content)) {
                     if (!nativeOwner(content->parentWidget())) {
@@ -596,6 +606,7 @@ private:
         releaseOriginalPosition={};
         if (releaseGroup) { auto release = releaseGroup; release(); }
         metricScale.restore();
+        timelineToolbar.restore();
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         overflow.forget();
         ++generation;
@@ -624,6 +635,7 @@ private:
     PanelMetricScale metricScale;
     double metricFactor=1.0;
     PanelOverflow overflow;
+    TimelineToolbarViewport timelineToolbar;
     VacatedContents vacatedContents;
     bool relaxedWidth = false;
     QPointer<QWidget> originalMain;

@@ -17,9 +17,17 @@ with tempfile.TemporaryDirectory() as directory:
     assert before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in base.iterdir()}
     workspace=json.loads((base/'Workspace.json').read_text())
     assert workspace['selected_arrangement']==bundle['default']
-    assert workspace['footer']['attachment']=='timeline' and not workspace['footer']['hidden']
-    assert len(json.loads((base/'Arrangements.json').read_text())['arrangements'])==3
-    group=workspace['groups'][0]
-    assert len(group['panels'])==len(set(group['panels']))==7
-    assert all(workspace['panels'][name]['floating'] for name in group['panels'])
-print('PASS: isolated first-install seed, Native Emulator, two bundled presets and existing-settings preservation')
+    assert not workspace['footer']['hidden'] and workspace['header']['visible']
+    assert workspace['groups']==[] and workspace['layout_mode']=='managed'
+    assert workspace['native_arrangement']['kind']=='managed'
+    records=json.loads((base/'Arrangements.json').read_text())['arrangements']
+    assert len(records)==3 and all(e['hidden'] for e in records)
+    assert not any(e['id']==bundle['default'] for e in records)
+    assert 'unboundWorkspaceToolbar' not in workspace['native_arrangement']['panels']
+    # The compiled adapter and installer use the same existing panel recipe.
+    import re
+    source=(root/'src/platforms/macos/resolvelayout.h').read_text()
+    compiled=json.loads(re.search(r'R"layout\((.*)\)layout"',source).group(1))
+    selected=next(e for e in bundle['arrangements'] if e['id']==bundle['default'])
+    assert compiled==selected['workspace']
+print('PASS: immutable managed Resolve Layout seed, native bands, hidden preserved legacy records, recipe consistency and no overwrite')

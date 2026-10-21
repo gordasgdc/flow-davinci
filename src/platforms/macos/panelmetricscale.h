@@ -22,7 +22,7 @@ public:
     ~PanelMetricScale() override { restore(); }
     double factor() const { return amount; }
     bool attach(QWidget *surface,double scale) {
-        if (!surface || !qIsFinite(scale) || scale<0.7 || scale>1.5) return false;
+        if (!surface || !qIsFinite(scale) || scale<0.7 || scale>3.0) return false;
         if (root!=surface) { restore(); root=surface; }
         amount=scale; scan(surface); apply();
         logEvent("panel.scale.applied",{{"panel",surface->objectName()},{"factor",amount},
@@ -75,6 +75,9 @@ private:
             for (auto ancestor=widget;ancestor && ancestor!=surface;ancestor=ancestor->parentWidget())
                 if (ancestor->isWindow() || ancestor->property("openGateChrome").toBool()) { excluded=true; break; }
             if (excluded || widget->property("openGateChrome").toBool()) continue;
+            // A viewport adapter derives its own geometry from the scaled native
+            // child. Scale the child, not the adapter's already-derived height.
+            if(widget->property("openGateMetricContainer").toBool())continue;
             if (!known.contains(widget)) {
                 QSize icon;
                 if (auto button=qobject_cast<QAbstractButton *>(widget)) icon=button->iconSize();

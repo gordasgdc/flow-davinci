@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 #include <QApplication>
 #include <QCoreApplication>
 #include <QStackedLayout>
@@ -12,6 +13,16 @@
 #include "nativeworkspacesizing.h"
 #include "controlservice.h"
 
+// This fixture sends explicit held-button Qt moves. A native hover generated
+// while the synthetic gesture yields to WindowServer has no physically held
+// button and must not terminate that synthetic sequence. Real/native release
+// handling remains covered separately; production input code is unchanged.
+class SyntheticDragMoves : public QObject {
+public:
+    bool eventFilter(QObject *,QEvent *event) override {
+        return event->type()==QEvent::MouseMove && event->spontaneous();
+    }
+};
 static int failures = 0;
 static void check(bool condition, const char *message)
 {
@@ -104,9 +115,12 @@ int main(int argc, char **argv)
         Unbound::VacatedContents vacancy; vacancy.hide(&slot);
         check(slot.isHidden() && slot.minimumSize()==QSize(0,0) && slot.sizePolicy().horizontalPolicy()==QSizePolicy::Ignored,
             "vacated native container releases its footprint and preferred width");
+        slot.show(); settle();
+        check(slot.isHidden(),"native visibility refresh cannot reopen a leased empty content slot");
         vacancy.restore();
         check(slot.minimumSize()==minimum && slot.sizePolicy()==policy && slot.isHidden()==hidden,
             "native content-container lease restores exact dimensions, policy and hidden state");
+        slot.show(); settle(); check(!slot.isHidden(),"released slot accepts native Show again after docking");
     }
     {
         QWidget main; main.setMinimumSize(1000,700); main.resize(1200,800);
@@ -117,7 +131,7 @@ int main(int argc, char **argv)
         sizing.blocked=[&] { return expanding; }; sizing.setPanels(&main,page,{"detached"}); settle();
         check(main.geometry()==baseline && main.minimumSize()==minimum,"temporary maximize does not resize the native workspace behind it");
         expanding=false; sizing.setPanels(&main,page,{"detached"}); settle();
-        check(main.minimumWidth()<minimum.width() && main.width()<baseline.width(),"native window can shrink below its old explicit minimum around remaining content");
+        check(main.minimumWidth()<minimum.width() && main.geometry()==baseline,"detachment releases the resize floor without shrinking the user workspace");
         check(remaining->minimumSize()==QSize(200,100),"native outer sizing never relaxes remaining content constraints");
         sizing.restore(); settle();
         check(main.minimumSize()==minimum && outer->sizeConstraint()==constraint && main.geometry()==baseline,"native sizing restores exact captured constraints and automatic geometry");
@@ -464,7 +478,7 @@ int main(int argc, char **argv)
             {"floating", true}, {"hidden", false}, {"x", 80}, {"y", 90}, {"width", 480}, {"height", 320}}}}}};
         check(presetStore.create("Source layout", sourceArrangement, presetId).isEmpty(), "prepare restore fixture");
         {
-        PanelControls controls;
+        prepareNativeFixture();PanelControls controls;
         controls.show(); settle();
         controls.resize(300, 240); settle();
         auto optionsScroll = controls.findChild<QScrollArea *>(QStringLiteral("panelOptionsScroll"));
@@ -591,6 +605,7 @@ int main(int argc, char **argv)
             if (!presented) { settle(); QThread::msleep(2); }
         } while (!presented && presentation.elapsed() < 500);
         check(presented, "native drag fixture windows reach the on-screen stack before pointer input");
+        SyntheticDragMoves syntheticMoves;qApp->installEventFilter(&syntheticMoves);
         const QPoint press = draggedSource->mapToGlobal(QPoint(100, 7));
         const QPoint dockPointer(targetProgram->frameGeometry().right(), targetProgram->frameGeometry().center().y());
         const QPoint delta = dockPointer - press;
@@ -634,7 +649,7 @@ int main(int argc, char **argv)
         check((!dockTarget || !dockTarget->isVisible()) && (!attachmentPreview || !attachmentPreview->isVisible()), "covering non-dockable window blocks targets on panels behind it");
         covering.hide(); QApplication::sendEvent(draggedSource, &move);
         QMouseEvent up(QEvent::MouseButtonRelease, QPointF(100, 7), QPointF(press + delta), Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
-        QApplication::sendEvent(draggedSource, &up); settle(); settle();
+        QApplication::sendEvent(draggedSource, &up); settle(); settle();qApp->removeEventFilter(&syntheticMoves);
         check(source->window() == program->window() && source->window()->objectName().startsWith("unboundFloating_group_"),
             "releasing grip beside a panel creates an actual single-host group");
         Unbound::WorkspaceSettings groupSettings;
@@ -723,13 +738,15 @@ int main(int argc, char **argv)
         const auto verifyStartupMode=[&](const QJsonObject &value,bool hidden) {
             QSaveFile file(path); check(file.open(QIODevice::WriteOnly),"startup preference fixture opens");
             file.write(QJsonDocument(value).toJson()); check(file.commit(),"startup preference fixture commits");
-            PanelControls controls;
+            prepareNativeFixture();PanelControls controls;
             check(controls.findChild<QCheckBox *>("hideResolveBackground")->isChecked()==hidden,
-                "explicit and legacy native-background preferences retain their intended value");
+                "primary workspace ignores legacy modes and manual-hide policies");
         };
-        verifyStartupMode({{"hide_background",true}},true);
+        verifyStartupMode({{"hide_background",true}},false);
         verifyStartupMode({{"native_workspace_mode","native"},{"hide_background",true}},false);
-        verifyStartupMode({{"native_workspace_mode","floating"},{"hide_background",false}},true);
+        verifyStartupMode({{"native_workspace_mode","floating"},{"hide_background",false}},false);
+        verifyStartupMode({{"background_policy","manual-hidden"}},false);
+        verifyStartupMode({{"background_policy","automatic"},{"hide_background",true}},false);
     }
     qputenv("UNBOUND_WORKSPACE_FILE",(logs.path()+"/Workspace.json").toUtf8());
     settle();
@@ -836,7 +853,7 @@ int main(int argc, char **argv)
             return count;
         };
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("bulk_5")->click();
             check(exportRequests == 1, "Quick Export opens the native action without directly rendering");
             exportAction->setEnabled(false);
@@ -857,7 +874,7 @@ int main(int argc, char **argv)
         check(hostCount() == 0, "shutdown docks live panels after saving desired state");
         for (int i = 0; i < paneSlots.size(); ++i) check(paneSlots[i]->layout() == originalLayouts[i], "bulk sidebars restore original layouts");
         {
-            PanelControls controls; controls.show();
+            prepareNativeFixture();PanelControls controls; controls.show();
             check(waitFor([&] { return hostCount() == 11; }), "saved workspace restores eleven panels");
             check(controls.findChild<QCheckBox *>("pinControls")->isChecked(), "pin option persists");
             QWidget *sourceHost = nullptr, *programHost = nullptr;
