@@ -669,3 +669,27 @@ Secondary footers are complete native-painted mirrors with original-button click
 dispatch, not independent native widget instances; hover/pressed feedback and
 custom native painting need live review. No installation, main merge, push or
 publication occurred. Installed6f395c4 and best091268b checkpoint are unchanged.
+
+## Jordan clarification and Wolfgang external report — 2026-10-21
+
+- Maximize decision is settled: fill the workspace viewport between visible
+  header/footer; reclaim either hidden band's space. Current9545bb4 still starts
+  from the monitor rectangle, so smaller-workspace bounds require a follow-up
+  implementation and fixture before that flow is called complete. No new install.
+- Add release-blocking investigation: Wolfgang reports installation succeeds but
+  OpenGate UI menu is absent on his Mac mini running Resolve Free, both with and
+  without Unbound. Obtain exact OS/CPU/Resolve edition+build/package version and
+  bootstrap/helper startup logs. Compare Free/Studio and clean/coinstalled setups;
+  do not diagnose this as a Windows executable problem or claim support yet.
+- Packaging coexistence audit: current Mac prototype payload installs
+  IOPlugins/Unbound.dvcp.bundle; postinstall retires Unbound.py to the backup;
+  settings use Application Support/Unbound. These are concrete Mac shared-path
+  behaviors. Separate OpenGate runtime identity/settings with safe migration and
+  rollback before promising coexistence; never delete current user state.
+- Licensing presentation audit: root LICENSE currently names Wolfgang only and
+  package-prototype.py copies it directly into the installer license screen.
+  Add appropriate OpenGate/CineWaltz copyright for original contributions and
+  preserve inherited Wolfgang MIT notices. Branding/art cleanup is separate from
+  required legal notices; inspect the exact reported folder before deletion.
+- Verify which shortcut branches are actually pushed before telling external
+  users they are available. Local feature branches are not publication evidence.

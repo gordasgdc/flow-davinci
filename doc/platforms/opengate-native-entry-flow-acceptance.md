@@ -18,7 +18,10 @@ component fixture does not establish this flow. Keep installed software separate
    workspace and never become a panel-group leaf. Hide reclaims that space; Show
    restores the same native controls. Panels remains accessible with both hidden.
    Docked/grouped/maximized content respects visible bands and uses their freed
-   space when hidden. Detached floating windows may deliberately overlap bands.
+   space when hidden. Maximize fills the current workspace viewport between its
+   visible header/footer; hiding either removes that boundary. Do not substitute
+   a monitor-wide rectangle when the workspace viewport is smaller.
+   Detached floating windows may deliberately overlap bands.
 6. All visibility entry points use one state. Footer follows Resolve's native page
    navigation visibility command and includes native Home and Settings. Header
    and footer are excluded from ordinary panel dragging/docking/maximize targets.
