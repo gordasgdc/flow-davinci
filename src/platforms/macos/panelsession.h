@@ -67,7 +67,9 @@ public:
     std::function<void(QWidget *, Qt::Edge)> attachRequested;
     QString panelTitle() const { return host ? host->property("unboundPanelTitle").toString() : QString(); }
     bool grouped() const { return !groupContainer.isNull(); }
-    QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? host->geometry() : QRect(); }
+    QRect floatingGeometry() const { return grouped() ? detachedGeometry : host ? (host->isMaximized()?host->normalGeometry():host->geometry()) : QRect(); }
+    bool windowMaximized() const {return !grouped()&&host&&host->isMaximized();}
+    void restoreWindowMaximized(bool value) {if(!grouped()&&host&&value)host->showMaximized();}
     QWidget *nativeOwnerWindow() const { return originalMain; }
     QWidget *pageWidget() const { return originalPage; }
     QWidget *nativeVacancy() const { return transferredLayout ? originalParent.data() : placeholder.data(); }

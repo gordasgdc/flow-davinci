@@ -9,6 +9,23 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Display-aware workspace follow-up — implementation under verification
+
+Branch feature/workspace-display-placement builds on the viewer-button/preset
+branch. Shared display-placement policy records logical screen identity and local
+coordinates without assuming two displays. The macOS Qt adapter supplies screen
+inventory. Floating panels, groups and primary-window snapshots retain placement;
+Qt-maximized state is stored separately from normal geometry. Missing-display
+fallback preserves the original record during automatic saves; intentional moves
+record a new placement. Legacy coordinates remain readable.
+
+Isolated tests pass four-display placement, negative desktop coordinates, display
+reordering/relocation, lower resolution, missing-display fallback, unchanged saves,
+reconnect and ambiguous-identity geometry tie-breaks. Physical multi-display and
+Windows adapter acceptance are not established. Independent page-state fixture
+passes. Assembled flow, final matrix and production build remain pending.
+No install before Jordan reviews; preserve the installed main baseline and local presets.
+
 ## Toolbar/preset follow-up evidence
 
 Branch feature/workspace-toolbar-viewer-buttons integrates the isolated restore fix.

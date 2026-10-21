@@ -76,7 +76,7 @@ public:
             settings.data=Unbound::resolveLayoutEntry("edit")["workspace"].toObject();
             settings.data["selected_arrangement"]=Unbound::WorkspacePresetPolicy::resolveLayoutId("edit");
         }
-        layoutMode=Unbound::PageWorkspaceState::mode(settings.data);
+        layoutMode=Unbound::PageWorkspaceState::mode(settings.data);pendingMainPlacement=settings.data["main_window"].toObject();mainPlacementRecord=pendingMainPlacement;
         managerView=new Unbound::PanelManagerView(this,settings.data);
         status=managerView->status; presetsUi=managerView->presets;
         optionsScroll=managerView->scroll; pin=managerView->pin; constrain=managerView->constrain;
@@ -714,6 +714,7 @@ private:
     {
         value=Unbound::migrateWorkspaceHeader(Unbound::fitStarterWorkspace(value));
         layoutMode=Unbound::PageWorkspaceState::mode(value);
+        pendingMainPlacement=value["main_window"].toObject();mainPlacementRecord=pendingMainPlacement;
         if (footer) footer->setState(value["footer"].toObject());
         if(workspaceHeader)workspaceHeader->setState(value["header"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(false); }
@@ -886,6 +887,7 @@ private:
             }
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
+            p.session->restoreWindowMaximized(p.saved["maximized"].toBool());
             p.session->setInterfaceScale(p.saved["interface_scale"].toDouble(1.0));
             p.session->setPinned(p.name=="unboundWorkspaceToolbar" ? p.saved["toolbar_float_pinned"].toBool(true) : p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
@@ -1081,6 +1083,12 @@ private:
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         // Timeline toolbar stays with Timeline; no independent detach control.
         QWidget *root = page();
+        if(root&&root->isVisible()&&!pendingMainPlacement.isEmpty()) {
+            const auto placement=pendingMainPlacement;pendingMainPlacement={};
+            auto main=root->window();if(main->isMaximized())main->showNormal();
+            const auto frame=Unbound::WorkspaceSettings::rectangle(placement);if(frame.isValid())main->setGeometry(frame);
+            if(placement["maximized"].toBool())main->showMaximized();
+        }
         updateNativeSizing();
         if (!root || !root->isVisible()) return;
         for(const auto &panel:panels)if(!panel.session->active() && !panel.desired && panel.saved.contains("native_hidden"))
@@ -1115,6 +1123,7 @@ private:
                 if(nativeSurfaceDoors.modified(p.name))value["native_hidden"]=nativeSurfaceDoors.hidden(p.name);
                 else value.remove("native_hidden");
             }
+            if(p.session->active()&&!p.session->grouped())value["maximized"]=p.session->windowMaximized();
             value["interface_scale"]=p.session->interfaceScale();
             if (p.name=="unboundWorkspaceToolbar" && p.session->active() && !p.session->grouped()) value["toolbar_float_pinned"]=p.session->pinned();
             value=expansionController->panelSnapshot(i,value);
@@ -1145,6 +1154,10 @@ private:
         snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
         snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
         auto captured=snapshot.json();captured["page"]="edit";captured["layout_mode"]=layoutMode;
+        if(auto main=Unbound::resolveMainWindow()) {
+            auto placement=Unbound::WorkspaceSettings::displayRectangle(main->isMaximized()?main->normalGeometry():main->geometry(),mainPlacementRecord);
+            mainPlacementRecord=placement;placement["maximized"]=main->isMaximized();captured["main_window"]=placement;
+        }
         const auto previousMode=Unbound::PageWorkspaceState::mode(settings.pageView("edit"));
         QString pageError;
         if(restoringNative) {
@@ -1235,6 +1248,7 @@ private:
     mutable QElapsedTimer pageScanClock;
     QTimer saveTimer, restoreTimer;
     QString layoutMode="native";
+    QJsonObject pendingMainPlacement,mainPlacementRecord;
     bool quitting = false,restoringNative=false;
     bool toggleScanQueued = false;
     unsigned bulkVersion = 0;

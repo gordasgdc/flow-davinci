@@ -27,7 +27,7 @@ struct WorkspaceSnapshot {
                              bool hidden,bool pinned)
     {
         if (active) {
-            previous=WorkspaceSettings::rectangle(geometry);
+            previous=WorkspaceSettings::displayRectangle(geometry,previous);
             previous["hidden"]=hidden; previous["pinned"]=pinned;
         }
         previous["floating"]=desired;
