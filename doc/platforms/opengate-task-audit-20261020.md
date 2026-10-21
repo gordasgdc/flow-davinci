@@ -9,7 +9,28 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
-## Current state — 2026-10-21 flow review
+## Latest status — 2026-10-21 preinstall repair review
+
+This section supersedes historical “current state” and install-authorization notes
+below. Installed helper remains c033f3d, a failed live candidate. Resolve is closed.
+Repair branch: feature/macos-opengate-default-flow. Nothing newer is installed.
+091268b is the recorded known-best baseline; it is not proven to be the exact build
+in the “closest to good” screenshot. Preserve it and all user-state backups.
+
+8621617 passed 39 hidden suites; displayed checks passed 6/8. Panel-groups retained
+obsolete independent-Timeline-toolbar assertions and an unsafe narrow-Timeline
+expectation. Reliability exposed a real repair defect: the empty-transfer-host
+check also prevented ordinary widget recovery after native reparenting. Narrowed
+that guard to transferred layouts; the displayed reliability suite now passes.
+Updated group assertions preserve the attached toolbar and native painting minima.
+Final clean-source checks and production rebuild remain required before install.
+Live Timeline painting, divider behavior and latency remain acceptance gates.
+
+On the next authorized install, back up current OpenGate state, then present the
+first-user Resolve Layout experience without old arrangements/setup controls.
+Do not delete user work or alter Resolve keyboard mappings. No publication.
+
+## Historical state — earlier 2026-10-21 flow review
 
 - Installed runtime remains **6f395c4**. No changes in this flow review have been
   installed, merged to main, pushed or published. The known-best **091268b**

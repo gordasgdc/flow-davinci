@@ -189,7 +189,7 @@ int main(int argc, char **argv)
         group.window()->resize(620,400); settle();
         const auto frame = group.window()->geometry();
         auto splitter = group.window()->findChild<QSplitter *>();
-        check(frame.width() == 620 && splitter, "native minimum widths do not force the magnetic host wider");
+        check(frame.width() >= 900 && splitter && timeline->minimumWidth() == 900, "Timeline preserves its native painting minimum instead of forcing a narrow outer viewport");
         if (splitter) { splitter->setSizes({1,1000}); settle(); }
         check(group.window()->geometry() == frame && timeline->width() >= 240 && inspector->width() >= 240,
             "minimum-boundary redistribution keeps outer group frame fixed and both panels usable");
@@ -272,13 +272,12 @@ int main(int argc, char **argv)
         {
             prepareNativeFixture();PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
-            check(timelineFloat && timelineToolbar->layout()->indexOf(timelineFloat) < 0,
-                "toolbar float control occupies no additional native layout row");
+            check(!timelineFloat, "attached Timeline toolbar has no independent float control");
             auto workspaceFloat = mode->findChild<QToolButton *>("unboundUndockToolbar_unboundWorkspaceToolbar");
-            check(timelineFloat && !workspaceFloat, "Timeline tools can float while Workspace Header stays pinned");
+            check(!timelineFloat && !workspaceFloat, "Timeline tools remain attached and Workspace Toolbar remains pinned");
             if (timelineFloat) timelineFloat->click();settle(250);
-            check(timelineToolbar->window()!=&main && toolbarModes->window()==&main,
-                "floating Timeline tools do not detach the reserved workspace header");
+            check(timelineToolbar->window()==&main && toolbarModes->window()==&main,
+                "Timeline toolbar and Workspace Toolbar retain their native owners");
             check(toolbarModes->currentWidget()==mode,"pinned workspace header preserves native mode selection");
             bool timelineCaller = false, workspaceCaller = false;
             for (auto action : nativeMenu.actions()) {
@@ -299,8 +298,8 @@ int main(int argc, char **argv)
             PanelControls reopened; reopened.show(); settle(400);
             auto button = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
             if (button) button->click(); settle(200);
-            check(button && timelineToolbar->window() != &main && timelineToolbar->findChildren<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop").size() == 1,
-                "native toolbar control rebinds after reopening Unbound without duplication");
+            check(!button && timelineToolbar->window() == &main,
+                "reopening does not restore a forbidden independent Timeline toolbar control");
             reopened.findChild<QPushButton *>("bulk_1")->click(); settle();
         }
     }

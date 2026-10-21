@@ -31,7 +31,7 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
    retain their behavior. Remaining docked content reclaims vacated space; native
    visibility updates cannot reopen empty leased slots. Detach does not shrink
    the user's primary window. Native return restores exact owners and constraints.
-9. Panels is a flat current-page inventory including Workspace Header and Page
+9. Panels is a flat current-page inventory including Workspace Toolbar and Page
    Navigation. Optional parked panels must be reachable. No All Panels, Edit,
    Workspace or Floating Windows inventory subtrees. Header controls cannot overlap
    title/Inspector or become unreachable. Main title-bar Panels remains available

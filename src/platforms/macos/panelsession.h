@@ -580,7 +580,7 @@ private:
             }
             QScopedValueRollback<bool> recovery(recovering, true);
             QWidget *surface = window();
-            if(surface==host && (!surface->layout() || surface->layout()->count()==0)) {
+            if(transferredLayout && surface==host && (!surface->layout() || surface->layout()->count()==0)) {
                 logEvent("panel.recover.deferred",{{"reason","empty-transfer-host"},{"host",host->objectName()}});return;
             }
             if (!transferredLayout && content) {
