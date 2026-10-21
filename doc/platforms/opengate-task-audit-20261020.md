@@ -9,7 +9,29 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
-## Actual state
+## Current state — 2026-10-21 flow review
+
+- Installed runtime remains **6f395c4**. No changes in this flow review have been
+  installed, merged to main, pushed or published. The known-best **091268b**
+  software checkpoint remains preserved independently of current user settings.
+- Candidate branch `fix/macos-workspace-band-gates` includes separate preceding
+  menu, native header-drag and native footer-band commits. This is a development
+  candidate, not an accepted release.
+- At1354ffe all34 hidden suites passed on a clean unchanged commit, including
+  the assembled entry-flow child-process restart test. Subsequent footer discovery
+  cleanup and delayed-native-command handling are being reverified below.
+- Universal helper/bootstrap/launcher builds and architecture/signature audit
+  passed at1354ffe. Displayed group/reopen/reliability fixtures compile; their
+  current displayed runs remain pending. No new live Resolve startup, pointer,
+  rendering, latency or Relay/Deliver acceptance is claimed.
+- Maximize bounds when the workspace is smaller than the monitor are awaiting
+  Jordan's clarification: workspace content area versus monitor expansion with
+  visible-band gates. Do not silently choose a new maximize product behavior.
+- Fusion panel docking/arrangement backend, full native Timeline body scaling,
+  GitHub fork separation and live Windows/older-macOS compatibility are **not done**.
+  These were not completed by the Native Edit flow fixes.
+
+## Historical state at original audit (superseded)
 
 - Installed runtime: **541cd25**, branch `fix/macos-visibility-independent-commands`.
   It was installed before the latest request to stop and audit; do not describe it
@@ -613,3 +635,15 @@ keyboard dispatch, page-crossing runtime or Relay/Deliver. Those remain live gap
 Existing workspace-reopen expectations now require unified reserved footer bands
 instead of independent per-surface pins, including legacy-pin migration coverage;
 its displayed run remains pending.
+
+## Footer discovery cleanup and initialization follow-up
+
+Complete-footer mirrors no longer rebuild a separate per-page model or scan every
+page button on refresh. Footer/widget/native-menu pointers are retained safely;
+QAction discovery stops once found and missing-action retries are throttled. The
+legacy native caller menu is discovered once, then retained when shown. Saved
+Footer-hidden intent remains pending until the native visibility command appears,
+rather than being discarded by early construction. Complete-native mirror clicks
+log both request and dispatch. The assembled hidden flow passes after this cleanup;
+a focused delayed-action startup test is included. These reduce avoidable work by
+inspection; no measured live latency improvement is claimed.

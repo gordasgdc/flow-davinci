@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include <QApplication>
+#include <QElapsedTimer>
 #include <QAction>
 #include <QBoxLayout>
 #include <QJsonObject>
@@ -78,13 +79,14 @@ protected:
             if(widget && widget==nativeFooter && !nativeLease.active() && !applyingPlacement && !nativeVisibility && initialized && (type==QEvent::Show || type==QEvent::Hide)) {
                 shown=!nativeFooter->isHidden();publish();
             }
+            if(widget && widget->objectName()=="workspaceShowPanel")nativeCaller=qobject_cast<QMenu *>(widget);
             if(widget && (widget==nativeFooter || widget->objectName()=="m_PageSwitcherContainer" || widget->objectName()=="frameControlPanelMiddle" || widget->isWindow() || widget->objectName().startsWith("WStackPage_") || widget->objectName()=="workspaceShowPanel"))schedule();
         }
         return false;
     }
 private:
     void schedule(){if(!timer.isActive())timer.start();}
-    void publish(){state["hidden"]=!shown;if(changed)changed();}
+    void publish(){if(state.contains("hidden") && state["hidden"].toBool()==!shown)return;state["hidden"]=!shown;if(changed)changed();}
     void defer(std::function<void()> operation) {
         auto wait=new QTimer(this);wait->setSingleShot(true);auto attempts=std::make_shared<int>(0);
         connect(wait,&QTimer::timeout,this,[wait,attempts,operation] {
@@ -107,47 +109,29 @@ private:
             // footer, in its original slot. A later native action takes authority.
             nativeFooter->setVisible(value);shown=value;
         } else {logEvent("footer.visibility.failed",{{"reason","native-footer-unavailable"},{"visible",value}});return QStringLiteral("Native Page Navigation is not available yet.");}
-        pendingVisibility=false;publish();refresh();
+        pendingVisibility=!nativeVisibility;publish();refresh();
         logEvent("footer.visibility.complete",{{"requested",value},{"visible",shown}});return {};
     }
     void discover() {
         auto main=root?root():nullptr;if(!main)return;
-        if(auto footer=main->findChild<QWidget *>("m_PageSwitcherContainer"))nativeFooter=footer;
+        if(!nativeFooter)nativeFooter=main->findChild<QWidget *>("m_PageSwitcherContainer");
         QSet<QAction *> matches;
+        if(!nativeVisibility && (!actionSearch.isValid() || actionSearch.elapsed()>=250)) {
+        actionSearch.restart();
         for(auto action:main->findChildren<QAction *>()) {
             QString text=action->text();text.remove('&');
             if(action->isCheckable() && text.section('\t',0,0).trimmed()=="Show Page Navigation" && !action->property("openGateNavigationProxy").toBool())matches.insert(action);
+        }
         }
         if(matches.size()==1 && nativeVisibility!=*matches.begin()) {
             nativeVisibility=*matches.begin();
             connect(nativeVisibility,&QAction::toggled,this,[this](bool value){shown=value;pendingVisibility=false;publish();schedule();});
         }
-        // Original page buttons are read-only models and executable targets.
-        pages.clear();if(!nativeFooter)return;
-        const QPair<const char *,const char *> definitions[]={{"media","buttonBrowsePanel"},{"cut","buttonFirstCutPanel"},{"edit","buttonConformPanel"},{"fusion","buttonFusionPanel"},{"color","buttonColorPanel"},{"photo","buttonPhotoPanel"},{"fairlight","buttonAudioPanel"},{"deliver","buttonDeliverPanel"},{"home","buttonHome"},{"settings","buttonConfig"}};
-        const auto active=currentWorkspacePage(main);
-        for(const auto &definition:definitions) {
-            QList<QAbstractButton *> buttons;
-            for(auto button:nativeFooter->findChildren<QAbstractButton *>(definition.second)) {
-                bool hidden=button->isHidden();
-                for(auto parent=button->parentWidget();parent && parent!=nativeFooter;parent=parent->parentWidget())hidden|=parent->isHidden();
-                if(!hidden)buttons.append(button);
-            }
-            if(buttons.size()!=1)continue;
-            auto target=buttons.first();
-            const QString title=QString(definition.first)=="home"?QStringLiteral("Home"):QString(definition.first)=="settings"?QStringLiteral("Project Settings"):workspacePageLabel(definition.first);
-            pages.append({definition.first,title,target,active==definition.first || (active.isEmpty() && target->isCheckable() && target->isChecked())});
+        if(!searchedCaller) {
+            searchedCaller=true;
+            for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))
+                if(menu->objectName()=="workspaceShowPanel"){nativeCaller=menu;break;}
         }
-    }
-    void activatePage(const QString &id) {
-        discover();for(const auto &page:pages)if(page.id==id && page.target && page.target->isEnabled()) {
-            // Qt's original clicked signal reaches Resolve's real page owner.
-            QPointer<QAbstractButton> target=page.target;
-            logEvent("footer.page.request",{{"page",id},{"route","native-page-button"}});
-            target->click();schedule();
-            logEvent("footer.page.dispatched",{{"page",id},{"target_alive",bool(target)}});return;
-        }
-        logEvent("footer.page.unavailable",{{"page",id}});
     }
     void refresh() {
         if(stopped || refreshing)return;QScopedValueRollback<bool> guard(refreshing,true);discover();
@@ -187,14 +171,17 @@ private:
                     if(!button || !nativeFooter || !nativeFooter->isAncestorOf(button))return;
                     QPointer<QAbstractButton> target=button;
                     logEvent("footer.control.request",{{"target",button->objectName()},{"route","complete-native-footer-mirror"}});
-                    QTimer::singleShot(0,this,[this,target]{if(target && target->isEnabled()){target->click();schedule();}});
+                    QTimer::singleShot(0,this,[this,target]{if(target && target->isEnabled()){
+                        const auto name=target->objectName();target->click();schedule();
+                        logEvent("footer.control.dispatched",{{"target",name},{"target_alive",bool(target)}});
+                    }});
                 };
                 connect(host,&QObject::destroyed,this,[this,host]{views.remove(host);});
             }
-            view->setSource(nativeFooter);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && !pages.isEmpty());
+            view->setSource(nativeFooter);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && bool(nativeFooter));
         }
         for(auto it=views.begin();it!=views.end();++it)if(it.value() && !hosts.contains(it.key()))it.value()->hide();
-        for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))if(menu->objectName()=="workspaceShowPanel")wireCaller(menu);
+        if(nativeCaller)wireCaller(nativeCaller);
         auto primary=primarySurface?primarySurface():nullptr;
         if(placementChanged)placementChanged(bool(primary),pinned(primary));
         if(geometryChanged)geometryChanged();
@@ -211,7 +198,8 @@ private:
     PanelAccessoryLease nativeLease;
     std::function<QWidget *()> root;QJsonObject state;QTimer timer;
     QPointer<QWidget> nativeFooter;QPointer<QAction> nativeVisibility;
-    QList<NavigationPage> pages;QHash<QWidget *,QPointer<NativeFooterMirror>> views;
+    QPointer<QMenu> nativeCaller;QHash<QWidget *,QPointer<NativeFooterMirror>> views;
+    bool searchedCaller=false;QElapsedTimer actionSearch;
     bool shown=true,pendingVisibility=true,initialized=false,refreshing=false,applyingPlacement=false,stopped=false;
 };
 }

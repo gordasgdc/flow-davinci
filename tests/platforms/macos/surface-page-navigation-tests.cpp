@@ -63,5 +63,14 @@ int main(int argc,char **argv){
  }
  check(native->parentWidget()==parent&&layout->indexOf(native)==index&&native->minimumSize()==minimum&&native->sizePolicy()==policy,"shutdown restores native ownership and constraints");check(!first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer")&&!second.findChild<Unbound::NativeFooterMirror *>("openGateNativeFooterMirror"),"shutdown removes only owned wrappers and copies");
  {Unbound::FooterPanel restored(nullptr,[&]{return &main;},saved);restored.primarySurface=[&]{return &main;};restored.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};restored.restore();settle();check(restored.pinned(&second),"reserved secondary band survives restart");}
+ {
+ QWidget lateMain;lateMain.setAttribute(Qt::WA_DontShowOnScreen);auto layout=new QVBoxLayout(&lateMain);
+ auto lateFooter=new QWidget(&lateMain);lateFooter->setObjectName("m_PageSwitcherContainer");layout->addWidget(lateFooter);lateMain.show();
+ Unbound::FooterPanel delayed(nullptr,[&]{return &lateMain;},{{"hidden",true}});delayed.refreshSurfaces();settle();
+ check(lateFooter->isHidden(),"saved hidden footer applies before native command exists");
+ auto lateAction=new QAction("Show Page Navigation",&lateMain);lateAction->setCheckable(true);lateAction->setChecked(true);QObject::connect(lateAction,&QAction::toggled,lateFooter,&QWidget::setVisible);
+ settle();delayed.refreshSurfaces();settle();
+ check(!lateAction->isChecked()&&lateFooter->isHidden(),"late native command adopts saved hidden intent instead of overwriting it");
+ }
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;
 }
