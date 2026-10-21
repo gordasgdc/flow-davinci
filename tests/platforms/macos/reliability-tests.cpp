@@ -95,7 +95,7 @@ int main(int argc, char **argv)
         QWidget cinema; cinema.setObjectName("UiCinemaViewerDialog"); cinema.show(); player->hide(); settle(240);
         check(player->isHidden(), "panel recovery yields while Cinema deliberately hides the native player");
         cinema.hide(); settle(240);
-        check(player->isVisible() && player->parentWidget() == session.window(),
+        check(player->isVisible() && session.window()->isAncestorOf(player) && player->window()==session.window()->window(),
             "Cinema exit resumes native player recovery in its retained floating host");
         check(session.dock().isEmpty(), "Cinema recovery leaves original native docking intact");
     }
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
             timeline->setParent(foreign); timeline->hide(); settle();
             check(host && !host->isVisible(), "timeline host hides off Edit");
             pages->setCurrentWidget(edit); settle();
-            check(host && timeline->parentWidget() == host && timeline->isVisible() && host->isVisible(),
+            check(host && host->isAncestorOf(timeline) && timeline->window()==host->window() && timeline->isVisible() && host->isVisible(),
                 "native page reparent is recovered without Dock All");
             check(host && host->geometry() == arrangement, "page return preserves floating geometry");
         }

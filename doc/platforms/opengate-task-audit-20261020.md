@@ -526,3 +526,10 @@ has none, Timeline Toolbar can float, native mode selection and Native return ar
 preserved. This updates the fixture contract only, not production behavior. Run all
 remaining suites even when an independent suite fails, but never install until the
 combined receipt passes.
+
+Displayed reliability comparison:091268b itself fails the Cinema assertion because
+it requires player->parentWidget()==host, despite existing viewer overflow wrappers.
+New Timeline wrapper similarly invalidates the direct-parent expectation. Updated
+assertions to require same retained host ancestry/window plus visibility, retaining
+original-slot Dock assertions and repeated page-return cycles. This does not relax
+ownership to an arbitrary visible widget or claim a production Cinema fix.
