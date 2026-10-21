@@ -2,6 +2,7 @@
 #include <QElapsedTimer>
 #include <QMenuBar>
 #include <QProcess>
+#include <QInputDialog>
 #include <QTemporaryDir>
 #include <QThread>
 #include <cstdio>
@@ -17,8 +18,8 @@ int main(int argc,char **argv){
  auto bar=new QMenuBar(&main);bar->setNativeMenuBar(false);outer->setMenuBar(bar);auto workspace=bar->addMenu("Workspace");workspace->setObjectName("workspace");
  auto toolbar=new QStackedWidget(&main);auto tools=new QWidget;tools->setObjectName("pageSingleScreenModeTools");toolbar->addWidget(tools);outer->addWidget(toolbar);auto toolrow=new QHBoxLayout(tools);auto left=new QWidget(tools);left->setObjectName("frameEditTopBarLeftSSM");toolrow->addWidget(left);auto leftrow=new QHBoxLayout(left);leftrow->addWidget(new QPushButton("Media Pool",left));auto right=new QWidget(tools);right->setObjectName("frameEditTopBarRightSSM");right->setLayout(new QHBoxLayout);toolrow->addWidget(right);
  auto page=new QWidget(&main);page->setObjectName("WStackPage_Conform");outer->addWidget(page,1);auto native=new QHBoxLayout(page);
- QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector"}){
-  auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;
+ QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
+  auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
  auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");outer->addWidget(footer);auto footrow=new QHBoxLayout(footer);for(const auto &id:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto b=new QPushButton(id,footer);b->setObjectName(id);footrow->addWidget(b);}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
@@ -51,10 +52,31 @@ int main(int argc,char **argv){
  visibility("Page Navigation");const auto neither=page->height();check(neither>footerOnly,"hiding footer also returns its height");
  visibility("Workspace Header");check(page->height()<neither&&!footer->isVisible(),"header-only state reserves header with footer still hidden");
  visibility("Page Navigation");check(toolbar->isVisible()&&footer->isVisible()&&page->height()==both,"both bands return to exact original allocation");
+ visibility("Metadata");check(binding&&binding->contains("frameEditPageMetadata"),"Panels reveals a parked optional panel into the existing primary arrangement");
+ check(nativePanels["frameEditPageMetadata"]->isHidden(),"optional panel reveal does not expose the parked native page");
+ visibility("Metadata");visibility("Metadata");check(binding&&binding->selected("frameEditPageMetadata"),"optional panel hide/reveal uses the same retained placement");
+ QTimer answer;answer.setInterval(10);QObject::connect(&answer,&QTimer::timeout,[&]{for(auto widget:QApplication::topLevelWidgets())if(auto dialog=qobject_cast<QInputDialog *>(widget)){dialog->setAttribute(Qt::WA_DontShowOnScreen);dialog->setTextValue("Flow Workspace");dialog->accept();}});
+ answer.start();auto saveNew=menu->findChild<QAction *>("unboundSaveWorkspaceAs");if(saveNew)saveNew->trigger();settle();answer.stop();
+ auto selection=controls.findChild<QComboBox *>("arrangements");const auto userId=selection?selection->currentData().toString():QString();
+ check(Unbound::WorkspacePresetPolicy::writable(userId)&&selection->currentText()=="Flow Workspace","Save as New creates and selects a writable workspace");
+ update=menu->findChild<QAction *>("unboundUpdateWorkspace");check(update&&update->isEnabled(),"Update Current Workspace is enabled for a user workspace");
+ visibility("Workspace Header");Unbound::ArrangementStore beforeUpdate;
+ check(beforeUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"unsaved changes do not update the named record automatically");
+ if(update)update->trigger();settle();Unbound::ArrangementStore afterUpdate;
+ check(!afterUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"Update writes the current layout into only the selected user workspace");
+ visibility("Workspace Header");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
  check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
+ auto expandSource=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expandSource)expandSource->click();settle();
+ check(nativePanels["widgetEditSourcePlayer"]->window()!=&main,"temporary maximize remains available in Native");
+ Unbound::WorkspaceSettings duringNativeMaximize;check(duringNativeMaximize.data["layout_mode"]=="native","temporary maximize does not enter OpenGate mode");
+ if(expandSource)expandSource->click();settle();check(nativePanels["widgetEditSourcePlayer"]->parentWidget()==page,"Native maximize restores the exact native panel parent");
+ sendTitle(QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);sendTitle(QEvent::MouseMove,{90,5},Qt::NoButton,Qt::LeftButton);sendTitle(QEvent::MouseButtonRelease,{90,5},Qt::LeftButton,Qt::NoButton);settle();
+ Unbound::WorkspaceSettings gestureState;check(gestureState.data["layout_mode"]=="managed"&&page->layout()==native,"Native title drag enters OpenGate without loading the default or moving unrelated native slots");
+ check(nativePanels["frameEditPageMediaPool"]->isHidden(),"Native-origin drag also leaves no visible empty slot");
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
  check(binding&&binding->active(),"choosing Resolve Layout re-enters OpenGate through existing restoration");
+ update=menu->findChild<QAction *>("unboundUpdateWorkspace");check(update&&!update->isEnabled(),"Resolve Layout remains protected after returning from Native");
  auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(undock)undock->click();settle();
  check(binding&&!binding->contains("frameEditPageMediaPool"),"placement button also detaches the managed panel");
  visibility("Workspace Header");settle();

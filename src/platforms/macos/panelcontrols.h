@@ -561,6 +561,12 @@ private:
         if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(visible);return;}
         if (visible) if (auto group=groupFor(i)) if (group->windowHidden()) group->setWindowHidden(false);
         if (!panels[i].session->active()) {
+            auto parked=Unbound::panelSurface(page(),panels[i].name);
+            if(visible && nativeWorkspace->active() && Unbound::NativeRootLayout::ownsParkedWidget(parked,page())) {
+                // Reuse the existing panel lease and add operation. The parked
+                // native page never becomes a visible second workspace.
+                parked->show();pendingPrimaryPanels.insert(i);requestUndock(i);return;
+            }
             bool handled=Unbound::setNativePanelVisibility(Unbound::resolveMainWindow(),panels[i].toggle,visible);
             QPointer<QWidget> target=Unbound::panelSurface(page(),panels[i].name);
             if(!handled && panels[i].toggle.isEmpty() && target &&
@@ -812,6 +818,10 @@ private:
                 updateRow(i); save(); return;
             }
         }
+        if(target && Unbound::NativeRootLayout::ownsParkedWidget(target,root)) {
+            Unbound::setNativePanelVisibility(Unbound::resolveMainWindow(),p.toggle,true);
+            finishUndock(i);return;
+        }
         if (nativeSizing && expansionController->index()<0 && root && root->isVisible()) nativeSizing->prepare(root->window(),root);
         if (p.name == QLatin1String("widgetEditSourcePlayer") && root && root->isVisible() &&
             Unbound::prepareSourceViewer(root, target)) {
@@ -882,6 +892,13 @@ private:
             });
         }
         if (error.isEmpty() && p.name=="frameConformTimelines" && footer) footer->refreshSurfaces();
+        if(pendingPrimaryPanels.remove(i) && error.isEmpty() && nativeWorkspace->active()) {
+            const auto current=nativeWorkspace->saved()["panels"].toObject();
+            const auto target=current.contains("widgetEditInspector")?QStringLiteral("widgetEditInspector"):current.keys().value(0);
+            const auto attached=nativeWorkspace->dock(root,{{p.name,p.session}},{{"panel",p.name}},target,Qt::Vertical,false);
+            Unbound::logEvent("workspace.panel.reveal-from-parked",{{"panel",p.name},{"success",attached.isEmpty()},{"error",attached}});
+            if(!attached.isEmpty())status->setText(attached);
+        }
         outcome("undock", i, error);updateRow(i);updateNativeSizing();
         // A first maximize from Native UI may need to create the floating
         // session. It uses the same deferred checkpoint as an existing session.
@@ -1186,7 +1203,7 @@ private:
     QList<Panel> panels;
     Unbound::NativeSurfaceDoors nativeSurfaceDoors;
     Unbound::NativePanelToggles *nativeToggles=nullptr;
-    QSet<int> pendingNativeDoors;
+    QSet<int> pendingNativeDoors,pendingPrimaryPanels;
     Unbound::WorkspaceSettings settings;
     Unbound::WorkspaceRestoration *workspaceRestore=nullptr;
     Unbound::ArrangementControls *presetsUi = nullptr;

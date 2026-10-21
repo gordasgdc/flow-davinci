@@ -239,7 +239,7 @@ public:
     QString undockContents(QWidget *slot, QWidget *page, const QString &title,QWidget *managedOwner=nullptr)
     {
         if (active()) return QStringLiteral("This panel is already floating.");
-        if (!panelInManagedScope(slot,page,managedOwner) || !slot->isVisible() || !slot->layout())
+        if (!panelInManagedScope(slot,page,managedOwner) || (!slot->isVisible() && !NativeRootLayout::ownsParkedWidget(slot,page)) || !slot->layout())
             return QStringLiteral("Show this panel on the Edit page first.");
         originalParent = slot;
         originalPage = page;
@@ -294,7 +294,7 @@ public:
         logEvent(QStringLiteral("panel.undock.request"), {{"panel", title}, {"widget", widgetState(widget)}});
         if (active()) return QStringLiteral("This panel is already floating.");
         if (!panelInManagedScope(widget,page,managedOwner) ||
-            (!widget->isVisible() && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
+            (!widget->isVisible() && !NativeRootLayout::ownsParkedWidget(widget,page) && !(retainHiddenSurface && page->isVisible())) || widget->isWindow())
             return QStringLiteral("Show this panel on the Edit page first.");
         QWidget *parent = widget->parentWidget();
         auto splitter = qobject_cast<QSplitter *>(parent);

@@ -154,15 +154,15 @@ int main(int argc, char **argv)
         check(!root->actions().contains(panelShortcuts)&&root->findChildren<QAction *>("unboundPanelShortcuts").size()==1,"shortcut editor has one presentation, without duplicate actions");
         panelShortcuts->trigger();QApplication::processEvents();check(shortcutsCalls==2,"nested shortcut editor action retains its original callback");
 
-        check(root->actions().first()->text() == "Native Edit UI" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
-            "native Edit recovery is first in Workspace UI and separate from native Workspace commands");
+        check(root->actions().first()->text() == "OpenGate Workspaces" && !workspace.findChild<QAction *>("unboundRestoreNativeWorkspace"),
+            "OpenGate Workspaces is first; original Resolve recovery remains separate from native Workspace commands");
         check(root->findChild<QMenu *>("unboundWorkspace_"+first)->title() == "Edit && Review", "preset names retain literal ampersands in native menus");
-        auto original = root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly);
+        auto original = root->findChild<QAction *>("unboundWorkspaceRestore_"+second);
         original->trigger(); QApplication::processEvents(); menus.wire();
         check(restores == 1 && selected == second && preset->menuAction()->isChecked(), "menu restores stable ID once and synchronizes selection");
         store.rename(second,"Mix"); store.reorder({second,first}); menus.wire();
         QList<QString> ids; for (auto action : submenu->actions()) if (action->menu()) ids.append(action->menu()->property("unboundArrangementId").toString());
-        check(preset->title() == "Mix" && root->findChild<QAction *>("unboundWorkspaceRestore_"+second,Qt::FindDirectChildrenOnly) == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
+        check(preset->title() == "Mix" && root->findChild<QAction *>("unboundWorkspaceRestore_"+second) == original && ids == QList<QString>{second,first}, "rename and reorder synchronize without rebuilding action identity");
         original->trigger(); QApplication::processEvents();
         check(restores == 2, "repeated menu synchronization creates no duplicate restore callbacks");
         preset->findChild<QAction *>("unboundUpdateArrangement")->trigger(); QApplication::processEvents();
@@ -173,12 +173,12 @@ int main(int argc, char **argv)
         check(nativeCalls == 1, "native recovery remains callable after deleting the selected preset");
         QString color; store.create("Color Review",{{"page","color"},{"version",1}},color);
         activePage = "color"; menus.wire();
-        auto colorRecall = root->findChild<QAction *>("unboundWorkspaceRestore_"+color,Qt::FindDirectChildrenOnly);
-        check(root->actions().first()->text() == "Native Color UI" && colorRecall && root->actions().contains(colorRecall) &&
-            !root->actions().contains(root->findChild<QAction *>("unboundWorkspaceRestore_"+first,Qt::FindDirectChildrenOnly)),
+        auto colorRecall = root->findChild<QAction *>("unboundWorkspaceRestore_"+color);
+        check(root->actions().first()->text() == "OpenGate Workspaces" && colorRecall && root->findChild<QMenu *>("openGateWorkspaces")->actions().contains(colorRecall) &&
+            !root->actions().contains(root->findChild<QAction *>("unboundWorkspaceRestore_"+first)),
             "page switching relabels native recovery and filters saved workspaces without mixing Edit and Color");
         check(!colorRecall->isEnabled(),"unimplemented page backends cannot restore Edit content under another page's name");
-        root->actions().first()->trigger(); QApplication::processEvents();
+        root->findChild<QAction *>("unboundRestoreNativeWorkspace")->trigger(); QApplication::processEvents();
         check(nativeCalls == 2 && nativePage == "color","native recovery receives the page shown in its label");
         menus.supportedPage = [](QString) { return true; }; menus.wire();
         colorRecall->trigger(); activePage = "edit"; QApplication::processEvents();

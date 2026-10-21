@@ -13,6 +13,13 @@ public:
     explicit NativeRootLayout(QObject *owner=nullptr) : QObject(owner) {}
     ~NativeRootLayout() override { restore(); }
     bool active() const { return page && nativeLayout && customLayout; }
+    static bool ownsParkedWidget(QWidget *widget,QWidget *nativePage) {
+        if(!widget || !nativePage || widget==nativePage)return false;
+        for(auto parent=widget->parentWidget();parent;parent=parent->parentWidget())
+            if(parent->objectName()=="unboundNativeLayoutStash" && parent->parentWidget()==nativePage->window() &&
+               parent->property("unboundParkedNativePage").value<QObject *>()==nativePage && parent->layout())return true;
+        return false;
+    }
     static bool contains(QWidget *nativePage,QWidget *container) {
         if (!nativePage || !container || container==nativePage) return false;
         for (auto ancestor=container; ancestor && ancestor!=nativePage; ancestor=ancestor->parentWidget()) {
@@ -33,7 +40,7 @@ public:
             ? retained : originalParent;
     }
     static QWidget *logicalParent(QWidget *nativePage,QWidget *currentParent) {
-        return currentParent && currentParent->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,currentParent)
+        return currentParent && ((currentParent->property("unboundNativeLayoutRemainder").toBool() && contains(nativePage,currentParent)) || (currentParent->objectName()=="unboundNativeLayoutStash" && currentParent->property("unboundParkedNativePage").value<QObject *>()==nativePage))
             ? nativePage : currentParent;
     }
     QString mount(QWidget *nativePage,QWidget *arrangement) {
@@ -50,6 +57,7 @@ public:
             if (child!=surface && !child->isWindow()) baselineVisibility.append({child,child->isHidden(),child->geometry()});
         const auto margins=nativeLayout->contentsMargins();
         stash=new QWidget(main); stash->setObjectName("unboundNativeLayoutStash"); stash->hide();
+        stash->setProperty("unboundParkedNativePage",QVariant::fromValue<QObject *>(page));
         stash->setLayout(nativeLayout);
         if (page->layout() || stash->layout()!=nativeLayout) {
             if (!page->layout() && stash->layout()==nativeLayout) page->setLayout(nativeLayout);
