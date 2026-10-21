@@ -81,6 +81,9 @@ public:
         status=managerView->status; presetsUi=managerView->presets;
         optionsScroll=managerView->scroll; pin=managerView->pin; constrain=managerView->constrain;
         snap=managerView->snap; background=managerView->background;
+        // Legacy presets remain recoverable, but their former manual background
+        // policy must not hide the new primary workspace behind its panels.
+        {const QSignalBlocker block(background);background->setChecked(false);}
         hierarchyOption=managerView->hierarchy; style=managerView->style;
         presets = presetsUi->selection();
         workspaceRestore=new Unbound::WorkspaceRestoration(this);
@@ -712,7 +715,7 @@ private:
         layoutMode=Unbound::PageWorkspaceState::mode(value);
         if (footer) footer->setState(value["footer"].toObject());
         if(workspaceHeader)workspaceHeader->setState(value["header"].toObject());
-        { const QSignalBlocker blocker(background); background->setChecked(value["background_policy"]=="manual-hidden"); }
+        { const QSignalBlocker blocker(background); background->setChecked(false); }
         pendingGroups = value["groups"].toArray();
         const auto nativeError=nativeWorkspace->setPending(value["native_arrangement"].toObject(),pendingGroups);
         if (!nativeError.isEmpty()) return nativeError;

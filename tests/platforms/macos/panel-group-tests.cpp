@@ -116,8 +116,11 @@ int main(int argc, char **argv)
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); main.show(); settle();
-        Unbound::activateNativeWindowForTest(&main); settle();
-        const auto key = Unbound::nativeKeyWindowNumber();
+        Unbound::activateNativeWindowForTest(&main);
+        const auto key = Unbound::nativeWindowNumber(&main);
+        QElapsedTimer activation;activation.start();
+        while(Unbound::nativeKeyWindowNumber()!=key && activation.elapsed()<1000)settle(10);
+        check(key && Unbound::nativeKeyWindowNumber()==key,"group reserve fixture has acquired its intended key window before preparation");
         Unbound::GroupHostReserve reserve(&main); reserve.request(&main);
         QElapsedTimer readiness; readiness.start();
         while (!main.findChild<QWidget *>("unboundPreparedGroupHost") && readiness.elapsed()<1500) settle(10);
@@ -128,6 +131,7 @@ int main(int argc, char **argv)
             qPrintable(QApplication::activeModalWidget() ? QApplication::activeModalWidget()->objectName() : QString()));
         check(prepared && !prepared->isVisible() && !(Unbound::nativeVisibilityFlags(prepared) & 1),
             "preparing an empty group never exposes another native window");
+        if(Unbound::nativeKeyWindowNumber()!=key)std::fprintf(stderr,"Group reserve focus: expected=%lld actual=%lld prepared=%lld\n",(long long)key,(long long)Unbound::nativeKeyWindowNumber(),(long long)Unbound::nativeWindowNumber(prepared));
         check(Unbound::nativeKeyWindowNumber() == key,
             "preparing group chrome preserves the user's key window");
         auto taken = reserve.take(&main);
