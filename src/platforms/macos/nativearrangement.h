@@ -44,6 +44,7 @@ public:
     std::function<void(const QString &,QPoint)> tearOff;
     std::function<void(const QString &)> detachRequested;
     std::function<void()> restored;
+    std::function<QString()> prepareRestore;
     std::function<void(const QJsonObject &,QRect,QPoint)> tearOffSection;
     bool contains(const QString &id) const { return active() && sessions.value(id); }
     bool selected(const QString &id) const {
@@ -212,6 +213,7 @@ public:
 private:
     bool restoreOwned(bool dockPanels) {
         UiWorkTiming timing("workspace.native-arrangement.restore",host ? host->window() : nullptr);
+        if(active()&&prepareRestore&&!prepareRestore().isEmpty())return false;
         // Original slots must be back before sessions dock into them. If native
         // ownership changed, retain the arrangement rather than deleting content.
         if (!lease.restore()) return false;

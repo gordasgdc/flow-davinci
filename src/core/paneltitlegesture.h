@@ -4,9 +4,19 @@
 #include <QAbstractButton>
 #include <QMouseEvent>
 #include <QPointer>
+#include <QLabel>
+#include <QStyle>
 #include <functional>
 #include <utility>
 namespace Unbound {
+inline bool panelTitleHit(QWidget *title,QPoint point) {
+    if(!title || !title->rect().adjusted(2,2,-2,-2).contains(point))return false;
+    if(auto label=qobject_cast<QLabel *>(title)) {
+        const QSize ink(qMin(label->width(),label->fontMetrics().horizontalAdvance(label->text())+12),label->height());
+        return QStyle::alignedRect(label->layoutDirection(),label->alignment(),ink,label->rect()).contains(point);
+    }
+    return true;
+}
 // Shared click/drag distinction, with no platform window APIs or layout policy.
 // Native clicks pass through; only a held left-button threshold starts a drag.
 class PanelTitleGesture : public QObject {
@@ -17,7 +27,7 @@ public:
 protected:
     bool eventFilter(QObject *,QEvent *event) override {
         if(event->type()==QEvent::MouseButtonPress) {
-            auto mouse=static_cast<QMouseEvent *>(event);armed=mouse->button()==Qt::LeftButton;dragged=false;press=mouse->globalPos();
+            auto mouse=static_cast<QMouseEvent *>(event);armed=mouse->button()==Qt::LeftButton&&panelTitleHit(title,mouse->pos());dragged=false;press=mouse->globalPos();
         } else if(event->type()==QEvent::MouseMove && armed) {
             auto mouse=static_cast<QMouseEvent *>(event);
             if(mouse->buttons().testFlag(Qt::LeftButton) && (mouse->globalPos()-press).manhattanLength()>=QApplication::startDragDistance()) {

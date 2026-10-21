@@ -2,6 +2,7 @@
 #pragma once
 #include "panelscalecontrols.h"
 #include "grouppanelheader.h"
+#include "../../core/paneltitlegesture.h"
 #include "compacttoolbar.h"
 #include <QHash>
 #include <QPushButton>
@@ -261,13 +262,14 @@ protected:
         auto header = qobject_cast<QLabel *>(object);
         if (header && header->objectName() == QLatin1String("unboundGroupHeader")) {
             if (event->type() == QEvent::MouseButtonPress) {
-                auto mouse = static_cast<QMouseEvent *>(event); if (mouse->button() != Qt::LeftButton) return false;
+                auto mouse = static_cast<QMouseEvent *>(event); if (mouse->button() != Qt::LeftButton || !panelTitleHit(header,mouse->pos())) return false;
                 press = mouse->globalPos(); headerPressed = true;
+                pressedHeader=header;
                 headerOffset = press - header->parentWidget()->parentWidget()->mapToGlobal(QPoint()); return true;
             }
             if (event->type() == QEvent::MouseMove) {
                 auto mouse = static_cast<QMouseEvent *>(event);
-                if (!headerPressed || !mouse->buttons().testFlag(Qt::LeftButton) || (mouse->globalPos() - press).manhattanLength() < QApplication::startDragDistance()) return false;
+                if (!headerPressed || pressedHeader!=header || !mouse->buttons().testFlag(Qt::LeftButton) || (mouse->globalPos() - press).manhattanLength() < QApplication::startDragDistance()) return false;
                 headerPressed = false; QPointer<MacPanelSession> member;
                 for (auto candidate : members) if (candidate && panelName(candidate) == header->property("groupPanel").toString()) member = candidate;
                 if (!member) return true;
@@ -275,7 +277,7 @@ protected:
                 dragHost->move(mouse->globalPos() - headerOffset); dragHost->raise(); dragHost->activateWindow();
                 dragHost->beginPointerDrag(mouse->globalPos(), true); return true;
             }
-            if (event->type() == QEvent::MouseButtonRelease) headerPressed = false;
+            if (event->type() == QEvent::MouseButtonRelease || event->type()==QEvent::Hide || event->type()==QEvent::UngrabMouse) {headerPressed = false;pressedHeader=nullptr;}
         }
         if (object == host && event->type() == QEvent::Close) { static_cast<QCloseEvent *>(event)->accept(); dissolve(true); return true; }
         if (object==host && event->type()==QEvent::DynamicPropertyChange &&
@@ -309,7 +311,7 @@ private:
         // Keep old hosts until the destination is ready. Hiding the active host
         // earlier makes Cocoa activate another window in the middle of transfer.
         const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
-        for (auto child:content->findChildren<QWidget *>()) if (child->objectName()=="unboundTimelineHeader" || child->objectName().startsWith("unboundNativeUndock_") || child->objectName().startsWith("unboundNativeKeyboard_")) child->hide();
+        for (auto child:content->findChildren<QWidget *>()) if (child->objectName()=="unboundTimelineHeader" || child->objectName()=="unboundNativeUndock_"+name || child->objectName().startsWith("unboundNativeKeyboard_")) child->hide();
         if (name=="unboundWorkspaceToolbar") new CompactToolbar(wrapper,content->findChild<QStackedWidget *>() ? content->findChild<QStackedWidget *>() : content);
         members.append(member); leaves[member] = wrapper; wireMember(member); return {};
     }
@@ -456,5 +458,6 @@ private:
     QTimer timer;
     bool releasing = false, rebuilding = false, headerPressed = false, syncingVisibility = false;
     QPoint press, headerOffset;
+    QPointer<QLabel> pressedHeader;
 };
 }

@@ -7,8 +7,10 @@ namespace Unbound {
 // rectangle rather than reconstructing screen-wide gates or native constraints.
 inline QRect workspaceViewportBounds(QWidget *owner,QWidget *nativeBody=nullptr) {
     if(!owner || !owner->isVisible())return {};
-    if(nativeBody && nativeBody->window()==owner && nativeBody->isVisible())
-        return workspaceViewportBounds(nativeBody);
+    if(nativeBody && nativeBody->window()==owner && nativeBody->isVisible()) {
+        const auto content=workspaceViewportBounds(nativeBody);
+        return content.isEmpty()?QRect(nativeBody->mapToGlobal(QPoint()),nativeBody->size()):content;
+    }
     auto layout=owner->layout();if(!layout)return {};
     QRect content;
     for(int i=0;i<layout->count();++i) {

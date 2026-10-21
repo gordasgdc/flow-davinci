@@ -952,6 +952,16 @@ Reuse the existing Workspace Toolbar and native Page Navigation. Do not redesign
       menu/header refreshes, widget scans, persistence and diagnostic work; measure
       drag, maximize/restore and page changes. Logging stays diagnostic and useful.
       Do not claim the main cause or improvement without evidence.
+- [ ] Remove whole-Timeline scrolling wrapper. Keep Resolve's native track/ruler
+      viewport and its own scrolling; only the attached toolbar may overflow.
+      Verify track headers remain painted while resizing and scrolling. This
+      rendering failure predates the new flow and is not fixed by rollback alone.
+- [ ] Divider drags must resize only. Limit panel-title gestures to the actual
+      text/control hit area, reject stale gestures, and diagnose empty retained
+      hosts. No claim of resolution until the reported live sequence is tested.
+- [ ] Dock targets: retain broad edge targets; use one bounded center tab target
+      and neutral interior around it. Passing over a panel does not dock. Release
+      on a highlighted target commits; neutral release leaves the window floating.
 - [ ] Verify assembled real ownership topology (toolbar inside parked page),
       recovery, persistence, native clicks, rendering and overflow. Fixture passes
       are distinct from live Resolve acceptance. Review differences before install.
@@ -959,6 +969,15 @@ Reuse the existing Workspace Toolbar and native Page Navigation. Do not redesign
 Installed c033f3d is a failed live candidate. Uncommitted repair work has not been
 installed. Keep the prior builds, user arrangements and rollback checkpoints.
 Fusion/platform expansion and release work follow the basic-flow repair.
+
+Repair checkpoint 7687b5e: 37/39 hidden suites passed. Native preset fixture
+failed when its hidden active-window precondition was lost; explicitly restoring
+that fixture precondition passes without changing production key dispatch.
+Native-entry maximize failed for an entirely vacated page; repaired the empty
+content fallback and its focused suite passes. Subsequent repair work adds
+toolbar-only Timeline overflow, bounded title hit areas/neutral dock space and
+last-panel toolbar release ordering. These need a final matrix and live tests.
+Installed helper remains c033f3d; no repair has been injected into running Resolve.
 
 The installed 85fc822 build failed live vacancy reclamation and header overlap.
 It is not accepted. The agreed flow now defaults to the existing emulator-shaped

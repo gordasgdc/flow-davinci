@@ -19,6 +19,7 @@
 #include "floatinghost.h"
 #include "panelwidth.h"
 #include "paneloverflow.h"
+#include "timelinetoolbarviewport.h"
 #include "panelmetricscale.h"
 #include "nativegroupslot.h"
 #include "nativepanelposition.h"
@@ -305,6 +306,7 @@ public:
             return QStringLiteral("This panel's layout is not supported yet.");
         if ((layout && layout->indexOf(widget) < 0) || (splitter && splitter->indexOf(widget) < 0))
             return QStringLiteral("The panel is not in its expected layout.");
+        timelineToolbar.attach(widget);
 
         content = widget;
         originalParent = NativeRootLayout::logicalParent(page,parent);
@@ -361,11 +363,9 @@ public:
         const bool scrollViewer=widget->objectName()==QLatin1String("widgetEditSourcePlayer") ||
             widget->objectName()==QLatin1String("widgetEditTimelinePlayer") ||
             widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
-        const bool scrollTimeline=widget->objectName()==QLatin1String("frameConformTimelines");
-        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer || scrollTimeline;
+        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
         box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
-        relaxedWidth = widget->objectName() == QLatin1String("frameConformTimelines") ||
-            widget->objectName() == QLatin1String("widgetEditInspector") ||
+        relaxedWidth = widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");
         // Relax the viewport, never the native controls inside it. Ignoring the
         // Media Pool's minimum width makes its toolbar overlap before it scrolls.
@@ -456,6 +456,7 @@ public:
             overflow.releaseInto(host);
         }
         metricScale.restore();
+        if(!timelineToolbar.restore())return QStringLiteral("Could not restore the attached Timeline toolbar safely.");
         const bool reclaimed = content->parentWidget() == destinationParent;
         QLayout *currentLayout = destinationParent->layout();
         if (reclaimed && (!currentLayout || currentLayout->indexOf(content) >= 0 || originalStack || originalSplitter)) {
@@ -579,6 +580,9 @@ private:
             }
             QScopedValueRollback<bool> recovery(recovering, true);
             QWidget *surface = window();
+            if(surface==host && (!surface->layout() || surface->layout()->count()==0)) {
+                logEvent("panel.recover.deferred",{{"reason","empty-transfer-host"},{"host",host->objectName()}});return;
+            }
             if (!transferredLayout && content) {
                 if (content->parentWidget() != surface && !overflow.owns(content)) {
                     if (!nativeOwner(content->parentWidget())) {
@@ -602,6 +606,7 @@ private:
         releaseOriginalPosition={};
         if (releaseGroup) { auto release = releaseGroup; release(); }
         metricScale.restore();
+        timelineToolbar.restore();
         groupWidth.restore(); widthAllowance.restore(); vacatedContents.restore(); relaxedWidth = false;
         overflow.forget();
         ++generation;
@@ -630,6 +635,7 @@ private:
     PanelMetricScale metricScale;
     double metricFactor=1.0;
     PanelOverflow overflow;
+    TimelineToolbarViewport timelineToolbar;
     VacatedContents vacatedContents;
     bool relaxedWidth = false;
     QPointer<QWidget> originalMain;

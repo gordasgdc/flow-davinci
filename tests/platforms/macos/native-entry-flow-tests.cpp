@@ -54,7 +54,7 @@ int main(int argc,char **argv) {
  auto sourceDoor=dynamic_cast<Unbound::NativeUndockButton *>(main.findChild<QToolButton *>("openGateToolbarDoor_widgetEditSourcePlayer"));
  check(sourceDoor&&bool(sourceDoor->drag),"Native header offers Source drag before any preset");
  QMenu flat;headers->populate(&flat,&main);bool sawHeader=false,sawFooter=false;
- for(auto action:flat.actions()){check(action->text()!="Edit"&&action->text()!="Workspace"&&action->text()!="All Panels","no category submenu in Panels");sawHeader|=action->text()=="Workspace Header";sawFooter|=action->text()=="Page Navigation";}
+ for(auto action:flat.actions()){check(action->text()!="Edit"&&action->text()!="Workspace"&&action->text()!="All Panels","no category submenu in Panels");sawHeader|=action->text()=="Workspace Toolbar";sawFooter|=action->text()=="Page Navigation";}
  check(sawHeader&&sawFooter,"Panels directly exposes Header and Footer");
  auto menuBarPanels=ui->findChild<QMenu *>("openGateShowPanel");check(menuBarPanels&&menuBarPanels->findChildren<QMenu *>().isEmpty(),"menubar Panels has no page/category layers");
  left->setFixedWidth(nativeButton->sizeHint().width()+leftRow->contentsMargins().left()+leftRow->contentsMargins().right()+leftRow->spacing()+44);settle();auto overflow=main.findChild<QToolButton *>("openGateToolbarOverflow");
@@ -65,9 +65,9 @@ int main(int argc,char **argv) {
  trigger("Source Monitor");check(source->isHidden()&&source->parentWidget()==page,"Panels Hide retains native source ownership");
  if(sourceDoor)sourceDoor->click();settle();check(!source->isHidden()&&source->parentWidget()==page,"header Show restores same native source without floating");
  trigger("Program Monitor");check(program->isHidden()&&program->parentWidget()==page,"program visibility keeps native ownership");trigger("Program Monitor");
- auto pageHeight=page->height();trigger("Workspace Header");trigger("Page Navigation");check(toolbar->isHidden()&&footer->isHidden()&&page->height()>pageHeight,"both hidden bands release native workspace space");
+ auto pageHeight=page->height();trigger("Workspace Toolbar");trigger("Page Navigation");check(toolbar->isHidden()&&footer->isHidden()&&page->height()>pageHeight,"both hidden bands release native workspace space");
  QMenu stillAccessible;headers->populate(&stillAccessible,&main);check(!stillAccessible.actions().isEmpty(),"Panels remains populated with both bands hidden");
- trigger("Workspace Header");trigger("Page Navigation");check(!toolbar->isHidden()&&!footer->isHidden()&&page->height()==pageHeight,"Show restores original bands and content bounds");
+ trigger("Workspace Toolbar");trigger("Page Navigation");check(!toolbar->isHidden()&&!footer->isHidden()&&page->height()==pageHeight,"Show restores original bands and content bounds");
  check(title->text()=="Project name retained"&&nativeButton->parentWidget()==left,"native header controls and title retained");
  if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(sourceDoor->mapToGlobal(QPoint()));settle(500);
  auto floating=dynamic_cast<Unbound::MacFloatingHost *>(source->window());check(floating&&floating!=&main,"native header drag callback detaches source directly");
@@ -81,9 +81,9 @@ int main(int argc,char **argv) {
   return host->geometry()==expected;
  };
  check(expanded!=&main&&matchesViewport(expanded,&main,page),"maximize exactly fills native workspace content rather than monitor");
- trigger("Workspace Header");const auto withoutHeader=expanded->geometry();check(withoutHeader.top()<expandedGeometry.top()&&withoutHeader.bottom()==expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"hiding only header removes only top gate");
+ trigger("Workspace Toolbar");const auto withoutHeader=expanded->geometry();check(withoutHeader.top()<expandedGeometry.top()&&withoutHeader.bottom()==expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"hiding only header removes only top gate");
  trigger("Page Navigation");check(expanded->geometry().bottom()>withoutHeader.bottom()&&matchesViewport(expanded,&main,page),"hiding footer removes bottom gate too");
- trigger("Workspace Header");check(expanded->geometry().top()==expandedGeometry.top()&&expanded->geometry().bottom()>expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"showing only header reinstates only top gate");
+ trigger("Workspace Toolbar");check(expanded->geometry().top()==expandedGeometry.top()&&expanded->geometry().bottom()>expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"showing only header reinstates only top gate");
  trigger("Page Navigation");check(expanded->geometry()==expandedGeometry&&matchesViewport(expanded,&main,page),"showing both restores exact workspace bounds");
  const auto originalMainSize=main.size();main.resize(main.width()+120,main.height()+80);settle(450);
  check(matchesViewport(expanded,&main,page),"current maximize follows workspace resizing");main.resize(originalMainSize);settle(450);
@@ -108,8 +108,8 @@ int main(int argc,char **argv) {
  const auto primaryFrame=main.geometry();
  auto expandTimeline=controls.findChild<QPushButton *>("expand_frameConformTimelines");if(expandTimeline)expandTimeline->click();settle(600);
  check(main.geometry()==primaryFrame&&matchesViewport(timeline->window(),&main,page),"standalone maximize fills primary content without resizing its owner");
- trigger("Workspace Header");trigger("Page Navigation");check(main.geometry()==primaryFrame&&matchesViewport(timeline->window(),&main,page),"primary frame stays fixed while maximize reclaims hidden band space");
- trigger("Workspace Header");trigger("Page Navigation");check(main.geometry()==primaryFrame&&matchesViewport(timeline->window(),&main,page),"showing bands restores primary content bounds without window shrink");
+ trigger("Workspace Toolbar");trigger("Page Navigation");check(main.geometry()==primaryFrame&&matchesViewport(timeline->window(),&main,page),"primary frame stays fixed while maximize reclaims hidden band space");
+ trigger("Workspace Toolbar");trigger("Page Navigation");check(main.geometry()==primaryFrame&&matchesViewport(timeline->window(),&main,page),"showing bands restores primary content bounds without window shrink");
  if(expandTimeline)expandTimeline->click();settle(450);
  if(programHost&&programHost->attachRequested)programHost->attachRequested(timelineHost,Qt::RightEdge);settle(550);
  check(timeline->window()==program->window()&&toolbar->window()==&main&&footer->window()==&main,"grouping leaves native bands with the primary workspace");
@@ -117,15 +117,15 @@ int main(int argc,char **argv) {
  auto floatingWorkspace=timeline->window();const auto floatingFrame=floatingWorkspace->geometry();
  auto expandProgram=controls.findChild<QPushButton *>("expand_widgetEditTimelinePlayer");if(expandProgram)expandProgram->click();settle(500);
  auto expandedProgram=program->window();check(expandedProgram!=floatingWorkspace&&matchesViewport(expandedProgram,floatingWorkspace,nullptr),"floating group maximize fills that group's own content viewport");
- trigger("Workspace Header");trigger("Page Navigation");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr),"primary band visibility does not change the floating group content viewport");
- trigger("Workspace Header");trigger("Page Navigation");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr)&&floatingWorkspace->geometry()==floatingFrame,"restoring bands preserves floating workspace frame");
+ trigger("Workspace Toolbar");trigger("Page Navigation");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr),"primary band visibility does not change the floating group content viewport");
+ trigger("Workspace Toolbar");trigger("Page Navigation");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr)&&floatingWorkspace->geometry()==floatingFrame,"restoring bands preserves floating workspace frame");
  if(expandProgram)expandProgram->click();settle(450);check(program->window()==floatingWorkspace,"floating group restore returns to retained workspace");
 
  if(nativeReturn)nativeReturn->trigger();settle(650);
  check(timeline->parentWidget()==page&&source->parentWidget()==page&&program->parentWidget()==page&&toolbar->parentWidget()==&main&&footer->parentWidget()==&main,"Native Edit restores native panel and band slots after full rearrangement");
  auto reveal=ui->findChild<QAction *>("openGateShowHiddenArrangements");check(reveal&&reveal->isEnabled(),"Advanced can recover hidden arrangements");
  if(reveal)reveal->trigger();settle(350);check(initialPresets->count()==5&&source->parentWidget()==page,"revealing saved arrangements preserves current native layout and new preset");
- trigger("Source Monitor");trigger("Workspace Header");trigger("Page Navigation");settle(500);
+ trigger("Source Monitor");trigger("Workspace Toolbar");trigger("Page Navigation");settle(500);
  }
  QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();check(child.waitForFinished(30000),"fresh-process restart fixture completes");std::fprintf(stderr,"%s",child.readAllStandardError().constData());check(child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0,"unsaved native changes survive actual process restart");
  std::printf("native entry flow failures=%d\n",errors);return errors?1:0;

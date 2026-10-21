@@ -25,8 +25,8 @@ int main(int argc, char **argv)
             for (int y = surface.top()-1; y <= surface.bottom()+1; y += 7) {
                 const QPoint point(x,y);
                 const auto selection = Unbound::selectPanelDrop(surface, point);
-                check((selection.placement != Placement::None) == surface.contains(point),
-                    "regional targets cover the destination without extending onto the desktop");
+                check(selection.placement==Placement::None || surface.contains(point),
+                    "explicit targets never extend onto the desktop");
                 if (selection.placement != Placement::None)
                     check(surface.contains(selection.preview), "preview stays inside its destination");
             }
@@ -40,8 +40,10 @@ int main(int argc, char **argv)
     }
     const QPoint boundary(frame.left()+40, frame.center().y());
     check(Unbound::selectPanelDrop(frame, boundary, Placement::Left).placement == Placement::Left &&
-        Unbound::selectPanelDrop(frame, boundary+QPoint(5,0), Placement::Left).placement == Placement::Tab,
+        Unbound::selectPanelDrop(frame, boundary+QPoint(5,0), Placement::Left).placement == Placement::None,
         "boundary jitter is retained briefly without trapping the pointer in a split");
+    check(Unbound::selectPanelDrop(frame,QPoint(frame.left()+100,frame.top()+100)).placement==Placement::None,
+        "ordinary window interior is a neutral free-floating region");
 
     int offered = 0;
     for (int x = -100; x < 1200; x += 10) for (int y = -100; y < 1000; y += 10)

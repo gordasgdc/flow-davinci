@@ -770,7 +770,7 @@ private:
     }
     void toggleExpanded(int i)
     {
-        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){status->setText("Workspace Header is pinned; use Show or Hide.");return;}
+        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){status->setText("Workspace Toolbar is pinned; use Show or Hide.");return;}
         action(QStringLiteral("expand-toggle"),panels[i].label);
         if (expansionController->index()==i) { restoreExpanded(); return; }
         restoreExpanded();
@@ -990,7 +990,7 @@ private:
     { for (auto group : groups) if (group->contains(panels[panel].session)) return group; return nullptr; }
     QString combinePanels(int a, int b, Qt::Orientation orientation, bool before = true, const QString &targetLeaf = {}, const QRect &destination = {})
     {
-        if(panels[a].name=="unboundWorkspaceToolbar" || panels[b].name=="unboundWorkspaceToolbar")return QStringLiteral("Workspace Header is pinned above the surface; use Show or Hide.");
+        if(panels[a].name=="unboundWorkspaceToolbar" || panels[b].name=="unboundWorkspaceToolbar")return QStringLiteral("Workspace Toolbar is pinned above the surface; use Show or Hide.");
         auto left = groupFor(a), right = groupFor(b);
         if (left && left == right) return QStringLiteral("Those panels already share a group.");
         if (right && left) return right->merge(left, orientation, before, targetLeaf);

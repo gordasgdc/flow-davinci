@@ -94,10 +94,10 @@ int main(int argc,char **argv){
  auto visibility=[&](const char *label){QMenu flat;callers->populateFlat(&flat);bool found=false;for(auto action:flat.actions()){check(!action->menu(),"Panels inventory has no subtrees");check(action->text()!="Timeline Toolbar","Timeline toolbar is not separately arranged");if(action->text()==label){action->trigger();found=true;}}settle();check(found,label);
   if(auto body=page->findChild<QWidget *>("unboundNativeArrangement"))check(Unbound::workspaceViewportBounds(&main,page)==QRect(body->mapToGlobal(QPoint()),body->size()),"each band visibility combination updates maximize to actual content bounds");};
  auto bodyHeight=[&]{auto body=page->findChild<QWidget *>("unboundNativeArrangement");return body?body->height():-1;};
- const auto both=bodyHeight();visibility("Workspace Header");const auto footerOnly=bodyHeight();
+ const auto both=bodyHeight();visibility("Workspace Toolbar");const auto footerOnly=bodyHeight();
  check(footerOnly>both,"hiding header returns height to the panel area");
  visibility("Page Navigation");const auto neither=bodyHeight();check(neither>footerOnly,"hiding footer also returns its height");
- visibility("Workspace Header");check(bodyHeight()<neither&&!footer->isVisible(),"header-only state reserves header with footer still hidden");
+ visibility("Workspace Toolbar");check(bodyHeight()<neither&&!footer->isVisible(),"header-only state reserves header with footer still hidden");
  visibility("Page Navigation");check(toolbar->isVisible()&&footer->isVisible()&&bodyHeight()==both,"both bands return to exact original allocation");
  visibility("Metadata");check(binding&&binding->contains("frameEditPageMetadata"),"Panels reveals a parked optional panel into the existing primary arrangement");
  check(nativePanels["frameEditPageMetadata"]->isHidden(),"optional panel reveal does not expose the parked native page");
@@ -107,11 +107,11 @@ int main(int argc,char **argv){
  auto selection=controls.findChild<QComboBox *>("arrangements");const auto userId=selection?selection->currentData().toString():QString();
  check(Unbound::WorkspacePresetPolicy::writable(userId)&&selection->currentText()=="Flow Workspace","Save as New creates and selects a writable workspace");
  update=menu->findChild<QAction *>("unboundUpdateWorkspace");check(update&&update->isEnabled(),"Update Current Workspace is enabled for a user workspace");
- visibility("Workspace Header");Unbound::ArrangementStore beforeUpdate;
+ visibility("Workspace Toolbar");Unbound::ArrangementStore beforeUpdate;
  check(beforeUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"unsaved changes do not update the named record automatically");
  if(update)update->trigger();settle();Unbound::ArrangementStore afterUpdate;
  check(!afterUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"Update writes the current layout into only the selected user workspace");
- visibility("Workspace Header");
+ visibility("Workspace Toolbar");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
  check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
  auto expandSource=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expandSource)expandSource->click();settle();
@@ -123,10 +123,18 @@ int main(int argc,char **argv){
  check(nativePanels["frameEditPageMediaPool"]->isHidden(),"Native-origin drag also leaves no visible empty slot");
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
  check(binding&&binding->active(),"choosing Resolve Layout re-enters OpenGate through existing restoration");
+ QPointer<QWidget> retainedToolbar=toolbar;
+ for(const auto &id:{"frameEditPageMediaPool","frameEditPageEditIndex","widgetEditSourcePlayer","widgetEditTimelinePlayer","widgetEditInspector","frameConformTimelines"}){
+  auto command=controls.findChild<QPushButton *>(QString("undock_")+id);if(command)command->click();settle(200);
+ }
+ check(retainedToolbar&&retainedToolbar->window()==&main&&retainedToolbar->isVisible(),"detaching the last panel releases the toolbar lease before retiring the embedded page layout");
+ if(!retainedToolbar)return 1;
+ if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
+ check(binding->active(),"complete floating arrangement can return to Resolve Layout without losing native toolbar ownership");
  update=menu->findChild<QAction *>("unboundUpdateWorkspace");check(update&&!update->isEnabled(),"Resolve Layout remains protected after returning from Native");
  auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(undock)undock->click();settle();
  check(binding&&!binding->contains("frameEditPageMediaPool"),"placement button also detaches the managed panel");
- visibility("Workspace Header");settle();
+ visibility("Workspace Toolbar");settle();
  const auto retainedPlan=binding->saved();
  for(int i=0;i<8;++i){
   pageStack->setCurrentWidget(i%2?color:fusion);settle(180);
