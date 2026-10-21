@@ -17,13 +17,14 @@ temporary-project proposal as if it were approval.
 - Candidate branch `fix/macos-workspace-viewport-maximize` includes separate preceding
   menu, native header-drag and native footer-band commits. This is a development
   candidate, not an accepted release.
-- At1354ffe all34 hidden suites passed on a clean unchanged commit, including
-  the assembled entry-flow child-process restart test. Subsequent footer discovery
-  cleanup and delayed-native-command handling are being reverified below.
-- Universal helper/bootstrap/launcher builds and architecture/signature audit
-  passed at1354ffe. Displayed group/reopen/reliability fixtures compile; their
-  current displayed runs remain pending. No new live Resolve startup, pointer,
-  rendering, latency or Relay/Deliver acceptance is claimed.
+- Final basic-flow production build **d717d12** passes all34 hidden and all8
+  displayed suites on the clean unchanged commit. Exact receipts are below.
+  The assembled test includes direct native controls, all four band combinations,
+  Native return, grouped maximize, smaller-workspace resizing and process restart.
+- Universal helper/bootstrap/launcher and30 workflow targets built; signature,
+  architecture and matching-dSYM checks pass. These are local fixture/build checks.
+  No new live Resolve startup, native pointer/rendering, physical-key latency or
+  Relay/Deliver acceptance is claimed.
 - Maximize decision is settled: the current workspace viewport between visible
   bands, expanding into either hidden band's space. The viewport follow-up is
   implemented and passes the strengthened assembled fixture; see latest evidence
@@ -798,3 +799,30 @@ native-workspace-ui, workspace-reopen, reliability and controls-hidden passed.
   standalone7.93/2.86 ms, split27.99/27.50 ms, tabs28.37/25.15 ms. These measure a
   fixture and changed viewport geometry, not physical-key/GPU/Resolve latency;
   they do not establish a live speed improvement.
+
+## Final basic-flow pre-install review — d717d12
+
+- Hidden matrix:34/34 PASS, clean unchanged source; receipt
+  `build/macos/verification/d717d12f0f-hidden-20261021T101833Z/receipt.json`.
+- Displayed matrix:8/8 PASS, clean unchanged source; receipt
+  `build/macos/verification/displayed-d717d12f0f-20261021T102131Z/receipt.json`.
+  Suites:panel-sessions,panel-groups,native-arrangements,native-workspace-ui,
+  workspace-reopen,reliability,controls-hidden,viewer-expansion-latency.
+- Complete native-entry flow, exact viewport maximize, all four band combinations,
+  late footer command/caller initialization, original-slot Native return, optional
+  named arrangements, unsaved restart and group-band ownership have fixture proof.
+- Primary native footer identity is preserved; secondary footer mirrors paint the
+  complete native source and dispatch its original controls. Actual native custom
+  painting, hover/pressed feedback and physical pointer capture need live review.
+- Existing ordinary-launch hotkey/remap/workflow dispatch foundation is included;
+  native-preset and workflow regression suites pass. No new live remap, Stabilize
+  completion or Fixed Playhead result is claimed on d717d12.
+- Software built and audited; installed6f395c4 remains unchanged. No install, push,
+  merge or publication. User requested this review before installation.
+- Next: review, install for live testing, fresh startup, Native entry/drag/bands/
+  maximize/save/Native return, remapped keys and Relay/Deliver. If accepted, consider
+  a main baseline; Fusion work starts afterwards on isolated branches. Wolfgang
+  identity/repository cleanup follows Fusion. Free support is still unverified.
+
+This final documentation checkpoint does not change the production source tested
+and built atd717d12; compare src/infrastructure/tests to establish that explicitly.
