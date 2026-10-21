@@ -64,9 +64,18 @@ int main(int argc,char **argv) {
  check(source->window()==&main&&page->findChild<QWidget *>("unboundNativePanelPosition_frameConformTimelines"),"native first drop creates a scoped arrangement");
  auto expand=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expand)expand->click();settle(500);
  auto expanded=source->window();const auto expandedGeometry=expanded->geometry();
- check(expanded!=&main&&!expandedGeometry.intersects(headerOwner->externalBounds(expanded))&&!expandedGeometry.intersects(footerOwner->externalBounds(expanded)),"grouped maximize respects visible native bands");
- trigger("Header");trigger("Footer");check(expanded->geometry().height()>expandedGeometry.height(),"hiding bands enlarges current maximize bounds");
- trigger("Header");trigger("Footer");check(expanded->geometry()==expandedGeometry,"showing bands restores current maximize bounds");
+ auto matchesViewport=[&](QWidget *host,QWidget *owner,QWidget *nativeBody){
+  const auto margins=host->windowHandle()?host->windowHandle()->frameMargins():QMargins();
+  const auto expected=Unbound::workspaceViewportBounds(owner,nativeBody).adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
+  return host->geometry()==expected;
+ };
+ check(expanded!=&main&&matchesViewport(expanded,&main,page),"maximize exactly fills native workspace content rather than monitor");
+ trigger("Header");const auto withoutHeader=expanded->geometry();check(withoutHeader.top()<expandedGeometry.top()&&withoutHeader.bottom()==expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"hiding only header removes only top gate");
+ trigger("Footer");check(expanded->geometry().bottom()>withoutHeader.bottom()&&matchesViewport(expanded,&main,page),"hiding footer removes bottom gate too");
+ trigger("Header");check(expanded->geometry().top()==expandedGeometry.top()&&expanded->geometry().bottom()>expandedGeometry.bottom()&&matchesViewport(expanded,&main,page),"showing only header reinstates only top gate");
+ trigger("Footer");check(expanded->geometry()==expandedGeometry&&matchesViewport(expanded,&main,page),"showing both restores exact workspace bounds");
+ const auto originalMainSize=main.size();main.resize(main.width()+120,main.height()+80);settle(450);
+ check(matchesViewport(expanded,&main,page),"current maximize follows workspace resizing");main.resize(originalMainSize);settle(450);
  if(expand)expand->click();settle(400);check(source->window()==&main,"maximize restore returns scoped group");
  auto save=ui->findChild<QAction *>("unboundSaveWorkspaceAs");check(save,"save arrangement accessible outside manager");
  QTimer answer;answer.setInterval(10);QObject::connect(&answer,&QTimer::timeout,[&]{for(auto widget:QApplication::topLevelWidgets())if(auto dialog=qobject_cast<QInputDialog *>(widget)){dialog->setTextValue("Native entry fixture");dialog->accept();}});answer.start();if(save)save->trigger();settle(500);answer.stop();
@@ -85,9 +94,22 @@ int main(int argc,char **argv) {
  if(timelineDoor&&timelineDoor->drag)timelineDoor->drag(QPoint());settle(450);
  auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::MacFloatingHost *>(program->window());
  check(timelineHost!=&main&&toolbar->window()==timelineHost&&footer->window()==timelineHost,"fully rearranged workspace reserves actual native bands on its outer primary surface");
+ const auto primaryFrame=timelineHost->geometry();const auto timelineHeight=timeline->height();
+ auto expandTimeline=controls.findChild<QPushButton *>("expand_frameConformTimelines");if(expandTimeline)expandTimeline->click();settle(600);
+ check(timelineHost->geometry()==primaryFrame,"primary standalone workspace does not resize recursively into itself");
+ trigger("Header");trigger("Footer");check(timelineHost->geometry()==primaryFrame&&timeline->height()>timelineHeight,"primary workspace keeps its frame while hidden bands release body space");
+ trigger("Header");trigger("Footer");check(timelineHost->geometry()==primaryFrame&&timeline->height()==timelineHeight,"showing bands restores primary content without window shrink");
+ if(expandTimeline)expandTimeline->click();settle(450);
  if(programHost&&programHost->attachRequested)programHost->attachRequested(timelineHost,Qt::RightEdge);settle(550);
  check(timeline->window()==program->window()&&toolbar->window()==timeline->window()&&footer->window()==timeline->window(),"grouping remounts native bands at the outer group surface");
  check(!timeline->isAncestorOf(toolbar)&&!timeline->isAncestorOf(footer)&&!program->isAncestorOf(toolbar)&&!program->isAncestorOf(footer),"native bands never become borrowed panel leaf content");
+ auto floatingWorkspace=timeline->window();const auto floatingFrame=floatingWorkspace->geometry();
+ auto expandProgram=controls.findChild<QPushButton *>("expand_widgetEditTimelinePlayer");if(expandProgram)expandProgram->click();settle(500);
+ auto expandedProgram=program->window();check(expandedProgram!=floatingWorkspace&&matchesViewport(expandedProgram,floatingWorkspace,nullptr),"floating group maximize fills that group's own content viewport");
+ trigger("Header");trigger("Footer");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr),"floating group maximize reclaims both hidden bands");
+ trigger("Header");trigger("Footer");check(matchesViewport(expandedProgram,floatingWorkspace,nullptr)&&floatingWorkspace->geometry()==floatingFrame,"restoring bands preserves floating workspace frame");
+ if(expandProgram)expandProgram->click();settle(450);check(program->window()==floatingWorkspace,"floating group restore returns to retained workspace");
+
  if(nativeReturn)nativeReturn->trigger();settle(650);
  check(timeline->parentWidget()==page&&source->parentWidget()==page&&program->parentWidget()==page&&toolbar->parentWidget()==&main&&footer->parentWidget()==&main,"Native Edit restores native panel and band slots after full rearrangement");
  trigger("Source Monitor");trigger("Header");trigger("Footer");settle(500);

@@ -178,7 +178,7 @@ private:
                 };
                 connect(host,&QObject::destroyed,this,[this,host]{views.remove(host);});
             }
-            view->setSource(nativeFooter);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && bool(nativeFooter));
+            view->setSource(nativeFooter);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && bool(nativeFooter) && !host->property("unboundExpanded").toBool());
         }
         for(auto it=views.begin();it!=views.end();++it)if(it.value() && !hosts.contains(it.key()))it.value()->hide();
         if(nativeCaller)wireCaller(nativeCaller);

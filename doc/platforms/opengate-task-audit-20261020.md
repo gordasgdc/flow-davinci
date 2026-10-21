@@ -14,7 +14,7 @@ temporary-project proposal as if it were approval.
 - Installed runtime remains **6f395c4**. No changes in this flow review have been
   installed, merged to main, pushed or published. The known-best **091268b**
   software checkpoint remains preserved independently of current user settings.
-- Candidate branch `fix/macos-workspace-band-gates` includes separate preceding
+- Candidate branch `fix/macos-workspace-viewport-maximize` includes separate preceding
   menu, native header-drag and native footer-band commits. This is a development
   candidate, not an accepted release.
 - At1354ffe all34 hidden suites passed on a clean unchanged commit, including
@@ -24,9 +24,10 @@ temporary-project proposal as if it were approval.
   passed at1354ffe. Displayed group/reopen/reliability fixtures compile; their
   current displayed runs remain pending. No new live Resolve startup, pointer,
   rendering, latency or Relay/Deliver acceptance is claimed.
-- Maximize bounds when the workspace is smaller than the monitor are awaiting
-  Jordan's clarification: workspace content area versus monitor expansion with
-  visible-band gates. Do not silently choose a new maximize product behavior.
+- Maximize decision is settled: the current workspace viewport between visible
+  bands, expanding into either hidden band's space. The viewport follow-up is
+  implemented and passes the strengthened assembled fixture; see latest evidence
+  below. This supersedes older monitor-gate notes.
 - Fusion panel docking/arrangement backend, full native Timeline body scaling,
   GitHub fork separation and live Windows/older-macOS compatibility are **not done**.
   These were not completed by the Native Edit flow fixes.
@@ -54,6 +55,21 @@ temporary-project proposal as if it were approval.
 - The tab-scrolling improvements are **uncommitted** on
   `feature/macos-timeline-tab-scrolling`, based on 92e6e6c. Its latest isolated
   fixture passed. They are not in installed 541cd25. Preserve these edits.
+
+## Current work order — Jordan's instruction
+
+1. Finish the basic Native Edit user flow, including workspace-viewport maximize,
+   run the assembled checks, then review honestly before installation/live testing.
+   Jordan will live-test this basic-flow build first. Consider merging that verified
+   baseline to main before beginning Fusion; no automatic merge or release claim.
+2. Implement Fusion using the same interaction structure, in separate functional
+   branches. Keep layouts page-aware; do not invent cross-page panel ownership.
+3. Address Wolfgang's branding/artwork, licensing presentation and standalone
+   repository requests after Fusion. Preserve inherited notices and all work.
+
+The reported Resolve Free missing-menu case and installer coexistence/capability
+checks remain release-compatibility work; Free support is not claimed. This order
+supersedes any suggestion to interrupt basic flow/Fusion for branding cleanup.
 
 ## Status meanings
 
@@ -701,3 +717,27 @@ bootstrap availability a leading compatibility question, not a proven diagnosis
 of Wolfgang's machine. Installer currently checks major Resolve version but does
 not establish edition capability before reporting success. Add capability-aware
 preflight/clear unsupported-edition reporting to the packaging audit.
+
+## Workspace viewport maximize follow-up — basic-flow branch
+
+Work order is basic-flow install/live test and possible verified baseline merge,
+then isolated Fusion branches, then Wolfgang's product identity/licensing/repository
+requests. No install/merge/push/publication performed by this follow-up.
+
+The expansion owner now retains its originating workspace before any temporary
+detachment. Native layouts supply their actual page content rectangle; custom
+groups supply their laid-out content union excluding visible native band wrappers.
+No monitor rectangle substitutes for a smaller workspace. Native frame margins
+remain inside the content bounds. Active expansion keeps the native bands on the
+retained workspace rather than letting primary-surface selection chase the
+temporarily expanded panel. Expanded secondary hosts hide their redundant footer
+mirror and restore it afterwards. Standalone primary surfaces keep their outer
+frame and let their existing layout reclaim/show band space, preventing repeated
+self-shrinking. Ordinary floating placement is not routed through these bounds.
+
+Strengthened hidden assembled fixture passes exact Native Edit viewport bounds,
+all four header/footer visibility combinations, workspace resizing during maximize,
+standalone primary frame stability, fully rearranged group-local viewport bounds,
+grouped restore, saved arrangement/Native return and fresh-process unsaved state.
+This remains synthetic Qt evidence. Production build/full regression recheck and
+physical/live Resolve checks are separate gates, not implied by this pass.

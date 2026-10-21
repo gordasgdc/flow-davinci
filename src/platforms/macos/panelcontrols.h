@@ -33,7 +33,7 @@
 #include "surfacereadiness.h"
 #include "footerpanel.h"
 #include "panelexpansioncontroller.h"
-#include "../../core/workspacebandbounds.h"
+#include "../../core/workspaceviewport.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
 #include "toolbardoors.h"
@@ -287,6 +287,7 @@ public:
         footer->changed = [this] { saveTimer.start(); };
         footer->primarySurface=[this]() -> QWidget * {
             if (!page() || !page()->isVisible()) return nullptr;
+            if(auto active=expansionController->workspace())return active;
             auto nativeMain=Unbound::resolveMainWindow();
             if(nativeMain && nativeMain->isVisible() && !nativeMain->property("unboundBackgroundHidden").toBool())
                 for(const auto &panel:panels)if(!panel.label.endsWith("Toolbar") && !panel.session->active()) {
@@ -325,11 +326,12 @@ public:
         };
         workspaceHeader->changed=[this] {saveTimer.start();if(headers)headers->schedule();};
         workspaceHeader->failed=[this](QString error) {status->setText(error);};
-        expansionController->contentBounds=[this](QWidget *host,QRect available) {
-            return Unbound::workspaceBandBounds(available,workspaceHeader->externalBounds(host),footer->externalBounds(host));
+        expansionController->contentBounds=[this](QWidget *owner) {
+            return Unbound::workspaceViewportBounds(owner,owner==Unbound::resolveMainWindow()?page():nullptr);
         };
         workspaceHeader->geometryChanged=[this]{expansionController->refreshGeometry();};
         footer->geometryChanged=[this]{expansionController->refreshGeometry();};
+        expansionController->presentationChanged=[this]{footer->refreshSurfaces();workspaceHeader->schedule();};
         workspaceHeader->schedule();
         footer->placementChanged=[this](bool available,bool pinned) {
             if(!managerView->pinFooter)return;
@@ -781,6 +783,9 @@ private:
         auto &panel=panels[i];
         Unbound::PanelExpansionController::Target target;
         target.index=i; target.name=panel.name; target.session=panel.session; target.group=groupFor(i);
+        target.workspace=panel.session->grouped()?panel.session->window()->window():
+            (footer->primarySurface?footer->primarySurface():nullptr);
+        if(!target.workspace)target.workspace=page()->window();
         target.saved=panel.saved; target.native=nativeWorkspace->contains(panel.name) ? nativeWorkspace->saved() : QJsonObject();
         target.pending=[this,i] { return panels[i].pending; };
         target.undock=[this,i] { requestUndock(i,true); };
