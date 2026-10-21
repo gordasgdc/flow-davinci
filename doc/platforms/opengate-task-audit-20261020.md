@@ -482,3 +482,11 @@ after transfer. Main-window maximized state is preserved; showNormal is used onl
 for a minimized window. Saved arrangements remain untouched. Native workspace UI
 fixture compilation passes; displayed/live acceptance remains required. No install.
 Confirmed single-entry flow recorded in header/platform plan.
+
+## First maximize directly from Native UI
+
+The first expansion may call requestUndock before surface readiness, whose tail
+still performed an immediate full save. Route that case through the same deferred
+save timer as already-floating expansion; ordinary explicit Undock retains its
+existing checkpoint. This closes a second persistence path before maximize can
+complete. No visible readiness or safety checks removed. No measured latency claim.

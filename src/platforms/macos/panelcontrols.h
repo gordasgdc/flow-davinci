@@ -847,7 +847,10 @@ private:
             });
         }
         if (error.isEmpty() && p.name=="frameConformTimelines" && footer) footer->refreshSurfaces();
-        outcome("undock", i, error); updateRow(i); updateNativeSizing(); save();
+        outcome("undock", i, error);updateRow(i);updateNativeSizing();
+        // A first maximize from Native UI may need to create the floating
+        // session. It uses the same deferred checkpoint as an existing session.
+        if(expansionController->index()==i)saveTimer.start();else save();
     }
     void dockOne(int i)
     {
