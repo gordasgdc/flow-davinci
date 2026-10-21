@@ -97,13 +97,17 @@ protected:
             // Do not record text or key values while the user is editing text.
             if (!typing) { state["key"] = key->key(); state["modifiers"] = int(key->modifiers()); state["repeat"] = key->isAutoRepeat(); }
             logEvent(QStringLiteral("input.key.observed"), state);
-            if (!typing && event->type() == QEvent::KeyPress && widget == QApplication::focusWidget())
+            if (qEnvironmentVariableIntValue("OPENGATE_VERBOSE_INPUT_CONTEXT")==1 &&
+                !typing && event->type() == QEvent::KeyPress && widget == QApplication::focusWidget())
                 commandContext(QKeySequence(int(key->modifiers()) | key->key()));
         }
         if (widget->isWindow() && event->type() == QEvent::WindowActivate) {
             if (!activationScanQueued) {
                 activationScanQueued = true;
-                QTimer::singleShot(0, this, [this] { activationScanQueued = false; activationState(); scanActions(); });
+                // Actions are observed at startup and ActionAdded; buttons at
+                // startup and coalesced subtree creation. Activation is not a
+                // reason to walk every native action/button again.
+                QTimer::singleShot(0, this, [this] { activationScanQueued = false; activationState(); });
             }
         }
         if (widget->isWindow() && event->type() == QEvent::Show && widget->objectName() == QLatin1String("UiMainWindow")) scanActions();

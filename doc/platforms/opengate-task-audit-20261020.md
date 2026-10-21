@@ -425,3 +425,12 @@ workspace.save synchronously. Fixture compilation passes; displayed benchmark
 execution deferred while Resolve runs. Native reliability compilation passes.
 No measured live speed gain claimed and no installation. Outer-band ownership,
 logging overhead and other identified costs remain separate unfinished changes.
+
+## Targeted input diagnostics
+
+Separate perf/macos-targeted-input-diagnostics retains startup/dynamic button and
+ActionAdded observations but stops rescanning all actions/buttons on window activation.
+Full per-key command-context inventories require OPENGATE_VERBOSE_INPUT_CONTEXT=1;
+ordinary key metadata and command routing logs remain. Hidden audit passes hidden
+button, dynamically created hidden button, dynamically added action and page change
+with one event each. No runtime installation or speed claim.
