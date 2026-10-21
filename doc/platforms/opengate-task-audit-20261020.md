@@ -447,3 +447,15 @@ Fixture also exposed native-window recreation warnings in QScrollArea::takeWidge
 Qt5.15.2 source confirms it temporarily sets the native content parent to null.
 Address this separately before live acceptance. No installation or claim the entire
 workspace-band topology is complete.
+
+## Native band release without transient windows
+
+Qt5.15.2 QScrollArea::takeWidget source setsParent(nullptr). Replaced that release
+with direct reparenting to retained native parking, removal of the scroll-area
+observer and destruction of the owned wrapper before native restoration. Failed
+native-slot restoration leaves content parked for an explicit safe retry, rather
+than constructing a temporary top-level native window. Hidden accessory fixture
+passes including zero parentless native-control transitions and no prior KVO
+warnings. Hidden pinned-header and complete surface-navigation suites pass.
+No installation. Baseline091268b restored at Jordan's request while development
+continues; current settings and keyboard assignments were hash-verified unchanged.

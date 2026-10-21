@@ -44,20 +44,39 @@ public:
 private:
     bool releaseImpl(bool ownerDying)
     {
-        if (!active()) return !viewport && !position.content();
+        // If the native slot rejected a previous restore, retain the content in
+        // its original parking owner and allow an explicit safe retry.
+        if (!viewport) {
+            if (!position.content()) return true;
+            if (!content || content!=position.content() || content->parentWidget()!=position.contentParking())return false;
+            return finishRestore();
+        }
         if (!content || viewport->widget()!=content || content->parentWidget()!=viewport->viewport() ||
             (!ownerDying && (!destination || viewport->parentWidget()!=destination || !destinationLayout || destinationLayout->indexOf(viewport)<0))) {
             logEvent("accessory.release.rejected",{{"reason","attachment-ownership-changed"}}); return false;
         }
         logEvent("accessory.release.request",{{"panel",content->objectName()},{"owner",destination?destination->objectName():QString()},{"owner_dying",ownerDying}});
-        auto widget=viewport->takeWidget(); widget->setParent(position.contentParking()); widget->hide();
-        if (!position.restore()) { viewport->setWidget(widget); widget->show(); return false; }
-        widget->setAutoFillBackground(originalFill);
-        disconnect(ownerDestroyed); if (destinationLayout) destinationLayout->removeWidget(viewport);
-        delete viewport.data(); viewport=nullptr; destination=nullptr; destinationLayout=nullptr; content=nullptr;
-        logEvent("accessory.release",{{"panel",widget->objectName()}});
+        disconnect(ownerDestroyed);
+        // Qt5 QScrollArea::takeWidget calls setParent(nullptr), which creates a
+        // temporary top-level native window. Move directly between retained
+        // parents instead. Destroy the wrapper before restoring native geometry;
+        // it must no longer observe or lay out the borrowed native widget.
+        content->removeEventFilter(viewport);
+        content->hide();content->setParent(position.contentParking());
+        if (destinationLayout) destinationLayout->removeWidget(viewport);
+        delete viewport.data();viewport=nullptr;
+        return finishRestore();
+    }
+    bool finishRestore()
+    {
+        QPointer<QWidget> widget=content;
+        if(!position.restore())return false;
+        if(widget)widget->setAutoFillBackground(originalFill);
+        destination=nullptr;destinationLayout=nullptr;content=nullptr;
+        logEvent("accessory.release",{{"panel",widget?widget->objectName():QString()}});
         return true;
     }
+
 public:
     void setHidden(bool hidden) { if (viewport) viewport->setVisible(!hidden); }
     bool hidden() const { return viewport && viewport->isHidden(); }

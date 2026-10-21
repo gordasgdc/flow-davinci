@@ -7,6 +7,16 @@
 #include "panelaccessorylease.h"
 #include "panelsession.h"
 
+class ParentlessNativeGuard : public QObject {
+public:
+    int parentless=0;
+protected:
+    bool eventFilter(QObject *object,QEvent *event) override {
+        if(event->type()==QEvent::ParentChange)if(auto widget=qobject_cast<QWidget *>(object))
+            if(!widget->parentWidget())++parentless;
+        return false;
+    }
+};
 int main(int argc,char **argv)
 {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM","1");
@@ -68,6 +78,7 @@ int main(int argc,char **argv)
         auto panelLayout=new QVBoxLayout(panel);panelLayout->addWidget(new QPushButton("Native timeline",panel));pageLayout->addWidget(panel);
         auto tools=new QWidget(&root);tools->setObjectName("NativeWorkspaceTools");tools->setFixedHeight(32);outer->addWidget(tools);
         auto pages=new QWidget(&root);pages->setObjectName("NativePageNavigation");pages->setFixedHeight(32);outer->addWidget(pages);
+        ParentlessNativeGuard ownershipGuard;tools->installEventFilter(&ownershipGuard);pages->installEventFilter(&ownershipGuard);
         root.resize(800,600);root.show();QApplication::processEvents();
         Unbound::MacPanelSession session(nullptr);
         check(session.undock(panel,page,"Timeline",false,true).isEmpty(),"prepare a hidden standalone panel host");
@@ -87,6 +98,8 @@ int main(int argc,char **argv)
         check(top.release() && bottom.release(),"both bands restore without ownership rejection after grouping");
         session.detachFromGroup(true);check(session.dock().isEmpty(),"Native return restores the original timeline after band transfer");
         check(panel->parentWidget()==page && pageLayout->indexOf(panel)>=0,"native panel slot survives grouping and return");
+        check(ownershipGuard.parentless==0,"native workspace controls never become temporary top-level windows during release");
+        tools->removeEventFilter(&ownershipGuard);pages->removeEventFilter(&ownershipGuard);
         session.beforeLayoutTransfer={};
     }
     if (!failures) std::puts("PASS: accessory ownership, overflow, native restoration, owner destruction and footer attachment state");
