@@ -190,8 +190,9 @@ int main(int argc,char **argv) {
         if (undock) undock->click(); settle();
         check(mediaControl->window()!=&main && mediaControl->isVisible() && inspectorControl->window()==&main,
             "native arrangement Undock reveals its floating content while leaving other native tabs in place");
-        auto glyph=main.findChild<QToolButton *>("unboundNativeUndock_widgetEditInspector");
-        check(glyph && glyph->isVisible(),"embedded Inspector retains its native header Undock glyph");
+        auto inspectorCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditInspector");
+        auto glyph=inspectorCell?inspectorCell->findChild<QToolButton *>("unboundDetachPanel"):nullptr;
+        check(glyph && glyph->isVisible(),"embedded Inspector exposes the shared single-header Undock glyph");
         if (glyph) glyph->click(); settle();
         check(inspectorControl->window()!=&main && inspectorControl->isVisible() && !page->findChild<QWidget *>("unboundNativeArrangement"),
             "native header Undock floats the final tab and releases the empty custom arrangement");
