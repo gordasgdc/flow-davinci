@@ -826,3 +826,29 @@ native-workspace-ui, workspace-reopen, reliability and controls-hidden passed.
 
 This final documentation checkpoint does not change the production source tested
 and built atd717d12; compare src/infrastructure/tests to establish that explicitly.
+
+## Background/Native UI carryovers explicitly reviewed before installation
+
+Jordan requested an explicit review of the former Native UI/Emulator/background
+flow. NativeWorkspacePresentation now automatically hides only an emptied native
+shell, restores it on content return/page departure, and keeps native arrangements
+as the real main window. Native Edit returns original slots and clears the manual
+override. No Emulator starter is loaded as a prerequisite for dragging/rearranging.
+
+Remaining carryovers, not silently claimed removed:
+- Panel Manager Advanced retains Hide native shell (manual override), restored
+  only from explicit background_policy=manual-hidden. Old hide_background and
+  native_workspace_mode fields alone do not enable it. Existing explicit override
+  settings can therefore affect startup until Native Edit resets them.
+- A saved arrangement named Native Emulator remains as a legacy preset; user saved
+  arrangements are not deleted/renamed. It is not a second rendering engine.
+- The old0.0.1 package/profile bundle still defaults to that Emulator preset and
+  its installer text describes the old flow. This was not clearly stated in the
+  pre-install review. Update first-install defaults/instructions before0.0.2
+  packaging to present Native Edit plus optional saved arrangements. The current
+  live-test software replacement must preserve settings and must not run the old
+  seed-profile/package-prototype path. No packaging or installer change performed.
+- Resolve's main window/native owners remain alive when its NSWindow is ordered
+  out. This is ownership-preserving hiding, not unloading Resolve or proving zero
+  background processing/latency. Actual shell/page behavior and Relay/Deliver
+  remain live acceptance gates; fixtures are not proof of native GPU behavior.
