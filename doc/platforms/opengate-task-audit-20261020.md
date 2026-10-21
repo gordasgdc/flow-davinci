@@ -510,3 +510,12 @@ Normal lookups on an existing page have no retry delay. Regression fixture sends
 1000 construction events and asserts zero header discovery calls. Hidden header
 fixture passes; native workspace fixture compiles. Full startup/runtime validation
 still required. No new installation authorized or performed by this change.
+
+## Authorized displayed validation before startup replacement
+
+Jordan closed Resolve and authorized displayed tests, then replacement and a fresh
+launch only if checks pass. First panel-sessions run stopped at two stale legacy
+background preference assertions. Updated those to the confirmed automatic policy,
+adding explicit manual-hidden and automatic-policy cases; no runtime behavior
+changed to satisfy the old expectations. No installation. Continue all displayed
+native-window tests, then rebuild exact final source and verify fresh startup.
