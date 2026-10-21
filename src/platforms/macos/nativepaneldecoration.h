@@ -50,7 +50,7 @@ public:
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
         auto button = buttons.value(id);
-        bool grouped=panel->window()->objectName().startsWith("unboundFloating_group_");
+        bool grouped=false;
         for(auto parent=panel;parent&&!grouped;parent=parent->parentWidget())grouped=parent->objectName()=="unboundGroupCell_"+id;
         if(grouped){if(button)button->hide();return;}
         if (!button) {

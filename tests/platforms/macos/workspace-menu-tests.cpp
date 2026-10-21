@@ -72,6 +72,10 @@ int main(int argc, char **argv)
         QMouseEvent release(QEvent::MouseButtonRelease,QPointF(4,4),QPointF(100,100),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
         QApplication::sendEvent(button,&press); QApplication::sendEvent(button,&move); QApplication::sendEvent(button,&release);
         check(drags==1 && toggles==1,"native undock drag crosses threshold once and cannot become a dock click on release");
+        QWidget floatingGroup;floatingGroup.setObjectName("unboundFloating_group_timeline_inspector");
+        nativePanel.setParent(&floatingGroup);decoration.wire(&nativePanel,"pool","Media Pool",false,[&]{++toggles;});
+        check(button&&!button->isHidden(),"a native panel nested inside a floating group keeps its own placement control");
+        nativePanel.setParent(nullptr);
     }
     {
         QMenu nativeCommands; int opened=0;

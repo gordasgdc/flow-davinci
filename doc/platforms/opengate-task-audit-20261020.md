@@ -971,13 +971,22 @@ installed. Keep the prior builds, user arrangements and rollback checkpoints.
 Fusion/platform expansion and release work follow the basic-flow repair.
 
 Repair checkpoint 7687b5e: 37/39 hidden suites passed. Native preset fixture
-failed when its hidden active-window precondition was lost; explicitly restoring
-that fixture precondition passes without changing production key dispatch.
+initially looked focus-dependent. Retained logs from a later failure showed the
+stronger issue: immediate assertions preceded queued command callbacks, and the
+fixture changed presets before delivering them. Explicit MetaCall delivery fixes
+the focused fixture with exact counts; production key dispatch is unchanged.
 Native-entry maximize failed for an entirely vacated page; repaired the empty
 content fallback and its focused suite passes. Subsequent repair work adds
 toolbar-only Timeline overflow, bounded title hit areas/neutral dock space and
 last-panel toolbar release ordering. These need a final matrix and live tests.
 Installed helper remains c033f3d; no repair has been injected into running Resolve.
+
+45244e8: 38/39 hidden suites passed; the queued-callback fixture correction above
+was verified afterward. Final nested-Mixer follow-up removes the window-name
+heuristic too: only its own group cell can suppress a panel's native control.
+The focused workspace/menu suite passes that additional case. A final source
+build and displayed tests are required; Timeline painting, accidental undocking,
+empty hosts and latency remain live acceptance gates, not closed by fixtures.
 
 The installed 85fc822 build failed live vacancy reclamation and header overlap.
 It is not accepted. The agreed flow now defaults to the existing emulator-shaped

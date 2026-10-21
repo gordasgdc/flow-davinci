@@ -42,7 +42,7 @@ int main(int argc,char **argv){
  Unbound::NativeEditCommands editCommands(&main,[&] {return &edit;});editCommands.addTo(&commands);
  int expanded=0;commands.add({"panel.expand.hovered","Maximize / Restore Hovered Panel",[]{return true;},[&] {++expanded;}});
  commands.defaultBinding("panel.expand.hovered","`");
- auto press=[&](QWidget *receiver,int key,Qt::KeyboardModifiers mods){QApplication::setActiveWindow(receiver->window());QKeyEvent over(QEvent::ShortcutOverride,key,mods);QApplication::sendEvent(receiver,&over);QKeyEvent down(QEvent::KeyPress,key,mods);QApplication::sendEvent(receiver,&down);QApplication::processEvents();};
+ auto press=[&](QWidget *receiver,int key,Qt::KeyboardModifiers mods){QApplication::setActiveWindow(receiver->window());QKeyEvent over(QEvent::ShortcutOverride,key,mods);QApplication::sendEvent(receiver,&over);QKeyEvent down(QEvent::KeyPress,key,mods);QApplication::sendEvent(receiver,&down);QCoreApplication::sendPostedEvents(nullptr,QEvent::MetaCall);QApplication::processEvents();};
  press(&main,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier);check(calls==1,"persisted assignment executes registry once");
  press(&main,Qt::Key_QuoteLeft,Qt::NoModifier);check(expanded==1,"legacy default remains only when native preset has no hovered command row");
  press(&main,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==2,"alternate binding executes");
@@ -76,5 +76,6 @@ int main(int argc,char **argv){
  QApplication::setActiveWindow(&main);typing.setFocus();QApplication::processEvents();
  press(&typing,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier);check(calls==6,"modified native Edit command works with text-field focus");
  typing.clearFocus();
+ if(failures){Unbound::flushDiagnostics();dir.setAutoRemove(false);std::fprintf(stderr,"Native preset diagnostics retained: %s; calls=%d expanded=%d active=%s\n",qPrintable(dir.path()),calls,expanded,qPrintable(QApplication::activeWindow()?QApplication::activeWindow()->objectName():QString("none")));}
  std::printf("native preset failures=%d\n",failures);return failures?1:0;
 }
