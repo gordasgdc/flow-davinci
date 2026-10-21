@@ -9,6 +9,7 @@
 #include <QToolButton>
 #include "diagnostics.h"
 #include "panelplacementcontrol.h"
+#include "nativepaneldecoration.h"
 namespace Unbound {
 class DoorGlyph : public QIconEngine {
 public:
@@ -38,7 +39,7 @@ public:
 };
 class ToolbarDoors : public QObject {
 public:
-    struct Door{QString id,title;std::function<bool()> shown;std::function<void()> toggle;};
+    struct Door{QString id,title;std::function<bool()> shown;std::function<void()> toggle;std::function<void(QPoint)> drag={};};
     explicit ToolbarDoors(QObject *owner):QObject(owner){timer.setSingleShot(true);timer.setInterval(50);connect(&timer,&QTimer::timeout,this,[this]{fit();});qApp->installEventFilter(this);}
     ~ToolbarDoors()override{qApp->removeEventFilter(this);for(auto strip:strips)if(strip)delete strip;}
     void add(Door door){doors.append(std::move(door));}
@@ -52,9 +53,9 @@ public:
                 auto controls=new QWidget(strip);controls->setObjectName("openGateDoorControls");controls->setMinimumWidth(0);controls->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
                 auto layout=new QHBoxLayout(controls);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);slot->addWidget(controls);slot->addStretch();
                 for(const auto &door:doors){
-                    auto button=new QToolButton(controls);button->setObjectName("openGateToolbarDoor_"+door.id);button->setText(door.title);
+                    auto button=new NativeUndockButton(controls);button->drag=door.drag;button->setObjectName("openGateToolbarDoor_"+door.id);button->setText(door.title);
                     button->setIcon(QIcon(new DoorGlyph(door.id)));button->setIconSize(QSize(18,18));button->setAutoRaise(true);button->setCheckable(true);button->setFocusPolicy(Qt::NoFocus);
-                    button->setToolTip("Show or hide "+door.title+" in its remembered location");button->setAccessibleName(door.title);layout->addWidget(button);
+                    button->setToolTip("Show or hide "+door.title+" in its remembered location"+(door.drag?QStringLiteral("; drag to move"):QString()));button->setAccessibleName(door.title);layout->addWidget(button);
                     connect(button,&QToolButton::clicked,this,[this,door]{QTimer::singleShot(0,this,[door]{logEvent("toolbar.panel-door",{{"panel",door.id}});if(door.toggle)door.toggle();});});
                 }
                 auto more=new QToolButton(controls);more->setObjectName("openGateToolbarOverflow");more->setText(QString::fromUtf8("⋯"));more->setToolTip("More OpenGate panels");more->setAccessibleName(more->toolTip());more->setAutoRaise(true);more->setPopupMode(QToolButton::InstantPopup);

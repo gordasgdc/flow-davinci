@@ -547,3 +547,16 @@ placement submenu from title-bar access. Hidden workspace-menu and workspace-hea
 fixtures pass flat structure, shared state and page-switch cancellation. Remaining
 Native header drags, native visibility and assembled proof are not yet implemented
 by this menu change alone. Installed6f395c4 unchanged.
+
+## Native header working branch — not installed
+
+Source/Program header buttons now use the existing drag control and shared native
+panel-drag coordinator. Click uses visibility without creating a floating host.
+Native surfaces without Resolve toggle actions retain native ownership and record
+visibility changes; explicit Native return validates all tracked owners before
+restoring them. Show under a hidden owner reports unavailable rather than success.
+Hidden native-surface-doors regression passes; page-workspace-state regression
+passes including native visibility ledger round trip. Native-workspace-ui compiles.
+These do not establish assembled flow, physical drag capture, or live acceptance.
+Footer still has secondary per-button layout and optional pin model, both pending
+correction. Installed6f395c4 remains untouched.

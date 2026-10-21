@@ -29,7 +29,7 @@ public:
         if(explicitMode=="native" || explicitMode=="managed")return explicitMode;
         if(!value["groups"].toArray().isEmpty() || !value["native_arrangement"].toObject().isEmpty())return "managed";
         const auto panels=value["panels"].toObject();
-        for(auto it=panels.begin();it!=panels.end();++it)if(it.value().toObject()["floating"].toBool())return "managed";
+        for(auto it=panels.begin();it!=panels.end();++it)if(it.value().toObject()["floating"].toBool() || it.value().toObject().contains("native_hidden"))return "managed";
         return "native";
     }
     static QString record(QJsonObject &root,const QString &page,QJsonObject value) {

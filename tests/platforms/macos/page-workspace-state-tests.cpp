@@ -13,6 +13,11 @@ int main(int argc,char **argv) {
  check(Unbound::PageWorkspaceState::record(automatic,"edit",edit).isEmpty(),"first floating panel automatically records managed mode");
  const auto automaticView=Unbound::PageWorkspaceState::view(automatic,"edit");
  check(automaticView["layout_mode"]=="managed" && automaticView["panels"]==edit["panels"] && automaticView["selected_arrangement"]==edit["selected_arrangement"],"automatic flow preserves captured geometry and preset identity without loading a starter");
+ QJsonObject hiddenNative{{"page","edit"},{"panels",QJsonObject{{"source",QJsonObject{{"native_hidden",true}}}}}};
+ check(Unbound::PageWorkspaceState::mode(hiddenNative)=="managed","unsaved native visibility change is a modified layout");
+ QJsonObject visibilityRoot=initialNative;
+ check(Unbound::PageWorkspaceState::record(visibilityRoot,"edit",hiddenNative).isEmpty(),"native visibility checkpoint records");
+ check(Unbound::PageWorkspaceState::view(visibilityRoot,"edit")["panels"]==hiddenNative["panels"],"native visibility survives page ledger round trip");
  QJsonObject root=edit;
  check(Unbound::PageWorkspaceState::record(root,"edit",edit).isEmpty(),"migrate legacy Edit without losing modified geometry");
  auto fusion=QJsonObject{{"page","fusion"},{"groups",QJsonArray{QJsonObject{{"custom",true}}}},{"selected_arrangement","fusion-id"}};

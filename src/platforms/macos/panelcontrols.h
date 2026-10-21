@@ -37,6 +37,7 @@
 #include "toolbars.h"
 #include "toolbardoors.h"
 #include "nativepanelvisibility.h"
+#include "nativesurfacedoors.h"
 #include "attachedtoolbarreveal.h"
 #include "pinnedworkspaceheader.h"
 #include "workspaceheadermigration.h"
@@ -403,7 +404,7 @@ public:
         workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
         workspaceMenu->nativeActive = [this] {
             if (Unbound::currentWorkspacePage(Unbound::resolveMainWindow()) == "edit")
-                for (const auto &panel : panels) if (panel.session->active()) return false;
+                for (const auto &panel : panels) if (panel.session->active() || nativeSurfaceDoors.modified(panel.name)) return false;
             auto main = Unbound::resolveMainWindow();
             return main && !main->property("unboundBackgroundHidden").toBool() && !footer->snapshot()["floating"].toBool();
         };
@@ -432,12 +433,11 @@ public:
         };
         workspaceMenu->wire();
         toolbarDoors=new Unbound::ToolbarDoors(this);
-        for (int i=0;i<panels.size();++i) if (panels[i].name=="widgetEditSourcePlayer" || panels[i].name=="widgetEditTimelinePlayer" || panels[i].name=="frameConformTimelines")
+        for (int i=0;i<panels.size();++i) if (panels[i].name=="widgetEditSourcePlayer" || panels[i].name=="widgetEditTimelinePlayer")
             toolbarDoors->add({panels[i].name,panels[i].label,
-                [this,i] { return panels[i].session->active() && !panels[i].session->hiddenByUser(); },
-                [this,i] { if (quitting || QApplication::activeModalWidget()) return;if (panels[i].session->active()) togglePanelDoor(i);else requestUndock(i); }});
-        toolbarDoors->add({"page-navigation","Page Navigation",[this] { return !footer->snapshot()["hidden"].toBool(); },
-            [this] { if (!quitting && !QApplication::activeModalWidget()) status->setText(footer->snapshot()["hidden"].toBool() ? footer->showPanel() : footer->hidePanel()); }});
+                [this,i] { return panelShown(i); },
+                [this,i] { if (!quitting && !QApplication::activeModalWidget())togglePanelDoor(i); },
+                [this,i](QPoint) {beginPanelDrag(i);}});
         headers=new Unbound::WorkspaceHeaders(this);
         for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
             [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
@@ -571,7 +571,14 @@ private:
         if (visible) if (auto group=groupFor(i)) if (group->windowHidden()) group->setWindowHidden(false);
         if (!panels[i].session->active()) {
             bool handled=Unbound::setNativePanelVisibility(Unbound::resolveMainWindow(),panels[i].toggle,visible);
-            auto target=Unbound::panelSurface(page(),panels[i].name);
+            QPointer<QWidget> target=Unbound::panelSurface(page(),panels[i].name);
+            if(!handled && panels[i].toggle.isEmpty() && target &&
+                !(panels[i].name=="frameEditToolbarTop" && managedOwnerFor(target))) {
+                if(visible && panels[i].name=="widgetEditSourcePlayer") {
+                    Unbound::prepareSourceViewer(page(),target);target=Unbound::panelSurface(page(),panels[i].name);
+                }
+                if(target && page() && page()->isAncestorOf(target))handled=nativeSurfaceDoors.set(panels[i].name,target,visible);
+            }
             if (!handled && panels[i].name=="frameEditToolbarTop" && managedOwnerFor(target)) {
                 if (visible) showPanel(1,true);
                 if(visible) {
@@ -582,6 +589,7 @@ private:
                 } else {target->hide();handled=true;}
             }
             Unbound::logEvent("panel.visibility.native-request",{{"panel",panels[i].name},{"requested",visible},{"handled",handled}});
+            if(!handled)status->setText(QStringLiteral("Native panel is not available: ")+panels[i].label);
             return;
         }
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
@@ -641,11 +649,26 @@ private:
         nativeWorkspace->refreshNativeTargets(page());
         save();
     }
+    bool panelShown(int i) const {
+        if(nativeWorkspace->contains(panels[i].name))return nativeWorkspace->selected(panels[i].name);
+        auto session=panels[i].session;
+        if(session->active())return !session->hiddenByUser() && session->window() && session->window()->isVisible();
+        auto target=Unbound::panelSurface(page(),panels[i].name);return target && target->isVisible();
+    }
+    void beginPanelDrag(int i) {
+        if(quitting || QApplication::activeModalWidget() || !page() || !page()->isVisible())return;
+        restoreExpanded();nativeDrag->begin(panels[i].name);
+        if(nativeWorkspace->contains(panels[i].name))nativeWorkspace->detach(panels[i].name);
+        else if(auto group=groupFor(i))group->detachMember(panels[i].session);
+        if(!panels[i].session->active())requestUndock(i);
+        readyNativeDrag(i);
+    }
     void togglePanelDoor(int i)
     {
         if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(!workspaceHeader->shown());return;}
         auto session = panels[i].session;
-        if (!session->active() || !page() || !page()->isVisible()) return;
+        if(!page() || !page()->isVisible())return;
+        if(!session->active()){showPanel(i,!panelShown(i));save();return;}
         if (expansionController->index() >= 0) restoreExpanded();
         auto group = groupFor(i);
         const bool reveal = session->hiddenByUser() || (group && (group->windowHidden() || !group->selected(session))) ||
@@ -898,7 +921,9 @@ private:
                 }
             }
         }
+        if(error.isEmpty())error=nativeSurfaceDoors.restore();
         if(!error.isEmpty()){status->setText(error);return error;}
+        for(auto &panel:panels)panel.saved.remove("native_hidden");
         saveTimer.stop();save();return {};
     }
     bool applyBackgroundVisibility(bool hidden)
@@ -1019,24 +1044,12 @@ private:
             if(panels[i].name=="unboundWorkspaceToolbar")continue;
             auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
             if (panels[i].name=="frameConformTimelines") {
-                timelineControl->wire(surface,[this,i] { togglePanelPlacement(i); },[this,i](QPoint) {
-                    nativeDrag->begin(panels[i].name);
-                    if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name);
-                    else if (auto group=groupFor(i)) group->detachMember(panels[i].session);
-                    if (!panels[i].session->active()) requestUndock(i);
-                    readyNativeDrag(i);
-                });
+                timelineControl->wire(surface,[this,i] { togglePanelPlacement(i); },[this,i](QPoint) {beginPanelDrag(i);});
                 continue;
             }
             nativeDecoration->wire(surface,panels[i].name,panels[i].label,panels[i].session->floating(),
                 [this,i] { togglePanelPlacement(i); },
-                [this,i](QPoint) {
-                    nativeDrag->begin(panels[i].name);
-                    if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->detach(panels[i].name);
-                    else if (auto group=groupFor(i)) group->detachMember(panels[i].session);
-                    if (!panels[i].session->active()) requestUndock(i);
-                    readyNativeDrag(i);
-                });
+                [this,i](QPoint) {beginPanelDrag(i);});
         }
         if (workspaceMenu) workspaceMenu->wire();
         if (toolbarDoors) toolbarDoors->wire(Unbound::panelSurface(page(),"unboundWorkspaceToolbar"));
@@ -1047,6 +1060,8 @@ private:
         QWidget *root = page();
         updateNativeSizing();
         if (!root || !root->isVisible()) return;
+        for(const auto &panel:panels)if(!panel.session->active() && !panel.desired && panel.saved.contains("native_hidden"))
+            nativeSurfaceDoors.set(panel.name,Unbound::panelSurface(root,panel.name),!panel.saved["native_hidden"].toBool());
         QList<Unbound::WorkspaceRestoration::Panel> restoring;
         for (const auto &panel:panels) restoring.append({panel.name,panel.saved,panel.desired,panel.session});
         const auto result=workspaceRestore->native(root,nativeWorkspace,restoring,[this](int i) { requestUndock(i,true); });
@@ -1072,6 +1087,10 @@ private:
             auto &p = panels[i];
             auto value=Unbound::WorkspaceSnapshot::panel(p.saved,p.desired,p.session->active(),
                 p.session->active() ? p.session->floatingGeometry() : QRect(),p.session->hiddenByUser(),p.session->pinned());
+            if(!p.session->active() && nativeSurfaceDoors.contains(p.name)) {
+                if(nativeSurfaceDoors.modified(p.name))value["native_hidden"]=nativeSurfaceDoors.hidden(p.name);
+                else value.remove("native_hidden");
+            }
             value["interface_scale"]=p.session->interfaceScale();
             if (p.name=="unboundWorkspaceToolbar" && p.session->active() && !p.session->grouped()) value["toolbar_float_pinned"]=p.session->pinned();
             value=expansionController->panelSnapshot(i,value);
@@ -1157,6 +1176,7 @@ private:
     Unbound::NativeWorkspaceBinding *nativeWorkspace = nullptr;
     Unbound::PanelMenus *nativeMenus = nullptr;
     QList<Panel> panels;
+    Unbound::NativeSurfaceDoors nativeSurfaceDoors;
     Unbound::NativePanelToggles *nativeToggles=nullptr;
     QSet<int> pendingNativeDoors;
     Unbound::WorkspaceSettings settings;
