@@ -283,7 +283,7 @@ int main(int argc, char **argv)
             }
             check(timelineCaller && workspaceCaller, "both toolbars remain discoverable in Show Panel in Workspace");
             auto nativeRecall = menuBar.findChild<QAction *>("unboundRestoreNativeWorkspace");
-            check(nativeRecall && nativeRecall->text() == "Native Edit UI", "permanent native-workspace recall is prepopulated in Workspace UI");
+            check(nativeRecall && nativeRecall->text() == "Use Original Resolve UI", "permanent native-workspace recall is prepopulated in Workspace UI");
             controls.hide();
             if (nativeRecall) nativeRecall->trigger(); settle(200);
             check(timelineToolbar->parentWidget() == page && toolbarModes->parentWidget() == page,

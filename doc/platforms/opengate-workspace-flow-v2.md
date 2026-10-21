@@ -36,3 +36,13 @@ Outstanding before readiness: complete regression matrix and build; saved worksp
 The optional-panel route now reuses the existing lease/add operations to reveal a parked native panel into the primary arrangement. The assembled fixture covers Metadata reveal/hide/reveal, title-based Native-to-OpenGate entry without a default reset, Native temporary maximize without a mode switch, named Save as New/Update, immutable default protection, and separate-process unsaved restoration. Existing native arrangement ownership tests pass. The first expanded hidden matrix had 38 passes and one obsolete menu-order assertion; its receipt remains available. Updated menu regression passes, but a complete final-source matrix is still required.
 
 OpenGate workspace state is local. Before release, verify an exported project opens normally in Resolve without the helper. Do not claim a DRP round trip has been performed yet. Future clip colors or other project-data features additionally require export/open/save without OpenGate and return with OpenGate, preserving native fallback, custom metadata and all clip/edit data. Detailed color research notes remain local and must not be published.
+
+Repeated Edit -> Fusion/Color -> Edit fixture transitions (eight cycles) preserve
+the exact Edit arrangement and do not reopen vacancies; the process and subsequent
+restart exit normally. These modeled pages contain no Resolve GPU viewers, so this
+is not a live Resolve crash-free claim. Unsupported pages report Native mode.
+Displayed regression initially passed six suites and failed two obsolete assertions
+(old recovery label and retaining an unrelated selected preset after a Native-origin
+gesture). Those assertions now reflect the agreed flow; final displayed rerun is
+pending. The diagnostic completion fixture now waits for bounded event consumption
+rather than assuming every directory notification arrives within250ms.

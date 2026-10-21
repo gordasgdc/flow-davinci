@@ -402,7 +402,7 @@ public:
         workspaceMenu->entries = [this] { return presetsUi->list(); };
         workspaceMenu->hiddenArrangements=[this]{return presetsUi->hasHidden();};
         workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
-        workspaceMenu->nativeActive = [this] { return layoutMode=="native"; };
+        workspaceMenu->nativeActive = [this] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow())!="edit" || layoutMode=="native"; };
         workspaceMenu->selected = [this] { return presets->currentData().toString(); };
         workspaceMenu->invoke = [this](const QString &operation, const QString &id) {
             if (operation == "Reorder") { showNormal(); raise(); activateWindow(); }

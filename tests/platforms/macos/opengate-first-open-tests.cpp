@@ -17,7 +17,7 @@ int main(int argc,char **argv){
  QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.setObjectName("UiMainWindow");main.resize(1400,900);auto outer=new QVBoxLayout(&main);
  auto bar=new QMenuBar(&main);bar->setNativeMenuBar(false);outer->setMenuBar(bar);auto workspace=bar->addMenu("Workspace");workspace->setObjectName("workspace");
  auto toolbar=new QStackedWidget(&main);auto tools=new QWidget;tools->setObjectName("pageSingleScreenModeTools");toolbar->addWidget(tools);outer->addWidget(toolbar);auto toolrow=new QHBoxLayout(tools);auto left=new QWidget(tools);left->setObjectName("frameEditTopBarLeftSSM");toolrow->addWidget(left);auto leftrow=new QHBoxLayout(left);leftrow->addWidget(new QPushButton("Media Pool",left));auto right=new QWidget(tools);right->setObjectName("frameEditTopBarRightSSM");right->setLayout(new QHBoxLayout);toolrow->addWidget(right);
- auto page=new QWidget(&main);page->setObjectName("WStackPage_Conform");outer->addWidget(page,1);auto native=new QHBoxLayout(page);
+ auto pageStack=new QStackedWidget(&main);outer->addWidget(pageStack,1);auto page=new QWidget(pageStack);page->setObjectName("WStackPage_Conform");pageStack->addWidget(page);auto fusion=new QWidget(pageStack);fusion->setObjectName("WStackPage_Fusion");pageStack->addWidget(fusion);auto color=new QWidget(pageStack);color->setObjectName("WStackPage_Color");pageStack->addWidget(color);auto native=new QHBoxLayout(page);
  QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
   auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
@@ -80,6 +80,16 @@ int main(int argc,char **argv){
  auto undock=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(undock)undock->click();settle();
  check(binding&&!binding->contains("frameEditPageMediaPool"),"placement button also detaches the managed panel");
  visibility("Workspace Header");settle();
+ const auto retainedPlan=binding->saved();
+ for(int i=0;i<8;++i){
+  pageStack->setCurrentWidget(i%2?color:fusion);settle(180);
+  check(footer->window()==&main,"page switching never transfers the global native footer to a panel");
+  check(Unbound::currentWorkspacePage(&main)==(i%2?QStringLiteral("color"):QStringLiteral("fusion")),"fixture switches to the actual destination page");
+  auto recovery=menu->findChild<QAction *>("unboundRestoreNativeWorkspace");check(recovery&&recovery->isChecked(),"unsupported pages truthfully display Native mode");
+  pageStack->setCurrentWidget(page);settle(300);
+  check(binding->active()&&binding->saved()==retainedPlan,"page return preserves the exact Edit arrangement instead of reloading a preset");
+  check(nativePanels["frameEditPageMediaPool"]->isHidden(),"page return cannot resurrect a floated panel vacancy");
+ }
  }
  check(page->layout()==native,"shutdown returns exact native layout ownership");
  QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();

@@ -79,7 +79,7 @@ int main(int argc,char **argv) {
         const auto footerState=saved["footer"].toObject();
         check(!footerState["floating"].toBool()&&footerState["hidden"].toBool()&&footerState["model"]=="reserved-native-bands-v2"&&!footerState.contains("surfaces"),
             "last view records one global footer visibility without independent pin choices");
-        check(saved["groups"].toArray().size()==1 && !saved["selected_arrangement"].toString().isEmpty(),"last view saved independently of selected preset contents");
+        check(saved["groups"].toArray().size()==1 && saved["selected_arrangement"].toString().isEmpty(),"Native-origin rearrangement persists as an unnamed view rather than overwriting an unrelated preset");
         QFile expected(expectedPath); check(expected.open(QIODevice::WriteOnly),"open cross-process expectation"); expected.write(QJsonDocument(saved).toJson());
     } else {
         const auto expected=read(expectedPath); check(!expected.isEmpty(),"previous process wrote expectations");
