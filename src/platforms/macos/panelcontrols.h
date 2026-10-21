@@ -670,7 +670,7 @@ private:
         value=Unbound::migrateWorkspaceHeader(Unbound::fitStarterWorkspace(value));
         if (footer) footer->setState(value["footer"].toObject());
         if(workspaceHeader)workspaceHeader->setState(value["header"].toObject());
-        { const QSignalBlocker blocker(background); background->setChecked(value["hide_background"].toBool()); }
+        { const QSignalBlocker blocker(background); background->setChecked(value["background_policy"]=="manual-hidden"); }
         pendingGroups = value["groups"].toArray();
         const auto nativeError=nativeWorkspace->setPending(value["native_arrangement"].toObject(),pendingGroups);
         if (!nativeError.isEmpty()) return nativeError;

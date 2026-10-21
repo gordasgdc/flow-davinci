@@ -77,7 +77,10 @@ private:
     static QJsonObject normalizedArrangement(QJsonObject value)
     {
         value["layout_mode"] = PageWorkspaceState::mode(value);
-        value["hide_background"] = value.value("hide_background").toBool();
+        const bool manual=value["background_policy"]=="manual-hidden";
+        value["background_policy"]=manual?"manual-hidden":"automatic";
+        value["hide_background"]=manual;
+        value["native_workspace_mode"]=manual?"floating":"native";
         value["snap_windows"] = value.value("snap_windows").toBool(true);
         value["page"] = value.value("page").toString("edit");
         QJsonArray layouts;

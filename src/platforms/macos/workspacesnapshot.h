@@ -17,6 +17,7 @@ struct WorkspaceSnapshot {
     {
         return {{"version",1},{"pin_controls",pinControls},{"groups",groups},
             {"native_arrangement",nativeArrangement},{"hide_background",hideBackground},
+            {"background_policy",hideBackground ? "manual-hidden" : "automatic"},
             {"native_workspace_mode",hideBackground ? "floating" : "native"},{"footer",footer},{"header",header},
             {"selected_arrangement",selected},{"window_chrome",chrome},{"panel_hierarchy",panelHierarchy},
             {"snap_windows",snapWindows},{"keep_on_screen",keepOnScreen},

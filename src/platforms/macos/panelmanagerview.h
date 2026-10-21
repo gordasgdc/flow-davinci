@@ -3,6 +3,7 @@
 #include <QCheckBox>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QToolButton>
 #include "arrangementcontrols.h"
 #include "controlscroll.h"
 #include "productidentity.h"
@@ -27,9 +28,21 @@ public:
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
         snap=new QCheckBox("Snap window edges (Option bypasses)",owner); snap->setObjectName("snapWindows");
         snap->setChecked(saved["snap_windows"].toBool(true)); options->addWidget(snap);
-        background=new QCheckBox("Floating workspace (hide native background)",owner); background->setObjectName("hideResolveBackground");
-        const auto mode=saved["native_workspace_mode"].toString();
-        background->setChecked(mode=="floating" || (mode.isEmpty() && saved["hide_background"].toBool(false))); options->addWidget(background);
+        // Ordinary arrangements use automatic shell visibility. Historical
+        // hide_background/native_workspace_mode values describe the old flow;
+        // only an explicit current policy restores a manual override.
+        auto advanced=new QToolButton(owner);advanced->setText("Advanced");advanced->setCheckable(true);
+        advanced->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);advanced->setArrowType(Qt::RightArrow);
+        options->addWidget(advanced);
+        auto advancedBody=new QWidget(owner);auto advancedLayout=new QVBoxLayout(advancedBody);
+        advancedLayout->setContentsMargins(0,0,0,0);
+        background=new QCheckBox("Hide native shell (manual override)",advancedBody);background->setObjectName("hideResolveBackground");
+        background->setToolTip("Normally OpenGate handles the native background automatically. Use this override only for a fully floating workspace.");
+        background->setChecked(saved["background_policy"]=="manual-hidden");advancedLayout->addWidget(background);
+        options->addWidget(advancedBody);advancedBody->hide();
+        connect(advanced,&QToolButton::toggled,advancedBody,[advanced,advancedBody](bool expanded) {
+            advanced->setArrowType(expanded?Qt::DownArrow:Qt::RightArrow);advancedBody->setVisible(expanded);
+        });
         hierarchy=new QCheckBox("Use panel hierarchy",owner); hierarchy->setObjectName("panelHierarchy");
         hierarchy->setChecked(saved["panel_hierarchy"].toBool(true)); bodyLayout->addWidget(hierarchy);
         auto styleRow=new QHBoxLayout; styleRow->addWidget(new QLabel("Panel title bars",owner));

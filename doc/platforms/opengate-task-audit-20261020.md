@@ -459,3 +459,15 @@ passes including zero parentless native-control transitions and no prior KVO
 warnings. Hidden pinned-header and complete surface-navigation suites pass.
 No installation. Baseline091268b restored at Jordan's request while development
 continues; current settings and keyboard assignments were hash-verified unchanged.
+
+## Automatic background flow
+
+Ordinary layouts now use automatic native-shell visibility instead of inheriting
+legacy hide_background/native_workspace_mode switches as manual requirements.
+Explicit advanced manual-hidden policy remains available under collapsed Advanced
+controls in Panel Manager and persists independently. Saved arrangements are not
+rewritten; comparisons normalize legacy background state to automatic. Hidden
+background-flow fixture passes default/legacy migration, hidden advanced controls,
+explicit override persistence and return to automatic. Header/footer Show/Hide and
+saved arrangements remain. This is flow policy, not a claim all viewport placement
+or Native-return live acceptance is complete. Added fixture to hidden matrix.
