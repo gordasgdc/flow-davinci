@@ -9,6 +9,22 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Verification follow-up — display policy and failed acquisition
+
+Combined 6b27fd6 matrix: 40/41 suites passed; panel-commands exposed clamping of
+intentional partial off-screen placement on an unchanged display. Corrected policy
+preserves that placement and clamps when display bounds change or disappear.
+Focused display and panel-command fixtures pass. Native-frame-adjusted fallback
+coordinates are recorded separately so automatic saves preserve original identity.
+
+Added rollback on preset acquisition failure: capture prior complete page checkpoint,
+release partial hosts and resume that view; clear the request identity before rollback
+to prevent recursion. A fixture that disables Media Pool activation passes: prior
+Native view returns and no partial floating hosts remain visible. Existing Original
+Resolve UI command is unchanged. Final clean-source matrix/build still required.
+The multi-display feature currently concerns OpenGate window placement; toggling
+Resolve's own native Dual Screen configuration is not implemented or claimed.
+
 ## Display-aware workspace follow-up — implementation under verification
 
 Branch feature/workspace-display-placement builds on the viewer-button/preset

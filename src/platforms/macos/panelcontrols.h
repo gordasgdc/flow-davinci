@@ -88,6 +88,7 @@ public:
         presets = presetsUi->selection();
         workspaceRestore=new Unbound::WorkspaceRestoration(this);
         workspaceRestore->running=[this] { return !quitting; };
+        workspaceRestore->checkpoint=[this] {return arrangement();};
         workspaceRestore->report=[this](QString message) { status->setText(message); };
         workspaceRestore->validate=[this](const QJsonObject &value) {
             return nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
@@ -888,6 +889,8 @@ private:
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
             p.session->restoreWindowMaximized(p.saved["maximized"].toBool());
+            if(p.saved.contains("display")&&Unbound::DisplayPlacement::match(p.saved,Unbound::workspaceDisplays())<0)
+                p.saved["display_fallback"]=Unbound::DisplayPlacement::rect(p.session->floatingGeometry());
             p.session->setInterfaceScale(p.saved["interface_scale"].toDouble(1.0));
             p.session->setPinned(p.name=="unboundWorkspaceToolbar" ? p.saved["toolbar_float_pinned"].toBool(true) : p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
@@ -904,6 +907,7 @@ private:
             if(!attached.isEmpty())status->setText(attached);
         }
         outcome("undock", i, error);updateRow(i);updateNativeSizing();
+        if(!error.isEmpty()&&workspaceRestore->failPreset(p.label+": "+error))return;
         if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty())restoreTimer.start(0);
         // A first maximize from Native UI may need to create the floating
         // session. It uses the same deferred checkpoint as an existing session.
@@ -1088,6 +1092,8 @@ private:
             auto main=root->window();if(main->isMaximized())main->showNormal();
             const auto frame=Unbound::WorkspaceSettings::rectangle(placement);if(frame.isValid())main->setGeometry(frame);
             if(placement["maximized"].toBool())main->showMaximized();
+            if(mainPlacementRecord.contains("display")&&Unbound::DisplayPlacement::match(mainPlacementRecord,Unbound::workspaceDisplays())<0)
+                mainPlacementRecord["display_fallback"]=Unbound::DisplayPlacement::rect(main->isMaximized()?main->normalGeometry():main->geometry());
         }
         updateNativeSizing();
         if (!root || !root->isVisible()) return;
@@ -1096,7 +1102,7 @@ private:
         QList<Unbound::WorkspaceRestoration::Panel> restoring;
         for (const auto &panel:panels) restoring.append({panel.name,panel.saved,panel.desired,panel.session});
         const auto result=workspaceRestore->native(root,nativeWorkspace,restoring,[this](int i) { requestUndock(i,true); });
-        if (!result.error.isEmpty()) status->setText(result.error);
+        if (!result.error.isEmpty()) {status->setText(result.error);workspaceRestore->failPreset(result.error);}
         if (!result.prepared) return;
         workspaceRestore->finishPreset();
         workspaceRestore->settled(!pendingGroups.isEmpty(),background->isChecked(),

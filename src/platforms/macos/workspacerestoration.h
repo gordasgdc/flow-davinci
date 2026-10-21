@@ -12,6 +12,7 @@ public:
     struct Panel { QString name; QJsonObject saved; bool desired=false; MacPanelSession *session=nullptr; };
     struct ResumeResult { QString error; bool prepared=false; };
     std::function<bool()> running;
+    std::function<QJsonObject()> checkpoint;
     std::function<QString(const QJsonObject &)> validate,apply;
     std::function<QString()> dock;
     std::function<void()> resume;
@@ -30,6 +31,7 @@ public:
             report(validation); logEvent("workspace.native-plan.failed",{{"error",validation},{"stage","preset-preflight"}}); return;
         }
         cancel();
+        previous=checkpoint?checkpoint():QJsonObject();
         const auto blocked=dock();
         if (!blocked.isEmpty()) {
             report("Could not restore: a panel could not be docked safely.");
@@ -71,6 +73,16 @@ public:
             if (token==generation && running()) hideBackground();
         });
     }
+    bool failPreset(const QString &error) {
+        if(restoringId.isEmpty())return false;
+        const auto id=restoringId;const auto fallback=previous;restoringId.clear();previous={};
+        const auto dockError=dock();
+        const auto applyError=dockError.isEmpty()&&!fallback.isEmpty()?apply(fallback):QString();
+        if(dockError.isEmpty()&&applyError.isEmpty()&&!fallback.isEmpty())resume();
+        report(QStringLiteral("Could not restore arrangement: ")+error);
+        logEvent("arrangement.restore.failed",{{"id",id},{"error",error},{"rollback_error",dockError+applyError}});
+        return true;
+    }
     void finishPreset() {
         if(restoringId.isEmpty())return;
         const auto missing=unavailable();
@@ -84,5 +96,6 @@ public:
 private:
     unsigned generation=0;
     QString restoringId;
+    QJsonObject previous;
 };
 }

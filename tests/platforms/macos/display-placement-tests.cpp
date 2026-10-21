@@ -18,6 +18,10 @@ int main(int argc,char **argv){
  check(missing[0].available.contains(fallback),"missing display falls back to available work area");
  const auto preserved=DisplayPlacement::capture(fallback,missing,saved);
  check(preserved==saved&&DisplayPlacement::resolve(preserved,screens)==frame,"automatic fallback saves preserve original placement for reconnect");
+ auto adjusted=saved;adjusted["display_fallback"]=DisplayPlacement::rect(fallback.translated(0,22));
+ check(DisplayPlacement::capture(fallback.translated(0,22),missing,adjusted)==adjusted,"native title-frame adjustment is remembered as fallback, not mistaken for a user move");
+ const auto partial=DisplayPlacement::capture(QRect(10,20,400,300),screens);
+ check(DisplayPlacement::resolve(partial,screens)==QRect(10,20,400,300),"unchanged display topology preserves intentional partial offscreen placement");
  const auto deliberate=DisplayPlacement::capture(fallback.translated(-10,-10),missing,saved);
  check(deliberate["display"].toObject()["serial"]=="b","intentional move on fallback display records the new placement");
  const auto old=DisplayPlacement::rect(QRect(-1800,100,500,500));

@@ -44,6 +44,7 @@ int main(int argc,char **argv){
  auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");auto choices=menu?menu->findChild<QMenu *>("openGateWorkspaces"):nullptr;
  check(choices&&!choices->actions().isEmpty(),"workspace caller available");
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(3000);
+ check(page->layout()!=native,"successful OpenGate restore retires the original native page layout");
  check(binding&&binding->active()&&binding->contains("frameEditPageMediaPool")&&binding->contains("frameEditPageEditIndex"),"Resolve Layout awaits and acquires mutually exclusive native sidebars sequentially");
  if(binding&&binding->active()) {
   const auto expected=binding->saved();
@@ -53,6 +54,10 @@ int main(int argc,char **argv){
   auto recovery=menu->findChild<QAction *>("unboundRestoreNativeWorkspace");if(recovery)recovery->trigger();settle();poolButton->setChecked(false);indexButton->setChecked(false);pool->hide();index->hide();
   auto restoration=component<Unbound::WorkspaceRestoration>(&controls);if(restoration)restoration->preset(preset,true);settle(3000);
   check(binding->active()&&binding->saved()["tree"]==expected["tree"],"saved preset rebuilds its complete tree after native/project reset");
+  if(recovery)recovery->trigger();settle();poolButton->setChecked(false);indexButton->setChecked(false);pool->hide();index->hide();poolButton->setEnabled(false);
+  if(restoration)restoration->preset(preset,true);settle(3000);
+  check(page->layout()==native&&!binding->active(),"failed preset acquisition rolls back the prior Native view instead of leaving floating panels over it");
+  for(auto widget:QApplication::topLevelWidgets())check(!widget->objectName().startsWith("unboundFloating_")||!widget->isVisible(),"failed restore leaves no partial floating hosts visible");
  }
  }
  if(failures){files.setAutoRemove(false);std::fprintf(stderr,"logs: %s\n",qPrintable(files.path()));}

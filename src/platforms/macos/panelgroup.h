@@ -183,7 +183,10 @@ public:
         placementRecord=value;const auto position = WorkspaceSettings::rectangle(value); if (position.isValid()) host->setGeometry(position);
         host->setPinned(value["pinned"].toBool());
         host->setProperty("unboundGroupDoorHidden",value["hidden"].toBool());
-        rebuild(tree); refresh(); keepOnDisplay(host);if(value["maximized"].toBool())host->showMaximized();return true;
+        rebuild(tree); refresh(); keepOnDisplay(host);if(value["maximized"].toBool())host->showMaximized();
+        if(placementRecord.contains("display")&&DisplayPlacement::match(placementRecord,workspaceDisplays())<0)
+            placementRecord["display_fallback"]=DisplayPlacement::rect(host->isMaximized()?host->normalGeometry():host->geometry());
+        return true;
     }
     bool selected(MacPanelSession *member) const
     {

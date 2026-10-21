@@ -32,7 +32,7 @@ struct DisplayPlacement {
     static QRect resolve(const QJsonObject &record,const QList<WorkspaceDisplay> &screens) {
         auto r=rect(record);if(!r.isValid()||screens.isEmpty())return r;
         const int target=match(record,screens);
-        if(target>=0){r=rect(record["display_relative"].toObject());if(!r.isValid())r=rect(record);else r.translate(screens[target].available.topLeft());return reachable(r,screens[target].available);}
+        if(target>=0){r=rect(record["display_relative"].toObject());if(!r.isValid())r=rect(record);else r.translate(screens[target].available.topLeft());return rect(record["display"].toObject()["available"].toObject()).size()==screens[target].available.size() ? r : reachable(r,screens[target].available);}
         // Legacy records retain their absolute position on a still-present screen.
         int best=-1; qint64 overlap=0;
         for(int i=0;i<screens.size();++i){const auto part=r.intersected(screens[i].available);const qint64 area=qint64(part.width())*part.height();if(part.isValid()&&area>overlap){best=i;overlap=area;}}
@@ -42,7 +42,7 @@ struct DisplayPlacement {
     static QJsonObject capture(QRect geometry,const QList<WorkspaceDisplay> &screens,const QJsonObject &previous={}) {
         // A missing-display fallback is temporary. Repeated auto-saves must not
         // destroy the original placement; an intentional move creates a new one.
-        if(previous.contains("display")&&match(previous,screens)<0&&resolve(previous,screens)==geometry)return previous;
+        if(previous.contains("display")&&match(previous,screens)<0&&(previous.contains("display_fallback")?rect(previous["display_fallback"].toObject()):resolve(previous,screens))==geometry)return previous;
         auto out=rect(geometry);if(!geometry.isValid()||screens.isEmpty())return out;
         int best=0;qint64 overlap=-1;
         for(int i=0;i<screens.size();++i){const auto part=geometry.intersected(screens[i].available);const qint64 area=part.isValid()?qint64(part.width())*part.height():0;if(area>overlap){overlap=area;best=i;}}

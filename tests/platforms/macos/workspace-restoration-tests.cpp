@@ -42,6 +42,10 @@ int main(int argc,char **argv)
     check(message=="Arrangement restored.","success is reported only after required panels and groups complete");
     pending=true;restore.preset(preset,true);restore.cancel();pending=false;restore.finishPreset();
     check(message=="Restoring arrangement…","cancelled restore cannot report later success");
+    restore.checkpoint=[] {return QJsonObject{{"page","edit"},{"layout_mode","native"}};};
+    pending=true;restore.preset(preset,true);steps.clear();
+    check(restore.failPreset("Media Pool unavailable")&&steps==QStringList({"dock","apply","resume"})&&message.contains("Could not restore"),"failed acquisition releases partial sessions and resumes the previous checkpoint");
+    check(!restore.failPreset("again"),"rollback cannot recurse after the restore identity is cleared");
     const auto settle=[] {
         QElapsedTimer clock; clock.start();
         while (clock.elapsed()<230) { QCoreApplication::processEvents(); QThread::msleep(1); }
