@@ -101,10 +101,10 @@ public:
         };
         workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
         workspaceRestore->resume=[this] { restore(); save(); };
-        workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty(); };
+        workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty() || !nativeWorkspace->requiredPanels().isEmpty(); };
         workspaceRestore->unavailable=[this] {
             QStringList missing;
-            for (const auto &panel:panels) if (panel.desired && !panel.session->active() && !panel.pending) missing.append(panel.label);
+            for (const auto &panel:panels) if (panel.desired && !panel.session->active()) missing.append(panel.label);
             return missing;
         };
         presetsUi->workspace = [this] { return arrangement(); };
@@ -836,16 +836,13 @@ private:
             return;
         }
         if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
-            const QString base = QStringLiteral("btnEditToggle") + p.toggle;
-            for (auto button : root->findChildren<QAbstractButton *>()) {
-                if ((button->objectName() == base + "InSSM" || button->objectName() == base + "InDSM" ||
-                    button->objectName() == base + "InEFTM") && button->isVisible() && button->isEnabled()) {
-                    if (!button->isChecked()) button->click();
-                    p.pending = true; updateRow(i);
-                    const unsigned request = ++p.requestVersion;
-                    awaitUndockSurface(i, request, root);
-                    return;
-                }
+            // The pinned toolbar may be a sibling of the page or leased to
+            // its main surface. Use the existing main-window control resolver.
+            if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true)) {
+                p.pending = true; updateRow(i);
+                const unsigned request = ++p.requestVersion;
+                awaitUndockSurface(i, request, root);
+                return;
             }
         }
         finishUndock(i);
@@ -905,6 +902,7 @@ private:
             if(!attached.isEmpty())status->setText(attached);
         }
         outcome("undock", i, error);updateRow(i);updateNativeSizing();
+        if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty())restoreTimer.start(0);
         // A first maximize from Native UI may need to create the floating
         // session. It uses the same deferred checkpoint as an existing session.
         if(expansionController->index()==i)saveTimer.start();else save();
@@ -1092,6 +1090,7 @@ private:
         const auto result=workspaceRestore->native(root,nativeWorkspace,restoring,[this](int i) { requestUndock(i,true); });
         if (!result.error.isEmpty()) status->setText(result.error);
         if (!result.prepared) return;
+        workspaceRestore->finishPreset();
         workspaceRestore->settled(!pendingGroups.isEmpty(),background->isChecked(),
             [this] { restoreGroups(); },[this] { if (background->isChecked()) applyBackgroundVisibility(true); });
     }
@@ -1126,6 +1125,11 @@ private:
     void save()
     {
         if (quitting) return;
+        // A partially acquired preset is a transition, not a working layout.
+        // Preserve the previous complete page checkpoint if native readiness fails.
+        if(!restoringNative && nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()) {
+            Unbound::logEvent("workspace.save.deferred",{{"reason","native-plan-pending"}});return;
+        }
         Unbound::UiWorkTiming timing("workspace.save",this);
         QElapsedTimer phases;phases.start();
         const auto saved=capturePanelStates();

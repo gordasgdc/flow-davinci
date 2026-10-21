@@ -37,16 +37,15 @@ public:
         }
         const auto error=apply(value);
         if (!error.isEmpty()) { report(error); return; }
+        restoringId=entry["id"].toString();
+        logEvent("arrangement.restore.request",{{"id",restoringId}});
         resume();
-        const auto missing=unavailable();
-        report(missing.isEmpty() ? (groupsPending() ? QStringLiteral("Restoring panel groups…") : QStringLiteral("Arrangement restored.")) :
-            QStringLiteral("Unavailable: ")+missing.join(", "));
-        logEvent("arrangement.restore",{{"id",entry["id"]},{"unavailable",missing.join(", ")}});
+        finishPreset();
     }
     ResumeResult native(QWidget *root,NativeWorkspaceBinding *binding,const QList<Panel> &panels,
                         const std::function<void(int)> &request)
     {
-        cancel();
+        ++generation;
         const auto error=binding->preparePending(root);
         if (!error.isEmpty()) return {error,false};
         const auto anchor=binding->pendingFloatingAnchor();
@@ -56,7 +55,9 @@ public:
             panel.session->setPinned(panel.saved["pinned"].toBool());
             panel.session->setHiddenByUser(panel.saved["hidden"].toBool(),false);
         }
-        for (int i=0;i<panels.size();++i) if (panels[i].desired && !panels[i].session->active()) request(i);
+        // Native panel toggles can be mutually exclusive (Media Pool / Index).
+        // Acquire one surface completely before asking Resolve to reveal another.
+        for (int i=0;i<panels.size();++i) if (panels[i].desired && !panels[i].session->active()) { request(i); break; }
         const auto nativeError=binding->restoreReady(root); binding->refreshNativeTargets(root);
         return {nativeError,true};
     }
@@ -70,8 +71,18 @@ public:
             if (token==generation && running()) hideBackground();
         });
     }
-    void cancel() { ++generation; }
+    void finishPreset() {
+        if(restoringId.isEmpty())return;
+        const auto missing=unavailable();
+        if(groupsPending()) { report("Restoring arrangement…");return; }
+        if(!missing.isEmpty()) { report(QStringLiteral("Unavailable: ")+missing.join(", "));return; }
+        report("Arrangement restored.");
+        logEvent("arrangement.restore",{{"id",restoringId},{"unavailable",""},{"complete",true}});
+        restoringId.clear();
+    }
+    void cancel() { ++generation;restoringId.clear(); }
 private:
     unsigned generation=0;
+    QString restoringId;
 };
 }
