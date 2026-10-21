@@ -18,7 +18,10 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
 5. A persistent title drag, detach or grouping action in Native enters OpenGate
    and completes the gesture without loading Resolve Layout or resetting unrelated
    panel positions. Native-origin changes form an unnamed working arrangement.
-6. One primary workspace owns the native-style Workspace Header above its panel
+6. The permanent main-window top strip holds window controls, project title and
+   Panels even when Workspace Toolbar is hidden. Floating panel titles stay panel
+   titles; neither Panels nor the project label migrates to Inspector. One primary
+   workspace owns the existing native-style Workspace Toolbar above its panel
    area and complete native Page Navigation below it, including Home and Settings.
    Floating groups never take ownership based on size, focus or Timeline location.
 7. Each band is independently pinned or hidden. Hiding releases its height;
@@ -31,8 +34,11 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
 9. Panels is a flat current-page inventory including Workspace Header and Page
    Navigation. Optional parked panels must be reachable. No All Panels, Edit,
    Workspace or Floating Windows inventory subtrees. Header controls cannot overlap
-   title/Inspector or become unreachable. Menubar Panels remains available with
-   the header hidden; check titlebar/button discoverability in live Resolve.
+   title/Inspector or become unreachable. Main title-bar Panels remains available
+   with the toolbar hidden, in addition to menubar access. Timeline and its toolbar
+   remain one arranged element; use overflow when narrow. Mixer keeps its own
+   existing placement control/title drag even while nested in Timeline. Each panel
+   has one readable title; no internal widget identifiers or duplicate title rows.
 10. Native painting must remain correct throughout resize, stacked timelines,
     docking and maximize. A blank timeline until a width threshold is a live bug;
     dummy-widget fixtures cannot prove this fixed. Preserve native minima or

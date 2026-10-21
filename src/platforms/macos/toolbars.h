@@ -25,6 +25,8 @@ inline QWidget *panelSurface(QWidget *page, const QString &name)
     }
     // Keep both native single/dual-screen toolbar modes together.
     auto mode = page->findChild<QWidget *>("pageSingleScreenModeTools");
+    if(!mode)for(auto stash:page->window()->findChildren<QWidget *>("unboundNativeLayoutStash"))
+        if(stash->property("unboundParkedNativePage").value<QObject *>()==page){mode=stash->findChild<QWidget *>("pageSingleScreenModeTools");if(mode)break;}
     if (!mode) mode = page->window()->findChild<QWidget *>("pageSingleScreenModeTools");
     return mode ? qobject_cast<QStackedWidget *>(mode->parentWidget()) : nullptr;
 }

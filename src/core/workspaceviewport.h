@@ -8,7 +8,7 @@ namespace Unbound {
 inline QRect workspaceViewportBounds(QWidget *owner,QWidget *nativeBody=nullptr) {
     if(!owner || !owner->isVisible())return {};
     if(nativeBody && nativeBody->window()==owner && nativeBody->isVisible())
-        return QRect(nativeBody->mapToGlobal(QPoint()),nativeBody->size());
+        return workspaceViewportBounds(nativeBody);
     auto layout=owner->layout();if(!layout)return {};
     QRect content;
     for(int i=0;i<layout->count();++i) {

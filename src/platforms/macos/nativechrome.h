@@ -10,6 +10,7 @@ class QWidget;
 class QObject;
 namespace Unbound {
 void applyNativeChrome(QWidget *widget, bool compact);
+int nativeWorkspaceTopInset(QWidget *page);
 bool setNativePin(QWidget *widget, bool pinned, const std::function<void(bool)> &changed);
 bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()> &opened);
 int nativeChromeFlags(QWidget *widget);

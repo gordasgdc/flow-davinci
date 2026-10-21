@@ -21,9 +21,18 @@ int main(int argc,char **argv){
  QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
   auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
+ auto mixer=new QWidget(nativePanels["frameConformTimelines"]);mixer->setObjectName("frameEditAudioMeter");
+ auto mixerLayout=new QVBoxLayout(mixer);auto mixerRow=new QWidget(mixer);auto mixerTools=new QHBoxLayout(mixerRow);
+ auto mixerTitle=new QLabel("Mixer",mixerRow);mixerTools->addWidget(mixerTitle);auto mixerOptions=new QToolButton(mixerRow);mixerOptions->setObjectName("btnAudioMixerOptions");mixerTools->addWidget(mixerOptions);mixerLayout->addWidget(mixerRow);
+ nativePanels["frameConformTimelines"]->layout()->addWidget(mixer);
  auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");outer->addWidget(footer);auto footrow=new QHBoxLayout(footer);for(const auto &id:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto b=new QPushButton(id,footer);b->setObjectName(id);footrow->addWidget(b);}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
+ // Resolve's toolbar lives inside the page tree that gets parked, not as a
+ // sibling supplied by our fixture. Keep that ownership topology realistic.
+ outer->removeWidget(toolbar);native->insertWidget(0,toolbar);
  main.show();settle();
+ QWidget projectStrip(&main);projectStrip.setObjectName("UiProjectsMainBarImp");
+ projectStrip.setGeometry(0,page->mapTo(&main,QPoint()).y(),100,32);projectStrip.show();
  {
  PanelControls controls;settle(2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
  if(restart){
@@ -41,17 +50,30 @@ int main(int argc,char **argv){
  auto mediaCell=main.findChild<QWidget *>("unboundGroupCell_frameEditPageMediaPool");
  auto mediaHeader=mediaCell?mediaCell->findChild<QWidget *>("openGateGroupHeaderBar"):nullptr;
  check(mediaHeader&&mediaHeader->isHidden(),"tabbed Media Pool has a tab title without a repeated panel title row");
+ for(auto tabs:page->findChildren<QTabWidget *>("unboundPanelTabs"))for(int index=0;index<tabs->count();++index)
+  check(!tabs->tabText(index).startsWith("widget")&&!tabs->tabText(index).startsWith("frame"),"tab titles never expose internal widget identifiers");
+ auto mixerGlyph=mixer->findChild<QToolButton *>("unboundNativeUndock_frameEditAudioMeter");
+ check(mixerGlyph&&mixerGlyph->isVisible(),"Mixer nested inside managed Timeline retains its own native placement control");
+ if(mixerGlyph)mixerGlyph->click();settle();
+ check(mixerTitle->window()!=&main,"Mixer placement control floats its content independently of Timeline");
+ auto dockMixer=controls.findChild<QPushButton *>("dock_frameEditAudioMeter");if(dockMixer)dockMixer->click();settle();
+ check(mixerTitle->window()==&main,"Mixer docks back without changing Timeline ownership");
  auto primary=component<Unbound::FooterPanel>(&controls);check(primary&&primary->primarySurface()==&main,"primary band owner is the main workspace");
  check(toolbar->window()==&main&&footer->window()==&main,"native header and footer stay in primary window");
- auto panelsButton=right->findChild<QToolButton *>("openGatePrimaryPanels");check(panelsButton&&right->layout()->indexOf(panelsButton)>=0,"primary Panels button occupies a real header slot instead of overlaying native content");
+ check(toolbar->isVisible()&&page->isAncestorOf(toolbar),"parked native toolbar is reclaimed into the primary page's reserved top band");
+ auto panelsButton=right->findChild<QToolButton *>("openGatePrimaryPanels");check(!panelsButton,"Panels uses the persistent main title bar instead of a hideable toolbar slot");
  // Exercise the actual assembled layout at several widths, rather than merely
  // checking its initial size. Native GPU painting remains a separate live gate.
  for(int width:{1400,1000,760,1400}){
   main.resize(width,900);settle(100);
-  const QRect body(page->mapTo(&main,QPoint()),page->size());
-  const QRect top(toolbar->mapTo(&main,QPoint()),toolbar->size());
+  auto content=page->findChild<QWidget *>("unboundNativeArrangement");
+  const QRect body(content?QRect(content->mapTo(&main,QPoint()),content->size()):QRect());
+  const auto visibleTop=toolbar->visibleRegion().boundingRect();
+  const QRect top(toolbar->mapTo(&main,visibleTop.topLeft()),visibleTop.size());
   const QRect bottom(footer->mapTo(&main,QPoint()),footer->size());
   check(!body.intersects(top)&&!body.intersects(bottom),"resizing keeps panel content outside visible header/footer bands");
+  check(body.top()>=projectStrip.geometry().bottom(),"panel content never enters Resolve's permanent project/window strip");
+  check(Unbound::workspaceViewportBounds(&main,page)==QRect(content->mapToGlobal(QPoint()),content->size()),"maximize bounds use the laid-out body below the permanent strip and toolbar");
   if(panelsButton)check(right->rect().contains(QRect(panelsButton->mapTo(right,QPoint()),panelsButton->size())),"Panels control remains inside its allocated header slot");
   if(timelineHeader&&timelineHeader->parentWidget()){
    auto row=timelineHeader->parentWidget();
@@ -69,12 +91,14 @@ int main(int argc,char **argv){
  nativePanels["frameEditPageMediaPool"]->show();settle();check(nativePanels["frameEditPageMediaPool"]->isHidden(),"native visibility refresh cannot reopen placeholder");
  check(main.geometry()==frame,"detachment does not resize primary workspace");
  auto callers=component<Unbound::PanelCallerMenu>(&controls);
- auto visibility=[&](const char *label){QMenu flat;callers->populateFlat(&flat);bool found=false;for(auto action:flat.actions()){check(!action->menu(),"Panels inventory has no subtrees");if(action->text()==label){action->trigger();found=true;}}settle();check(found,label);};
- const auto both=page->height();visibility("Workspace Header");const auto footerOnly=page->height();
+ auto visibility=[&](const char *label){QMenu flat;callers->populateFlat(&flat);bool found=false;for(auto action:flat.actions()){check(!action->menu(),"Panels inventory has no subtrees");check(action->text()!="Timeline Toolbar","Timeline toolbar is not separately arranged");if(action->text()==label){action->trigger();found=true;}}settle();check(found,label);
+  if(auto body=page->findChild<QWidget *>("unboundNativeArrangement"))check(Unbound::workspaceViewportBounds(&main,page)==QRect(body->mapToGlobal(QPoint()),body->size()),"each band visibility combination updates maximize to actual content bounds");};
+ auto bodyHeight=[&]{auto body=page->findChild<QWidget *>("unboundNativeArrangement");return body?body->height():-1;};
+ const auto both=bodyHeight();visibility("Workspace Header");const auto footerOnly=bodyHeight();
  check(footerOnly>both,"hiding header returns height to the panel area");
- visibility("Page Navigation");const auto neither=page->height();check(neither>footerOnly,"hiding footer also returns its height");
- visibility("Workspace Header");check(page->height()<neither&&!footer->isVisible(),"header-only state reserves header with footer still hidden");
- visibility("Page Navigation");check(toolbar->isVisible()&&footer->isVisible()&&page->height()==both,"both bands return to exact original allocation");
+ visibility("Page Navigation");const auto neither=bodyHeight();check(neither>footerOnly,"hiding footer also returns its height");
+ visibility("Workspace Header");check(bodyHeight()<neither&&!footer->isVisible(),"header-only state reserves header with footer still hidden");
+ visibility("Page Navigation");check(toolbar->isVisible()&&footer->isVisible()&&bodyHeight()==both,"both bands return to exact original allocation");
  visibility("Metadata");check(binding&&binding->contains("frameEditPageMetadata"),"Panels reveals a parked optional panel into the existing primary arrangement");
  check(nativePanels["frameEditPageMetadata"]->isHidden(),"optional panel reveal does not expose the parked native page");
  visibility("Metadata");visibility("Metadata");check(binding&&binding->selected("frameEditPageMetadata"),"optional panel hide/reveal uses the same retained placement");

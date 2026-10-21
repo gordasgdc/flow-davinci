@@ -84,33 +84,17 @@ private:
         if (auto main=projectSurface ? projectSurface() : nullptr) current.insert(main->window());
         for (auto host:current) {
             if (!host->property("unboundHeaderOriginalTitle").isValid()) host->setProperty("unboundHeaderOriginalTitle",host->windowTitle());
-            if (!project.isEmpty() && host->objectName().startsWith("unboundFloating_")) {
-                QString title=project;
-                if (!primary || primary()!=host) {
-                    QStringList names;for (const auto &panel:panels) if (panel.host && panel.host()==host) names.append(panel.title);
-                    if (!names.isEmpty()) title+=" — "+names.first()+(names.size()>1 ? QString(" +%1").arg(names.size()-1) : QString());
-                }
-                if (host->windowTitle()!=title) { host->setWindowTitle(title);logEvent("header.project.updated",{{"project",project},{"host",host->objectName()}}); }
-            }
-            QPointer<WorkspaceHeaders> alive(this);QPointer<QWidget> window(host);
-            if(primary && primary()==host && primaryHeader) {
+            const bool mainSurface=projectSurface && projectSurface() && projectSurface()->window()==host;
+            if(!mainSurface) {
                 setNativeHeaderMenu(host,false,{});
-                auto header=primaryHeader();QWidget *row=nullptr;
-                if(header)for(auto candidate:header->findChildren<QWidget *>())
-                    if(candidate->objectName().startsWith("frameEditTopBarRight") && qobject_cast<QBoxLayout *>(candidate->layout())){row=candidate;break;}
-                if(row && (!primaryButton || primaryButton->parentWidget()!=row)) {
-                    delete primaryButton.data();primaryButton=new QToolButton(row);primaryButton->setObjectName("openGatePrimaryPanels");
-                    primaryButton->setText("Panels");primaryButton->setPopupMode(QToolButton::InstantPopup);primaryButton->setFocusPolicy(Qt::NoFocus);
-                    auto menu=new QMenu(primaryButton);menu->setProperty("unboundOwnMenu",true);primaryButton->setMenu(menu);
-                    connect(menu,&QMenu::aboutToShow,this,[alive,window,menu]{if(alive && window)alive->populate(menu,window);});
-                    qobject_cast<QBoxLayout *>(row->layout())->addWidget(primaryButton,0,Qt::AlignVCenter);
-                    primaryButton->show();
-                }
-                // This control occupies a real layout slot, never pixels over
-                // Inspector. Menubar Panels remains usable with Header hidden.
+                const auto original=host->property("unboundHeaderOriginalTitle").toString();
+                if(!original.isEmpty()&&host->windowTitle()!=original)host->setWindowTitle(original);
                 if(!known.contains(host))known.append(host);
                 continue;
             }
+            // Panels belongs to the main title bar, independently of Header.
+            // Native title-bar layout reserves space; never overlay panel input.
+            QPointer<WorkspaceHeaders> alive(this);QPointer<QWidget> window(host);
             setNativeHeaderMenu(host,true,[alive,window] {
                 if (!alive || !window || QApplication::activeModalWidget()) return;
                 auto menu=window->findChild<QMenu *>("openGateWindowPanels",Qt::FindDirectChildrenOnly);

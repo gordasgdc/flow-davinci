@@ -3,6 +3,7 @@
 #include <QMenu>
 #include <QScopedValueRollback>
 #include "panelaccessorylease.h"
+#include "nativerootlayout.h"
 namespace Unbound {
 // One real native toolbar; its owner and restore slot remain authoritative.
 // This controller owns placement and visibility, never panel grouping or keys.
@@ -40,7 +41,20 @@ public:
         auto context=page?page():nullptr;observedPage=context;
         if(!context || !context->isVisible()){if(!lease.release())report("Could not restore workspace header before changing pages.");return;}
         QPointer<QWidget> host=primary?primary():nullptr;
+        auto source=toolbar?toolbar():nullptr;
+        // A complete embedded layout parks the original toolbar with the
+        // native page tree. Same NSWindow does not mean a visible layout slot.
+        if(host && host->window()==context->window() && source &&
+           (NativeRootLayout::ownsParkedWidget(source,context) || (lease.active()&&lease.ownerSurface()==context)))host=context;
         if(!host || host->window()==context->window()) {
+            if(host==context && (lease.active() || (source&&NativeRootLayout::ownsParkedWidget(source,context)))) {
+                if(!lease.active()) {
+                    const auto error=lease.attach(source,context->window(),context,Qt::TopEdge,true,true);
+                    if(!error.isEmpty()){report(error);return;}
+                    observedToolbar=source;
+                }
+                lease.setHidden(!visible);if(geometryChanged)geometryChanged();return;
+            }
             if(!lease.release()){report("The workspace header's original slot changed.");return;}
             observedToolbar=toolbar?toolbar():nullptr;
             if(observedToolbar)observedToolbar->setVisible(visible);

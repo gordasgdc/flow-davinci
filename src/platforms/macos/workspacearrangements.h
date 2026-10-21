@@ -43,6 +43,10 @@ public:
     void wire()
     {
         if (!entries || !selected || !invoke || !nativeWorkspace) return;
+        bool retained=false;
+        for(auto root:roots)if(root){refresh(root);retained=true;}
+        if(retained)return;
+        roots.clear();
         const auto widgets = QApplication::allWidgets();
         for (auto widget : widgets) if (auto workspace = qobject_cast<QMenu *>(widget)) {
             if (workspace->objectName() != QLatin1String("workspace")) continue;
@@ -59,7 +63,7 @@ public:
                 const auto current = bar->actions();
                 if (current.indexOf(menu->menuAction()) != current.indexOf(workspace->menuAction())+1)
                     bar->insertMenu(index+1 < actions.size() ? actions[index+1] : nullptr,menu);
-                watch(menu,menu); refresh(menu);
+                roots.append(menu);watch(menu,menu); refresh(menu);
                 break;
             }
         }
@@ -222,6 +226,7 @@ private:
         rendered[root] = model;
     }
     QSet<QAction *> wiredActions;
+    QList<QPointer<QMenu>> roots;
     WorkflowCommandMenu *commandMenu=nullptr;
     QSet<QMenu *> wiredMenus;
     QHash<QMenu *,QJsonObject> rendered;

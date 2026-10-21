@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QVBoxLayout>
 #include "diagnostics.h"
+#include "nativechrome.h"
 namespace Unbound {
 // Lease a page's layout as one unit, keeping its native slot graph intact for
 // restoration. Only a custom arrangement occupies the page while the lease is
@@ -71,7 +72,8 @@ public:
         // widgets are not necessarily represented by a QLayoutItem.
         for (auto child : page->findChildren<QWidget *>(QString(),Qt::FindDirectChildrenOnly))
             if (child!=surface && !child->isWindow()) { visibility.append({child,child->isHidden(),child->geometry()}); child->hide(); }
-        customLayout=new QVBoxLayout(page); customLayout->setContentsMargins(margins); customLayout->setSpacing(0);
+        auto safeMargins=margins;safeMargins.setTop(qMax(margins.top(),nativeWorkspaceTopInset(page)));
+        customLayout=new QVBoxLayout(page); customLayout->setContentsMargins(safeMargins); customLayout->setSpacing(0);
         customLayout->addWidget(surface);
         rootProperty=surface->property("unboundNativeArrangementRoot");
         surface->setProperty("unboundNativeArrangementRoot",true);

@@ -5,10 +5,9 @@ namespace Unbound {
 // Convert only the legacy toolbar leaf. Preserve every other panel, subtree,
 // group frame and unknown settings field. The original settings are backed up
 // by installation; arrangement records themselves are never rewritten here.
-inline QJsonObject migrateWorkspaceHeader(QJsonObject value) {
-    const QString id="unboundWorkspaceToolbar";
+inline QJsonObject migrateAttachedToolbarLeaf(QJsonObject value,const QString &id) {
     auto panels=value["panels"].toObject();auto toolbar=panels[id].toObject();
-    if(!value.contains("header"))value["header"]=QJsonObject{{"model","pinned-top-v1"},{"visible",!toolbar["hidden"].toBool()}};
+    if(id=="unboundWorkspaceToolbar"&&!value.contains("header"))value["header"]=QJsonObject{{"model","pinned-top-v1"},{"visible",!toolbar["hidden"].toBool()}};
     toolbar["floating"]=false;panels[id]=toolbar;
     auto footer=value["footer"].toObject();auto surfacePins=footer["surfaces"].toObject();
     QJsonArray groups;
@@ -30,5 +29,9 @@ inline QJsonObject migrateWorkspaceHeader(QJsonObject value) {
     }
     footer["surfaces"]=surfacePins;value["footer"]=footer;
     value["groups"]=groups;value["panels"]=panels;return value;
+}
+inline QJsonObject migrateWorkspaceHeader(QJsonObject value) {
+    value=migrateAttachedToolbarLeaf(value,"unboundWorkspaceToolbar");
+    return migrateAttachedToolbarLeaf(value,"frameEditToolbarTop");
 }
 }

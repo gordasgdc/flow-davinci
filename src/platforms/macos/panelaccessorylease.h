@@ -4,6 +4,7 @@
 #include "nativepanelposition.h"
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStackedWidget>
 
 namespace Unbound {
 // Attach real native content to an owner's layout while preserving its original
@@ -17,7 +18,7 @@ public:
     QRect visibleBounds() const {
         return viewport && viewport->isVisible()?QRect(viewport->mapToGlobal(QPoint()),viewport->size()):QRect();
     }
-    QString attach(QWidget *accessory,QWidget *nativeRoot,QWidget *owner, Qt::Edge edge=Qt::BottomEdge,bool resizeContent=false)
+    QString attach(QWidget *accessory,QWidget *nativeRoot,QWidget *owner, Qt::Edge edge=Qt::BottomEdge,bool resizeContent=false,bool allowParked=false)
     {
         if (active()) return destination==owner ? QString() : QStringLiteral("Detach the accessory before changing its owner.");
         if (viewport || position.content()) return QStringLiteral("The previous accessory position changed; restoration is required.");
@@ -25,8 +26,12 @@ public:
         if ((edge!=Qt::TopEdge && edge!=Qt::BottomEdge) || !layout || layout->direction()!=QBoxLayout::TopToBottom || !accessory || accessory==owner || accessory->isAncestorOf(owner))
             return QStringLiteral("This panel does not have a supported reserved-band layout.");
         logEvent("accessory.attach.request",{{"panel",accessory->objectName()},{"owner",owner->objectName()},{"edge",edge==Qt::TopEdge?"top":"bottom"}});
-        const int height=qMax(32,accessory->sizeHint().height());
-        const auto error=position.acquire(accessory,nativeRoot);
+        // QStackedWidget::sizeHint includes inactive native pages, some of
+        // which still have construction-sized geometry. Size the visible row.
+        auto row=accessory;
+        if(auto stack=qobject_cast<QStackedWidget *>(accessory))if(stack->currentWidget())row=stack->currentWidget();
+        const int height=qMax(32,row->sizeHint().height());
+        const auto error=position.acquire(accessory,nativeRoot,allowParked);
         if (!error.isEmpty()) return error;
         content=accessory; destination=owner; destinationLayout=layout;
         originalFill=accessory->autoFillBackground();

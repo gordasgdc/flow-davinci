@@ -257,7 +257,8 @@ private:
         callbacks.leaf=[this](const QString &id) { return cells.value(id).data(); };
         callbacks.title=[this](const QString &id) {
             auto session=sessions.value(id);
-            return session && session->window() ? session->panelTitle() : id==nativeLeaf() ? QStringLiteral("Native workspace") : id;
+            const auto title=session?session->panelTitle():cells.value(id)?cells.value(id)->windowTitle():QString();
+            return !title.isEmpty()?title:id==nativeLeaf()?QStringLiteral("Native workspace"):QStringLiteral("Panel");
         };
         // Validate before moving any live cells out of their current surface.
         QSet<QString> ids; QList<QPointer<QWidget>> leaves;
@@ -304,7 +305,7 @@ private:
         header->button->drag=[this,id](QPoint pointer){QTimer::singleShot(0,this,[this,id,pointer]{if(tearOff)tearOff(id,pointer);});};
         layout->insertWidget(0,header->bar);headers[id]=header;
         for(auto child:cell->findChildren<QWidget *>())
-            if(child->objectName()=="unboundTimelineHeader" || child->objectName().startsWith("unboundNativeUndock_"))child->hide();
+            if(child->objectName()=="unboundTimelineHeader" || child->objectName()=="unboundNativeUndock_"+id)child->hide();
         setNativeGroupSurfaceClipping(cell);
     }
     void removeHeader(const QString &id) {

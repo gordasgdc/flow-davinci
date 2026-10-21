@@ -88,7 +88,10 @@ protected:
             auto button = qobject_cast<QAbstractButton *>(widget);
             if (button && (button->text().trimmed() == "Stabilize" || button->text().trimmed() == "Stabilization")) stabilizationContext(button);
         }
-        if (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) {
+        // Qt propagates one key through every ancestor. Log its input receiver
+        // once, rather than rebuilding three widget snapshots at each parent.
+        if ((event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) &&
+            (widget==QApplication::focusWidget() || (!QApplication::focusWidget()&&widget==QApplication::activeWindow()))) {
             auto key = static_cast<QKeyEvent *>(event);
             const bool typing = textEditor(widget) || textEditor(QApplication::focusWidget());
             QJsonObject state{{"receiver", widgetState(widget,false)}, {"focus", widgetState(QApplication::focusWidget(),false)},

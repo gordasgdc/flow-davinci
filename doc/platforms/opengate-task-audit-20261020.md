@@ -922,6 +922,44 @@ installation after final checks; no further review stop is required.
 
 ## Current OpenGate / Native flow correction — 2026-10-21
 
+### Live repair checklist after c033f3d (not accepted)
+
+Reference: Jordan's `closest to good.png` / 2026-10-20 07:26:34 screenshot.
+Reuse the existing Workspace Toolbar and native Page Navigation. Do not redesign.
+
+- [ ] Permanent main-window top strip: window controls, project title and Panels.
+      Panels remains there when Workspace Toolbar is hidden; it does not migrate
+      to Inspector or another floating panel. Avoid project titles on panel hosts.
+- [ ] Reclaim the existing Workspace Toolbar from the parked native page tree.
+      Pin it directly beneath the permanent top strip. Show/hide independently;
+      hidden toolbar releases only its own space. No background toggle or setup.
+- [ ] Reserve the actual native title-bar safe area. No panel, tab, scale control
+      or toolbar may overlap the window controls/project title/Panels.
+- [ ] Keep native Page Navigation pinned below content, complete with Home and
+      Settings. Hide releases its band. Both/either/neither band works with maximize.
+- [ ] Keep Timeline and its toolbar together for now. Remove separate toolbar
+      detach control/menu entry; guard independent detach commands. Narrow Timeline
+      uses horizontal overflow without clipping native controls or blank painting.
+- [ ] Give Mixer the existing float/dock glyph and title drag in its existing
+      header. Being nested inside Timeline must not suppress its own controls.
+- [x] Close/recall report withdrawn: Jordan confirmed the hotkey was mapped
+      incorrectly. No production behavior change is authorized for that report.
+- [ ] One readable title per panel/tab. No duplicate Timeline row, raw widget
+      identifiers or unexpected project-name substitutions after transfers.
+- [x] Shift-W mapping report resolved by Jordan; do not change mappings or
+      describe it as a confirmed OpenGate regression.
+- [ ] Compare latency against preserved working builds. Trace repeated layout,
+      menu/header refreshes, widget scans, persistence and diagnostic work; measure
+      drag, maximize/restore and page changes. Logging stays diagnostic and useful.
+      Do not claim the main cause or improvement without evidence.
+- [ ] Verify assembled real ownership topology (toolbar inside parked page),
+      recovery, persistence, native clicks, rendering and overflow. Fixture passes
+      are distinct from live Resolve acceptance. Review differences before install.
+
+Installed c033f3d is a failed live candidate. Uncommitted repair work has not been
+installed. Keep the prior builds, user arrangements and rollback checkpoints.
+Fusion/platform expansion and release work follow the basic-flow repair.
+
 The installed 85fc822 build failed live vacancy reclamation and header overlap.
 It is not accepted. The agreed flow now defaults to the existing emulator-shaped
 OpenGate workspace, with immutable Resolve Layout, independent Native recovery,
