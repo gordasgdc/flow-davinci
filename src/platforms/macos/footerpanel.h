@@ -13,6 +13,7 @@
 #include "diagnostics.h"
 #include "pagecontext.h"
 #include "surfacepagenavigation.h"
+#include "nativefootermirror.h"
 #include "panelaccessorylease.h"
 namespace Unbound {
 // Global visibility is Resolve's command. Surface placement is OpenGate state.
@@ -48,32 +49,20 @@ public:
     QString hidePanel(){return requestVisibility(false);}
     QString toggleVisibility(){refresh();return requestVisibility(!shown);}
     QJsonObject snapshot() const {
-        auto value=state;value["model"]="surface-v1";value["floating"]=false;value["attachment"]="surfaces";value["hidden"]=!shown;return value;
+        auto value=state;value.remove("surfaces");value["model"]="reserved-native-bands-v2";value["floating"]=false;value["attachment"]="surfaces";value["hidden"]=!shown;return value;
     }
     void setState(const QJsonObject &value) {
         state=value;pendingVisibility=value.contains("hidden");refresh();
     }
-    bool pinned(QWidget *host) const {
-        if(!host)return false;const auto choices=state["surfaces"].toObject();
-        return choices.contains(host->objectName())?choices[host->objectName()].toBool():
-            host==(root?root():nullptr) || (primarySurface && primarySurface()==host);
-    }
-    void setPinned(QWidget *host,bool enabled) {
-        if(!host || host->objectName().isEmpty())return;
-        logEvent("footer.placement.request",{{"surface",host->objectName()},{"pinned",enabled}});
-        auto choices=state["surfaces"].toObject();choices[host->objectName()]=enabled;state["surfaces"]=choices;refresh();publish();
-    }
-    void populatePlacementMenu(QMenu *menu,QWidget *host) {
-        auto placement=menu->addMenu("Page Navigation Placement");placement->setProperty("unboundOwnMenu",true);
-        auto pin=placement->addAction("Pin to This Surface");pin->setCheckable(true);pin->setChecked(pinned(host));
-        QPointer<QWidget> retained(host);connect(pin,&QAction::triggered,this,[this,retained](bool value){defer([this,retained,value]{if(retained)setPinned(retained,value);});});
-    }
-    void populateSurfaceMenu(QMenu *menu,QWidget *host) {
-        auto navigation=menu->addMenu("Page Navigation");navigation->setProperty("unboundOwnMenu",true);
-        auto visibility=navigation->addAction("Show Page Navigation");visibility->setProperty("openGateNavigationProxy",true);visibility->setCheckable(true);visibility->setChecked(shown);
+    bool pinned(QWidget *host) const {return host && !host->property("unboundToolbarStrip").toBool();}
+    // Legacy API retained for older callers. Footer is now a reserved band on
+    // every workspace surface; Show/Hide is the only placement choice.
+    void setPinned(QWidget *,bool enabled) {requestVisibility(enabled);}
+    void populatePlacementMenu(QMenu *,QWidget *) {}
+    void populateSurfaceMenu(QMenu *menu,QWidget *) {
+        auto visibility=menu->addAction("Footer");visibility->setProperty("openGateNavigationProxy",true);
+        visibility->setCheckable(true);visibility->setChecked(shown);
         connect(visibility,&QAction::triggered,this,[this](bool value){defer([this,value]{requestVisibility(value);});});
-        auto placement=navigation->addAction("Pin to This Surface");placement->setToolTip("Reserve a bottom band for Page Navigation on this surface");placement->setCheckable(true);placement->setChecked(pinned(host));placement->setEnabled(host && !host->property("unboundToolbarStrip").toBool());
-        QPointer<QWidget> retained(host);connect(placement,&QAction::triggered,this,[this,retained](bool value){defer([this,retained,value]{if(retained)setPinned(retained,value);});});
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
@@ -170,7 +159,7 @@ private:
             }
             if(custom && shown && !nativeLease.active()) {
                 nativeFooter->show();
-                const auto error=nativeLease.attach(nativeFooter,nativeMain,destination,Qt::BottomEdge,true);
+                const auto error=nativeLease.attach(nativeFooter,nativeMain,destination,Qt::BottomEdge,false);
                 if(!error.isEmpty())logEvent("footer.native.mount.failed",{{"error",error}});
             }
             if(nativeLease.active()){nativeLease.setHidden(!shown);nativeFooter->setVisible(shown);}
@@ -187,11 +176,16 @@ private:
             auto view=views.value(host);
             if(nativeLease.ownerSurface()==host){if(view)view->hide();continue;}
             if(!view) {
-                view=new SurfacePageNavigation(host);views[host]=view;layout->addWidget(view,0);
-                view->activate=[this](QString id){activatePage(id);};
+                view=new NativeFooterMirror(host);views[host]=view;layout->addWidget(view,0);
+                view->activate=[this](QAbstractButton *button){
+                    if(!button || !nativeFooter || !nativeFooter->isAncestorOf(button))return;
+                    QPointer<QAbstractButton> target=button;
+                    logEvent("footer.control.request",{{"target",button->objectName()},{"route","complete-native-footer-mirror"}});
+                    QTimer::singleShot(0,this,[this,target]{if(target && target->isEnabled()){target->click();schedule();}});
+                };
                 connect(host,&QObject::destroyed,this,[this,host]{views.remove(host);});
             }
-            view->updatePages(pages);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && !pages.isEmpty());
+            view->setSource(nativeFooter);view->setVisible(shown && pinned(host) && nativeLease.ownerSurface()!=host && !pages.isEmpty());
         }
         for(auto it=views.begin();it!=views.end();++it)if(it.value() && !hosts.contains(it.key()))it.value()->hide();
         for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))if(menu->objectName()=="workspaceShowPanel")wireCaller(menu);
@@ -210,7 +204,7 @@ private:
     PanelAccessoryLease nativeLease;
     std::function<QWidget *()> root;QJsonObject state;QTimer timer;
     QPointer<QWidget> nativeFooter;QPointer<QAction> nativeVisibility;
-    QList<NavigationPage> pages;QHash<QWidget *,QPointer<SurfacePageNavigation>> views;
+    QList<NavigationPage> pages;QHash<QWidget *,QPointer<NativeFooterMirror>> views;
     bool shown=true,pendingVisibility=true,initialized=false,refreshing=false,applyingPlacement=false,stopped=false;
 };
 }

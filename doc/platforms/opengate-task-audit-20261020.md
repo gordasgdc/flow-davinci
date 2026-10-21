@@ -560,3 +560,24 @@ passes including native visibility ledger round trip. Native-workspace-ui compil
 These do not establish assembled flow, physical drag capture, or live acceptance.
 Footer still has secondary per-button layout and optional pin model, both pending
 correction. Installed6f395c4 remains untouched.
+
+## Native footer reserved bands — not installed
+
+On fix/macos-native-footer-bands, the primary surface leases the complete original
+native footer without compressing its width. Secondary surfaces paint the complete
+original footer at its logical size, including its native layout/background and
+Home/Settings; clicks target the original native buttons. This is a whole-widget
+mirror, not a second native widget or a reconstructed icon row. Narrow mirrors
+scroll. No paint-event polling or render-triggered refresh loop is installed.
+Footer is reserved on every supported workspace surface while globally shown;
+ordinary per-surface pin choices are removed. Native visibility remains authority.
+Hidden surface-page-navigation fixture passes complete native pixel comparisons at
+1x/2x, original Home/Settings signal execution, page-button dispatch, hide reclaim
+and show restoration of body bounds, narrow Settings reachability, original-slot
+return and teardown ownership/constraints. Native-workspace-ui compiles. These are
+Qt fixtures, not proof of live Resolve custom painting or latency. Header topology,
+maximize gates and assembled flow are still pending. Installed6f395c4 untouched.
+
+Confirmed with Jordan: visible bands gate docked/grouped/maximized content; hiding
+a band removes its gate, and showing it restores that bound. Detached floating
+windows may intentionally overlap bands; do not impose floating placement limits.

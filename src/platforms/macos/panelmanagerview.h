@@ -87,7 +87,7 @@ public:
         const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel("Page Navigation",body),row,0);
         showFooter=new QPushButton("Show",body);showFooter->setObjectName("showPageNavigation");panelGrid->addWidget(showFooter,row,1);
         hideFooter=new QPushButton("Hide",body);hideFooter->setObjectName("hidePageNavigation");panelGrid->addWidget(hideFooter,row,2);
-        pinFooter=new QPushButton("Pin to Main Surface",body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip("Reserve or remove the Page Navigation band on the main surface");panelGrid->addWidget(pinFooter,row,3,1,4);
+        pinFooter=new QPushButton("Pin to Main Surface",body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip("Reserve or remove the Page Navigation band on the main surface");pinFooter->hide(); // Compatibility object only; Footer uses Show/Hide, never optional pinning.
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }

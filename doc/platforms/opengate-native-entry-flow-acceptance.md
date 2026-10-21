@@ -17,6 +17,8 @@ component fixture does not establish this flow. Keep installed software separate
 5. Header and Footer mean pinned or hidden. They reserve outer space in the
    workspace and never become a panel-group leaf. Hide reclaims that space; Show
    restores the same native controls. Panels remains accessible with both hidden.
+   Docked/grouped/maximized content respects visible bands and uses their freed
+   space when hidden. Detached floating windows may deliberately overlap bands.
 6. All visibility entry points use one state. Footer follows Resolve's native page
    navigation visibility command and includes native Home and Settings. Header
    and footer are excluded from ordinary panel dragging/docking/maximize targets.

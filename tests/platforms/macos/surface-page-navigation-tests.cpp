@@ -31,16 +31,35 @@ int main(int argc,char **argv){
  Unbound::FooterPanel controller(nullptr,[&]{return &main;},{});controller.primarySurface=[&]{return primary;};controller.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};controller.restore();settle();
  auto band=first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer");auto body=first.layout()->itemAt(0)->widget();
  check(band&&band->widget()==native&&native->window()==&first,"primary gets the actual complete native footer");check(home->window()==&first&&settings->window()==&first,"original Home and Settings travel with the real footer");check(body->geometry().bottom()<band->geometry().top(),"native footer reserves a bottom band outside content");home->click();settings->click();check(homeClicks==1&&settingsClicks==1,"real native Home and Settings signals stay connected");
- auto b=second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation");check(b&&!b->isVisibleTo(&second),"secondary footer stays opt-in");controller.setPinned(&second,true);settle();
- auto mirrorHome=b->findChild<QToolButton *>("openGatePage_home"),mirrorSettings=b->findChild<QToolButton *>("openGatePage_settings");check(mirrorHome&&mirrorSettings,"secondary includes native Home and Settings");mirrorHome->click();mirrorSettings->click();settle();check(homeClicks==2&&settingsClicks==2,"secondary controls invoke the real native functions exactly once");
- b->findChild<QToolButton *>("openGatePage_fairlight")->click();settle();check(pageClicks==1&&stack->currentWidget()==audio&&audioButton->window()==&first,"page request uses the real native footer without replacing it");
- const int bodyHeight=body->height();controller.hidePanel();settle();check(!action->isChecked()&&band->isHidden()&&!b->isVisibleTo(&second)&&body->height()>bodyHeight,"native visibility hides all surfaces and reclaims space");action->trigger();settle();check(!band->isHidden()&&b->isVisibleTo(&second),"native hotkey restores pinned footers");
- second.resize(140,350);settle();check(b->horizontalScrollBar()->maximum()>0,"narrow copy scrolls without losing controls");b->horizontalScrollBar()->setValue(b->horizontalScrollBar()->maximum());settle();check(b->viewport()->rect().contains(mirrorSettings->mapTo(b->viewport(),mirrorSettings->rect().center())),"Settings remains reachable at narrow widths");
- controller.setPinned(&first,false);settle();check(native->parentWidget()==parent&&layout->indexOf(native)==index&&b->isVisibleTo(&second),"unpin primary restores native slot while optional copy stays visible");controller.setPinned(&first,true);settle();check(native->window()==&first,"repin mounts the same native footer again");
- primary=&main;controller.refreshSurfaces();settle();check(native->parentWidget()==parent&&layout->indexOf(native)==index,"native main preference restores exact original slot");check(!main.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation",Qt::FindDirectChildrenOnly),"native main uses original footer without an overlay");
- controller.setPinned(&main,false);controller.hidePanel();controller.showPanel();settle();check(native->isHidden()&&action->isChecked()&&b->isVisibleTo(&second),"global toggles preserve independent main pin choice");controller.setPinned(&main,true);settle();saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="surface-v1","state remains compatible with pinned surface model");
+ auto b=second.findChild<Unbound::NativeFooterMirror *>("openGateNativeFooterMirror");
+ check(b&&b->isVisibleTo(&second),"secondary gets a reserved native footer without opting into pinning");
+ auto canvas=b?static_cast<Unbound::NativeFooterCanvas *>(b->widget()):nullptr;
+ auto mirrorClick=[&](QAbstractButton *button){
+  const auto point=button->mapTo(native,button->rect().center());
+  check(canvas && canvas->buttonAt(point)==button,"native coordinates resolve the original button");
+  if(!canvas)return;
+  QMouseEvent press(QEvent::MouseButtonPress,point,Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+  QMouseEvent release(QEvent::MouseButtonRelease,point,Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+  QApplication::sendEvent(canvas,&press);QApplication::sendEvent(canvas,&release);settle();
+ };
+ mirrorClick(home);mirrorClick(settings);check(homeClicks==2&&settingsClicks==2,"complete footer mirror invokes native Home and Settings exactly once");
+ for(int ratio:{1,2}) {
+  QImage actual(native->size()*ratio,QImage::Format_ARGB32_Premultiplied),copy(actual.size(),actual.format());
+  actual.setDevicePixelRatio(ratio);copy.setDevicePixelRatio(ratio);actual.fill(Qt::transparent);copy.fill(Qt::transparent);
+  native->render(&actual);canvas->render(&copy);check(actual==copy,"complete footer layout and painting match native at normal and Retina density");
  }
- check(native->parentWidget()==parent&&layout->indexOf(native)==index&&native->minimumSize()==minimum&&native->sizePolicy()==policy,"shutdown restores native ownership and constraints");check(!first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer")&&!second.findChild<Unbound::SurfacePageNavigation *>("openGateSurfacePageNavigation"),"shutdown removes only owned wrappers and copies");
- {Unbound::FooterPanel restored(nullptr,[&]{return &main;},saved);restored.primarySurface=[&]{return &main;};restored.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};restored.restore();settle();check(restored.pinned(&second),"saved secondary pin survives restart");}
+ mirrorClick(audioButton);check(pageClicks==1&&stack->currentWidget()==audio&&audioButton->window()==&first,"page request retains real native owner and wiring");
+ const int bodyHeight=body->height();controller.hidePanel();settle();check(!action->isChecked()&&band->isHidden()&&!b->isVisibleTo(&second)&&body->height()>bodyHeight,"hide removes reserved bands and content gains space");
+ action->trigger();settle();check(!band->isHidden()&&b->isVisibleTo(&second)&&body->height()==bodyHeight,"native visibility restores bands and original content bounds");
+ second.resize(140,350);settle();check(b->horizontalScrollBar()->maximum()>0,"narrow native footer scrolls rather than truncates");
+ b->horizontalScrollBar()->setValue(b->horizontalScrollBar()->maximum());settle();
+ check(b->viewport()->rect().contains(canvas->mapTo(b->viewport(),settings->mapTo(native,settings->rect().center()))),"native Settings remains reachable by scrolling");
+ primary=&main;controller.refreshSurfaces();settle();check(native->parentWidget()==parent&&layout->indexOf(native)==index,"native main return restores exact original slot");
+ check(!main.findChild<Unbound::NativeFooterMirror *>("openGateNativeFooterMirror",Qt::FindDirectChildrenOnly),"native main uses original footer without replacement");
+ controller.hidePanel();controller.showPanel();settle();check(!native->isHidden()&&action->isChecked()&&b->isVisibleTo(&second),"one visibility state controls native and secondary bands");
+ saved=controller.snapshot();check(!saved["floating"].toBool()&&saved["model"]=="reserved-native-bands-v2"&&!saved.contains("surfaces"),"snapshot has no independent pin choices");
+ }
+ check(native->parentWidget()==parent&&layout->indexOf(native)==index&&native->minimumSize()==minimum&&native->sizePolicy()==policy,"shutdown restores native ownership and constraints");check(!first.findChild<QScrollArea *>("unboundAttachedAccessory_m_PageSwitcherContainer")&&!second.findChild<Unbound::NativeFooterMirror *>("openGateNativeFooterMirror"),"shutdown removes only owned wrappers and copies");
+ {Unbound::FooterPanel restored(nullptr,[&]{return &main;},saved);restored.primarySurface=[&]{return &main;};restored.surfaceHosts=[&]{return QList<QWidget *>{&first,&second};};restored.restore();settle();check(restored.pinned(&second),"reserved secondary band survives restart");}
  std::printf("surface navigation failures=%d\n",failures);return failures?1:0;
 }
