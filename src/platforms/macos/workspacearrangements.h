@@ -13,6 +13,7 @@
 #include <functional>
 #include "diagnostics.h"
 #include "workspacepages.h"
+#include "../../core/workspacepresetpolicy.h"
 #include "keyboardlauncher.h"
 #include "workflowcommandmenu.h"
 
@@ -123,10 +124,11 @@ private:
     void refresh(QMenu *root)
     {
         commandMenu->wire(root);
-        const auto page = currentPage(); const auto label = workspacePageLabel(page);
+        const auto page = currentPage();
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto commands=commandsMenu ? commandsMenu(root) : nullptr;
-        auto native = action(root, "unboundRestoreNativeWorkspace",label.isEmpty() ? "Native Workspace UI" : "Native "+label+" UI", "Native");
+        auto native = action(root, "unboundRestoreNativeWorkspace",QStringLiteral("Use Original Resolve UI"), "Native");
+        native->setToolTip("Restore Resolve’s standard interface without OpenGate layout management");
         auto about=action(root,"openGateAbout","About OpenGate…","About");
         auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8(commands?"Keyboard Shortcuts…":"OpenGate Panel Shortcuts…"),"PanelShortcuts",{},!commands);
         if(commands && !commands->actions().contains(shortcuts))commands->addAction(shortcuts);
@@ -154,22 +156,26 @@ private:
         const bool hidden=hiddenArrangements();
         auto advanced=root->findChild<QMenu *>("openGateAdvanced",Qt::FindDirectChildrenOnly);
         if(!advanced){advanced=new QMenu("Advanced",root);advanced->setObjectName("openGateAdvanced");advanced->setProperty("unboundOwnMenu",true);}
-        advanced->menuAction()->setVisible(hidden);
+        advanced->menuAction()->setVisible(true);
         action(advanced,"openGateShowHiddenArrangements","Show Hidden Arrangements","Show Hidden Arrangements")->setEnabled(hidden);
         const QJsonObject model{{"hidden_arrangements",hidden},{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
         if (!created && rendered.value(root) == model && (!callers || root->actions().contains(callers->menuAction())) &&
             (!commands || root->actions().contains(commands->menuAction()))) return;
-        auto saveAs=action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Arrangement As…"), QString::fromUtf8("Save As…"),{},false);saveAs->setEnabled(supported);
+        auto saveAs=action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save as New Workspace…"), QString::fromUtf8("Save As…"),{},false);saveAs->setEnabled(supported);
         menu->removeAction(saveAs);menu->menuAction()->setVisible(!saved.isEmpty());
         bool currentExists = false; QSet<QString> ids;
-        for (const auto &value : saved) if (value.toObject()["id"].toString() == current) currentExists = true;
-        action(menu, "unboundUpdateWorkspace", "Update Current Saved Workspace", "Update", current)->setEnabled(supported && currentExists);
+        for (const auto &value : saved) if (value.toObject()["id"].toString() == current && !value.toObject()["read_only"].toBool() && WorkspacePresetPolicy::writable(current)) currentExists = true;
+        auto update=action(root, "unboundUpdateWorkspace", "Update Current Workspace", "Update", current);update->setEnabled(supported && currentExists && !nativeSelected);
         action(menu, "unboundReorderWorkspaces", QString::fromUtf8("Reorder Presets…"), "Reorder")->setEnabled(supported);
+        auto browser=root->findChild<QMenu *>("openGateWorkspaces",Qt::FindDirectChildrenOnly);
+        if(!browser){browser=new QMenu("OpenGate Workspaces",root);browser->setObjectName("openGateWorkspaces");browser->setProperty("unboundOwnMenu",true);}
+        watch(browser,root);
         QList<QAction *> ordered, quick;
         for (const auto &value : saved) {
             const auto entry = value.toObject(); const auto id = entry["id"].toString(); ids.insert(id);
-            auto quickRestore = action(root,"unboundWorkspaceRestore_"+id,entry["name"].toString().replace('&',"&&"),"Restore",id);
+            auto quickRestore = action(browser,"unboundWorkspaceRestore_"+id,entry["name"].toString().replace('&',"&&"),"Restore",id);
             quickRestore->setCheckable(true); quickRestore->setChecked(!nativeSelected && id == current); quickRestore->setEnabled(supported); quick.append(quickRestore);
+            if(entry["read_only"].toBool())continue;
             auto preset = menu->findChild<QMenu *>("unboundWorkspace_" + id, Qt::FindDirectChildrenOnly);
             if (!preset) {
                 preset = new QMenu(menu); preset->setObjectName("unboundWorkspace_" + id);
@@ -193,6 +199,7 @@ private:
                     preset->setObjectName("unboundRetiredWorkspace"); preset->deleteLater();
                 }
             }
+        if(browser->actions()!=quick){for(auto item:browser->actions())browser->removeAction(item);for(auto item:quick)browser->addAction(item);}
         QList<QAction *> currentOrder;
         for (auto item : menu->actions()) if (item->menu()) currentOrder.append(item);
         if (currentOrder != ordered) {
@@ -203,8 +210,10 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,saveAs,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(commands?commands->menuAction():shortcuts); topOrder.append(advanced->menuAction());topOrder.append(about);
-        divider->setVisible(!quick.isEmpty());
+        if(!advanced->actions().contains(menu->menuAction()))advanced->addMenu(menu);
+        QList<QAction *> topOrder{browser->menuAction(),update,saveAs,divider,native,manageDivider};
+        if (callers) topOrder.append(callers->menuAction());topOrder.append(manager);topOrder.append(commands?commands->menuAction():shortcuts);topOrder.append(advanced->menuAction());topOrder.append(about);
+        divider->setVisible(true);
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))
             if (item->objectName().startsWith("unboundWorkspaceRestore_") && !allIds.contains(item->property("unboundArrangementId").toString())) {

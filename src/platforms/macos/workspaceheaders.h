@@ -4,6 +4,8 @@
 #include <QAbstractButton>
 #include "panelscalecontrols.h"
 #include <QMenu>
+#include <QBoxLayout>
+#include <QToolButton>
 #include <QPointer>
 #include <QSet>
 #include <QTimer>
@@ -27,9 +29,10 @@ public:
     ~WorkspaceHeaders() override {
         qApp->removeEventFilter(this);
         for (auto host:known) if (host) setNativeHeaderMenu(host,false,{});
+        delete primaryButton.data();
     }
     void add(Panel panel) { panels.append(std::move(panel)); }
-    std::function<QWidget *()> primary,projectSurface;
+    std::function<QWidget *()> primary,projectSurface,primaryHeader;
     std::function<void(QMenu *)> panelEntries;
     std::function<void(QMenu *,QWidget *)> surfaceControls;
     std::function<QList<Window>()> windows;
@@ -43,20 +46,9 @@ public:
         }
         if(surfaceControls)surfaceControls(menu,host);
         const bool global=primary && primary()==host;
-        if (global) {
-            if (windows) {
-                auto groups=menu->addMenu("Floating Windows");
-                for (const auto &entry:windows()) {
-                    auto action=groups->addAction(entry.title);action->setCheckable(true);action->setChecked(entry.shown && entry.shown());
-                    connect(action,&QAction::triggered,this,[this,entry](bool shown) {
-                        QTimer::singleShot(0,this,[entry,shown] {
-                            logEvent("header.window.visibility",{{"window",entry.title},{"requested",shown}});
-                            if (entry.setShown) entry.setShown(shown);
-                        });
-                    });
-                }
-            }
-        }
+        // Panel entries already expose every panel, including those in floating
+        // groups. Do not add a second inventory below a Floating Windows subtree.
+
         logEvent("header.menu.open",{{"scope",global ? "workspace" : "window"},{"host",host->objectName()}});
     }
 protected:
@@ -101,6 +93,24 @@ private:
                 if (host->windowTitle()!=title) { host->setWindowTitle(title);logEvent("header.project.updated",{{"project",project},{"host",host->objectName()}}); }
             }
             QPointer<WorkspaceHeaders> alive(this);QPointer<QWidget> window(host);
+            if(primary && primary()==host && primaryHeader) {
+                setNativeHeaderMenu(host,false,{});
+                auto header=primaryHeader();QWidget *row=nullptr;
+                if(header)for(auto candidate:header->findChildren<QWidget *>())
+                    if(candidate->objectName().startsWith("frameEditTopBarRight") && qobject_cast<QBoxLayout *>(candidate->layout())){row=candidate;break;}
+                if(row && (!primaryButton || primaryButton->parentWidget()!=row)) {
+                    delete primaryButton.data();primaryButton=new QToolButton(row);primaryButton->setObjectName("openGatePrimaryPanels");
+                    primaryButton->setText("Panels");primaryButton->setPopupMode(QToolButton::InstantPopup);primaryButton->setFocusPolicy(Qt::NoFocus);
+                    auto menu=new QMenu(primaryButton);menu->setProperty("unboundOwnMenu",true);primaryButton->setMenu(menu);
+                    connect(menu,&QMenu::aboutToShow,this,[alive,window,menu]{if(alive && window)alive->populate(menu,window);});
+                    qobject_cast<QBoxLayout *>(row->layout())->addWidget(primaryButton,0,Qt::AlignVCenter);
+                    primaryButton->show();
+                }
+                // This control occupies a real layout slot, never pixels over
+                // Inspector. Menubar Panels remains usable with Header hidden.
+                if(!known.contains(host))known.append(host);
+                continue;
+            }
             setNativeHeaderMenu(host,true,[alive,window] {
                 if (!alive || !window || QApplication::activeModalWidget()) return;
                 auto menu=window->findChild<QMenu *>("openGateWindowPanels",Qt::FindDirectChildrenOnly);
@@ -113,6 +123,7 @@ private:
         else if (!current.contains(known[i])) { setNativeHeaderMenu(known[i],false,{});known.removeAt(i); }
     }
     QList<Panel> panels;QList<QPointer<QWidget>> known;QPointer<QWidget> projectLabel;
+    QPointer<QToolButton> primaryButton;
     QString lastProject;QTimer timer,projectWatch;bool projectScanned=false;
 };
 }

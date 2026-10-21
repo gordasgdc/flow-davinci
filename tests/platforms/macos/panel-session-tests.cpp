@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 #include <QApplication>
 #include <QCoreApplication>
 #include <QStackedLayout>
@@ -114,9 +115,12 @@ int main(int argc, char **argv)
         Unbound::VacatedContents vacancy; vacancy.hide(&slot);
         check(slot.isHidden() && slot.minimumSize()==QSize(0,0) && slot.sizePolicy().horizontalPolicy()==QSizePolicy::Ignored,
             "vacated native container releases its footprint and preferred width");
+        slot.show(); settle();
+        check(slot.isHidden(),"native visibility refresh cannot reopen a leased empty content slot");
         vacancy.restore();
         check(slot.minimumSize()==minimum && slot.sizePolicy()==policy && slot.isHidden()==hidden,
             "native content-container lease restores exact dimensions, policy and hidden state");
+        slot.show(); settle(); check(!slot.isHidden(),"released slot accepts native Show again after docking");
     }
     {
         QWidget main; main.setMinimumSize(1000,700); main.resize(1200,800);
@@ -127,7 +131,7 @@ int main(int argc, char **argv)
         sizing.blocked=[&] { return expanding; }; sizing.setPanels(&main,page,{"detached"}); settle();
         check(main.geometry()==baseline && main.minimumSize()==minimum,"temporary maximize does not resize the native workspace behind it");
         expanding=false; sizing.setPanels(&main,page,{"detached"}); settle();
-        check(main.minimumWidth()<minimum.width() && main.width()<baseline.width(),"native window can shrink below its old explicit minimum around remaining content");
+        check(main.minimumWidth()<minimum.width() && main.geometry()==baseline,"detachment releases the resize floor without shrinking the user workspace");
         check(remaining->minimumSize()==QSize(200,100),"native outer sizing never relaxes remaining content constraints");
         sizing.restore(); settle();
         check(main.minimumSize()==minimum && outer->sizeConstraint()==constraint && main.geometry()==baseline,"native sizing restores exact captured constraints and automatic geometry");
@@ -474,7 +478,7 @@ int main(int argc, char **argv)
             {"floating", true}, {"hidden", false}, {"x", 80}, {"y", 90}, {"width", 480}, {"height", 320}}}}}};
         check(presetStore.create("Source layout", sourceArrangement, presetId).isEmpty(), "prepare restore fixture");
         {
-        PanelControls controls;
+        prepareNativeFixture();PanelControls controls;
         controls.show(); settle();
         controls.resize(300, 240); settle();
         auto optionsScroll = controls.findChild<QScrollArea *>(QStringLiteral("panelOptionsScroll"));
@@ -734,7 +738,7 @@ int main(int argc, char **argv)
         const auto verifyStartupMode=[&](const QJsonObject &value,bool hidden) {
             QSaveFile file(path); check(file.open(QIODevice::WriteOnly),"startup preference fixture opens");
             file.write(QJsonDocument(value).toJson()); check(file.commit(),"startup preference fixture commits");
-            PanelControls controls;
+            prepareNativeFixture();PanelControls controls;
             check(controls.findChild<QCheckBox *>("hideResolveBackground")->isChecked()==hidden,
                 "automatic background flow ignores legacy modes and retains explicit advanced overrides");
         };
@@ -849,7 +853,7 @@ int main(int argc, char **argv)
             return count;
         };
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("bulk_5")->click();
             check(exportRequests == 1, "Quick Export opens the native action without directly rendering");
             exportAction->setEnabled(false);
@@ -870,7 +874,7 @@ int main(int argc, char **argv)
         check(hostCount() == 0, "shutdown docks live panels after saving desired state");
         for (int i = 0; i < paneSlots.size(); ++i) check(paneSlots[i]->layout() == originalLayouts[i], "bulk sidebars restore original layouts");
         {
-            PanelControls controls; controls.show();
+            prepareNativeFixture();PanelControls controls; controls.show();
             check(waitFor([&] { return hostCount() == 11; }), "saved workspace restores eleven panels");
             check(controls.findChild<QCheckBox *>("pinControls")->isChecked(), "pin option persists");
             QWidget *sourceHost = nullptr, *programHost = nullptr;

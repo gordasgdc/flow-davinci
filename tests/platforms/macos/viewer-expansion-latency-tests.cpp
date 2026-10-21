@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QElapsedTimer>
@@ -51,7 +52,7 @@ int main(int argc,char **argv) {
         }
         main.show();settle();
         {
-            PanelControls controls;controls.show();settle();
+            prepareNativeFixture();PanelControls controls;controls.show();settle();
             auto click=[&](const QString &name) {
                 auto button=controls.findChild<QPushButton *>(name);check(button,"fixture command exists");if (button) button->click();
             };

@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     int restores = 0;
     controls.restoreRequested = [&] { ++restores; };
     controls.report = [](QString) {};
-    check(controls.selection()->count()==2 && controls.selection()->currentData()==edit,"Edit lists and selects only Edit preset");
+    check(controls.selection()->count()==3 && controls.selection()->currentData()==edit,"Edit lists and selects only Edit preset");
     controls.updateState({{"page","edit"},{"layout_mode","native"}});
     check(owner.findChild<QLabel *>("arrangementState")->text()=="Matches saved arrangement","legacy preset comparison normalizes inferred layout mode");
     controls.setPage("fusion");

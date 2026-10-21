@@ -1,3 +1,4 @@
+#include "native-fixture-start.h"
 #include <QApplication>
 #include <QTemporaryDir>
 #include <QElapsedTimer>
@@ -220,7 +221,7 @@ int main(int argc, char **argv)
         singleViewer->setShortcut(QKeySequence(Qt::Key_F9));
         stack->setCurrentWidget(empty); main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer")->click(); settle();
             check(stack->window() != &main && stack->window()->objectName() == "unboundFloating_widgetEditSourcePlayer",
                 "Source Undock works with the offline surface and no clip loaded");
@@ -265,7 +266,7 @@ int main(int argc, char **argv)
         QMenu nativeMenu(&main); nativeMenu.setObjectName("workspaceShowPanel");
         QMenuBar menuBar(&main); QMenu nativeWorkspace(&menuBar); nativeWorkspace.setObjectName("workspace"); menuBar.addMenu(&nativeWorkspace); main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle(400);
+            prepareNativeFixture();PanelControls controls; controls.show(); settle(400);
             auto timelineFloat = timelineToolbar->findChild<QToolButton *>("unboundUndockToolbar_frameEditToolbarTop");
             check(timelineFloat && timelineToolbar->layout()->indexOf(timelineFloat) < 0,
                 "toolbar float control occupies no additional native layout row");
@@ -456,7 +457,7 @@ int main(int argc, char **argv)
         }
         main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             const auto combine = [&](int first, int second, int direction) {
                 controls.findChild<QComboBox *>("groupFirst")->setCurrentIndex(first);
                 controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(second);
@@ -487,7 +488,7 @@ int main(int argc, char **argv)
         }
         settle();
         {
-            PanelControls controls; controls.show(); settle(650);
+            prepareNativeFixture();PanelControls controls; controls.show(); settle(650);
             for (auto label : content) check(label->window() == content.first()->window() && label->window() != &main,
                 "reloaded workspace restores all four panels into the same native group");
             controls.findChild<QPushButton *>("dock_widgetEditSourcePlayer")->click(); settle();
@@ -622,7 +623,7 @@ int main(int argc, char **argv)
         auto inner = new QVBoxLayout(media); inner->addWidget(new QLabel("Native Media Pool", media));
         main.show(); settle();
         {
-            PanelControls controls; controls.show(); settle();
+            prepareNativeFixture();PanelControls controls; controls.show(); settle();
             controls.findChild<QPushButton *>("undock_widgetEditInspector")->click(); settle(100);
             toggle->click(); settle(120);
             check(!inspector->window()->isVisible() && !toggle->isChecked(), "native click hides floating Inspector once despite toggled and clicked signals");

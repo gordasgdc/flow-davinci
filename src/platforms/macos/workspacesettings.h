@@ -20,6 +20,7 @@ public:
         settingsProfilePath("Workspace.json")))
     {
         QFile file(path);
+        existed=file.exists();
         if(file.exists()) {
             if(!file.open(QIODevice::ReadOnly)){failure="Cannot read the saved workspace.";return;}
             QJsonParseError error;const auto document=QJsonDocument::fromJson(file.readAll(),&error);
@@ -38,6 +39,7 @@ public:
             if(!edit.isEmpty()){data=edit;data["page_workspaces"]=pages;}
         }
     }
+    bool hasSavedWorkspace() const {return existed;}
     QString error() const {return failure;}
     QJsonObject pageView(const QString &page) const {return PageWorkspaceState::view(data,page);}
     QString recordPage(const QString &page,const QJsonObject &value) {return PageWorkspaceState::record(data,page,value);}
@@ -63,5 +65,6 @@ public:
     QJsonObject data;
 private:
     QString path,failure;
+    bool existed=false;
 };
 }

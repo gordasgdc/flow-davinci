@@ -50,7 +50,7 @@ public:
     QJsonObject snapshot() const { return panelLayoutSnapshot(root); }
     QJsonObject savedPlan(const QString &pageKey) const {
         if (!active()) return {};
-        NativeArrangementPlan plan; plan.page=pageKey; plan.tree=snapshot(); plan.anchor=anchorId;
+        NativeArrangementPlan plan; plan.page=pageKey; plan.tree=snapshot(); plan.anchor=anchorId; plan.managed=anchorId.isEmpty() && !cells.contains(nativeLeaf());
         for (auto it=sessions.begin();it!=sessions.end();++it) if (it.value() && it.value()->hiddenByUser()) plan.hidden.insert(it.key());
         return plan.json();
     }
@@ -99,7 +99,7 @@ public:
         QStringList names;
         const bool scoped=position.active();
         if (changing || host || !page || !page->isVisible() || panels.isEmpty() || panels.size()>31 ||
-            !groupTreeNames(tree,names) || names.size()!=panels.size()+(scoped ? 0 : 1) || names.contains(nativeLeaf())==scoped)
+            !groupTreeNames(tree,names) || names.size()!=panels.size()+(names.contains(nativeLeaf()) ? 1 : 0) || (scoped && names.contains(nativeLeaf())))
             return QStringLiteral("Invalid native arrangement.");
         QSet<MacPanelSession *> unique;
         for (auto it=panels.begin();it!=panels.end();++it) {
@@ -130,7 +130,7 @@ public:
             anchorSession=nullptr; anchorId.clear();
             logEvent("workspace.native-arrangement.owner-destroyed");
         });
-        if (!scoped) error=lease.retainNativeRemainder(cells.value(nativeLeaf()));
+        if (!scoped && cells.contains(nativeLeaf())) error=lease.retainNativeRemainder(cells.value(nativeLeaf()));
         if (!error.isEmpty()) { restoreOwned(false); return error; }
         for (auto it=panels.begin();it!=panels.end();++it) {
             auto session=it.value(); error=session->attachToGroup(cells.value(it.key()),true);

@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include "arrangementstore.h"
+#include "resolvelayout.h"
 #include "panelgroup.h"
 #include "arrangementorder.h"
 #include "../../core/pageworkspacestate.h"
@@ -50,8 +51,8 @@ public:
         activePage = page;
         reloadPresets(selections.value(page));
     }
-    QJsonObject find(const QString &id) const { return arrangements.find(id); }
-    QJsonArray list() const { return arrangements.visibleList(); }
+    QJsonObject find(const QString &id) const { return id==WorkspacePresetPolicy::resolveLayoutId(activePage) ? resolveLayoutEntry(activePage) : arrangements.find(id); }
+    QJsonArray list() const { auto result=arrangements.visibleList();const auto builtin=resolveLayoutEntry(activePage);if(!builtin.isEmpty())result.prepend(builtin);return result; }
     bool hasHidden() const {return arrangements.hasHidden();}
     void invoke(const QString &operation, const QString &id = {})
     {
@@ -63,7 +64,7 @@ public:
         }
         if (!id.isEmpty()) {
             const int index = presets->findData(id);
-            if (index < 0 || workspacePage(arrangements.find(id)) != activePage || arrangements.find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
+            if (index < 0 || workspacePage(find(id)) != activePage || find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
             if (operation == "Restore") presets->setCurrentIndex(index);
         }
         if (operation == "Restore") { if (restoreRequested) restoreRequested(); }
@@ -110,6 +111,7 @@ private:
     {
         const QSignalBlocker blocker(presets);
         presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
+        const auto builtin=resolveLayoutEntry(activePage);if(!builtin.isEmpty())presets->addItem(builtin["name"].toString(),builtin["id"].toString());
         for (const auto &value : arrangements.visibleList(activePage)) {
             const auto entry = value.toObject();
             presets->addItem(entry["name"].toString(), entry["id"].toString());
@@ -125,7 +127,8 @@ private:
         if (changed) changed();
         const auto previous = presets->currentData().toString();
         QString id = target.isEmpty() ? previous : target, error;
-        const auto entry = arrangements.find(id);
+        const auto entry = find(id);
+        if (WorkspacePresetPolicy::builtIn(id) && operation != QString::fromUtf8("Save As…") && operation != QString::fromUtf8("Duplicate…")) { if(report)report("Resolve Layout is read-only. Save as a new workspace instead.");return; }
         if (operation != QString::fromUtf8("Save As…") && (entry.isEmpty() || workspacePage(entry) != operationPage)) {
             report(QStringLiteral("Select a saved arrangement first.")); return;
         }

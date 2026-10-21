@@ -21,8 +21,8 @@ public:
     std::function<QString()> currentPage=[] { return QString(); };
     void add(Panel panel) { panels.append(std::move(panel)); }
     static QString label(const Panel &panel) {
-        if(panel.id=="unboundWorkspaceToolbar")return QStringLiteral("Header");
-        if(panel.id=="page-navigation")return QStringLiteral("Footer");
+        if(panel.id=="unboundWorkspaceToolbar")return QStringLiteral("Workspace Header");
+        if(panel.id=="page-navigation")return QStringLiteral("Page Navigation");
         return panel.label;
     }
     void populateFlat(QMenu *menu) {

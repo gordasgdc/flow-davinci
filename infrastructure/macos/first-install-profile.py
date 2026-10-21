@@ -19,7 +19,9 @@ def seed(directory, bundle):
         raise RuntimeError('Settings already exist; preserving them rather than resetting the profile.')
     chosen=next(e for e in bundle['arrangements'] if e['id']==bundle['default'])
     state=dict(chosen['workspace']); state['selected_arrangement']=chosen['id']
-    atomic_json(arrangements,{'version':1,'arrangements':bundle['arrangements']})
+    # The immutable default is supplied by the runtime, never a writable record.
+    legacy=[dict(entry,hidden=True) for entry in bundle['arrangements'] if not entry.get('read_only')]
+    atomic_json(arrangements,{'version':1,'arrangements':legacy})
     atomic_json(workspace,state)
 
 def main():

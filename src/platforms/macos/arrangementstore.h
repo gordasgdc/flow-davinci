@@ -6,6 +6,7 @@
 #include <QUuid>
 #include "workspacesettings.h"
 #include "workspacepages.h"
+#include "../../core/workspacepresetpolicy.h"
 
 namespace Unbound {
 class ArrangementStore
@@ -91,6 +92,7 @@ private:
     QString validName(const QString &name, const QString &except = {}, const QString &page = "edit") const
     {
         if (name.trimmed().isEmpty()) return "Enter an arrangement name.";
+        if (name.trimmed().compare("Resolve Layout",Qt::CaseInsensitive)==0) return "Resolve Layout is reserved. Choose a name for your workspace.";
         for (auto value : entries) {
             auto entry = value.toObject();
             if (entry["id"] != except && workspacePage(entry) == page && entry["name"].toString().compare(name.trimmed(), Qt::CaseInsensitive) == 0)
@@ -100,6 +102,7 @@ private:
     }
     QString change(const QString &id, const QString &name, const QJsonObject &workspace, bool erase)
     {
+        if (WorkspacePresetPolicy::builtIn(id)) return "Resolve Layout is read-only. Save as a new workspace instead.";
         auto next = entries;
         for (int i = 0; i < next.size(); ++i) {
             auto entry = next[i].toObject();
