@@ -9,6 +9,21 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Combined candidate verification — review pending
+
+Production source 47f747a: 40/41 hidden suites pass; native-preset-bindings retained
+an intermittent synthetic-input failure. Single processEvents / MetaCall delivery
+was insufficient: a later preset rewrite could precede queued dispatch. A short
+fixed wait also failed intermittently. The fixture now waits for its explicit
+expected invocation counts with a one-second deadline while processing events;
+negative cases still drain events and assert no invocation. Per-key focus/counter
+diagnostics retained. Two isolated runs of the bounded fixture pass. No production
+shortcut code changed. Final clean-commit follow-up and displayed suites pending.
+
+Helper, bootstrap, launcher and universal architecture audit passed at 47f747a.
+Task scope is still preinstall review, not installation or main merge. Physical
+multi-display/project-switch behavior and user preset visual match remain live gates.
+
 ## Verification follow-up — display policy and failed acquisition
 
 Combined 6b27fd6 matrix: 40/41 suites passed; panel-commands exposed clamping of
