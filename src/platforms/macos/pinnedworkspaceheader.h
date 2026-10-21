@@ -16,7 +16,12 @@ public:
     ~PinnedWorkspaceHeader() override {shutdown();}
     std::function<QWidget *()> page,toolbar,primary;
     std::function<QString()> prepareNativeToolbar;
-    std::function<void()> changed;
+    std::function<void()> changed,geometryChanged;
+    QRect externalBounds(QWidget *host) const {
+        if(!visible || !observedToolbar || !observedToolbar->isVisible() || observedToolbar->window()==host)return {};
+        if(lease.active())return lease.visibleBounds();
+        return QRect(observedToolbar->mapToGlobal(QPoint()),observedToolbar->size());
+    }
     std::function<void(QString)> failed;
     bool shown() const{return visible;}
     QJsonObject snapshot() const{return {{"model","pinned-top-v1"},{"visible",visible}};}
@@ -37,14 +42,16 @@ public:
         QPointer<QWidget> host=primary?primary():nullptr;
         if(!host || host->window()==context->window()) {
             if(!lease.release()){report("The workspace header's original slot changed.");return;}
-            if(auto source=toolbar?toolbar():nullptr)source->setVisible(visible);
+            observedToolbar=toolbar?toolbar():nullptr;
+            if(observedToolbar)observedToolbar->setVisible(visible);
+            if(geometryChanged)geometryChanged();
             return;
         }
         if(lease.active() && lease.ownerSurface()!=host && !lease.release()){report("Could not transfer workspace header to the new surface.");return;}
         if(!lease.active()) {
             if(prepareNativeToolbar){const auto error=prepareNativeToolbar();if(!error.isEmpty()){report(error);return;}}
             if(!host){schedule();return;}
-            auto source=toolbar?toolbar():nullptr;
+            auto source=toolbar?toolbar():nullptr;observedToolbar=source;
             if(!source)return;
             // Resolve's main toolbar is a sibling of the Edit page. Acquire
             // from the original main-window tree, never from an unrelated page.
@@ -52,7 +59,7 @@ public:
             const auto error=lease.attach(source,context->window(),host,Qt::TopEdge);
             if(!error.isEmpty()){report(error);return;}
         }
-        lease.setHidden(!visible);
+        lease.setHidden(!visible);if(geometryChanged)geometryChanged();
     }
     bool release(){return lease.release();}
     void shutdown(){if(stopped)return;stopped=true;timer.stop();qApp->removeEventFilter(this);lease.release();}
@@ -67,7 +74,7 @@ protected:
     }
 private:
     void report(QString error){logEvent("header.pinned.failed",{{"error",error}});if(failed)failed(error);}
-    QPointer<QWidget> observedPage;
+    QPointer<QWidget> observedPage,observedToolbar;
     PanelAccessoryLease lease;QTimer timer;bool visible=true,refreshing=false,stopped=false;
 };
 }

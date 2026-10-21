@@ -33,6 +33,7 @@
 #include "surfacereadiness.h"
 #include "footerpanel.h"
 #include "panelexpansioncontroller.h"
+#include "../../core/workspacebandbounds.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
 #include "toolbardoors.h"
@@ -324,6 +325,11 @@ public:
         };
         workspaceHeader->changed=[this] {saveTimer.start();if(headers)headers->schedule();};
         workspaceHeader->failed=[this](QString error) {status->setText(error);};
+        expansionController->contentBounds=[this](QWidget *host,QRect available) {
+            return Unbound::workspaceBandBounds(available,workspaceHeader->externalBounds(host),footer->externalBounds(host));
+        };
+        workspaceHeader->geometryChanged=[this]{expansionController->refreshGeometry();};
+        footer->geometryChanged=[this]{expansionController->refreshGeometry();};
         workspaceHeader->schedule();
         footer->placementChanged=[this](bool available,bool pinned) {
             if(!managerView->pinFooter)return;

@@ -49,7 +49,9 @@ int main(int argc,char **argv){
   native->render(&actual);canvas->render(&copy);check(actual==copy,"complete footer layout and painting match native at normal and Retina density");
  }
  mirrorClick(audioButton);check(pageClicks==1&&stack->currentWidget()==audio&&audioButton->window()==&first,"page request retains real native owner and wiring");
- const int bodyHeight=body->height();controller.hidePanel();settle();check(!action->isChecked()&&band->isHidden()&&!b->isVisibleTo(&second)&&body->height()>bodyHeight,"hide removes reserved bands and content gains space");
+ QWidget expansionHost;expansionHost.setAttribute(Qt::WA_DontShowOnScreen);
+ check(!controller.externalBounds(&expansionHost).isEmpty() && controller.externalBounds(&first).isEmpty() && controller.externalBounds(&second).isEmpty(),"external expansion uses footer gate while hosts with their own band avoid double reservation");
+ const int bodyHeight=body->height();controller.hidePanel();settle();check(!action->isChecked()&&band->isHidden()&&!b->isVisibleTo(&second)&&body->height()>bodyHeight,"hide removes reserved bands and content gains space");check(controller.externalBounds(&expansionHost).isEmpty(),"hidden footer removes maximize gate");
  action->trigger();settle();check(!band->isHidden()&&b->isVisibleTo(&second)&&body->height()==bodyHeight,"native visibility restores bands and original content bounds");
  second.resize(140,350);settle();check(b->horizontalScrollBar()->maximum()>0,"narrow native footer scrolls rather than truncates");
  b->horizontalScrollBar()->setValue(b->horizontalScrollBar()->maximum());settle();

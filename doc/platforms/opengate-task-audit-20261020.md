@@ -581,3 +581,35 @@ maximize gates and assembled flow are still pending. Installed6f395c4 untouched.
 Confirmed with Jordan: visible bands gate docked/grouped/maximized content; hiding
 a band removes its gate, and showing it restores that bound. Detached floating
 windows may intentionally overlap bands; do not impose floating placement limits.
+
+## Visible-band maximize gates — not installed
+
+Expansion previously used screen availableGeometry without consulting visible
+workspace bands. The expansion controller now obtains content bounds from the
+header/footer owners. An expanded host with its own reserved band does not lose
+that space twice; an external expanded host avoids visible original bands. Hide
+removes the corresponding gate; Show reinstates it and refreshes current expansion
+geometry. Different screens are not constrained by unrelated bands. Ordinary
+floating movement has no gate callback or new restriction. Geometry changes log
+panel.expand.bounds. Hidden header/footer owner fixtures and shared geometry/state
+fixtures pass; native-workspace-ui compiles. Physical maximize/restore and assembled
+flow still require a displayed fixture and live validation.
+
+### Assembled Native Edit flow fixture
+
+New native-entry-flow fixture passes one sequence through actual PanelControls,
+menu registry, header controls and native drag callback: native entry with manager
+hidden; direct flat Panels; Source/Program native Show/Hide; narrow header overflow;
+both bands hidden/shown with content bounds reclaimed/restored; Source header drag
+callback and first scoped docking; grouped maximize avoiding visible bands; hide
+enlarging current maximize and Show restoring it; maximize restore; public Save As
+with named arrangement; Native Edit original-slot return; saved arrangement menu
+restore; and unsaved native visibility plus hidden bands across an actual child
+process restart. This exposed/fixed saved Footer-hidden being discarded when the
+native visibility QAction was discovered. The fixture uses synthetic native widget
+names/layouts, hidden test hosts and a hidden naming dialog. It does NOT exercise
+physical pointer capture, actual Resolve custom painting, startup injection, native
+keyboard dispatch, page-crossing runtime or Relay/Deliver. Those remain live gaps.
+Existing workspace-reopen expectations now require unified reserved footer bands
+instead of independent per-surface pins, including legacy-pin migration coverage;
+its displayed run remains pending.

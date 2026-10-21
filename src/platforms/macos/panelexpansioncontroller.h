@@ -28,6 +28,20 @@ public:
     std::function<void(int)> update;
     std::function<void()> save;
     std::function<void(QString)> report;
+    std::function<QRect(QWidget *,QRect)> contentBounds;
+    bool refreshGeometry() {
+        auto window=current>=0?host():nullptr;if(!window)return true;
+        auto screen=window->screen();if(!screen)screen=QApplication::primaryScreen();if(!screen)return false;
+        const auto margins=window->windowHandle()?window->windowHandle()->frameMargins():QMargins();
+        auto bounds=screen->availableGeometry().adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());
+        if(contentBounds)bounds=contentBounds(window,bounds);
+        if(bounds.isEmpty()){report(QStringLiteral("Visible workspace bands leave no room to maximize this panel."));return false;}
+        if(window->geometry()!=bounds) {
+            window->setGeometry(bounds);
+            logEvent("panel.expand.bounds",{{"panel",target.name},{"x",bounds.x()},{"y",bounds.y()},{"width",bounds.width()},{"height",bounds.height()}});
+        }
+        return true;
+    }
     int index() const { return current; }
     void sessionInactive(int index) { if (current==index) current=-1; }
     QJsonObject panelSnapshot(int index,const QJsonObject &value) const { return current==index ? target.saved : value; }
@@ -56,9 +70,7 @@ public:
                     restore(); report(QStringLiteral("Could not expand the panel; its previous arrangement was restored."));
                     return;
                 }
-                auto screen=window->screen(); if (!screen) screen=QApplication::primaryScreen();
-                const auto margins=window->windowHandle() ? window->windowHandle()->frameMargins() : QMargins();
-                window->setGeometry(screen->availableGeometry().adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom()));
+                if(!refreshGeometry()){restore();return;}
                 target.session->setHiddenByUser(false); priority.foreground(window); update(target.index);
                 logEvent("panel.expand",{{"panel",target.name},{"originally_floating",wasFloating}});
             });

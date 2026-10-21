@@ -33,7 +33,8 @@ int main(int argc,char **argv){
  auto band=first.findChild<QScrollArea *>("unboundAttachedAccessory_NativeToolbar");auto layout=qobject_cast<QVBoxLayout *>(first.layout());
  check(band&&layout->indexOf(band)==0,"real toolbar is reserved above all surface content");
  check(toolbar->window()==&first&&toolbar->findChild<QPushButton *>()==button,"native controls retain identity and signal wiring");button->click();check(clicks==1,"original native action executes exactly once");
- auto body=layout->itemAt(1)->widget();check(body->geometry().top()>band->geometry().bottom(),"content never overlaps pinned header");int height=body->height();header.setShown(false);settle();check(band->isHidden()&&body->height()>height,"hide reclaims reserved top space");
+ auto body=layout->itemAt(1)->widget();check(body->geometry().top()>band->geometry().bottom(),"content never overlaps pinned header");check(!header.externalBounds(&second).isEmpty() && header.externalBounds(&first).isEmpty(),"only external expanded hosts receive a header gate");
+ int height=body->height();header.setShown(false);settle();check(band->isHidden()&&body->height()>height,"hide reclaims reserved top space");check(header.externalBounds(&second).isEmpty(),"hidden header removes maximize gate");
  QMenu recovery;header.populateMenu(&recovery);check(!recovery.actions().first()->isChecked(),"Panels visibility reflects the one state model");recovery.actions().first()->trigger();settle();check(!band->isHidden(),"Panels restores hidden header");
  primary=&second;header.refresh();settle();check(toolbar->window()==&second&&!first.findChild<QScrollArea *>("unboundAttachedAccessory_NativeToolbar"),"surface transfer removes previous band without duplicating native content");
  page->hide();settle();check(toolbar->parentWidget()==originalParent&&native->indexOf(toolbar)==index,"page departure restores original toolbar ownership");

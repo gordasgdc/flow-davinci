@@ -27,7 +27,13 @@ public:
         pendingVisibility=state.contains("hidden");qApp->installEventFilter(this);schedule();
     }
     ~FooterPanel() override {shutdown();}
-    std::function<void()> changed;
+    std::function<void()> changed,geometryChanged;
+    QRect externalBounds(QWidget *host) const {
+        if(!shown || !nativeFooter || !nativeFooter->isVisible() || nativeFooter->window()==host)return {};
+        const auto own=views.value(host);if(own && own->isVisible())return {};
+        if(nativeLease.active())return nativeLease.visibleBounds();
+        return QRect(nativeFooter->mapToGlobal(QPoint()),nativeFooter->size());
+    }
     std::function<QWidget *()> primarySurface;
     std::function<void(bool,bool)> placementChanged;
     std::function<QList<QWidget *>()> surfaceHosts;
@@ -145,8 +151,8 @@ private:
     }
     void refresh() {
         if(stopped || refreshing)return;QScopedValueRollback<bool> guard(refreshing,true);discover();
-        if(nativeVisibility){pendingVisibility=false;shown=nativeVisibility->isChecked();}
-        else if(pendingVisibility && nativeFooter)requestVisibility(!state["hidden"].toBool());
+        if(pendingVisibility && nativeFooter)requestVisibility(!state["hidden"].toBool());
+        else if(nativeVisibility)shown=nativeVisibility->isChecked();
         else if(nativeFooter && !initialized)shown=!nativeFooter->isHidden();
         initialized=true;
         QPointer<QWidget> destination=primarySurface?primarySurface():nullptr;
@@ -191,6 +197,7 @@ private:
         for(auto widget:QApplication::allWidgets())if(auto menu=qobject_cast<QMenu *>(widget))if(menu->objectName()=="workspaceShowPanel")wireCaller(menu);
         auto primary=primarySurface?primarySurface():nullptr;
         if(placementChanged)placementChanged(bool(primary),pinned(primary));
+        if(geometryChanged)geometryChanged();
     }
     void wireCaller(QMenu *menu) {
         auto entry=menu->findChild<QAction *>("unboundPageNavigation",Qt::FindDirectChildrenOnly);

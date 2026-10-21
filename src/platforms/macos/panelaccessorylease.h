@@ -14,6 +14,9 @@ public:
     ~PanelAccessoryLease() override { release(); }
     bool active() const { return position.active() && viewport; }
     QWidget *ownerSurface() const { return destination; }
+    QRect visibleBounds() const {
+        return viewport && viewport->isVisible()?QRect(viewport->mapToGlobal(QPoint()),viewport->size()):QRect();
+    }
     QString attach(QWidget *accessory,QWidget *nativeRoot,QWidget *owner, Qt::Edge edge=Qt::BottomEdge,bool resizeContent=false)
     {
         if (active()) return destination==owner ? QString() : QStringLiteral("Detach the accessory before changing its owner.");

@@ -62,6 +62,9 @@ class MacFloatingHost : public QWidget
 public:
     explicit MacFloatingHost(QWidget *owner = nullptr) : QWidget(owner, owner ? Qt::Tool : Qt::Window)
     {
+#ifdef UNBOUND_NATIVE_TESTS
+        if(qEnvironmentVariableIntValue("UNBOUND_TEST_HIDDEN_HOSTS"))setAttribute(Qt::WA_DontShowOnScreen);
+#endif
         qApp->installEventFilter(this);
         setMouseTracking(true);
         setAutoFillBackground(true);

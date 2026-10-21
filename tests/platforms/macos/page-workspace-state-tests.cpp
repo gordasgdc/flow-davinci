@@ -3,9 +3,16 @@
 #include <QTemporaryDir>
 #include <cstdio>
 #include "workspacesettings.h"
+#include "../../../src/core/workspacebandbounds.h"
 int main(int argc,char **argv) {
  QCoreApplication app(argc,argv);QTemporaryDir dir;qputenv("UNBOUND_WORKSPACE_FILE",(dir.path()+"/Workspace.json").toUtf8());
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
+ const QRect screen(0,0,1200,900),header(0,0,1200,70),footer(0,850,1200,50);
+ check(Unbound::workspaceBandBounds(screen,header,footer)==QRect(0,70,1200,780),"visible bands gate maximized content");
+ check(Unbound::workspaceBandBounds(screen,{},footer)==QRect(0,0,1200,850),"hidden header releases top gate");
+ check(Unbound::workspaceBandBounds(screen,header,{})==QRect(0,70,1200,830),"hidden footer releases bottom gate");
+ check(Unbound::workspaceBandBounds(screen,{},{})==screen,"both hidden permit full available maximize area");
+ check(Unbound::workspaceBandBounds(QRect(1200,0,1200,900),header,footer)==QRect(1200,0,1200,900),"another screen is not gated by unrelated bands");
  QJsonObject edit{{"page","edit"},{"panels",QJsonObject{{"timeline",QJsonObject{{"floating",true},{"x",42}}}}},{"selected_arrangement","edit-id"}};
  QJsonObject initialNative{{"page","edit"},{"panels",QJsonObject{}}};
  QJsonObject automatic=initialNative;
