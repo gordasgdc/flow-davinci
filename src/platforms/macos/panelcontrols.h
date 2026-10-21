@@ -111,7 +111,7 @@ public:
         expansionController=new Unbound::PanelExpansionController(this);
         expansionController->running=[this] { return !quitting; };
         expansionController->update=[this](int i) { updateRow(i); };
-        expansionController->save=[this] { save(); };
+        expansionController->save=[this] { if (!quitting) saveTimer.start(); };
         expansionController->report=[this](QString error) { status->setText(error); };
         hierarchy = new Unbound::WindowHierarchy(this);
         groupReserve = new Unbound::GroupHostReserve(this);
@@ -723,7 +723,10 @@ private:
         if (!page() || !page()->isVisible() || QApplication::activeModalWidget()) {
             status->setText(QStringLiteral("Open the Edit page and close dialogs before expanding a panel.")); return;
         }
-        save();
+        // Restore needs a current in-memory snapshot, not disk persistence or
+        // menu rewiring before the first visible maximize result.
+        capturePanelStates();
+        saveTimer.start();
         auto &panel=panels[i];
         Unbound::PanelExpansionController::Target target;
         target.index=i; target.name=panel.name; target.session=panel.session; target.group=groupFor(i);
@@ -1020,10 +1023,8 @@ private:
         Unbound::logEvent(QStringLiteral("workspace.recover")); Unbound::keepOnDisplay(this);
         for (auto &p : panels) if (p.session->active()) p.session->centerOnCurrentDisplay();
     }
-    void save()
+    QJsonObject capturePanelStates()
     {
-        if (quitting) return;
-        Unbound::UiWorkTiming timing("workspace.save",this);
         QJsonObject saved;
         for (int i = 0; i < panels.size(); ++i) {
             auto &p = panels[i];
@@ -1034,6 +1035,13 @@ private:
             value=expansionController->panelSnapshot(i,value);
             p.saved = value; saved[p.name] = value;
         }
+        return saved;
+    }
+    void save()
+    {
+        if (quitting) return;
+        Unbound::UiWorkTiming timing("workspace.save",this);
+        const auto saved=capturePanelStates();
         QJsonArray savedGroups = pendingGroups;
         for (auto group : groups) if (group->active()) savedGroups.append(expansionController->groupSnapshot(group));
         Unbound::WorkspaceSnapshot snapshot;

@@ -79,7 +79,19 @@ int main(int argc,char **argv) {
                 };
                 pixels->painted=[&] { if (!painted && stateReady()) { painted=true;firstPaint=timer.nsecsElapsed(); } };
                 Unbound::logEvent("benchmark.viewer-expansion",{{"placement",placement},{"iteration",iteration},{"expanding",expanding}});
+                const auto saveCount=[&] {
+                    Unbound::flushDiagnostics();
+                    QFile events(files.path()+"/events.jsonl");events.open(QIODevice::ReadOnly);
+                    int count=0;
+                    while(!events.atEnd()) {
+                        const auto event=QJsonDocument::fromJson(events.readLine()).object();
+                        if(event["event"]=="ui.work.begin" && event["operation"]=="workspace.save")++count;
+                    }
+                    return count;
+                };
+                const auto savesBefore=saveCount();
                 app.setProbeEnabled(iteration>0);timer.start();toggle->click();const auto dispatch=timer.nsecsElapsed();
+                check(saveCount()==savesBefore,"maximize/restore dispatch does not synchronously persist or refresh workspace menus");
                 if (stateReady()) ready=timer.nsecsElapsed();
                 while (timer.elapsed()<1500 && (ready<0 || !painted)) {
                     QApplication::processEvents(QEventLoop::AllEvents,5);

@@ -412,3 +412,16 @@ notes now distinguish implemented fixes, live acceptance, missing Fusion/Timelin
 capability evidence, platform limitations and standalone GitHub status. GitHub read-only
 check confirms default main and isFork=true. No installation, main merge or release.
 Run the final assembled rebuild and hidden matrix after committing this checkpoint.
+
+## Expansion persistence isolation
+
+User authorized speed fixes while preserving grouped maximize. Separate branch
+perf/macos-defer-expansion-persistence extracts existing panel-state capture from
+save(), uses it before expansion and coalesces persistence via existing250 ms save
+timer on both expansion and restore. Shutdown/page checkpoints still explicitly
+save. No host lifetime change or keyboard binding change. Adds synthetic latency
+fixture assertion that active standalone/split/tab toggle dispatch does not perform
+workspace.save synchronously. Fixture compilation passes; displayed benchmark
+execution deferred while Resolve runs. Native reliability compilation passes.
+No measured live speed gain claimed and no installation. Outer-band ownership,
+logging overhead and other identified costs remain separate unfinished changes.
