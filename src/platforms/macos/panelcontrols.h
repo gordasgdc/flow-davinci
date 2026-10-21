@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <QElapsedTimer>
 #include "panelmanagerview.h"
 #include <QApplication>
 #include <QAction>
@@ -537,6 +538,8 @@ protected:
         });
         if (object == this && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) saveTimer.start();
         if (event->type() == QEvent::Show) {
+            if(auto shown=qobject_cast<QWidget *>(object))
+                if(shown->objectName()==QLatin1String("WStackPage_Conform"))editPageCache=shown;
             if (!toggleScanQueued) {
                 toggleScanQueued = true;
                 QTimer::singleShot(0, this, [this] { toggleScanQueued = false; wireNativeToggles(); });
@@ -702,9 +705,16 @@ private:
     { Unbound::logEvent(QStringLiteral("button.click"), {{"action", name}, {"panel", panel}}); }
     QWidget *page() const
     {
-        for (QWidget *window : QApplication::topLevelWidgets())
-            if (window->objectName() == QLatin1String("UiMainWindow"))
-                return window->findChild<QWidget *>(QStringLiteral("WStackPage_Conform"));
+        if(editPageCache)return editPageCache;
+        // Edit is constructed lazily during application startup. A missing page
+        // must not cause a whole-tree search for each new native widget event.
+        if(pageScanClock.isValid() && pageScanClock.elapsed()<100)return nullptr;
+        pageScanClock.restart();
+        for(QWidget *window:QApplication::topLevelWidgets())
+            if(window->objectName()==QLatin1String("UiMainWindow")) {
+                editPageCache=window->findChild<QWidget *>(QStringLiteral("WStackPage_Conform"));
+                return editPageCache;
+            }
         return nullptr;
     }
     void readyNativeDrag(int i)
@@ -1164,6 +1174,8 @@ private:
     Unbound::WorkspaceCallers *callers = nullptr;
     Unbound::FooterPanel *footer = nullptr;
     Unbound::PinnedWorkspaceHeader *workspaceHeader=nullptr;
+    mutable QPointer<QWidget> editPageCache;
+    mutable QElapsedTimer pageScanClock;
     QTimer saveTimer, restoreTimer;
     bool quitting = false,restoringNative=false;
     bool toggleScanQueued = false;

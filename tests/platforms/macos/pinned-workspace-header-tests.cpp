@@ -22,6 +22,13 @@ int main(int argc,char **argv){
  QWidget first(&main,Qt::Tool),second(&main,Qt::Tool);for(auto host:{&first,&second}){host->setAttribute(Qt::WA_DontShowOnScreen);host->resize(600,400);auto box=new QVBoxLayout(host);box->addWidget(new QWidget(host));host->show();}
  main.resize(900,600);main.show();settle();auto originalParent=toolbar->parentWidget();const auto index=native->indexOf(toolbar);const auto minimum=toolbar->minimumSize();const auto policy=toolbar->sizePolicy();QWidget *primary=&first;int clicks=0;QObject::connect(button,&QPushButton::clicked,[&]{++clicks;});
  {
+ int discoveries=0;Unbound::PinnedWorkspaceHeader startup(nullptr);
+ startup.page=[&]() -> QWidget * {++discoveries;return nullptr;};
+ QWidget child(&main);
+ for(int i=0;i<1000;++i){QEvent event(QEvent::ParentChange);QApplication::sendEvent(&child,&event);}
+ check(discoveries==0,"native construction events never trigger recursive page discovery in header filter");
+ }
+ {
  Unbound::PinnedWorkspaceHeader header(nullptr);header.page=[&]{return page;};header.toolbar=[&]{return toolbar;};header.primary=[&]{return primary;};header.refresh();settle();
  auto band=first.findChild<QScrollArea *>("unboundAttachedAccessory_NativeToolbar");auto layout=qobject_cast<QVBoxLayout *>(first.layout());
  check(band&&layout->indexOf(band)==0,"real toolbar is reserved above all surface content");

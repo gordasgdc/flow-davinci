@@ -490,3 +490,23 @@ still performed an immediate full save. Route that case through the same deferre
 save timer as already-floating expansion; ordinary explicit Undock retains its
 existing checkpoint. This closes a second persistence path before maximize can
 complete. No visible readiness or safety checks removed. No measured latency claim.
+
+## Startup regression and sampled hot path
+
+c9fdaa9 failed live startup acceptance. User force-quit and authorized rollback;
+091268b restored with settings/mappings preserved. Backup before rollback is
+header-style-live-candidate/build/macos/checkpoints/before-baseline-restore-20261021T040403Z.
+A3-second sample of process72579 contains569 main-thread sample observations,
+552 under PinnedWorkspaceHeader::eventFilter -> PanelControls::page -> recursive
+QObject findChild during native construction. This is measured sample attribution,
+not merely a speculative expensive path. Earlier launch exits had no new native
+crash report; sample does not prove every startup failure is explained.
+
+perf/macos-cached-page-discovery removes discovery callbacks from header event
+filters entirely, retaining the observed page from refresh and scheduling page
+Show events by known object-name prefix. PanelControls retains a QPointer Edit page,
+resolves newly shown Edit pages directly and limits missing-page retries to100 ms.
+Normal lookups on an existing page have no retry delay. Regression fixture sends
+1000 construction events and asserts zero header discovery calls. Hidden header
+fixture passes; native workspace fixture compiles. Full startup/runtime validation
+still required. No new installation authorized or performed by this change.

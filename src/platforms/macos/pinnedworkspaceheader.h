@@ -32,7 +32,7 @@ public:
     void refresh() {
         if(stopped || refreshing || QApplication::activePopupWidget() || QApplication::activeModalWidget())return;
         QScopedValueRollback<bool> guard(refreshing,true);
-        auto context=page?page():nullptr;
+        auto context=page?page():nullptr;observedPage=context;
         if(!context || !context->isVisible()){if(!lease.release())report("Could not restore workspace header before changing pages.");return;}
         QPointer<QWidget> host=primary?primary():nullptr;
         if(!host || host->window()==context->window()) {
@@ -61,12 +61,13 @@ protected:
         if(stopped)return false;
         if(event->type()==QEvent::Show || event->type()==QEvent::Hide || event->type()==QEvent::LayoutRequest || event->type()==QEvent::ParentChange) {
             auto widget=qobject_cast<QWidget *>(object);
-            if(widget && (widget->isWindow() || widget==(page?page():nullptr)))schedule();
+            if(widget && (widget->isWindow() || widget==observedPage || widget->objectName().startsWith("WStackPage_")))schedule();
         }
         return false;
     }
 private:
     void report(QString error){logEvent("header.pinned.failed",{{"error",error}});if(failed)failed(error);}
+    QPointer<QWidget> observedPage;
     PanelAccessoryLease lease;QTimer timer;bool visible=true,refreshing=false,stopped=false;
 };
 }
