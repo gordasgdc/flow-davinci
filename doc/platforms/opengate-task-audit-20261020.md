@@ -852,3 +852,70 @@ Remaining carryovers, not silently claimed removed:
   out. This is ownership-preserving hiding, not unloading Resolve or proving zero
   background processing/latency. Actual shell/page behavior and Relay/Deliver
   remain live acceptance gates; fixtures are not proof of native GPU behavior.
+
+## Reversible clean-start arrangement view — current install request
+
+Jordan authorized hiding manual background controls and the existing arrangements
+without permanent deletion, then installation after checks. Use per-arrangement
+hidden metadata, preserving IDs/layouts and all existing user settings. New Save
+Arrangement As entries remain visible. Advanced > Show Hidden Arrangements reveals
+old entries without changing the current layout. No new Emulator/profile mode is
+introduced and no sample preset is seeded for this test. Keep existing runtime
+backup and verify preferences/arrangement content before and after installation.
+
+## Lowest priority research — clip colors via Qt meta-object interface
+
+After basic flow, isolated Fusion work and Wolfgang cleanup, investigate the
+provided lead: clip colors may travel as a typed Qt signal payload (Sm2ClipColor),
+and Fusion composition settings may be exposed by UiFusionCompositionSettingsWidgetImp.
+Reuse keyboardprobe.h's metaObject()->method(i).methodSignature() inventory technique
+to inspect actual objects/signatures, payload type registration, valid arguments,
+ownership and GUI-thread invocation. Enumerability alone is not execution proof.
+Use an isolated research branch, logs and reversible fixture/live experiments; no
+Resolve binary patching or current-session probing. Do not claim clip-color support
+until the real signal/slot route and observable result are verified.
+
+### Clip-color research addendum — lowest priority, not current install work
+
+Provided lead names exported delegate types UiMediaPoolClipThumbItemDelegate,
+UiMediaStorageFileThumbItemDelegate, UiConformEffectListItemDelegate and UiDBItemDelegate.
+Verify the actual active QAbstractItemView/delegate instances rather than inferring
+view coverage from exported names. A proposed wrapper delegates original painting
+and sizeHint then overlays a hue strip. Preserve original per-view/per-column
+delegates, interaction/editor/tooltip/accessibility behavior, ownership, lifecycle
+and native delegate replacement; restore only when OpenGate's wrapper is still
+installed. Qt's public delegate API is not evidence BMD supports this integration.
+
+Reversible magenta-row probe may establish whether the delegate reaches the chip;
+never assume its duration or success. If not, evaluate transparent viewport overlays
+with visualRect, clipping, scrolling and model/reset tracking; QProxyStyle applies
+only where rendering actually goes through QStyle. Timeline custom painting versus
+QGraphicsScene and its overlay route remain unverified. No such probe is authorized
+inside the user's live project as part of basic-flow installation.
+
+Proposed extended-color model: stable OpenGate ID/name/hex plus one native fallback
+color. Investigate SetThirdPartyMetadata and SetClipColor on actual supported item
+types, including whether TimelineItem has the needed metadata API and how repeated
+uses of one source clip behave. Native collaborators/filters/sorting retain only
+the fallback family; exact-hue ordering/filtering is not thereby supported. Verify
+persistence, project round trips, removal of OpenGate and no clip/edit data loss
+before claiming extended-color support.
+
+### Clean-start implementation evidence before final build
+
+Old records use hidden metadata, not a new profile/Emulator mode. ArrangementStore
+retains all records/find-by-ID, visible lists omit hidden entries and page reorder
+preserves hidden record positions. Advanced reveals hidden records without loading
+a layout. Save Arrangement As is directly on OpenGate UI; new records are visible
+by default. Hidden manual-background checkbox and expander remain in code for
+compatibility but have no normal presentation. Current runtime automatic policy
+and native shortcuts are unchanged.
+
+Assembled native-entry fixture passes clean startup with two hidden legacy records,
+no old preset choices, direct Save As, hidden manual control, new preset creation,
+Advanced reveal (four total selector entries including Unsaved) without native
+layout change, the existing drag/bands/maximize/Native return sequence, and restart.
+Python clean-preparation regression proves unchanged profile/workspace/shortcuts,
+record/layout preservation, byte-preserving backup and rejection of a modified
+workspace. Hidden workspace-menu suite passes. User now explicitly authorized
+installation after final checks; no further review stop is required.

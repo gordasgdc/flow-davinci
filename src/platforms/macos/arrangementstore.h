@@ -37,6 +37,16 @@ public:
     QJsonArray list() const { return entries; }
     QJsonArray list(const QString &page) const
     { QJsonArray result; for (const auto &entry : entries) if (workspacePage(entry.toObject()) == page) result.append(entry); return result; }
+    QJsonArray visibleList(const QString &page = {}) const {
+        QJsonArray result;for(const auto &value:entries){const auto entry=value.toObject();
+            if(!entry["hidden"].toBool() && (page.isEmpty() || workspacePage(entry)==page))result.append(entry);
+        }return result;
+    }
+    bool hasHidden() const {for(const auto &entry:entries)if(entry.toObject()["hidden"].toBool())return true;return false;}
+    QString revealHidden() {
+        auto next=entries;for(int i=0;i<next.size();++i){auto entry=next[i].toObject();entry.remove("hidden");next[i]=entry;}
+        return write(next);
+    }
     QString error() const { return failure; }
     QJsonObject find(const QString &id) const
     { for (const auto &entry : entries) if (entry.toObject()["id"] == id) return entry.toObject(); return {}; }
@@ -71,10 +81,10 @@ public:
     }
     QString reorderPage(const QString &page,const QStringList &order)
     {
-        if (order.size() != list(page).size()) return "Arrangement order does not match this page's saved presets.";
-        for (const auto &id : order) if (workspacePage(find(id)) != page) return "Arrangement belongs to another page.";
+        if (order.size() != visibleList(page).size()) return "Arrangement order does not match this page's saved presets.";
+        for (const auto &id : order) if (workspacePage(find(id)) != page || find(id)["hidden"].toBool()) return "Arrangement belongs to another page or is hidden.";
         QStringList all; int next = 0;
-        for (const auto &entry : entries) all.append(workspacePage(entry.toObject()) == page ? order[next++] : entry.toObject()["id"].toString());
+        for (const auto &entry : entries) all.append(workspacePage(entry.toObject()) == page && !entry.toObject()["hidden"].toBool() ? order[next++] : entry.toObject()["id"].toString());
         return reorder(all);
     }
 private:

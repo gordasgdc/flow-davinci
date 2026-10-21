@@ -37,6 +37,7 @@ public:
     std::function<QMenu *(QMenu *)> commandsMenu;
     std::function<QString()> currentPage = [] { return QStringLiteral("edit"); };
     std::function<bool()> nativeActive = [] { return false; };
+    std::function<bool()> hiddenArrangements=[] {return false;};
     std::function<bool(QString)> supportedPage = [](const QString &page) { return page == "edit"; };
     void wire()
     {
@@ -90,6 +91,10 @@ private:
                 const auto id = result->property("unboundArrangementId").toString();
                 const auto page = result->property("unboundWorkspacePage").toString();
                 QTimer::singleShot(0, this, [this, operation, id, page] {
+                    if(operation=="Show Hidden Arrangements") {
+                        logEvent("workspace.menu.command",{{"operation",operation},{"page",currentPage()}});
+                        invoke(operation,{});wire();return;
+                    }
                     if (operation == "PanelShortcuts") { if (showPanelShortcuts) showPanelShortcuts(); return; }
                     if (operation == "About") { QMessageBox::about(nullptr,"About OpenGate",productCredit()); return; }
                     if (operation == "Keyboard") { openNativeKeyboardCustomization(); return; }
@@ -146,10 +151,16 @@ private:
         for (const auto &value : saved) {
             const auto entry = value.toObject(); labels.append(QJsonObject{{"id",entry["id"]},{"name",entry["name"]}});
         }
-        const QJsonObject model{{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
+        const bool hidden=hiddenArrangements();
+        auto advanced=root->findChild<QMenu *>("openGateAdvanced",Qt::FindDirectChildrenOnly);
+        if(!advanced){advanced=new QMenu("Advanced",root);advanced->setObjectName("openGateAdvanced");advanced->setProperty("unboundOwnMenu",true);}
+        advanced->menuAction()->setVisible(hidden);
+        action(advanced,"openGateShowHiddenArrangements","Show Hidden Arrangements","Show Hidden Arrangements")->setEnabled(hidden);
+        const QJsonObject model{{"hidden_arrangements",hidden},{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
         if (!created && rendered.value(root) == model && (!callers || root->actions().contains(callers->menuAction())) &&
             (!commands || root->actions().contains(commands->menuAction()))) return;
-        action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Current Workspace As…"), QString::fromUtf8("Save As…"))->setEnabled(supported);
+        auto saveAs=action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save Arrangement As…"), QString::fromUtf8("Save As…"),{},false);saveAs->setEnabled(supported);
+        menu->removeAction(saveAs);menu->menuAction()->setVisible(!saved.isEmpty());
         bool currentExists = false; QSet<QString> ids;
         for (const auto &value : saved) if (value.toObject()["id"].toString() == current) currentExists = true;
         action(menu, "unboundUpdateWorkspace", "Update Current Saved Workspace", "Update", current)->setEnabled(supported && currentExists);
@@ -192,7 +203,7 @@ private:
         if (!divider) { divider = root->addSeparator(); divider->setObjectName("unboundSavedWorkspaceSeparator"); }
         auto manageDivider = root->findChild<QAction *>("unboundWorkspaceManagementSeparator",Qt::FindDirectChildrenOnly);
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
-        QList<QAction *> topOrder{native,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(commands?commands->menuAction():shortcuts); topOrder.append(about);
+        QList<QAction *> topOrder{native,saveAs,divider}; topOrder.append(quick); topOrder.append(manageDivider); topOrder.append(menu->menuAction()); if (callers) topOrder.append(callers->menuAction()); topOrder.append(manager); topOrder.append(commands?commands->menuAction():shortcuts); topOrder.append(advanced->menuAction());topOrder.append(about);
         divider->setVisible(!quick.isEmpty());
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))

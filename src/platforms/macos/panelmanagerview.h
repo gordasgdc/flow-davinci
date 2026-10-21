@@ -40,6 +40,9 @@ public:
         background->setToolTip("Normally OpenGate handles the native background automatically. Use this override only for a fully floating workspace.");
         background->setChecked(saved["background_policy"]=="manual-hidden");advancedLayout->addWidget(background);
         options->addWidget(advancedBody);advancedBody->hide();
+        // Retain recovery state and wiring, but do not expose the old shell
+        // switch as part of the Native Edit flow.
+        background->hide();advanced->hide();
         connect(advanced,&QToolButton::toggled,advancedBody,[advanced,advancedBody](bool expanded) {
             advanced->setArrowType(expanded?Qt::DownArrow:Qt::RightArrow);advancedBody->setVisible(expanded);
         });

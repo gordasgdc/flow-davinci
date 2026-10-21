@@ -28,6 +28,10 @@ component fixture does not establish this flow. Keep installed software separate
 7. Rearrange directly from Native Edit, save an optional named arrangement, or
    leave it unsaved. Last modifications survive restart. Named arrangements remain
    selectable independently of the optional advanced Panel Manager.
+   For clean-start testing, old arrangements may be hidden without deletion;
+   Save Arrangement As is directly available, new arrangements appear normally,
+   and Advanced can reveal the hidden records without changing the current layout.
+   The manual background override is not a visible user-flow requirement.
 8. Native Edit explicitly returns the original native layout from a modified,
    grouped or maximized state. Original layout slots and controls survive. An
    incomplete return reports failure and is not presented as success.

@@ -51,9 +51,16 @@ public:
         reloadPresets(selections.value(page));
     }
     QJsonObject find(const QString &id) const { return arrangements.find(id); }
-    QJsonArray list() const { return arrangements.list(); }
+    QJsonArray list() const { return arrangements.visibleList(); }
+    bool hasHidden() const {return arrangements.hasHidden();}
     void invoke(const QString &operation, const QString &id = {})
     {
+        if(operation=="Show Hidden Arrangements") {
+            const auto selected=presets->currentData().toString();const auto error=arrangements.revealHidden();
+            if(error.isEmpty()){reloadPresets(selected);if(changed)changed();}
+            if(report)report(error.isEmpty()?QStringLiteral("Hidden arrangements are visible again; the current layout was not changed."):error);
+            logEvent("arrangement.hidden.reveal",{{"success",error.isEmpty()},{"error",error}});return;
+        }
         if (!id.isEmpty()) {
             const int index = presets->findData(id);
             if (index < 0 || workspacePage(arrangements.find(id)) != activePage || arrangements.find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
@@ -103,12 +110,12 @@ private:
     {
         const QSignalBlocker blocker(presets);
         presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
-        for (const auto &value : arrangements.list(activePage)) {
+        for (const auto &value : arrangements.visibleList(activePage)) {
             const auto entry = value.toObject();
             presets->addItem(entry["name"].toString(), entry["id"].toString());
         }
         presets->setCurrentIndex(qMax(0, presets->findData(selected)));
-        if (order) order->reload(arrangements.list(activePage));
+        if (order) order->reload(arrangements.visibleList(activePage));
     }
     void manageArrangement(const QString &operation, const QString &target = {})
     {

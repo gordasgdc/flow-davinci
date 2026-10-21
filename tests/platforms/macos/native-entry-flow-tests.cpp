@@ -33,6 +33,12 @@ int main(int argc,char **argv) {
  int homeCalls=0,settingsCalls=0;for(const auto &name:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto button=new QPushButton(name,footer);button->setObjectName(name);footRow->addWidget(button);if(QString(name)=="buttonHome")QObject::connect(button,&QPushButton::clicked,[&]{++homeCalls;});if(QString(name)=="buttonConfig")QObject::connect(button,&QPushButton::clicked,[&]{++settingsCalls;});}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
  main.show();settle();
+ if(!restart) {
+  Unbound::ArrangementStore legacy;QString a,b;legacy.create("Native Emulator",{{"page","edit"}},a);legacy.create("Previous Test Layout",{{"page","edit"}},b);
+  QFile file(qEnvironmentVariable("UNBOUND_ARRANGEMENTS_FILE"));file.open(QIODevice::ReadOnly);auto document=QJsonDocument::fromJson(file.readAll()).object();file.close();
+  auto entries=document["arrangements"].toArray();for(int i=0;i<entries.size();++i){auto entry=entries[i].toObject();entry["hidden"]=true;entries[i]=entry;}document["arrangements"]=entries;
+  file.open(QIODevice::WriteOnly);file.write(QJsonDocument(document).toJson());file.close();
+ }
  {
  PanelControls controls;settle(600);auto registry=component<Unbound::PanelCallerMenu>(&controls);auto headers=component<Unbound::WorkspaceHeaders>(&controls);
  auto headerOwner=component<Unbound::PinnedWorkspaceHeader>(&controls);auto footerOwner=component<Unbound::FooterPanel>(&controls);
@@ -40,6 +46,10 @@ int main(int argc,char **argv) {
  if(!ui||!registry||!headers||!headerOwner||!footerOwner)return 1;
  if(restart){check(source->isHidden(),"fresh process restores unsaved native visibility");check(!headerOwner->shown(),"fresh process restores hidden header choice");check(!navigation->isChecked(),"fresh process restores hidden footer choice through native command");std::printf("restart flow failures=%d\n",errors);return errors?1:0;}
  check(!controls.isVisible(),"native entry does not open Panel Manager");
+ auto initialPresets=controls.findChild<QComboBox *>("arrangements");check(initialPresets&&initialPresets->count()==1,"clean start hides old arrangements without seeding presets");
+ auto saveNew=ui->findChild<QAction *>("unboundSaveWorkspaceAs");check(saveNew&&ui->actions().contains(saveNew),"Save Arrangement As is directly available on clean start");
+ auto oldStore=Unbound::ArrangementStore();check(oldStore.list().size()==2&&oldStore.hasHidden(),"hidden arrangement records remain stored");
+ auto backgroundSwitch=controls.findChild<QCheckBox *>("hideResolveBackground");check(backgroundSwitch&&backgroundSwitch->isHidden()&&!backgroundSwitch->isChecked(),"manual background control is retained but hidden and off");
  auto sourceDoor=dynamic_cast<Unbound::NativeUndockButton *>(main.findChild<QToolButton *>("openGateToolbarDoor_widgetEditSourcePlayer"));
  check(sourceDoor&&bool(sourceDoor->drag),"Native header offers Source drag before any preset");
  QMenu flat;headers->populate(&flat,&main);bool sawHeader=false,sawFooter=false;
@@ -112,6 +122,8 @@ int main(int argc,char **argv) {
 
  if(nativeReturn)nativeReturn->trigger();settle(650);
  check(timeline->parentWidget()==page&&source->parentWidget()==page&&program->parentWidget()==page&&toolbar->parentWidget()==&main&&footer->parentWidget()==&main,"Native Edit restores native panel and band slots after full rearrangement");
+ auto reveal=ui->findChild<QAction *>("openGateShowHiddenArrangements");check(reveal&&reveal->isEnabled(),"Advanced can recover hidden arrangements");
+ if(reveal)reveal->trigger();settle(350);check(initialPresets->count()==4&&source->parentWidget()==page,"revealing saved arrangements preserves current native layout and new preset");
  trigger("Source Monitor");trigger("Header");trigger("Footer");settle(500);
  }
  QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();check(child.waitForFinished(30000),"fresh-process restart fixture completes");std::fprintf(stderr,"%s",child.readAllStandardError().constData());check(child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0,"unsaved native changes survive actual process restart");

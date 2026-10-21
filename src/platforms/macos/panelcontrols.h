@@ -409,6 +409,7 @@ public:
             Unbound::logEvent("controls.show", {{"origin","workspace-menu"}});
         };
         workspaceMenu->entries = [this] { return presetsUi->list(); };
+        workspaceMenu->hiddenArrangements=[this]{return presetsUi->hasHidden();};
         workspaceMenu->currentPage = [] { return Unbound::currentWorkspacePage(Unbound::resolveMainWindow()); };
         workspaceMenu->nativeActive = [this] {
             if (Unbound::currentWorkspacePage(Unbound::resolveMainWindow()) == "edit")
