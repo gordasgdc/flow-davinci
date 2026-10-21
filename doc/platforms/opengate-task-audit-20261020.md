@@ -9,6 +9,19 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Native-binding fixture correction — supersedes timing-only diagnosis
+
+The clean 978bcce follow-up still failed, so fixed waits were not sufficient.
+Inspection found fixture diagnostics, generated workflow scripts and keyboard
+presets shared one watched temporary directory. Creating those unrelated files
+could invalidate NativePresetBindings before queued dispatch. Production separates
+these directories. The fixture now mirrors that separation, isolates legacy
+Shortcuts.json too, and retains bounded expected-count delivery and per-key state.
+The isolated corrected fixture passes. Production shortcut code is unchanged.
+Earlier passing timing-only runs did not establish the cause; retained failure
+receipts remain part of the evidence. Final clean follow-up and displayed checks
+are still required before installation review.
+
 ## Combined candidate verification — review pending
 
 Production source 47f747a: 40/41 hidden suites pass; native-preset-bindings retained

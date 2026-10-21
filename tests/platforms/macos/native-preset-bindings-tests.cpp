@@ -16,7 +16,11 @@ static QByteArray preset(const QList<QPair<QString,QList<QKeySequence>>> &rows,c
     return "<SmKeyboardPresetList><PresetListBA>"+outer.toHex()+"</PresetListBA></SmKeyboardPresetList>";
 }
 int main(int argc,char **argv){
- QApplication app(argc,argv);QTemporaryDir dir;qputenv("UNBOUND_DIAGNOSTICS_DIR",dir.path().toUtf8());
+ QApplication app(argc,argv);QTemporaryDir dir;
+ const auto presetDirectory=dir.path()+"/presets",scriptDirectory=dir.path()+"/scripts";
+ QDir().mkpath(presetDirectory);QDir().mkpath(scriptDirectory);
+ qputenv("UNBOUND_DIAGNOSTICS_DIR",(dir.path()+"/logs").toUtf8());
+ qputenv("UNBOUND_SHORTCUTS_FILE",(dir.path()+"/Shortcuts.json").toUtf8());
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
  const QByteArray config="<Config><CustomKeyboardPreset>Active</CustomKeyboardPreset></Config>";
  const QString stabilize="OpenGate - Edit - Stabilize";
@@ -29,13 +33,13 @@ int main(int argc,char **argv){
  check(!Unbound::NativePresetBindings::decode(config,xml.left(xml.size()/2)).error.isEmpty(),"truncated XML fails closed");
  auto conflict=Unbound::NativePresetBindings::decode(config,preset({{stabilize,{s}},{"nativeConflict",{s}}}));
  check(conflict.owners.value(s.toString(QKeySequence::PortableText)).size()==2,"native conflicts retained");
- auto save=[&](const QString &name,const QByteArray &data){QSaveFile f(dir.path()+'/'+name);f.open(QIODevice::WriteOnly);f.write(data);f.commit();};
+ auto save=[&](const QString &name,const QByteArray &data){QSaveFile f((name.endsWith(".py")?scriptDirectory:presetDirectory)+'/'+name);f.open(QIODevice::WriteOnly);f.write(data);f.commit();};
  save("config.user.xml",config);save("keyboard.preset.xml",xml);
- qunsetenv("OPENGATE_NATIVE_PRESET_SHORTCUTS");qputenv("OPENGATE_PRESET_DIRECTORY",dir.path().toUtf8());
+ qunsetenv("OPENGATE_NATIVE_PRESET_SHORTCUTS");qputenv("OPENGATE_PRESET_DIRECTORY",presetDirectory.toUtf8());
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
  QWidget edit(&main);edit.setObjectName("WStackPage_Conform");edit.show();main.show();QApplication::setActiveWindow(&main);QApplication::processEvents();
  int calls=0;Unbound::PanelCommandCatalog commands(&main,[]{return true;});
- qputenv("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",dir.path().toUtf8());
+ qputenv("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",scriptDirectory.toUtf8());
  save("OpenGate - Edit - Stabilize.py","# opengate-command-route: selected-timeline-api-v1\n");
  QMenu workflow(&main);auto nativeAction=workflow.addAction(stabilize);nativeAction->setObjectName("workspaceWIPlugins_fixture");
  QObject::connect(nativeAction,&QAction::triggered,[&] {++calls;});
@@ -57,7 +61,7 @@ int main(int argc,char **argv){
  QWidget floating(&main,Qt::Window);floating.setObjectName("unboundFloating_fixture");floating.setAttribute(Qt::WA_DontShowOnScreen);floating.show();QApplication::setActiveWindow(&floating);QApplication::processEvents();
  press(&floating,Qt::Key_S,Qt::AltModifier|Qt::ShiftModifier,3,1);check(calls==3,"same assignment works from floating surface");
  // Atomic rewrites invalidate old bindings and restore watches after replacement.
- Unbound::NativePresetBindings watched(nullptr,dir.path());
+ Unbound::NativePresetBindings watched(nullptr,presetDirectory);
  auto settle=[] {QElapsedTimer timer;timer.start();while(timer.elapsed()<1500){QApplication::processEvents();QThread::msleep(1);}};
  save("keyboard.preset.xml",preset({{stabilize,{t}}}));settle();
  check(watched.snapshot().commands.value(stabilize)==QList<QKeySequence>{t},"atomic assignment replacement reloads");
