@@ -18,6 +18,21 @@ inside a tab with Source Monitor. The old builder requested a leaf title for
 that section's empty leaf ID and displayed Panel. Section titles now compose
 actual registered panel names, with full tab tooltips. Individual titles retain
 their own names. No parallel content UI, preset reset or duplicate title strip.
+## Fresh-profile startup repair in progress — 2026-10-22
+
+The live fresh-install session 0ee4e682 failed automatic assembly at Index.
+Native visibility logged target_visible=true at 16:30:38.303 UTC, but deferred
+readiness timed out at 16:30:39.254. Manual Resolve Layout selection restarted
+assembly and mounted it. Revision 2 was withdrawn as a draft; no settings or
+installed helper changed. The supplied installer default profile was correct.
+
+An assembled hidden fixture now models Index briefly visible during activation
+and hidden on the next native turn. The original source fails to assemble;
+the repair acquires immediately after native activation when already ready.
+Startup waits are event-driven and allow a 10-second deadline for delayed native
+creation, retaining the default one-second deadline for ordinary requests. A
+1.5-second delayed Index fixture passes and asserts one activation, not a retry
+click loop. Full clean verification follows. Docking-scope work stays separate.
 
 ## Mixer repair verification and replacement release — 2026-10-22
 
