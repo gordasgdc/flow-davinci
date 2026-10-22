@@ -164,7 +164,7 @@ public:
         QStringList added,existing; const auto previous=snapshot();
         if (changing || !active() || panels.isEmpty() || sessions.size()+panels.size()>31 ||
             !groupTreeNames(addition,added) || added.size()!=panels.size() ||
-            !groupTreeNames(previous,existing) || !existing.contains(target)) return QStringLiteral("Invalid native dock target.");
+            !groupTreeNames(previous,existing) || !groupTreeHasTarget(previous,target)) return QStringLiteral("Invalid native dock target.");
         QSet<MacPanelSession *> unique;
         for (auto current : sessions) if (current) unique.insert(current);
         for (auto it=panels.begin();it!=panels.end();++it) {

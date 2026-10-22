@@ -93,7 +93,7 @@ public:
     }
     QString targetName(QWidget *target) const {
         for (auto it=nativeTargets.begin();it!=nativeTargets.end();++it) if (it.value()==target) return it.key();
-        return target ? target->property("groupPanel").toString() : QString();
+        return dockTargetKey(target);
     }
     bool contains(const QString &id) const { return arrangement.contains(id); }
     bool selected(const QString &id) const { return arrangement.selected(id); }
@@ -101,7 +101,7 @@ public:
     bool ownsTarget(QWidget *target) const {
         for (auto it=nativeTargets.begin();it!=nativeTargets.end();++it) if (it.value()==target && it.value() && it.value()->isVisible()) return true;
         auto surface=arrangement.surface();
-        return surface && target && surface->isAncestorOf(target) && target->property("groupPanel").isValid();
+        return surface && target && surface->isAncestorOf(target) && !dockTargetKey(target).isEmpty();
     }
     QString validate(const QJsonObject &saved,const QJsonArray &floatingGroups={}) const {
         if (saved.isEmpty()) return {};

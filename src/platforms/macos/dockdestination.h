@@ -5,8 +5,9 @@
 #include "nativechrome.h"
 #include "docksurfaces.h"
 #include "nativedocksurfaces.h"
+#include "dockscopetargets.h"
 namespace Unbound {
-struct DockDestination { QWidget *surface = nullptr; QRect frame; };
+struct DockDestination { QWidget *surface = nullptr; QRect frame; DropSelection drop; };
 inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, const QList<QWidget *> &overlays)
 {
     QWidget *destination = nullptr;
@@ -28,27 +29,9 @@ inline DockDestination resolveDockDestination(QWidget *source, QPoint pointer, c
         break;
     }
     if (!destination) return {};
-    if (!destination->objectName().startsWith("unboundFloating_")) {
-        DockDestination result;
-        for (auto cell : nativeDockSurfaces(destination)) {
-            const QRect frame(cell->mapToGlobal(QPoint()),cell->size());
-            if (frame.contains(pointer) && (!result.surface || qint64(frame.width())*frame.height()<qint64(result.frame.width())*result.frame.height()))
-                result={cell,frame};
-        }
-        return result;
-    }
-    const auto surfaces = dockSurfaces(destination);
-    if (surfaces.isEmpty()) return {destination, destination->frameGeometry()};
-    const auto outer = destination->frameGeometry();
-    if (outer.contains(pointer) && !outer.adjusted(10,10,-10,-10).contains(pointer)) return {destination, outer};
-    DockDestination result;
-    for (auto content : surfaces) {
-        // Each cell has its own wrapper, including its drag header.
-        auto leaf = content->parentWidget();
-        const QRect frame(leaf->mapToGlobal(QPoint()), leaf->size());
-        if (frame.contains(pointer) && (!result.surface || frame.width()*frame.height() < result.frame.width()*result.frame.height()))
-            result = {content, frame};
-    }
-    return result;
+    const auto surfaces=destination->objectName().startsWith("unboundFloating_")?dockSurfaces(destination):nativeDockSurfaces(destination);
+    if(surfaces.isEmpty())return destination->objectName().startsWith("unboundFloating_")?DockDestination{destination,destination->frameGeometry(),{}}:DockDestination{};
+    const auto hit=selectDockScope(surfaces,destination,pointer);
+    return {hit.surface,hit.frame,hit.drop};
 }
 }

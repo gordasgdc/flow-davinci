@@ -311,7 +311,7 @@ private:
         auto surface = destination.surface;
         const auto surfaceFrame = destination.frame;
         const auto previous = surface == hoverDestination ? previousPlacement : DropPlacement::None;
-        const auto drop = surface && attachRequested ? selectPanelDrop(surfaceFrame, dragPointer, previous) : DropSelection{};
+        const auto drop = surface && attachRequested ? (destination.drop.placement!=DropPlacement::None?destination.drop:selectPanelDrop(surfaceFrame, dragPointer, previous)) : DropSelection{};
         hoverDestination = surface; previousPlacement = drop.placement;
         if (drop.placement != DropPlacement::None) {
             chosen.active = true; chosen.target = drop.region; chosen.preview = drop.preview;
@@ -325,7 +325,7 @@ private:
             lastDockSelection = selection;
             logEvent(QStringLiteral("dock.target.selection"), {{"source", objectName()},
                 {"target", attachmentTarget ? attachmentTarget->objectName() : QString()}, {"active", bool(attachmentTarget)},
-                {"kind", chosen.edge == Qt::Edge(0) ? "tab" : attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? "group-split" : "panel-split"},
+                {"kind", !dockSectionKey(attachmentTarget).isEmpty()?"stack-split":chosen.edge == Qt::Edge(0) ? "tab" : attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? "group-split" : "panel-split"},
                 {"edge", int(chosen.edge)}});
         }
         if (chosen.target.isValid()) {
@@ -338,7 +338,7 @@ private:
             }
             dropMarker->setToolTip(chosen.edge == Qt::Edge(0) ? QStringLiteral("Add as tab") :
                 attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? QStringLiteral("Split group") : QStringLiteral("Split panel"));
-            const auto caption = dropCaption(drop.placement, surface ? surface->windowTitle() : QString(),
+            const auto caption = dropCaption(drop.placement, !dockSectionKey(surface).isEmpty()?QStringLiteral("entire stack"):surface ? surface->windowTitle() : QString(),
                 surface && surface->isWindow() && surfacesAreGrouped(surface));
             auto label = static_cast<QLabel *>(dropMarker);
             label->setText(caption); label->setToolTip(caption);

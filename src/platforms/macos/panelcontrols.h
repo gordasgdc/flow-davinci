@@ -854,19 +854,24 @@ private:
             awaitUndockSurface(i, request, root);
             return;
         }
-        if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
+        if (root && root->isVisible() && ((!target && restoring) || (target && !target->isVisible())) && !p.toggle.isEmpty()) {
             // The pinned toolbar may be a sibling of the page or leased to
             // its main surface. Use the existing main-window control resolver.
             if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true,target)) {
+                // Acquire while native activation has made the surface ready.
+                // A queued native visibility update can hide Index again before
+                // the first deferred readiness poll, leaving startup half-built.
+                target=Unbound::panelSurface(root,p.name);
+                if(target && target->isVisible()){finishUndock(i);return;}
                 p.pending = true; updateRow(i);
                 const unsigned request = ++p.requestVersion;
-                awaitUndockSurface(i, request, root);
+                awaitUndockSurface(i, request, root,restoring?10000:1000);
                 return;
             }
         }
         finishUndock(i);
     }
-    void awaitUndockSurface(int i, unsigned request, QWidget *root)
+    void awaitUndockSurface(int i, unsigned request, QWidget *root,int timeoutMs=1000)
     {
         new Unbound::SurfaceReadiness(this,root,
             [this,i,request] { return !quitting && panels[i].requestVersion==request; },
@@ -885,7 +890,7 @@ private:
                     return;
                 }
                 finishUndock(i);
-            });
+            },timeoutMs);
     }
     void finishUndock(int i)
     {
@@ -1035,12 +1040,14 @@ private:
         Unbound::UiWorkTiming timing("group.drop",target ? target->window() : nullptr);
         if (quitting || QApplication::activeModalWidget() || expansionController->index() >= 0 || !panels[source].session->active()) return;
         if (nativeWorkspace->ownsTarget(target)) { dockNative(source,target,edge); return; }
+        const auto section=Unbound::dockSectionKey(target);
         for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
-            (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
+            (panels[j].session->window() == target || panels[j].session->window()->window() == target ||
+             (!section.isEmpty() && target->isAncestorOf(panels[j].session->window())))) {
             if (groupFor(source) && groupFor(source) == groupFor(j)) return;
             const auto frame = target->window()->frameGeometry();
             const auto error = combinePanels(source, j, edge == Qt::Edge(0) ? Qt::Orientation(0) : edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
-                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name,target->window()->geometry());
+                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : section.isEmpty()?panels[j].name:section,target->window()->geometry());
             if (error.isEmpty()) if (auto group = groupFor(source)) group->fitFrame(frame);
             status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
             Unbound::logEvent(QStringLiteral("group.drop.result"), {{"success", error.isEmpty()}, {"error", error}});

@@ -13,8 +13,8 @@ inline void unregisterNativeDockSurfaces(QWidget *owner) {
     for (int i=scopes.size()-1;i>=0;--i)
         if (!scopes[i].owner || !scopes[i].window || scopes[i].owner==owner) scopes.removeAt(i);
 }
-// Only actual arrangement leaves are destinations. Registering a main window
-// must never turn all of its empty space or screen edges into a docking zone.
+// Register actual leaves only; stack targets are derived from their retained
+// layout ancestors. Main-window empty space and screen edges stay non-dockable.
 inline bool registerNativeDockSurfaces(QWidget *window,QWidget *owner,const QList<QWidget *> &cells) {
     if (!window || !owner || owner==window || owner->isWindow() || owner->window()!=window || cells.size()>32) return false;
     NativeDockScope scope; scope.window=window; scope.owner=owner;

@@ -1,3 +1,39 @@
+## Panel/stack docking and tab titles — 2026-10-22
+
+Isolated repair derives section targets from the existing retained split/tab tree.
+Individual panel edges retain their own bounds. Each section has bounded edge-center
+handles on all four edges, with nested handles inset and a neutral halo. Preview
+and release use the same subtree target. No whole-main-window or desktop target
+is introduced; stale section targets reject before mutating session ownership.
+Native and floating groups reuse their existing insert/rebuild/recovery paths.
+
+Focused hidden checks pass individual and stack edges, subtree insertion in both
+native and floating groups, invalid targets and Native ownership recovery. The
+assembled first-open fixture passes the floating Media Pool -> whole vertical
+stack release callback through PanelControls. Displayed window-stack hit testing
+and combined clean matrices remain pending; no live docking acceptance claimed.
+
+Jordan's screenshot/saved tree identifies a Program Monitor + Mixer section
+inside a tab with Source Monitor. The old builder requested a leaf title for
+that section's empty leaf ID and displayed Panel. Section titles now compose
+actual registered panel names, with full tab tooltips. Individual titles retain
+their own names. No parallel content UI, preset reset or duplicate title strip.
+## Fresh-profile startup repair in progress — 2026-10-22
+
+The live fresh-install session 0ee4e682 failed automatic assembly at Index.
+Native visibility logged target_visible=true at 16:30:38.303 UTC, but deferred
+readiness timed out at 16:30:39.254. Manual Resolve Layout selection restarted
+assembly and mounted it. Revision 2 was withdrawn as a draft; no settings or
+installed helper changed. The supplied installer default profile was correct.
+
+An assembled hidden fixture now models Index briefly visible during activation
+and hidden on the next native turn. The original source fails to assemble;
+the repair acquires immediately after native activation when already ready.
+Startup waits are event-driven and allow a 10-second deadline for delayed native
+creation, retaining the default one-second deadline for ordinary requests. A
+1.5-second delayed Index fixture passes and asserts one activation, not a retry
+click loop. Full clean verification follows. Docking-scope work stays separate.
+
 ## Mixer repair verification and replacement release — 2026-10-22
 
 Runtime e3caabf7761cf39830b489c708af3f8fe98cabb5 is merged and pushed to main.
@@ -1541,3 +1577,37 @@ its expanded hidden matrix had38 passes and a completion-log timing failure that
 passed in isolation. A bounded event-consumption wait is being verified in that
 fixture; working hotkey production code was not changed for that failure. Final
 matrix/displayed checks and live rendering remain open. Do not mark flow complete.
+
+## Revision 3 repair release and fresh-user reset — 2026-10-22
+
+Mixer baseline remains on main. New startup acquisition, individual/stack docking
+and real section-title repairs remain on integration/startup-and-stack-repair,
+not merged to main pending live acceptance. Runtime 88988d4; packaging/test
+checkpoint 75e8217 has identical production source. Universal Mac build passes.
+Final clean receipts: 75e8217205-hidden-20261022T172058Z (47/47) and
+75e8217205-displayed-20261022T173004Z (9/9), under build/macos/verification.
+The first concurrent displayed run failed viewer latency; isolated and final
+serial runs passed. No performance improvement or proven concurrency cause claimed.
+
+Numbered entry contract reread: first-open assembly exercises one-shot lazy Index
+acquisition, unsaved restart, independent bands, Mixer native-title drag and
+maximize, actual floating-host stack drop, and Native ownership return. Geometry
+fixtures cover individual/all four section edges and readable composite titles.
+Real Resolve rendering, physical/remapped inputs and this candidate's complete
+live sequence still require Jordan's acceptance. Windows managed-workspace parity
+remains incomplete; its unchanged e3caabf installer is retained and disclosed.
+
+Revision 2 withdrawn. Revision 3 published as prerelease, not latest:
+https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.3
+Mac package signed, Apple notarization accepted, stapled, Gatekeeper/payload
+verification passed. Both published installer downloads match SHA256 checksums.
+
+At Jordan's request, with Resolve closed, the installed package was uninstalled
+using its transactional uninstaller; only its package receipt was forgotten.
+Every inventoried installed path is absent, with no matching plugin autoload
+leftovers. Current settings moved with verified hashes to Desktop/OpenGate Before
+Fresh Install Revision 3 20261022-134904/Settings. Original pre-test presets remain
+in Desktop/OpenGate Before Fresh Install 20261022-111757/Settings. Native Resolve
+preferences, projects/media and diagnostic logs were not reset. Recovery:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/2FC8056B-A91C-4B67-9CD4-6E93BD92332A/Restore Previous OpenGate.command
+No revision 3 installation performed: Jordan will download and double-click it.

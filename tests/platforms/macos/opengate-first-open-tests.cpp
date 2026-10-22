@@ -30,6 +30,16 @@ int main(int argc,char **argv){
  nativePanels["frameConformTimelines"]->layout()->addWidget(mixer);
  auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");outer->addWidget(footer);auto footrow=new QHBoxLayout(footer);for(const auto &id:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto b=new QPushButton(id,footer);b->setObjectName(id);footrow->addWidget(b);}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
+ // Native Index can be visible only during its selector activation, then
+ // hidden by Resolve's next queued visibility update while its slot is leased.
+ auto index=nativePanels["frameEditPageEditIndex"];index->hide();
+ auto indexToggle=new QPushButton("Index",left);indexToggle->setObjectName("btnEditToggleEditIndexInSSM");indexToggle->setCheckable(true);leftrow->addWidget(indexToggle);
+ int indexActivations=0;
+ QObject::connect(indexToggle,&QPushButton::clicked,page,[&](bool checked){
+  ++indexActivations;if(!checked){index->hide();return;}
+  auto reveal=[index,page]{index->show();QTimer::singleShot(0,page,[index]{if(index->layout())index->hide();});};
+  if(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX"))QTimer::singleShot(1500,page,reveal);else reveal();
+ });
  // Resolve's toolbar lives inside the page tree that gets parked, not as a
  // sibling supplied by our fixture. Keep that ownership topology realistic.
  outer->removeWidget(toolbar);native->insertWidget(0,toolbar);
@@ -37,14 +47,39 @@ int main(int argc,char **argv){
  QWidget projectStrip(&main);projectStrip.setObjectName("UiProjectsMainBarImp");
  projectStrip.setGeometry(0,page->mapTo(&main,QPoint()).y(),100,32);projectStrip.show();
  {
- PanelControls controls;settle(2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
+ PanelControls controls;settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
  if(restart){
   check(binding&&binding->active()&&!binding->contains("frameEditPageMediaPool"),"restart retains the unsaved detached panel instead of reloading Resolve Layout");
   auto header=component<Unbound::PinnedWorkspaceHeader>(&controls);check(header&&!header->shown(),"restart retains the unsaved hidden header");
   return failures?1:0;
  }
  check(binding&&binding->active(),"first open mounts existing panel tree in the primary workspace");
+ check(indexActivations==1,"startup acquires native Index once without a repeated toggle loop");
+ if(!binding||!binding->active()){files.setAutoRemove(false);std::fprintf(stderr,"Startup logs retained: %s\n",qPrintable(files.path()));return 1;}
+
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_STACK_DROP")) {
+  auto poolPlacement=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(poolPlacement)poolPlacement->click();settle(350);
+  Unbound::MacFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::MacFloatingHost *>(window);
+  auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QWidget *column=nullptr;
+  for(auto ancestor=sourceCell?sourceCell->parentWidget():nullptr;ancestor&&ancestor!=&main;ancestor=ancestor->parentWidget())
+   if(auto splitter=qobject_cast<QSplitter *>(ancestor))if(splitter->orientation()==Qt::Vertical&&!Unbound::dockSectionKey(splitter).isEmpty()){column=splitter;break;}
+  check(floatingPool&&column,"assembled docking flow finds a floating panel and the retained vertical stack");
+  if(floatingPool&&column) {
+   const auto key=Unbound::dockSectionKey(column);const QRect frame(column->mapToGlobal(QPoint()),column->size());Unbound::DockScopeHit hit;QPoint pointer;int reachable=0;
+   for(int x=frame.left();x<qMin(frame.right(),frame.left()+180);++x){const QPoint point(x,frame.center().y());const auto candidate=Unbound::selectDockScope(Unbound::nativeDockSurfaces(&main),&main,point);if(candidate.surface==column&&candidate.drop.placement==Unbound::DropPlacement::Left){hit=candidate;pointer=point;++reachable;}}
+   check(reachable>=16&&hit.drop.preview.height()==frame.height(),"whole-stack left target is broad and previews the complete vertical span");
+   if(displayed) {
+    Unbound::activateNativeWindowForTest(&main);settle(250);
+    const auto actual=Unbound::resolveDockDestination(floatingPool,pointer,{});
+    check(actual.surface==column&&actual.drop.placement==Unbound::DropPlacement::Left,"real window-stack lookup selects the displayed stack target");
+   }
+   if(hit.surface&&floatingPool->attachRequested)floatingPool->attachRequested(hit.surface,Qt::LeftEdge);settle(350);
+   check(binding->contains("frameEditPageMediaPool")&&Unbound::groupTreeHasTarget(binding->saved()["tree"].toObject(),key),"release route docks beside the full stack and preserves that subtree");
+  }
+  auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
+  check(binding->active()&&binding->contains("frameEditPageMediaPool"),"ordinary workspace selection restores the built-in after the stack drop");
+ }
  auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");
  auto timelineHeader=timelineCell?timelineCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
  check(timelineHeader&&timelineHeader->isVisible(),"embedded Timeline reuses the visible draggable group title");

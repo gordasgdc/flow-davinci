@@ -8,6 +8,8 @@
 #include <QTabWidget>
 #include <functional>
 #include "tabtearoff.h"
+#include "grouplayout.h"
+#include "panellayouttitles.h"
 namespace Unbound {
 struct PanelLayoutCallbacks {
     std::function<QWidget *(const QString &)> leaf;
@@ -45,13 +47,13 @@ inline QWidget *buildPanelLayoutSurfaceNode(const QJsonObject &node,QWidget *par
     if (children.size()<2 || children.size()>32) return nullptr;
     if (node["orientation"]=="tabs") {
         auto tabs=new QTabWidget(parent); tabs->setObjectName("unboundPanelTabs");
+        tabs->setProperty("openGateDockSection",groupSectionTarget(node));
         tabs->setDocumentMode(true); tabs->setMovable(false);
         for (const auto &child : children) {
             auto widget=buildPanelLayoutSurfaceNode(child.toObject(),parent,owner,callbacks,leaves,depth+1);
             if (!widget) { abandonPanelLayoutSurface(tabs,parent,leaves); return nullptr; }
-            const auto id=child.toObject().value("panel").toString();
-            const auto title=callbacks.title ? callbacks.title(id) : id;
-            tabs->addTab(widget,title.isEmpty() ? QStringLiteral("Panel group") : title);
+            const auto title=panelLayoutTitle(child.toObject(),callbacks.title);
+            const int index=tabs->addTab(widget,title);tabs->setTabToolTip(index,title);
         }
         if (callbacks.tearOff) new TabTearOff(tabs,tabs,callbacks.tearOff);
         tabs->setCurrentIndex(qBound(0,node["selected"].toInt(),tabs->count()-1));
@@ -61,6 +63,7 @@ inline QWidget *buildPanelLayoutSurfaceNode(const QJsonObject &node,QWidget *par
     if (node["orientation"]!="horizontal" && node["orientation"]!="vertical") return nullptr;
     auto splitter=new QSplitter(node["orientation"]=="vertical" ? Qt::Vertical : Qt::Horizontal,parent);
     splitter->setChildrenCollapsible(false); splitter->setHandleWidth(6);
+    splitter->setProperty("openGateDockSection",groupSectionTarget(node));
     for (const auto &child : children) {
         auto widget=buildPanelLayoutSurfaceNode(child.toObject(),parent,owner,callbacks,leaves,depth+1);
         if (!widget) { abandonPanelLayoutSurface(splitter,parent,leaves); return nullptr; }
