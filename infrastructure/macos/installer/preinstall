@@ -1,36 +1,54 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
 set -eu
-fail() { echo "OpenGate: $*" >&2; exit 1; }
-[[ "${3:-/}" == / ]] || fail 'Install on the running startup disk.'
-[[ "$(/usr/bin/uname -m)" == arm64 ]] || fail 'This prototype requires Apple Silicon.'
-major=$(/usr/bin/sw_vers -productVersion); major=${major%%.*}
-[[ "$major" -ge 27 ]] || fail 'This exact prototype build requires macOS 27 or later.'
-if /usr/bin/pgrep -x Resolve >/dev/null; then fail 'Save and quit DaVinci Resolve, then run this installer again.'; fi
-app='/Applications/DaVinci Resolve/DaVinci Resolve.app'
-[[ -d "$app" ]] || fail 'Install DaVinci Resolve at /Applications/DaVinci Resolve/DaVinci Resolve.app first.'
-version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
-[[ "$version" == 21.* ]] || fail 'This prototype supports Resolve 21 only; tested with Resolve Studio 21.1.1.'
-user=$(/usr/bin/stat -f '%Su' /dev/console)
-[[ "$user" != root && "$user" != loginwindow ]] || fail 'Log in to your macOS desktop before installing.'
-home=$(/usr/bin/dscl . -read "/Users/$user" NFSHomeDirectory | /usr/bin/cut -d ' ' -f 2-)
-[[ -d "$home" && "$home" != / ]] || fail 'Could not resolve the desktop user home.'
-base="$home/Library/Application Support/Unbound"
-stamp=$(/bin/date -u +%Y%m%dT%H%M%SZ)
-backup="$base/InstallBackups/0.0.1-$stamp"
-/bin/mkdir -p "$backup"
-resolve='/Library/Application Support/Blackmagic Design/DaVinci Resolve'
-for item in "$resolve/IOPlugins/Unbound.dvcp.bundle" /Applications/OpenGate.app "$home/Applications/OpenGate.app"; do
- if [[ -e "$item" ]]; then name=$(echo "$item" | /usr/bin/sed 's|/|_|g'); /usr/bin/ditto "$item" "$backup/$name"; fi
-done
-/bin/mkdir -p "$backup/workflow" "$backup/settings"
-if [[ -d "$resolve/Workflow Integration Plugins" ]]; then
- while IFS= read -r -d '' item; do /usr/bin/ditto "$item" "$backup/workflow/$(/usr/bin/basename "$item")"; done < <(/usr/bin/find "$resolve/Workflow Integration Plugins" -maxdepth 1 -type f \( -name 'OpenGate*.py' -o -name Unbound.py \) -print0)
+scripts="$(cd "$(dirname "$0")" && pwd)"
+source "$scripts/transaction.sh"
+new_transaction
+log 'preflight started version=@VERSION@ build=@BUILD@'
+[[ "${3:-/}" == / ]] || fail 'Install on the running startup disk'
+if [[ -z "${OPENGATE_TEST_ROOT:-}" ]]; then
+ architecture=$(/usr/bin/uname -m)
+ [[ "$architecture" == arm64 || "$architecture" == x86_64 ]] || fail 'Unsupported processor architecture'
+ os=$(/usr/bin/sw_vers -productVersion); major=${os%%.*}
+ [[ "$major" -ge @MIN_MAJOR@ ]] || fail 'This package requires macOS @MIN_MACOS@ or later'
+ if /usr/bin/pgrep -x Resolve >/dev/null; then fail 'Save and quit DaVinci Resolve, then run this installer again'; else code=$?; [[ "$code" == 1 ]] || fail 'Could not verify whether Resolve is running'; fi
+ app='/Applications/DaVinci Resolve/DaVinci Resolve.app'
+ [[ -d "$app" ]] || fail 'DaVinci Resolve was not found at its supported installation location'
+ version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+ [[ "$version" == 21.* ]] || fail 'This prototype requires Resolve 21; tested with @RESOLVE_VERSION@'
 fi
-for name in Workspace.json Arrangements.json Shortcuts.json Profile.json; do
- if [[ -f "$base/$name" ]]; then /bin/cp -p "$base/$name" "$backup/settings/$name"; fi
-done
-if [[ -d "$base/Profiles" ]]; then /usr/bin/ditto "$base/Profiles" "$backup/settings/Profiles"; fi
-/usr/sbin/chown -R "$user" "$backup"
-# Carry the backup location between this package's scripts, without a shared temp file.
-/bin/mkdir -p '/Library/Application Support/CineWaltz/OpenGate'
-printf '%s\n' "$backup" > '/Library/Application Support/CineWaltz/OpenGate/last-install-backup.txt'
+# All current releases preserve schema 1 in place. Refuse a newer writer;
+# never let an older installer silently rewrite data it cannot understand.
+previous="$product/Current/release-manifest.json"
+if [[ -f "$previous" ]]; then
+ schema=$(/usr/bin/plutil -extract settings_schema_written raw -o - "$previous") || fail 'Cannot read installed settings compatibility metadata'
+ [[ "$schema" == 1 ]] || fail 'Installed OpenGate uses a newer data schema; use its recovery or compatible installer'
+ installed=$(/usr/bin/plutil -extract version raw -o - "$previous") || fail 'Cannot read installed OpenGate version'
+ [[ "$installed" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Installed version metadata is invalid'
+ relation=$(version_relation "$installed" '@VERSION@')
+ log "detected installed=$installed target=@VERSION@ action=$relation"
+fi
+# Serialize replacements; never overwrite another pending transaction pointer.
+if ! mkdir "$product/install.lock" 2>/dev/null; then fail 'Another install or recovery is pending; use the recorded recovery action first'; fi
+trap 'rmdir "$product/install.lock" 2>/dev/null || true' EXIT
+source "$scripts/legacy-loaders.sh"
+legacy_loaders > "$transaction/legacy-paths.txt"
+# Retire only exact files recorded by a previous installer, with rollback copies.
+/usr/bin/sort -u "$scripts/paths.txt" > "$transaction/new-paths.txt"
+previous_paths="$product/Current/paths.txt"
+if [[ -f "$previous_paths" ]]; then
+ /usr/bin/sort -u "$previous_paths" "$transaction/legacy-paths.txt" > "$transaction/old-paths.txt"
+ /usr/bin/comm -23 "$transaction/old-paths.txt" "$transaction/new-paths.txt" > "$transaction/retired-paths.txt"
+ /usr/bin/sort -u "$transaction/old-paths.txt" "$transaction/new-paths.txt" > "$transaction/all-paths.txt"
+else
+ cp "$transaction/legacy-paths.txt" "$transaction/retired-paths.txt"
+ /usr/bin/sort -u "$transaction/new-paths.txt" "$transaction/legacy-paths.txt" > "$transaction/all-paths.txt"
+fi
+checkpoint "$transaction/all-paths.txt"
+printf '%s\n' "$transaction" > "$product/install.lock/transaction"
+cp "$scripts/rollback.command" "$transaction/Restore Previous OpenGate.command"
+cp "$scripts/transaction.sh" "$transaction/transaction.sh"
+chmod 755 "$transaction/Restore Previous OpenGate.command"
+log 'prepared; waiting for Installer payload commit'
+# Keep the transaction lock for postinstall or explicit recovery.
+trap - EXIT

@@ -1,3 +1,49 @@
+## Local installer candidate preparation — 2026-10-22
+
+User requests a double-click download/install rehearsal and explicitly holds push
+and publication until Resolve is closed and local checks are completed. A local
+candidate package may be generated with displayed/live checks explicitly pending;
+normal release packaging continues to require matching hidden and displayed
+receipts. Do not present the candidate exception as a passed verification gate.
+
+Clean Mac runtime 13ae93d1a29f8ea64a5f344da9e9623d28ac15df passes 44/44 hidden
+fixtures, source unchanged. Universal helper, I/O bootstrap and launcher build.
+The earlier e25e5d0 matrix passed its suites but source changed mid-run, so it is
+not an installable verification receipt. The expanded Mixer shortcut fixture's
+missing active-window setup was corrected without weakening the production guard.
+
+Branch build/reversible-prototype-installer reuses the existing packager with
+focused input-validation, payload, transaction, legacy-loader and support-export
+modules. VERSION supplies 0.1.0; runtime and packaging commits identify each build.
+No existing profile is reset. Fresh seeding selects immutable Resolve Layout and
+includes only the optional Jordan Tetewsky Preset. Newer schema writers are
+rejected rather than rewritten; arbitrary historical/future downgrade compatibility
+is not claimed. Applications/OpenGate Tools provides support export and uninstall.
+
+Tests pass: real staged universal payload and complete file hashes; current preset
+seeding and existing/partial profile preservation; real transaction scripts against
+an isolated root for upgrade/reinstall/downgrade, corruption rollback, interrupted
+recovery, newer-schema rejection, exact obsolete-command retirement, uninstall/
+restore, unrelated workflow preservation and unchanged user-preset bytes; JXA
+support export excluding private project/path/nested fields; release evidence
+rejection for missing displayed checks, changed source and empty/failed suites.
+Tests do not establish actual macOS Installer rollback, native Resolve return after
+uninstall, first-user live rendering, Gatekeeper prompts or performance.
+
+Read-only inventory found two prior OpenGate retired loader bundles still under
+Resolve's I/O plugin directory. Their scanner behavior is not established. The
+candidate transaction recognizes only timestamped retired directories with an
+OpenGate build manifest and both expected loader binaries, checkpoints them, and
+moves their active-tree copies out only when installation completes. Recovery
+retains their exact prior state. No live files have been moved by development.
+
+Support reports are local/user-exported and contain selected runtime fields,
+installer phases and version metadata, not raw logs or project/media contents.
+The candidate notes explicitly state that this runtime is not yet live-validated
+inside Resolve on macOS or Windows, and no Windows artifact is supplied. Windows
+managed-workspace integration is still incomplete. No push, release publication,
+installation, profile reset or project/media modification has occurred.
+
 ## Mixer native title candidate — 2026-10-22
 
 Branch fix/mixer-native-title-drag contains the menu optimization and shared Panels
