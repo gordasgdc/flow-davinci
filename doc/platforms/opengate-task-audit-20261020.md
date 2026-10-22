@@ -1,3 +1,22 @@
+## Local candidate archive built — 2026-10-22
+
+Runtime 13ae93d; packaging source 0e4461c. The local, unpublished Mac package is
+build/macos/candidates/0.1.0-prototype-13ae93d-pkg0e4461c/
+OpenGate-0.1.0-Candidate-macOS-13ae93d-pkg0e4461c.pkg.
+SHA-256: 404f7038ea5c44c374d199fac82347748fdabfba3a152499224dee0e75170ca3.
+Every archived payload file matches its staged hash, and macOS Installer's
+read-only showChoicesXML inspection accepts the archive. Displayed tests and live
+Mac/Windows runtime validation remain pending. It is not an install-ready or
+published release. Candidate notes explicitly describe these limits.
+
+The four pkgbuild "write: Permission denied" warnings persist outside the sandbox
+and reproduce on an unrelated one-file package. They are not specific to bundle
+inference or this payload. Tool exit is zero; archive integrity and Installer
+choices pass. The warning remains recorded in build/macos/candidate-review.json.
+Installed helper hash remains the accepted a7ce036 hash; no install/profile reset,
+project/media modification, push or publication occurred. Jordan holds publication
+until Resolve is closed and local installation checks are completed.
+
 ## Local installer candidate preparation — 2026-10-22
 
 User requests a double-click download/install rehearsal and explicitly holds push
