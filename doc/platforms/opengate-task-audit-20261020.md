@@ -1,3 +1,29 @@
+## Developer ID distribution preparation — 2026-10-22
+
+Resolve is closed. The displayed matrix at 59a1d6d passes 8/8, clean/source
+unchanged, and production src is identical to runtime 13ae93d. Together with the
+44/44 hidden receipt this permits packaging the exact runtime; live Resolve and
+uninstall/reinstall acceptance are still open.
+
+Usable Developer ID Application and Installer identities are available for the
+same team. The existing CineWaltz notarization Keychain profile authenticates;
+no OpenGate-specific account, password or profile is required. The earlier extra
+credential setup was unnecessary. No secret values were read or stored in source.
+
+Packaging now has a focused signing/notarization module: sign each native code
+item with Developer ID, hardened runtime and secure timestamps; sign the outer
+installer; submit using a named existing Keychain profile; require Accepted,
+staple and validate the ticket, and assess the final installer with Gatekeeper.
+Signing changes signature bytes, so both source and distributed runtime hashes
+are recorded, and the complete archived payload is checked against signed hashes.
+Normal distribution packaging requires signing and a notarization profile. Local
+candidates remain explicitly distinguishable. Fixture tests verify rejection of
+ambiguous/mismatched identities and rejected notarization, plus the required
+accepted-ticket/Gatekeeper path; actual Apple acceptance follows separately.
+
+GitHub push/publication remains on hold. Windows integration remains incomplete;
+its manually dispatched build workflow is local and no Windows artifact exists.
+
 ## Local candidate archive built — 2026-10-22
 
 Runtime 13ae93d; packaging source 0e4461c. The local, unpublished Mac package is

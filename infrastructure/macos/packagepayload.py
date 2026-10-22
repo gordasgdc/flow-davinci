@@ -6,6 +6,7 @@ import plistlib
 import shutil
 import subprocess
 from packageinputs import sha
+from packagesigning import sign_code
 
 SUPPORT = pathlib.Path('Library/Application Support/CineWaltz/OpenGate/Current')
 RESOLVE = pathlib.Path('Library/Application Support/Blackmagic Design/DaVinci Resolve')
@@ -27,7 +28,8 @@ def prepare(root, artifacts, inputs, payload, scripts):
                 'build': build, 'packaging_commit': packaging_commit, 'package_build': build + '-pkg' + packaging_commit[:7], 'build_number': int(build_number), 'runtime_commit': inputs['commit'], 'platform': 'macos',
                 'architecture': runtime['macos_architectures'], 'minimum_macos': minimum,
                 'tested_resolve': runtime['resolve_build_host']['version'], 'settings_schema_written': 1,
-                'settings_schema_read_max': 1, 'signed': 'ad-hoc', 'notarized': False,
+                'settings_schema_read_max': 1, 'signed': 'Developer ID' if inputs.get('signing') else 'ad-hoc',
+                'notarization_requested': bool(inputs.get('notary_profile')),
                 'validation': 'Local candidate; runtime acceptance pending on both platforms.' if inputs.get('candidate') else 'Hidden and displayed fixtures; actual Resolve acceptance remains separate.',
                 'displayed_verification': 'pending' if inputs.get('candidate') else 'passed',
                 'live_macos_verified': False, 'live_windows_verified': False, 'windows_artifact_built': False,
@@ -65,8 +67,8 @@ def prepare(root, artifacts, inputs, payload, scripts):
         'A failed/interrupted install leaves a Restore Previous OpenGate.command in its transaction directory.\n'
         'Support export includes selected event fields and install phases, not raw logs, project/media contents or arbitrary error text. Review before sharing. Nothing is uploaded automatically.\n\n'
         'Remaining live checks include Mixer custom-title dragging/control lifetime, Index acquisition readiness, native painting, physical/remapped keys and full Native/OpenGate transitions.\n'
-        'The package is ad-hoc signed, unsigned as an installer, and not notarized. Downloaded copies may receive macOS security prompts.\n'
-        'OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT); see LICENSE.\n')
+        + ('Code and installer use Developer ID signing. Check the accompanying release manifest for notarization acceptance.\n' if inputs.get('signing') else 'The package is ad-hoc signed, unsigned as an installer, and not notarized. Downloaded copies may receive macOS security prompts.\n')
+        + 'OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT); see LICENSE.\n')
 
     bundle = json.loads((root / 'src/assets/presets/BundledArrangements.json').read_text())
     chosen = next(e for e in bundle['arrangements'] if e['id'] == bundle['default'])
@@ -96,6 +98,13 @@ def prepare(root, artifacts, inputs, payload, scripts):
     paths += ['/' + str(RESOLVE / 'Workflow Integration Plugins' / name) for name in ['OpenGate.py'] + [e['file'] for e in commands]]
     inventory = '\n'.join(paths) + '\n'
     (scripts / 'paths.txt').write_text(inventory); (support / 'paths.txt').write_text(inventory)
+    if inputs.get('signing'):
+        sign_code(payload, inputs['signing'])
+        metadata['signing_team'] = inputs['signing']['application']['team']
+    helper = payload / RESOLVE / 'IOPlugins/Unbound.dvcp.bundle/Contents/MacOS'
+    metadata['source_runtime_sha256'] = inputs.get('sha256', {})
+    metadata['distributed_runtime_sha256'] = {name: sha(helper / name) for name in ('Unbound.dvcp', 'UnboundWidgetProbe.dylib')}
+    (support / 'release-manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
     # Hash every regular payload file, including metadata and maintenance tools.
     hashes = ''.join(sha(path) + '\t/' + str(path.relative_to(payload)) + '\n'
                      for path in sorted(payload.rglob('*')) if path.is_file())
