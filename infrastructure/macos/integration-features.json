@@ -510,19 +510,31 @@
       "branch": "fix/native-workspace-entry-transaction",
       "commit": "53e23ee7722e691fae73ca759d561910ed8fdb72",
       "scope": "workspace-entry-transactions",
-      "acceptance": "live follow-up open"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/panel-caller-state-sync",
-      "commit": "3bde0f7",
+      "commit": "3bde0f70b8b6ae3a3035d8dcbe24d53444212285",
       "scope": "panel-caller-state-sync",
-      "acceptance": "fixture evidence only; live pending"
+      "acceptance": "pending"
     },
     {
       "branch": "fix/keyframes-panel-parity",
-      "commit": "aa25e91",
+      "commit": "aa25e9143afaaa5d05db904bea5fb846810de311",
       "scope": "keyframes-panel-parity",
-      "acceptance": "fixture evidence only; live pending"
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/managed-placement-control",
+      "commit": "ca29d68033c3e117613a8cd1c47bb825a6b41005",
+      "scope": "panel-placement-and-mode-presentation",
+      "acceptance": "pending"
+    },
+    {
+      "branch": "fix/native-return-caller-presentation",
+      "commit": "324375a8ffa24dd181f76d7fd3cb70044100c5bf",
+      "scope": "panel-placement-and-mode-presentation",
+      "acceptance": "pending"
     }
   ]
 }

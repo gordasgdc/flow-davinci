@@ -21,8 +21,21 @@ Integration: integration/panel-callers-keyframes-live-candidate, built on 53e23e
   standalone/grouped maximize restore, page return, process restart and Native
   ownership return. These are synthetic Qt checks, not live Resolve acceptance.
 
-Full clean-commit hidden matrix, production build and assembled Native entry
-review remain pending. Displayed fixtures and replacement require Resolve closed.
+First clean combined matrix: 42/43 passed at 0c8eea9; the manifest test
+failed because added acceptance strings were descriptive rather than the schema's
+required pending value. Corrected the source lock, preserving the test. Receipt:
+`build/macos/verification/0c8eea9347-hidden-20261022T120314Z/receipt.json`.
+
+Additional assembled checks reproduced two gaps and now pass focused repairs:
+- Explicit floating placement goes back into the visible managed tree, using
+  an existing dock target. It cannot silently return content to a parked slot.
+  Grouped placement detaches the member; header doors never invoke this path.
+- Native return reflects actual restored native slot visibility, rather than
+  retaining OpenGate's last hidden/selected check. Normal Native signals still
+  belong to Resolve. This is a state reflection, not another visibility command.
+Keyframes maximize now checks exact workspace viewport bounds through all four
+band combinations. The separate command-submenu fixture is added to the matrix.
+Full final clean-commit matrix and production build remain pending. Displayed fixtures and replacement require Resolve closed.
 The native GPU/keyframe content, actual pointer capture and physical remapped-key
 behavior need live acceptance. Source/Program visual fit remains live review.
 
