@@ -640,6 +640,8 @@ private:
         if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(!workspaceHeader->shown());return;}
         enterManagedFromGesture(panels[i].name);
         if (nativeWorkspace->contains(panels[i].name)) { nativeWorkspace->detach(panels[i].name); readyNativeDrag(i); save(); }
+        else if(auto group=groupFor(i)){group->detachMember(panels[i].session);save();}
+        else if(panels[i].session->active() && nativeWorkspace->active())dockNative(i);
         else if (panels[i].session->active()) dockOne(i);
         else requestUndock(i);
     }
@@ -655,7 +657,7 @@ private:
         restoreExpanded(); auto group=groupFor(i);
         const auto direction=edge==Qt::Edge(0) ? Qt::Orientation(0) : edge==Qt::TopEdge || edge==Qt::BottomEdge ? Qt::Vertical : Qt::Horizontal;
         const auto error=nativeWorkspace->dockSelection(page(),panels[i].name,group,
-            target ? nativeWorkspace->targetName(target) : Unbound::nativeRemainderId(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
+            target ? nativeWorkspace->targetName(target) : nativeWorkspace->defaultDockTarget(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
         if (!error.isEmpty() && group && group->active()) {
             group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex())); group->setSnapping(snap->isChecked());
         }

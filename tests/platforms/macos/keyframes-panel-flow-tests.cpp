@@ -67,10 +67,16 @@ int main(int argc,char **argv){
  check(nativeKeyframeDetaches==0,"native Keyframes float control uses OpenGate placement instead of a parallel native tray");
  check(keySession&&keySession->floating()&&!binding->contains("frameEditPageKeyframeEditor"),"Keyframes float control detaches the existing panel session");
  if(keySession){
+  press(nativeDetach);check(binding->contains("frameEditPageKeyframeEditor")&&editor->window()==&main&&checked("Keyframes"),"floating Keyframes docks into the visible OpenGate arrangement");
+  press(nativeDetach);check(keySession->floating(),"docked Keyframes can float again through the same control");
   auto host=keySession->window();host->setGeometry(160,150,480,340);settle(150);const auto frame=host->geometry();
   call("Keyframes");press(buttons["KeyframeEditor"]);check(keySession->window()==host&&host->geometry()==frame&&checked("Keyframes"),"Keyframes hide/recall preserves floating window and position");
   QApplication::setActiveWindow(&main);check(controls.invokeWorkflowCommand("panel.expand.frameEditPageKeyframeEditor"),"registered Keyframes maximize command dispatches");settle(300);
   check(keySession->window()->geometry()!=frame,"Keyframes uses ordinary workspace maximize geometry");
+  auto matchesViewport=[&]{auto expanded=keySession->window();const auto margins=expanded->windowHandle()?expanded->windowHandle()->frameMargins():QMargins();return expanded->geometry()==Unbound::workspaceViewportBounds(&main,page).adjusted(margins.left(),margins.top(),-margins.right(),-margins.bottom());};
+  check(matchesViewport(),"Keyframes maximizes to the existing workspace content viewport");
+  for(const auto &band:{"Workspace Toolbar","Page Navigation","Workspace Toolbar","Page Navigation"}){call(band);check(matchesViewport(),"Keyframes maximized bounds follow every toolbar/navigation visibility combination");}
+
   QApplication::setActiveWindow(&main);controls.invokeWorkflowCommand("panel.expand.frameEditPageKeyframeEditor");settle(300);
   check(keySession->window()==host&&host->geometry()==frame,"Keyframes maximize restore retains exact floating placement");
   auto detachPool=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(detachPool)detachPool->click();settle(300);

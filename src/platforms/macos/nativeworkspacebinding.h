@@ -168,6 +168,13 @@ public:
         return error;
     }
     QJsonObject saved() const { return active() ? arrangement.savedPlan("edit") : pending; }
+    QString defaultDockTarget() const {
+        if(!active())return nativeRemainderId();
+        QStringList names;groupTreeNames(arrangement.snapshot(),names);
+        if(names.contains(nativeRemainderId()))return nativeRemainderId();
+        if(names.contains("frameConformTimelines"))return QStringLiteral("frameConformTimelines");
+        return names.value(0,nativeRemainderId());
+    }
     QString restorePresentation(const QJsonObject &saved) {
         if (busy) return QStringLiteral("The native workspace is changing.");
         QScopedValueRollback<bool> guard(busy,true); const auto error=arrangement.restorePresentation(saved);
