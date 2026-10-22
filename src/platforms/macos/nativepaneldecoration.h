@@ -12,6 +12,7 @@
 #include "diagnostics.h"
 #include "panelplacementcontrol.h"
 #include "keyboardlauncher.h"
+#include "nativeplacementcaller.h"
 namespace Unbound {
 // Dedicated native-header button; never replaces or overlays Resolve's options.
 using PanelUndockGlyph = PanelPlacementGlyph;
@@ -49,6 +50,14 @@ public:
     }
     void wire(QWidget *panel,const QString &id,const QString &title,bool floating,std::function<void()> toggle,std::function<void(QPoint)> drag = {}) {
         if (!panel) return;
+        // Edit Keyframes already supplies a placement control. Route it through
+        // the same controller as our other panel headers, keeping its native row.
+        if(id=="frameEditPageKeyframeEditor")if(auto native=panel->findChild<QAbstractButton *>("btnUndock")) {
+            auto caller=nativeCallers.value(native);
+            if(!caller){caller=new NativePlacementCaller(native,this);nativeCallers[native]=caller;
+                connect(native,&QObject::destroyed,this,[this,native]{delete nativeCallers.take(native);});}
+            caller->activate=std::move(toggle);caller->drag=std::move(drag);return;
+        }
         auto button = buttons.value(id);
         bool grouped=false;
         for(auto parent=panel;parent&&!grouped;parent=parent->parentWidget())grouped=parent->objectName()=="unboundGroupCell_"+id;
@@ -79,5 +88,6 @@ public:
     }
 private:
     QHash<QString,QPointer<NativeUndockButton>> buttons;
+    QHash<QAbstractButton *,NativePlacementCaller *> nativeCallers;
 };
 }

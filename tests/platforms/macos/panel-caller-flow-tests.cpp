@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QButtonGroup>
 #include <QElapsedTimer>
 #include <QMenuBar>
 #include <QProcess>
