@@ -634,4 +634,3 @@ draft. Replacement: https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0
 Both published installer downloads were retrieved and checked against SHA256.
 Version remains 0.0.2; tag, source/build identity and checksums distinguish revision 2.
 Presets, settings, projects/media and the best known live installation are retained.
-
