@@ -505,6 +505,24 @@
       "commit": "e1c6196d700416d5bc9acbcc552c42d0875820bf",
       "scope": "native-flow-speed",
       "acceptance": "pending"
+    },
+    {
+      "branch": "fix/native-workspace-entry-transaction",
+      "commit": "53e23ee7722e691fae73ca759d561910ed8fdb72",
+      "scope": "workspace-entry-transactions",
+      "acceptance": "live follow-up open"
+    },
+    {
+      "branch": "fix/panel-caller-state-sync",
+      "commit": "3bde0f7",
+      "scope": "panel-caller-state-sync",
+      "acceptance": "fixture evidence only; live pending"
+    },
+    {
+      "branch": "fix/keyframes-panel-parity",
+      "commit": "aa25e91",
+      "scope": "keyframes-panel-parity",
+      "acceptance": "fixture evidence only; live pending"
     }
   ]
 }

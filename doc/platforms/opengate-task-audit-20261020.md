@@ -1,3 +1,57 @@
+## Current integration review — caller state and Keyframes (2026-10-22)
+
+User authorized implementation, isolated feature commits, combined verification
+and installation of the correct candidate. Resolve is currently open: do not
+replace its loaded helper or terminate it. Installed helper remains 53e23ee,
+verified by SHA-256 d7e4c40820665b6e13fc53049296c21dbd6a52b1e4516c433cef5eb68810e6ce.
+No merge to main, publication or prototype release is authorized by this repair.
+
+Integration: integration/panel-callers-keyframes-live-candidate, built on 53e23ee.
+- fix/panel-caller-state-sync: native checked notifications cannot generate panel
+  commands; radio-like checks reflect selected/visible presentation. Header input
+  calls the existing controller instead of operating leased native slots. Toolbar,
+  Panels and workflow dispatch share the presentation query; queued recalls are
+  invalidated across workspace transactions. Placement remains separate.
+- fix/keyframes-panel-parity: reuse the native Keyframes btnUndock through a small
+  NativePlacementCaller adapter, with the existing panel/session/group/expansion
+  controllers. No parallel Keyframes host or content implementation.
+- New assembled caller regression fails five checks against 53e23ee and passes
+  the repair. A new Keyframes regression reproduced its native tray bypass before
+  the placement adapter; repaired checks pass floating hide/recall, tab grouping,
+  standalone/grouped maximize restore, page return, process restart and Native
+  ownership return. These are synthetic Qt checks, not live Resolve acceptance.
+
+Full clean-commit hidden matrix, production build and assembled Native entry
+review remain pending. Displayed fixtures and replacement require Resolve closed.
+The native GPU/keyframe content, actual pointer capture and physical remapped-key
+behavior need live acceptance. Source/Program visual fit remains live review.
+
+Public labels should be OpenGate. Internal Unbound identifiers/settings paths and
+Wolfgang's inherited attribution remain. The exact reported “Unbound Test” label
+has not yet been located; do not claim it fixed. Public release cleanup, capability
+compatibility checks and repository migration remain separate follow-ups.
+Windows implementation/release work follows the user's Mac flow acceptance;
+no Windows install is possible here. Future prototype notes must distinguish Mac
+live evidence, Windows build evidence and external confirmations.
+
+## Live panel-caller follow-up (2026-10-21 after 53e23ee installation)
+
+Open: Media Pool/Index automatic visibility feedback loop in OpenGate Resolve
+Layout, floating Media Pool recall/placement inconsistency, and toolbar checked
+states not matching actual presentation (including visible Mixer). Logs from
+session 2370aadd-a044-4120-9153-cbecb206ba25 show repeated tab selection between
+Media Pool and Index without corresponding input clicks. Do not mark live flow
+accepted on the strength of the prior fixture passes.
+
+Add Keyframes to this same acceptance sweep. It is already registered as
+frameEditPageKeyframeEditor / KeyframeEditor / contents-session in PanelControls;
+registration alone does not establish working native surface discovery or behavior.
+Verify its real widget, detach control and title dragging, floating and grouped
+show/hide/recall, toolbar/native caller and checked-state synchronization,
+backtick maximize/restore, saved placement and Native/OpenGate/page transitions.
+Reuse the existing panel/session controllers; do not build a parallel Keyframes UI.
+No live Keyframes acceptance has been established.
+
 ## Current follow-up: Native to OpenGate restore repair (2026-10-21 evening)
 
 Branch `fix/native-workspace-entry-transaction` includes the viewer toolbar fix.
