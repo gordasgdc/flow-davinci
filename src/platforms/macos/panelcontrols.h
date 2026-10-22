@@ -88,7 +88,7 @@ public:
         presets = presetsUi->selection();
         workspaceRestore=new Unbound::WorkspaceRestoration(this);
         workspaceRestore->running=[this] { return !quitting; };
-        workspaceRestore->checkpoint=[this] {return arrangement();};
+        workspaceRestore->checkpoint=[this] { save(true);return settings.pageView("edit"); };
         workspaceRestore->report=[this](QString message) { status->setText(message); };
         workspaceRestore->validate=[this](const QJsonObject &value) {
             return nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
@@ -96,12 +96,13 @@ public:
         workspaceRestore->dock=[this] {
             ++bulkVersion; ++groupVersion; restoreExpanded();
             const QScopedValueRollback<bool> transaction(restoringNative,true);
-            const auto error=dockAll();if(!error.isEmpty())return error;
+            const auto error=dockAll(false);if(!error.isEmpty())return error;
             for (const auto &panel:panels) if (panel.session->active()) return panel.name;
             return QString();
         };
         workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
         workspaceRestore->resume=[this] { restore(); save(); };
+        workspaceRestore->committed=[this] { save(); };
         workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty() || !nativeWorkspace->requiredPanels().isEmpty(); };
         workspaceRestore->unavailable=[this] {
             QStringList missing;
@@ -214,9 +215,16 @@ public:
         nativeWorkspace->changed = [this] {
             for (int i=0;i<panels.size();++i) updateRow(i);
             nativeWorkspace->refreshNativeTargets(page());
-            if (!quitting) saveTimer.start();
+            if (!quitting) {
+                saveTimer.start();
+                // restoreReady may finish in the binding's queued callback,
+                // after the coordinator's current pass has already returned.
+                if(workspaceRestore && workspaceRestore->active())restoreTimer.start(0);
+            }
         };
-        nativeWorkspace->failed = [this](const QString &error) { status->setText(error); };
+        nativeWorkspace->failed = [this](const QString &error) {
+            if(!workspaceRestore->failPreset(error))status->setText(error);
+        };
         QStringList panelLabels; for (const auto &panel:panels) panelLabels.append(panel.label);
         managerView->addGroups(panelLabels);
         auto firstPanel=managerView->first,secondPanel=managerView->second;
@@ -270,6 +278,7 @@ public:
                 [this,i](double factor) { panels[i].session->setInterfaceScale(factor); },
                 [this,i] { return panels[i].session->active(); }));
             panel.session->changed = [this, i] {
+                if (restoringNative) { updateRow(i); return; }
                 if (!panels[i].session->active()) expansionController->sessionInactive(i);
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
@@ -714,6 +723,9 @@ private:
     QString applyWorkspace(QJsonObject value)
     {
         value=Unbound::migrateWorkspaceHeader(Unbound::fitStarterWorkspace(value));
+        if(value.contains("selected_arrangement")) {
+            const QSignalBlocker block(presets);presets->setCurrentIndex(qMax(0,presets->findData(value["selected_arrangement"].toString())));
+        }
         layoutMode=Unbound::PageWorkspaceState::mode(value);
         pendingMainPlacement=value["main_window"].toObject();mainPlacementRecord=pendingMainPlacement;
         if (footer) footer->setState(value["footer"].toObject());
@@ -840,7 +852,7 @@ private:
         if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
             // The pinned toolbar may be a sibling of the page or leased to
             // its main surface. Use the existing main-window control resolver.
-            if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true)) {
+            if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true,target)) {
                 p.pending = true; updateRow(i);
                 const unsigned request = ++p.requestVersion;
                 awaitUndockSurface(i, request, root);
@@ -860,7 +872,14 @@ private:
             }, [this,i,request](bool ready) {
                 if (quitting || panels[i].requestVersion!=request) return;
                 Unbound::logEvent("panel.undock.readiness",{{"panel",panels[i].name},{"ready",ready}});
-                panels[i].pending=false; finishUndock(i);
+                panels[i].pending=false;
+                if(!ready) {
+                    const auto error=panels[i].label+": native surface did not become visible.";
+                    outcome("undock",i,error);updateRow(i);
+                    if(!workspaceRestore->failPreset(error))status->setText(error);
+                    return;
+                }
+                finishUndock(i);
             });
     }
     void finishUndock(int i)
@@ -930,13 +949,14 @@ private:
         if(workspaceHeader && !workspaceHeader->release())return QStringLiteral("Could not restore the workspace header before changing the workspace.");
         return {};
     }
-    QString dockAll() {
+    QString dockAll(bool cancelRestore=true) {
         QString error;
         {
             // Intermediate session callbacks must not replace the last complete
             // layout. Persist one complete native result after all transfers.
             const QScopedValueRollback<bool> transaction(restoringNative,true);
-            if (workspaceRestore) workspaceRestore->cancel();
+            restoreTimer.stop();
+            if (cancelRestore && workspaceRestore) workspaceRestore->cancel();
             error=releaseWorkspaceBands();
             if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->release(true))
                 error=QStringLiteral("The native layout changed; restoration was stopped.");
@@ -1139,9 +1159,12 @@ private:
         }
         return saved;
     }
-    void save()
+    void save(bool retainSelection=false)
     {
         if (quitting) return;
+        if(workspaceRestore && workspaceRestore->savingBlocked()) {
+            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-restore-transaction"}});return;
+        }
         // A partially acquired preset is a transition, not a working layout.
         // Preserve the previous complete page checkpoint if native readiness fails.
         if(!restoringNative && (!pendingGroups.isEmpty() || (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()))) {
@@ -1158,7 +1181,7 @@ private:
         snapshot.footer=footer ? footer->snapshot() : QJsonObject();
         snapshot.header=workspaceHeader ? workspaceHeader->snapshot() : QJsonObject();
         snapshot.pinControls=pin->isChecked(); snapshot.hideBackground=background->isChecked();
-        snapshot.selected=presets->currentData().toString(); snapshot.chrome=style->currentIndex();
+        snapshot.selected=retainSelection?settings.pageView("edit")["selected_arrangement"].toString():presets->currentData().toString(); snapshot.chrome=style->currentIndex();
         snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
         snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
         auto captured=snapshot.json();captured["page"]="edit";captured["layout_mode"]=layoutMode;
@@ -1196,7 +1219,8 @@ private:
     }
     void updateNativeSizing()
     {
-        if (quitting || expansionController->index()>=0 || !nativeSizing) return;
+        if (quitting || restoringNative || expansionController->index()>=0 || !nativeSizing ||
+            (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty())) return;
         auto root=page();
         QList<Unbound::NativeWorkspacePresentation::Surface> surfaces;
         for (const auto &panel:panels) surfaces.append({panel.name,Unbound::panelSurface(root,panel.name),panel.session,panel.label.endsWith("Toolbar")});

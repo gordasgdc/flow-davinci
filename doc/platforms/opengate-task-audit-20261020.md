@@ -1,3 +1,47 @@
+## Current follow-up: Native to OpenGate restore repair (2026-10-21 evening)
+
+Branch `fix/native-workspace-entry-transaction` includes the viewer toolbar fix.
+The installed `dbb5c8d` is still the live build; this repair is not installed,
+merged or published. Live acceptance remains open.
+
+Evidence: the installed session repeatedly dispatched Inspector through invisible
+`btnEditToggleInspectorInEFTM`, then timed out. The user's visible SSM Inspector
+click triggered Resolve's native action; Resolve Layout and Jordan then logged
+complete restoration. The recorded hierarchy puts EFTM/DSM in non-current toolbar
+stack pages. The new assembled regression reproduced acquisition failure before
+the repair (three assertions failed).
+
+Repair reuses the existing native control and workspace coordinators:
+- Select the current native toolbar branch, including when the complete band is
+  hidden; reject inactive variants. Reconcile a mirrored checked state against
+  actual target visibility before one native activation, then await real readiness.
+  No Inspector-specific click, native ancestor force-show or new UI layer.
+- Suppress ordinary session vacancy/visibility reconciliation during native return,
+  and vacancy collapse while the managed plan is still acquiring its panels.
+- Keep checkpoint writes deferred through forward restoration and asynchronous
+  rollback. Completion is connected to deferred native-plan mounting. Preserve
+  the prior selected workspace alongside its layout; selection requests alone do
+  not persist. Capture unsaved current geometry before beginning a new request.
+- Readiness timeout fails acquisition instead of trying to detach an unavailable
+  surface. A superseded forward pass cannot mount after rollback starts. Rollback
+  failure blocks checkpoint overwrite and reports its own failure, without recursion.
+
+Focused assembled checks pass for stale checked states, inactive EFTM preceding
+SSM, mutually exclusive sidebars, hidden-toolbar restoration, failed managed
+restore returning to the prior tree and selection, and failed Native restore
+leaving no partial floating hosts. Hidden-band comparison checks tree/tab identity
+and split proportions: captured pixel heights grew from [333,332] to [372,371]
+when the band was hidden, as required. Coordinator checks cover pending rollback,
+rollback failure and save protection. Broader final validation/build receipts are
+recorded under `build/macos/native-entry-repair-verification`; fixture evidence
+cannot establish actual Resolve initialization or native rendering acceptance.
+
+Required live check after reviewed installation: close Inspector in Original
+Resolve UI, select Jordan and Resolve Layout without manually opening Inspector,
+repeat with Workspace Toolbar hidden, switch projects/pages and verify the saved
+tree, floating placements, selected name and absence of native background leakage.
+Confirm both monitor callers are visible and preserve their panels' locations.
+
 ## Current follow-up: visible monitor callers (2026-10-21 evening)
 
 Branch `fix/visible-viewer-toolbar-callers` corrects the existing toolbar accessory,

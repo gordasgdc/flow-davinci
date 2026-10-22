@@ -20,7 +20,8 @@ int main(int argc, char **argv)
     QWidget owner; owner.setAttribute(Qt::WA_DontShowOnScreen);
     auto layout = new QVBoxLayout(&owner);
     Unbound::ArrangementControls controls(&owner,layout,edit);
-    int restores = 0;
+    int restores = 0,writes=0;
+    controls.changed=[&]{++writes;};
     controls.restoreRequested = [&] { ++restores; };
     controls.report = [](QString) {};
     check(controls.selection()->count()==3 && controls.selection()->currentData()==edit,"Edit lists and selects only Edit preset");
@@ -32,6 +33,7 @@ int main(int argc, char **argv)
     check(restores==0,"cross-page restore rejected");
     controls.invoke("Restore",fusion);
     check(restores==1,"matching-page restore dispatched");
+    check(writes==0,"requesting a preset does not persist selection before workspace restoration completes");
     controls.setPage("edit");
     check(controls.selection()->currentData()==edit,"Edit selection retained independently");
     controls.setPage("fusion");

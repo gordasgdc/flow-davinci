@@ -19,6 +19,9 @@ public:
     std::function<QStringList()> unavailable;
     std::function<bool()> groupsPending;
     std::function<void(QString)> report;
+    std::function<void()> committed;
+    bool active() const { return !restoringId.isEmpty(); }
+    bool savingBlocked() const { return active() || checkpointBlocked; }
 
     void preset(const QJsonObject &entry,bool pageReady)
     {
@@ -30,16 +33,17 @@ public:
         if (!validation.isEmpty()) {
             report(validation); logEvent("workspace.native-plan.failed",{{"error",validation},{"stage","preset-preflight"}}); return;
         }
+        const auto fallback=checkpoint?checkpoint():QJsonObject();
         cancel();
-        previous=checkpoint?checkpoint():QJsonObject();
+        previous=fallback;
+        restoringId=entry["id"].toString();
         const auto blocked=dock();
         if (!blocked.isEmpty()) {
             report("Could not restore: a panel could not be docked safely.");
-            logEvent("arrangement.restore.failed",{{"panel",blocked}}); return;
+            logEvent("arrangement.restore.failed",{{"panel",blocked}}); cancel();checkpointBlocked=true; return;
         }
         const auto error=apply(value);
-        if (!error.isEmpty()) { report(error); return; }
-        restoringId=entry["id"].toString();
+        if (!error.isEmpty()) { failPreset(error); return; }
         logEvent("arrangement.restore.request",{{"id",restoringId}});
         resume();
         finishPreset();
@@ -47,7 +51,7 @@ public:
     ResumeResult native(QWidget *root,NativeWorkspaceBinding *binding,const QList<Panel> &panels,
                         const std::function<void(int)> &request)
     {
-        ++generation;
+        const auto token=++generation;
         const auto error=binding->preparePending(root);
         if (!error.isEmpty()) return {error,false};
         const auto anchor=binding->pendingFloatingAnchor();
@@ -60,6 +64,9 @@ public:
         // Native panel toggles can be mutually exclusive (Media Pool / Index).
         // Acquire one surface completely before asking Resolve to reveal another.
         for (int i=0;i<panels.size();++i) if (panels[i].desired && !panels[i].session->active()) { request(i); break; }
+        // A synchronous acquisition failure may already have started rollback.
+        // Never mount or finish the superseded request after that callback.
+        if(token!=generation)return {{},false};
         const auto nativeError=binding->restoreReady(root); binding->refreshNativeTargets(root);
         return {nativeError,true};
     }
@@ -74,28 +81,48 @@ public:
         });
     }
     bool failPreset(const QString &error) {
-        if(restoringId.isEmpty())return false;
-        const auto id=restoringId;const auto fallback=previous;restoringId.clear();previous={};
+        if(!active())return false;
+        ++generation;
+        if(rollingBack) {
+            const auto id=restoringId;
+            const auto cleanup=dock();
+            report(QStringLiteral("Could not restore the previous workspace: ")+error);
+            logEvent("arrangement.restore.rollback.failed",{{"id",id},{"error",error},{"cleanup_error",cleanup}});
+            cancel();checkpointBlocked=true;return true;
+        }
+        failure=error;rollingBack=true;
         const auto dockError=dock();
-        const auto applyError=dockError.isEmpty()&&!fallback.isEmpty()?apply(fallback):QString();
-        if(dockError.isEmpty()&&applyError.isEmpty()&&!fallback.isEmpty())resume();
-        report(QStringLiteral("Could not restore arrangement: ")+error);
-        logEvent("arrangement.restore.failed",{{"id",id},{"error",error},{"rollback_error",dockError+applyError}});
+        const auto applyError=dockError.isEmpty()&&!previous.isEmpty()?apply(previous):QString();
+        logEvent("arrangement.restore.failed",{{"id",restoringId},{"error",error},{"rollback_started",dockError.isEmpty()&&applyError.isEmpty()&&!previous.isEmpty()}});
+        if(!dockError.isEmpty() || !applyError.isEmpty() || previous.isEmpty()) {
+            report(QStringLiteral("Could not restore arrangement: ")+error);
+            logEvent("arrangement.restore.rollback.failed",{{"id",restoringId},{"error",dockError+applyError}});
+            cancel();checkpointBlocked=true;return true;
+        }
+        report(QStringLiteral("Could not restore arrangement: ")+error+" Restoring previous workspace…");
+        resume();finishPreset();
         return true;
     }
     void finishPreset() {
-        if(restoringId.isEmpty())return;
+        if(!active())return;
         const auto missing=unavailable();
-        if(groupsPending()) { report("Restoring arrangement…");return; }
+        if(groupsPending()) { report(rollingBack?QStringLiteral("Could not restore arrangement: ")+failure+" Restoring previous workspace…":QStringLiteral("Restoring arrangement…"));return; }
         if(!missing.isEmpty()) { report(QStringLiteral("Unavailable: ")+missing.join(", "));return; }
-        report("Arrangement restored.");
-        logEvent("arrangement.restore",{{"id",restoringId},{"unavailable",""},{"complete",true}});
-        restoringId.clear();
+        if(rollingBack) {
+            report(QStringLiteral("Could not restore arrangement: ")+failure+" Previous workspace restored.");
+            logEvent("arrangement.restore.rollback",{{"id",restoringId},{"complete",true}});
+        } else {
+            report("Arrangement restored.");
+            logEvent("arrangement.restore",{{"id",restoringId},{"unavailable",""},{"complete",true}});
+        }
+        cancel();if(committed)committed();
     }
-    void cancel() { ++generation;restoringId.clear(); }
+    void cancel() { ++generation;restoringId.clear();previous={};rollingBack=false;failure.clear();checkpointBlocked=false; }
+
 private:
     unsigned generation=0;
-    QString restoringId;
+    QString restoringId,failure;
+    bool rollingBack=false,checkpointBlocked=false;
     QJsonObject previous;
 };
 }

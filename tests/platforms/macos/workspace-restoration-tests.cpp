@@ -32,7 +32,7 @@ int main(int argc,char **argv)
     steps.clear(); validation.clear(); blocked="widgetEditInspector"; restore.preset(preset,true);
     check(steps==QStringList({"validate","dock"}) && message.contains("safely"),"failed docking cannot apply or resume another workspace");
     steps.clear(); blocked.clear(); application="Native position changed"; restore.preset(preset,true);
-    check(steps==QStringList({"validate","dock","apply"}) && message==application,"failed application cannot resume partially applied state");
+    check(steps==QStringList({"validate","dock","apply","dock"}) && message.contains(application),"failed application cannot resume partially applied state");
     steps.clear(); application.clear(); pending=true; restore.preset(preset,true);
     check(steps==QStringList({"validate","dock","apply","resume","unavailable"}) && message=="Restoring arrangement…",
         "valid restore preserves preflight, docking, application and resume ordering");
@@ -44,8 +44,15 @@ int main(int argc,char **argv)
     check(message=="Restoring arrangement…","cancelled restore cannot report later success");
     restore.checkpoint=[] {return QJsonObject{{"page","edit"},{"layout_mode","native"}};};
     pending=true;restore.preset(preset,true);steps.clear();
-    check(restore.failPreset("Media Pool unavailable")&&steps==QStringList({"dock","apply","resume"})&&message.contains("Could not restore"),"failed acquisition releases partial sessions and resumes the previous checkpoint");
-    check(!restore.failPreset("again"),"rollback cannot recurse after the restore identity is cleared");
+    check(restore.failPreset("Media Pool unavailable")&&steps==QStringList({"dock","apply","resume","unavailable"})&&message.contains("Could not restore"),"failed acquisition releases partial sessions and resumes the previous checkpoint");
+    check(restore.active(),"rollback remains an active transaction while native acquisitions are pending");
+    pending=false;restore.finishPreset();
+    check(!restore.active()&&message.contains("Previous workspace restored"),"rollback reports completion only after its acquisitions finish");
+    check(!restore.failPreset("again"),"completed rollback cannot recurse");
+    pending=true;restore.preset(preset,true);restore.failPreset("forward failure");
+    check(restore.failPreset("rollback acquisition failed")&&!restore.active()&&message.contains("previous workspace"),"rollback acquisition failure stops without recursively attempting the same restore");
+    check(restore.savingBlocked(),"failed rollback cannot overwrite the last complete persisted checkpoint");
+    restore.cancel();check(!restore.savingBlocked(),"explicit recovery releases the failed rollback save guard");
     const auto settle=[] {
         QElapsedTimer clock; clock.start();
         while (clock.elapsed()<230) { QCoreApplication::processEvents(); QThread::msleep(1); }
