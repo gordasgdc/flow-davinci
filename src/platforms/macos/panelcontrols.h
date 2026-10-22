@@ -854,19 +854,24 @@ private:
             awaitUndockSurface(i, request, root);
             return;
         }
-        if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
+        if (root && root->isVisible() && ((!target && restoring) || (target && !target->isVisible())) && !p.toggle.isEmpty()) {
             // The pinned toolbar may be a sibling of the page or leased to
             // its main surface. Use the existing main-window control resolver.
             if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true,target)) {
+                // Acquire while native activation has made the surface ready.
+                // A queued native visibility update can hide Index again before
+                // the first deferred readiness poll, leaving startup half-built.
+                target=Unbound::panelSurface(root,p.name);
+                if(target && target->isVisible()){finishUndock(i);return;}
                 p.pending = true; updateRow(i);
                 const unsigned request = ++p.requestVersion;
-                awaitUndockSurface(i, request, root);
+                awaitUndockSurface(i, request, root,restoring?10000:1000);
                 return;
             }
         }
         finishUndock(i);
     }
-    void awaitUndockSurface(int i, unsigned request, QWidget *root)
+    void awaitUndockSurface(int i, unsigned request, QWidget *root,int timeoutMs=1000)
     {
         new Unbound::SurfaceReadiness(this,root,
             [this,i,request] { return !quitting && panels[i].requestVersion==request; },
@@ -885,7 +890,7 @@ private:
                     return;
                 }
                 finishUndock(i);
-            });
+            },timeoutMs);
     }
     void finishUndock(int i)
     {

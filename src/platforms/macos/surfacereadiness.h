@@ -10,9 +10,9 @@ namespace Unbound {
 class SurfaceReadiness : public QObject {
 public:
     SurfaceReadiness(QObject *owner, QWidget *root, std::function<bool()> valid,
-        std::function<bool()> ready, std::function<void(bool)> complete)
+        std::function<bool()> ready, std::function<void(bool)> complete, int timeoutMs=1000)
         : QObject(owner), root(root), valid(std::move(valid)), ready(std::move(ready)), complete(std::move(complete)) {
-        deadline.setSingleShot(true); deadline.setInterval(1000);
+        deadline.setSingleShot(true); deadline.setInterval(timeoutMs);
         connect(&deadline,&QTimer::timeout,this,[this] { finish(false); });
         qApp->installEventFilter(this); deadline.start(); queue();
     }
