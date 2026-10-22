@@ -1,3 +1,13 @@
+## Delivery requirements added — 2026-10-22
+
+See opengate-prototype-delivery.md for the ordered implementation/acceptance list.
+Jordan requests double-click per-platform installers, version/platform detection,
+reversible upgrade/downgrade/removal, preservation of presets, explicit isolated
+first-user previews, and user-exported diagnostic reports. Uninstall must return
+to native Resolve on reopening. A macOS .pkg is not a Windows executable; offer
+separate platform installers with one behavior and version/data contract.
+No new installation, publication or claim of Windows parity has occurred.
+
 ## Follow-up in progress — menu refresh and Mixer review (2026-10-22)
 
 Branch perf/panel-menu-refresh starts at accepted main e885918. It resolves the
