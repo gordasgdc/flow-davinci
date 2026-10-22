@@ -43,10 +43,12 @@ def main():
         (resources / 'conclusion.html').write_text('<html><body><h1>OpenGate installed</h1><p>Open Resolve. New users begin in Resolve Layout; Jordan Tetewsky Preset is optional. Existing users retain their last working state.</p><p>Double-click uninstall and support export in Applications/OpenGate Tools. Recovery records: /Library/Application Support/CineWaltz/OpenGate/Transactions/. Projects and media are not installation targets.</p></body></html>')
         copy(root / 'LICENSE', resources / 'LICENSE.txt')
         component = work / 'component.plist'
-        run('/usr/bin/pkgbuild', '--analyze', '--root', str(payload), str(component))
-        items = plistlib.loads(component.read_bytes())
-        for item in items: item.update(BundleIsRelocatable=False, BundleIsVersionChecked=False)
-        component.write_bytes(plistlib.dumps(items))
+        # The payload has exactly one known app component. Explicit replacement
+        # policy avoids inference over helpers and executable maintenance scripts.
+        component.write_bytes(plistlib.dumps([{
+            'RootRelativeBundlePath': 'Applications/OpenGate.app',
+            'BundleHasStrictIdentifier': True, 'BundleIsRelocatable': False,
+            'BundleIsVersionChecked': False, 'BundleOverwriteAction': 'upgrade'}]))
         run('/usr/bin/pkgbuild', '--root', str(payload), '--component-plist', str(component), '--scripts', str(scripts), '--ownership', 'recommended', '--identifier', 'com.cinewaltz.opengate.prototype', '--version', args.version, '--install-location', '/', str(work / 'component.pkg'))
         distribution = work / 'distribution.xml'
         distribution.write_text('''<?xml version="1.0" encoding="utf-8"?>
