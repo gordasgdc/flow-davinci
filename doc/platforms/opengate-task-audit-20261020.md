@@ -1,3 +1,31 @@
+## User-approved main baseline — 2026-10-22
+
+Jordan reports the installed caller/Keyframes candidate is working and explicitly
+requests: “i really think this is working now. Merge to main”. This supersedes
+prior main-merge holds for this candidate only. Record this as user-reported live
+acceptance for baseline promotion, not an exhaustive claim that every historical
+case, GPU configuration, fresh installation or platform has been validated.
+
+Installed and startup-verified source: a7ce036e5cdfd91cee1ea83232b2a91f122cf342.
+Helper SHA-256: 8f9f12816895745cf340b2152c8ce8c744c4c4171ce99b39187b1db73ce58a66.
+The clean source passed 44/44 hidden fixtures and 8/8 displayed fixtures; the
+successful displayed run used foreground Terminal, with earlier failures retained.
+Universal arm64/x86_64 build and signature audit pass. Detailed receipts remain
+in the panel-caller-state-sync worktree's build/macos/candidate-review.json and
+build/macos/test-install-receipt.json. Profiles, arrangements and native shortcuts
+were preserved; the prior installation remains backed up there.
+
+Merge scope: the tested integration/panel-callers-keyframes-live-candidate plus
+this documentation-only acceptance record. Preserve isolated feature branches
+and the live installation. No rebuild/reinstall is needed for this record.
+Push, publication, prototype packaging, Windows implementation/runtime acceptance,
+public-identity cleanup and repository migration are separate actions. No pristine
+live first-user profile test was performed; the existing active profile was kept.
+Resolve Layout remains the first-profile default, with Jordan Tetewsky Preset
+available as an optional saved workspace.
+
+Everything below is historical evidence unless superseded by this entry.
+
 ## Current integration review — caller state and Keyframes (2026-10-22)
 
 User authorized implementation, isolated feature commits, combined verification
