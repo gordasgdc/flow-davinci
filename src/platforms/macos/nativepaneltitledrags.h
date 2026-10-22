@@ -19,6 +19,11 @@ public:
                 if(label->textInteractionFlags()!=Qt::NoTextInteraction)continue;
                 text=label->text();
             } else if(auto button=qobject_cast<QAbstractButton *>(widget))text=button->text();
+            // Resolve's elided Mixer title is a custom-painted QWidget rather
+            // than a QLabel on some builds. Match its captured title identity,
+            // never the surrounding header/options row or arbitrary body text.
+            else if(id=="frameEditAudioMeter" && widget->objectName()=="lblMixerMeter" &&
+                widget->parentWidget() && widget->parentWidget()->objectName()=="frameMixerMeterTitle")text=title;
             else continue;
             text.remove('&');if(text.trimmed()!=title || wired.contains(widget))continue;
             // Match only the shallow native title row, not arbitrary body text.

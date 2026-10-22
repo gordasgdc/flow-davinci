@@ -52,7 +52,15 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
-        if((event->type()==QEvent::ActionAdded || event->type()==QEvent::ActionRemoved)&&qobject_cast<QMenu *>(object))dirty=true;
+        if(event->type()==QEvent::ActionAdded || event->type()==QEvent::ActionRemoved)
+            if(auto menu=qobject_cast<QMenu *>(object)) {
+                // OpenGate rebuilds its presentation menus during state sync.
+                // Those changes cannot add Resolve-owned workflow commands.
+                bool owned=false;
+                for(auto parent=menu;parent;parent=qobject_cast<QMenu *>(parent->parent()))
+                    owned |= parent->property("unboundOwnMenu").toBool();
+                if(!owned)dirty=true;
+            }
         if (event->type()==QEvent::Shortcut)
             if (auto action=qobject_cast<QAction *>(object)) if (isCommand(action))
                 logEvent("command.native.shortcut",{{"action",action->objectName()},{"label",action->text()}});

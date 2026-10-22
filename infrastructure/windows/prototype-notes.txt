@@ -1,0 +1,23 @@
+OpenGate 0.0.2 UNTESTED PROTOTYPE — Windows x64
+
+Not live-tested inside DaVinci Resolve on Windows or macOS for this candidate.
+The Windows backend is an earlier native floating-pane implementation. It does
+not yet provide the Mac OpenGate managed workspace, grouped docking, or complete
+header/menu/hotkey parity. Do not use it as evidence that cross-platform parity
+is complete. Native synthetic fixtures are separate from real Resolve testing.
+
+Requires Resolve 21.1 and Windows x64. Save and quit Resolve before installing,
+upgrading, downgrading or uninstalling. Start Resolve, then OpenGate from Start.
+The helper remains loaded until Resolve exits. Uninstall and reopen Resolve to
+return to native Resolve. The installer does not modify Resolve, projects or media.
+
+Settings are retained at %LOCALAPPDATA%\Unbound\Unbound.json. Installation and
+uninstallation do not clear presets. Make a backup before trying older builds;
+settings written by future versions may not be backward compatible.
+
+This Windows installer is unsigned and may trigger Windows SmartScreen prompts.
+Installer diagnostics are written by Inno Setup to the user's temporary directory
+as Setup Log files. Keep the exact build and describe the steps when reporting.
+Prototype releases may be withdrawn and replaced after testing.
+
+OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT). See LICENSE.

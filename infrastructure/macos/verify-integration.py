@@ -19,6 +19,7 @@ parser=argparse.ArgumentParser(description=__doc__)
 modes=parser.add_mutually_exclusive_group()
 modes.add_argument('--functional-only',action='store_true',help='Run functional fixtures; exclude the performance benchmark without claiming its gate passed.')
 modes.add_argument('--hidden-only',action='store_true',help='Run only reviewed hidden fixtures; never native window/drag tests.')
+modes.add_argument('--displayed-only',action='store_true',help='Run the native-window fixture matrix; requires Resolve closed.')
 args=parser.parse_args()
 resolve = subprocess.run(['pgrep', '-x', 'Resolve'], capture_output=True, text=True)
 if not args.hidden_only and resolve.returncode != 1:
@@ -26,7 +27,7 @@ if not args.hidden_only and resolve.returncode != 1:
     sys.exit(2)
 
 commit = git('rev-parse', 'HEAD')
-stamp = ('hidden-' if args.hidden_only else 'functional-' if args.functional_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+stamp = ('displayed-' if args.displayed_only else 'hidden-' if args.hidden_only else 'functional-' if args.functional_only else '') + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
 output = root / 'build/macos/verification' / (commit[:10] + '-' + stamp)
 output.mkdir(parents=True, exist_ok=False)
 tests = ['crash-session','workspace-headers','first-install-profile','settings-profile','modular-layout-recovery','attached-toolbar-reveal','native-keyboard-navigation','workflow-command-menu','panel-command-menu','source-presentation','edit-page-lifecycle','workflow-command','workflow-wrappers','panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories', 'panel-commands', 'timeline-control', 'window-stack-policy', 'build-manifest', 'panel-placement', 'diagnostics', 'layout-plans',
@@ -37,11 +38,13 @@ if args.functional_only:
 if args.hidden_only:
     tests=['crash-session','workspace-headers','first-install-profile','settings-profile','modular-layout-recovery','attached-toolbar-reveal','native-keyboard-navigation','workflow-command-menu','panel-command-menu','source-presentation','edit-page-lifecycle','workflow-command','workflow-wrappers','panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
 tests += ['panel-caller-flow','keyframes-panel-flow','project-preset-restore','display-placement','pinned-workspace-header','surface-page-navigation','native-tab-viewport','native-preset-bindings','interaction-audit','timeline-overflow','background-flow', 'page-workspace-state','page-arrangement-controls','page-panel-inventory','native-surface-doors','native-entry-flow','clean-arrangements','opengate-first-open','resolve-layout-policy','panel-title-gesture','vacated-contents']
-receipt = {'matrix': 'hidden' if args.hidden_only else 'functional' if args.functional_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
+if args.displayed_only:
+    tests=['panel-sessions','panel-groups','native-arrangements','native-workspace-ui','workspace-reopen','reliability','controls-hidden','viewer-expansion-latency']
+receipt = {'matrix': 'displayed' if args.displayed_only else 'hidden' if args.hidden_only else 'functional' if args.functional_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),
            'scope': ('Hidden fixtures only; displayed/native-window and responsiveness checks excluded' if args.hidden_only else 'Fixtures only; does not establish live Resolve or GPU/playback acceptance'),
-           'performance_gate': 'not run; previously failed; no smoothness claim' if args.functional_only or args.hidden_only else 'included',
+           'performance_gate': 'not run; previously failed; no smoothness claim' if args.functional_only or args.hidden_only or args.displayed_only else 'included',
            'tests': [], 'all_passed': False}
 def save():
     temporary = output / 'receipt.tmp'

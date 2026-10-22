@@ -1,0 +1,54 @@
+name: Windows baseline and shared workspace checks
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/0.0.2-prototype]
+permissions:
+  contents: read
+jobs:
+  windows-build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build-only Qt dependencies
+        shell: pwsh
+        run: |
+          python -m pip install aqtinstall==3.3.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 --outputdir "$env:RUNNER_TEMP/Qt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Compile and exercise the Windows backend
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./infrastructure/windows/build-release.ps1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath windows-build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Windows prototype installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
+          if (!(Test-Path $compiler)) { throw 'Inno Setup compiler is missing from the Windows runner.' }
+          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" infrastructure/windows/prototype-installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash release/packages/*.exe -Algorithm SHA256 | Format-List | Out-File release/packages/SHA256SUMS.txt
+      - name: Retain Windows prototype installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenGate-0.0.2-Windows-prototype
+          path: release/packages/*
+          if-no-files-found: error
+      - name: Retain build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build-evidence-${{ github.sha }}
+          path: |
+            windows-build.log
+            build/windows/**/release-manifest.json
+            build/windows/**/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 14
+# Full managed-workspace integration and Resolve runtime parity remain open.
+# This workflow packages an explicitly limited prototype; it never publishes a release.
+# Qt installer syntax: https://aqtinstall.readthedocs.io/en/v3.3.0/cli.html

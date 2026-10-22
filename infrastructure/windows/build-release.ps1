@@ -53,6 +53,7 @@ try {
     Invoke-Checked 'cmake' @('--build', $testBuild, '--config', 'Release', '--', '/m:1', '/nr:false')
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
+    Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
     Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
     Invoke-Checked $test @()

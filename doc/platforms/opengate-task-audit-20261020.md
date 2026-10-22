@@ -1,3 +1,166 @@
+## Developer ID distribution preparation — 2026-10-22
+
+Resolve is closed. The displayed matrix at 59a1d6d passes 8/8, clean/source
+unchanged, and production src is identical to runtime 13ae93d. Together with the
+44/44 hidden receipt this permits packaging the exact runtime; live Resolve and
+uninstall/reinstall acceptance are still open.
+
+Usable Developer ID Application and Installer identities are available for the
+same team. The existing CineWaltz notarization Keychain profile authenticates;
+no OpenGate-specific account, password or profile is required. The earlier extra
+credential setup was unnecessary. No secret values were read or stored in source.
+
+Packaging now has a focused signing/notarization module: sign each native code
+item with Developer ID, hardened runtime and secure timestamps; sign the outer
+installer; submit using a named existing Keychain profile; require Accepted,
+staple and validate the ticket, and assess the final installer with Gatekeeper.
+Signing changes signature bytes, so both source and distributed runtime hashes
+are recorded, and the complete archived payload is checked against signed hashes.
+Normal distribution packaging requires signing and a notarization profile. Local
+candidates remain explicitly distinguishable. Fixture tests verify rejection of
+ambiguous/mismatched identities and rejected notarization, plus the required
+accepted-ticket/Gatekeeper path; actual Apple acceptance follows separately.
+
+GitHub push/publication remains on hold. Windows integration remains incomplete;
+its manually dispatched build workflow is local and no Windows artifact exists.
+
+## Local candidate archive built — 2026-10-22
+
+Runtime 13ae93d; packaging source 0e4461c. The local, unpublished Mac package is
+build/macos/candidates/0.1.0-prototype-13ae93d-pkg0e4461c/
+OpenGate-0.1.0-Candidate-macOS-13ae93d-pkg0e4461c.pkg.
+SHA-256: 404f7038ea5c44c374d199fac82347748fdabfba3a152499224dee0e75170ca3.
+Every archived payload file matches its staged hash, and macOS Installer's
+read-only showChoicesXML inspection accepts the archive. Displayed tests and live
+Mac/Windows runtime validation remain pending. It is not an install-ready or
+published release. Candidate notes explicitly describe these limits.
+
+The four pkgbuild "write: Permission denied" warnings persist outside the sandbox
+and reproduce on an unrelated one-file package. They are not specific to bundle
+inference or this payload. Tool exit is zero; archive integrity and Installer
+choices pass. The warning remains recorded in build/macos/candidate-review.json.
+Installed helper hash remains the accepted a7ce036 hash; no install/profile reset,
+project/media modification, push or publication occurred. Jordan holds publication
+until Resolve is closed and local installation checks are completed.
+
+## Local installer candidate preparation — 2026-10-22
+
+User requests a double-click download/install rehearsal and explicitly holds push
+and publication until Resolve is closed and local checks are completed. A local
+candidate package may be generated with displayed/live checks explicitly pending;
+normal release packaging continues to require matching hidden and displayed
+receipts. Do not present the candidate exception as a passed verification gate.
+
+Clean Mac runtime 13ae93d1a29f8ea64a5f344da9e9623d28ac15df passes 44/44 hidden
+fixtures, source unchanged. Universal helper, I/O bootstrap and launcher build.
+The earlier e25e5d0 matrix passed its suites but source changed mid-run, so it is
+not an installable verification receipt. The expanded Mixer shortcut fixture's
+missing active-window setup was corrected without weakening the production guard.
+
+Branch build/reversible-prototype-installer reuses the existing packager with
+focused input-validation, payload, transaction, legacy-loader and support-export
+modules. VERSION supplies 0.1.0; runtime and packaging commits identify each build.
+No existing profile is reset. Fresh seeding selects immutable Resolve Layout and
+includes only the optional Jordan Tetewsky Preset. Newer schema writers are
+rejected rather than rewritten; arbitrary historical/future downgrade compatibility
+is not claimed. Applications/OpenGate Tools provides support export and uninstall.
+
+Tests pass: real staged universal payload and complete file hashes; current preset
+seeding and existing/partial profile preservation; real transaction scripts against
+an isolated root for upgrade/reinstall/downgrade, corruption rollback, interrupted
+recovery, newer-schema rejection, exact obsolete-command retirement, uninstall/
+restore, unrelated workflow preservation and unchanged user-preset bytes; JXA
+support export excluding private project/path/nested fields; release evidence
+rejection for missing displayed checks, changed source and empty/failed suites.
+Tests do not establish actual macOS Installer rollback, native Resolve return after
+uninstall, first-user live rendering, Gatekeeper prompts or performance.
+
+Read-only inventory found two prior OpenGate retired loader bundles still under
+Resolve's I/O plugin directory. Their scanner behavior is not established. The
+candidate transaction recognizes only timestamped retired directories with an
+OpenGate build manifest and both expected loader binaries, checkpoints them, and
+moves their active-tree copies out only when installation completes. Recovery
+retains their exact prior state. No live files have been moved by development.
+
+Support reports are local/user-exported and contain selected runtime fields,
+installer phases and version metadata, not raw logs or project/media contents.
+The candidate notes explicitly state that this runtime is not yet live-validated
+inside Resolve on macOS or Windows, and no Windows artifact is supplied. Windows
+managed-workspace integration is still incomplete. No push, release publication,
+installation, profile reset or project/media modification has occurred.
+
+## Mixer native title candidate — 2026-10-22
+
+Branch fix/mixer-native-title-drag contains the menu optimization and shared Panels
+extraction. A new assembled first-open fixture models lblMixerMeter under
+frameMixerMeterTitle as a custom QWidget rather than a QLabel. It fails before the
+repair at custom native Mixer title drag; the unchanged placement-button test
+passes. The adapter now recognizes only this captured title identity, subject to
+the existing shallow-header and gesture checks. No overlay, new host/session,
+header strip, alternate Mixer alias or central controller growth.
+
+Initial repaired first-open and title-gesture fixtures pass; expanded Mixer recall,
+maximize/restore and ownership assertions are being checked. Universal helper
+compilation passes; final clean-commit build and broader verification follow.
+This is a candidate for a specific demonstrated custom-title gap, not proof that
+it explains every screenshot/control-lifetime issue. Actual native title dragging
+and GPU content remain live gates. Existing installed a7ce036 is unchanged.
+## Windows build preparation — 2026-10-22
+
+Branch feature/windows-workspace-parity now prepares a manually dispatched Windows
+MSVC/Qt baseline build, the existing backend fixture checks, and a new shared
+WorkspacePanelCallers regression. It does not package/publish or claim the older
+Windows controller implements the managed Mac workspace. The shared regression
+covers floating hide/recall identity and geometry, inactive-tab selection without
+relocation, page-change cancellation and unavailable panels.
+
+The GitHub API confirms Jordan's repository has no registered workflows. The new
+workflow remains local: pushing/registering/dispatching it is not yet authorized.
+No Windows compilation has occurred. A Windows build environment is required
+before the native workspace/session port can be compiled and iterated safely;
+shared Qt checks on this Mac are separate evidence, not Windows acceptance.
+
+## Delivery requirements added — 2026-10-22
+
+See opengate-prototype-delivery.md for the ordered implementation/acceptance list.
+Jordan requests double-click per-platform installers, version/platform detection,
+reversible upgrade/downgrade/removal, preservation of presets, explicit isolated
+first-user previews, and user-exported diagnostic reports. Uninstall must return
+to native Resolve on reopening. A macOS .pkg is not a Windows executable; offer
+separate platform installers with one behavior and version/data contract.
+No new installation, publication or claim of Windows parity has occurred.
+
+## Follow-up in progress — menu refresh and Mixer review (2026-10-22)
+
+Branch perf/panel-menu-refresh starts at accepted main e885918. It resolves the
+current page once per Panels inventory render and excludes OpenGate-owned menu
+mutations from native-command discovery invalidation. Native menu changes still
+invalidate discovery; invocation still rechecks current page and availability.
+No central controller changes, timers shortened or acquisition parallelism added.
+
+Verification: hidden workspace-menu, native-unmodified workflow-command-menu and
+assembled opengate-first-open fixtures pass. Regression checks cover one page
+query for 20 panels, owned submenu churn without command rediscovery, and late
+native command observation. The sandboxed first menu run aborted because macOS
+window services were inaccessible; the unsandboxed synthetic run passed. This is
+fixture evidence only: no claimed live restoration speedup and no installation,
+main merge, push, package or Windows build.
+
+Mixer diagnosis remains open. The 07:50 widget capture contains a visible
+unboundNativeUndock_frameEditAudioMeter beside visible Edit Mixer options. The
+unmatched frameTimelineMixer ancestry belongs to a different native variant and
+does not establish the cause of the screenshot. Do not alias the Edit session to
+that surface on this evidence. Confirm title-drag recognition and control lifetime
+in the exact failing state. User's Source Monitor hotkey report was withdrawn.
+
+Windows architecture audit: existing Windows release still runs core/controller.cpp
+and SidebarFloatSession; the fuller managed workspace runs through the Mac
+PanelControls/session/binding modules. Equal behavior is not implemented by the
+current Windows backend. This machine lacks CMake, MSVC, Windows SDK and Windows Qt
+development libraries; no Windows compilation or runtime acceptance is possible
+with the installed toolchain. Port by extracting the existing Qt workspace modules
+behind native adapters, with shared flow tests; do not create a second workspace UI.
+
 ## User-approved main baseline — 2026-10-22
 
 Jordan reports the installed caller/Keyframes candidate is working and explicitly

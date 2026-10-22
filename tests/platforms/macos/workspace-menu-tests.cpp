@@ -95,6 +95,15 @@ int main(int argc, char **argv)
         check(panel.findChildren<QToolButton *>().size()==1 && options->parentWidget()==&panel,
             "destroying header decoration removes owned buttons and stale drag callbacks while preserving native options");
     }
+    {
+        Unbound::PanelCallerMenu callers; QMenu root; int pageQueries=0;
+        callers.currentPage=[&] { ++pageQueries; return QStringLiteral("edit"); };
+        for(int i=0;i<20;++i) callers.add({QString::number(i),QString::number(i),"edit",[] {return true;},[] {return true;},[] {}});
+        callers.wire(&root);
+        check(pageQueries==1,"one panel menu refresh resolves page context once for the entire inventory");
+        pageQueries=0; QMenu flat; callers.populateFlat(&flat);
+        check(pageQueries==1 && flat.actions().size()==20,"flat inventory shares one current-page snapshot without omitting panels");
+    }
     QMenuBar bar; bar.setAttribute(Qt::WA_DontShowOnScreen);
     QMenu workspace(&bar); workspace.setObjectName("workspace"); bar.addMenu(&workspace); bar.addMenu("Help");
     QMenu *root = nullptr;

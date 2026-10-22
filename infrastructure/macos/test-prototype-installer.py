@@ -15,5 +15,6 @@ with tempfile.TemporaryDirectory(prefix='opengate-installer-') as temporary:
  for sentinel in ['Workspace.json','Arrangements.json','Profile.json']:
   home=base/sentinel;directory=home/'Library/Application Support/Unbound';directory.mkdir(parents=True);(directory/sentinel).write_text('preserve')
   seed(home);assert list(directory.iterdir())==[directory/sentinel] and (directory/sentinel).read_text()=='preserve'
- for p in (root/'infrastructure/macos/installer').iterdir():subprocess.run(['/bin/bash','-n',str(p)],check=True)
+ for p in (root/'infrastructure/macos/installer').iterdir():
+  if p.suffix in ('.sh','.command') or p.name in ('preinstall','postinstall'): subprocess.run(['/bin/bash','-n',str(p)],check=True)
  print('PASS: shell installer fresh profile, bundled presets, existing/partial profiles and shortcuts preserved; shell syntax')
