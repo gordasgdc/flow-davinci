@@ -1,3 +1,36 @@
+## Mixer repair verification and replacement release — 2026-10-22
+
+Runtime e3caabf7761cf39830b489c708af3f8fe98cabb5 is merged and pushed to main.
+The universal Mac helper/bootstrap/launcher build passes. Clean, unchanged-source
+receipts in the reversible-prototype-installer worktree:
+- build/macos/verification/e3caabf776-hidden-20261022T155441Z/receipt.json: 44/44.
+- build/macos/verification/e3caabf776-displayed-20261022T155515Z/receipt.json: 9/9.
+
+The numbered entry contract was reread. Repair coverage addresses native title
+entry and ownership (8/9), temporary pointer maximize/restore (4/7), and the
+assembled sequence (12): first-open nested Mixer -> pointer maximize/restore ->
+title drag before placement-button use -> float -> hide/recall same host/frame ->
+maximize/restore -> mount beside Source -> readable mounted title -> pointer
+maximize/restore -> native-title detach -> dock -> Native ownership restoration.
+The same fixture retains first-launch/unsaved restart, immutable Resolve Layout,
+independent bands, page return and Native/OpenGate transitions. Named save/update
+and other panel regressions remain covered by the passing existing suites.
+These are synthetic fixtures; native GPU rendering, physical/remapped keys and
+this exact repair inside Resolve remain live acceptance gaps. Jordan accepted the
+previous Mac pass overall, with the reported Mixer failures; that is not live
+acceptance of e3caabf. No new helper has been installed by the agent.
+
+Windows run https://github.com/jordantetewsky/OpenGate/actions/runs/39809501592
+passes compilation, shared/native fixtures and installer packaging at e3caabf.
+Windows managed-workspace parity is still incomplete and disclosed prominently.
+
+Apple accepted the replacement Mac package, with stapling, Gatekeeper and full
+archived-payload hash verification passing. First 0.0.2 prerelease withdrawn as a
+draft. Replacement: https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.2
+Both published installer downloads were retrieved and checked against SHA256.
+Version remains 0.0.2; tag, source/build identity and checksums distinguish revision 2.
+Presets, settings, projects/media and the best known live installation are retained.
+
 ## Mounted Mixer interaction repair — 2026-10-22
 
 Jordan accepted the overall 0.0.2 experience and authorized merging the existing
