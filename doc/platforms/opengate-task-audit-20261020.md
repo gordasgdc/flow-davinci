@@ -1577,3 +1577,37 @@ its expanded hidden matrix had38 passes and a completion-log timing failure that
 passed in isolation. A bounded event-consumption wait is being verified in that
 fixture; working hotkey production code was not changed for that failure. Final
 matrix/displayed checks and live rendering remain open. Do not mark flow complete.
+
+## Revision 3 repair release and fresh-user reset — 2026-10-22
+
+Mixer baseline remains on main. New startup acquisition, individual/stack docking
+and real section-title repairs remain on integration/startup-and-stack-repair,
+not merged to main pending live acceptance. Runtime 88988d4; packaging/test
+checkpoint 75e8217 has identical production source. Universal Mac build passes.
+Final clean receipts: 75e8217205-hidden-20261022T172058Z (47/47) and
+75e8217205-displayed-20261022T173004Z (9/9), under build/macos/verification.
+The first concurrent displayed run failed viewer latency; isolated and final
+serial runs passed. No performance improvement or proven concurrency cause claimed.
+
+Numbered entry contract reread: first-open assembly exercises one-shot lazy Index
+acquisition, unsaved restart, independent bands, Mixer native-title drag and
+maximize, actual floating-host stack drop, and Native ownership return. Geometry
+fixtures cover individual/all four section edges and readable composite titles.
+Real Resolve rendering, physical/remapped inputs and this candidate's complete
+live sequence still require Jordan's acceptance. Windows managed-workspace parity
+remains incomplete; its unchanged e3caabf installer is retained and disclosed.
+
+Revision 2 withdrawn. Revision 3 published as prerelease, not latest:
+https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.3
+Mac package signed, Apple notarization accepted, stapled, Gatekeeper/payload
+verification passed. Both published installer downloads match SHA256 checksums.
+
+At Jordan's request, with Resolve closed, the installed package was uninstalled
+using its transactional uninstaller; only its package receipt was forgotten.
+Every inventoried installed path is absent, with no matching plugin autoload
+leftovers. Current settings moved with verified hashes to Desktop/OpenGate Before
+Fresh Install Revision 3 20261022-134904/Settings. Original pre-test presets remain
+in Desktop/OpenGate Before Fresh Install 20261022-111757/Settings. Native Resolve
+preferences, projects/media and diagnostic logs were not reset. Recovery:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/2FC8056B-A91C-4B67-9CD4-6E93BD92332A/Restore Previous OpenGate.command
+No revision 3 installation performed: Jordan will download and double-click it.
