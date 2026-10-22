@@ -908,7 +908,9 @@ private:
         }
         outcome("undock", i, error);updateRow(i);updateNativeSizing();
         if(!error.isEmpty()&&workspaceRestore->failPreset(p.label+": "+error))return;
-        if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty())restoreTimer.start(0);
+        if(error.isEmpty())for(const auto &next:panels)if(next.desired&&!next.session->active()) {
+            restoreTimer.start(0);break;
+        }
         // A first maximize from Native UI may need to create the floating
         // session. It uses the same deferred checkpoint as an existing session.
         if(expansionController->index()==i)saveTimer.start();else save();
@@ -1044,7 +1046,7 @@ private:
             else { delete group; Unbound::logEvent(QStringLiteral("group.restore.pending"), {{"error", error}}); }
         }
         if (requested) status->setText(pendingGroups.isEmpty() ? QStringLiteral("Panel groups restored.") : QStringLiteral("Some groups are waiting for unavailable panels."));
-        save();
+        workspaceRestore->finishPreset();save();
     }
     void quickExport()
     {
@@ -1142,8 +1144,8 @@ private:
         if (quitting) return;
         // A partially acquired preset is a transition, not a working layout.
         // Preserve the previous complete page checkpoint if native readiness fails.
-        if(!restoringNative && nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()) {
-            Unbound::logEvent("workspace.save.deferred",{{"reason","native-plan-pending"}});return;
+        if(!restoringNative && (!pendingGroups.isEmpty() || (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()))) {
+            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-assembly-pending"}});return;
         }
         Unbound::UiWorkTiming timing("workspace.save",this);
         QElapsedTimer phases;phases.start();

@@ -9,6 +9,19 @@ installation, publication, merge to main and live-project changes remain on hold
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
 
+## Displayed-test repair — floating restore continuation
+
+The displayed candidate run caught real restore failures: sequential acquisition
+only scheduled its next step for a pending managed native plan, so floating-only
+workspace/group reload could stop after its first panel. Fixed continuation to
+advance while any desired session is still inactive. Pending groups also block
+checkpoint replacement, and final group assembly runs the completion reporter.
+Focused eleven-panel session, group reload and native-workspace UI suites now pass.
+The isolated reliability rerun passes with the application active (prior displayed
+run reported inactive state and focus assertions failed). Final clean-commit
+combined displayed run remains required. Retain the failed displayed receipt;
+no repair from these branches has been installed or merged into main.
+
 ## Native-binding fixture correction — supersedes timing-only diagnosis
 
 The clean 978bcce follow-up still failed, so fixed waits were not sufficient.
