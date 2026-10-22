@@ -18,7 +18,12 @@
 
 int main(int argc,char **argv) {
     QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);
-    QTemporaryDir directory;qputenv("UNBOUND_SETTINGS_FILE",directory.filePath("Unbound.json").toUtf8());
+    QDir().mkpath("build/windows/fixtures");
+    QTemporaryDir directory(QDir::currentPath()+"/build/windows/fixtures/retained-callers-XXXXXX");
+    directory.setAutoRemove(false);
+    if(!directory.isValid())return 2;
+    std::printf("Retained-caller evidence: %s\n",qPrintable(directory.path()));
+    qputenv("UNBOUND_SETTINGS_FILE",directory.filePath("Unbound.json").toUtf8());
     qputenv("UNBOUND_DIAGNOSTICS_DIR",directory.filePath("Logs").toUtf8());
     qputenv("OPENGATE_WINDOWS_MANAGED_CALLERS","1");
     int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
@@ -30,7 +35,9 @@ int main(int argc,char **argv) {
     };
     QMainWindow main;main.setObjectName("UiMainWindow");main.resize(1000,700);main.menuBar()->addMenu("Workspace");
     auto page=new QWidget(&main);page->setObjectName("WStackPage_Conform");main.setCentralWidget(page);
-    auto column=new QVBoxLayout(page);
+    auto pageLayout=new QVBoxLayout(page);
+    auto widgets=new QWidget(page);widgets->setObjectName("frameEditPageWidgetsContainer");pageLayout->addWidget(widgets);
+    auto column=new QVBoxLayout(widgets);
     auto toggle=new QPushButton("Inspector",page);toggle->setObjectName("btnEditToggleInspectorInSSM");toggle->setCheckable(true);toggle->setChecked(true);column->addWidget(toggle);
     auto pane=new QWidget(page);pane->setObjectName("frameEditPageInspector");column->addWidget(pane);
     auto original=new QVBoxLayout(pane);auto live=new QPushButton("Native content",pane);original->addWidget(live);

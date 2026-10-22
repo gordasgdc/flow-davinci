@@ -51,6 +51,7 @@ jobs:
             build/windows/windows-build.log
             build/windows/**/release-manifest.json
             build/windows/**/CMakeFiles/CMakeConfigureLog.yaml
+            build/windows/fixtures/**
           if-no-files-found: warn
           retention-days: 14
 # Full managed-workspace integration and Resolve runtime parity remain open.
