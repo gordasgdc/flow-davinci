@@ -68,7 +68,11 @@ int main(int argc,char **argv){
  check(keySession&&keySession->floating()&&!binding->contains("frameEditPageKeyframeEditor"),"Keyframes float control detaches the existing panel session");
  if(keySession){
   press(nativeDetach);check(binding->contains("frameEditPageKeyframeEditor")&&editor->window()==&main&&checked("Keyframes"),"floating Keyframes docks into the visible OpenGate arrangement");
-  press(nativeDetach);check(keySession->floating(),"docked Keyframes can float again through the same control");
+  auto keyDoor=buttons["KeyframeEditor"];const auto dragPoint=keyDoor->rect().center();
+  QMouseEvent down(QEvent::MouseButtonPress,dragPoint,keyDoor->mapToGlobal(dragPoint),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(keyDoor,&down);
+  QMouseEvent move(QEvent::MouseMove,dragPoint+QPoint(90,0),keyDoor->mapToGlobal(dragPoint+QPoint(90,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(keyDoor,&move);
+  QMouseEvent up(QEvent::MouseButtonRelease,dragPoint+QPoint(90,0),keyDoor->mapToGlobal(dragPoint+QPoint(90,0)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(keyDoor,&up);settle(350);
+  check(keySession->floating(),"dragging the native Keyframes title floats its existing session without firing a door click");
   auto host=keySession->window();host->setGeometry(160,150,480,340);settle(150);const auto frame=host->geometry();
   call("Keyframes");press(buttons["KeyframeEditor"]);check(keySession->window()==host&&host->geometry()==frame&&checked("Keyframes"),"Keyframes hide/recall preserves floating window and position");
   QApplication::setActiveWindow(&main);check(controls.invokeWorkflowCommand("panel.expand.frameEditPageKeyframeEditor"),"registered Keyframes maximize command dispatches");settle(300);

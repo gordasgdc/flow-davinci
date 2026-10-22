@@ -35,7 +35,11 @@ Additional assembled checks reproduced two gaps and now pass focused repairs:
   belong to Resolve. This is a state reflection, not another visibility command.
 Keyframes maximize now checks exact workspace viewport bounds through all four
 band combinations. The separate command-submenu fixture is added to the matrix.
-Full final clean-commit matrix and production build remain pending. Displayed fixtures and replacement require Resolve closed.
+Final clean-commit verification results and build hashes are recorded in
+`build/macos/candidate-review.json`, alongside the per-run receipts. Read those
+receipts for actual status; the earlier 42/43 run is retained as failure evidence.
+Direct synthetic Keyframes title dragging also passes; physical pointer capture
+and native custom rendering remain live gates. Displayed fixtures and replacement require Resolve closed.
 The native GPU/keyframe content, actual pointer capture and physical remapped-key
 behavior need live acceptance. Source/Program visual fit remains live review.
 
