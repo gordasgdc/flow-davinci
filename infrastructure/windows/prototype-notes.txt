@@ -21,3 +21,11 @@ as Setup Log files. Keep the exact build and describe the steps when reporting.
 Prototype releases may be withdrawn and replaced after testing.
 
 OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT). See LICENSE.
+
+After reproducing a problem, open Start > OpenGate > Export OpenGate Support Logs.
+Send the Desktop ZIP to Jordan with the approximate time, page, panel and steps.
+OpenGate events use the same component/session/sequence format as Mac, including
+input clicks, observed button/action signals, focus/page changes and panel state.
+Logs: %LOCALAPPDATA%\OpenGate\Logs. Exports include build provenance and checksums.
+No project, media, Resolve preferences or typed editor contents are collected.
+Nothing is uploaded automatically; export leaves settings and Resolve running.

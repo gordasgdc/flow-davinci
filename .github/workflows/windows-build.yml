@@ -2,7 +2,7 @@ name: Windows baseline and shared workspace checks
 on:
   workflow_dispatch:
   push:
-    branches: [release/0.0.2-prototype]
+    branches: [release/0.0.2-prototype, feature/windows-managed-workspace]
 permissions:
   contents: read
 jobs:
@@ -32,6 +32,9 @@ jobs:
           & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" infrastructure/windows/prototype-installer.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash release/packages/*.exe -Algorithm SHA256 | Format-List | Out-File release/packages/SHA256SUMS.txt
+      - name: Verify support export without changing settings or stopping Resolve
+        shell: powershell
+        run: ./tests/platforms/windows/support-export.ps1
       - name: Retain Windows prototype installer
         uses: actions/upload-artifact@v4
         with:

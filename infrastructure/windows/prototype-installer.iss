@@ -29,8 +29,12 @@ Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.exe"; DestDir: "{app}
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\infrastructure\windows\prototype-notes.txt"; DestDir: "{app}"; DestName: "README.txt"; Flags: ignoreversion
+Source: "{#SourceRoot}\release\win\{#BuildVersion}\release-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceRoot}\infrastructure\windows\export-support.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceRoot}\infrastructure\windows\export-support.cmd"; DestDir: "{app}"; DestName: "Export OpenGate Support Logs.cmd"; Flags: ignoreversion
 [Icons]
 Name: "{group}\OpenGate"; Filename: "{app}\Unbound.exe"
+Name: "{group}\Export OpenGate Support Logs"; Filename: "{app}\Export OpenGate Support Logs.cmd"
 Name: "{group}\Prototype limitations"; Filename: "{app}\README.txt"
 Name: "{group}\Uninstall OpenGate"; Filename: "{uninstallexe}"
 [Code]

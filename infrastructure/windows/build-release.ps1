@@ -10,6 +10,9 @@ Set-StrictMode -Version Latest
 $releaseVersion = Get-UnboundReleaseVersion -repoRoot $repoRoot -Version $Version
 $version = $releaseVersion.Version
 $buildId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+$sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the Windows source commit.' }
+$sourceDirty = [bool](& git -C $repoRoot status --porcelain)
 if ($BuildNumber -lt 0 -or $BuildNumber -gt 65535) { throw 'BuildNumber must be 0..65535 (the Windows numeric revision; default 0).' }
 if (!(Test-Path -LiteralPath (Join-Path $QtPath 'lib\cmake\Qt5\Qt5Config.cmake'))) { throw "Qt 5.15.2 development files not found at $QtPath" }
 $releaseRoot = Join-Path $repoRoot 'release\win'
@@ -54,6 +57,8 @@ try {
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
     Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
     Invoke-Checked $test @()
@@ -80,12 +85,13 @@ try {
         Invoke-Checked $test @('--frame-paint-native')
     }
     finally { $env:QT_QPA_PLATFORM = 'offscreen' }
-    # Only these two runtime files are distributed; build records stay in build/.
+    # Preserve binary provenance with the candidate and installed support exporter.
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Version=$version; BuildId=$buildId; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport } |
+    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='windows-floating-pane'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
+    Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"
 } finally {
     if ($locked) { $mutex.ReleaseMutex() }

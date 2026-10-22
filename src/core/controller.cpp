@@ -13,6 +13,8 @@
 #include "mainwindowplacement.h"
 #include "sidebarfloatsession.h"
 #include "panedecoration.h"
+#include "interactiondiagnostics.h"
+#include "crashsession.h"
 
 namespace {
 QString audioToggle(const QString &name)
@@ -81,6 +83,13 @@ public:
     Controller() : QObject(qApp)
     {
         setObjectName(QStringLiteral("UnboundPaneController"));
+        auto journal = new Unbound::CrashSession(this);
+        new Unbound::InteractionDiagnostics(this);
+        auto windows = new Unbound::WindowDiagnostics(this);
+        qApp->installEventFilter(windows);
+        connect(qApp, &QCoreApplication::aboutToQuit, journal, [journal] { journal->markClean(); });
+        Unbound::logEvent("helper.start", {{"backend","windows-floating-pane"},
+            {"managed_workspace_parity",false},{"qt",qVersion()}});
         m_mainPlacement.error = [this](const QString &message) { settingsError(message); };
         m_names = {{"frameEditPageMediaPool", "Media Pool"}, {"frameEditPageSoundLibrary", "Sound Library"},
             {"frameEditPageKeyframeEditor", "Keyframe Editor"}, {"frameEditPageEffectsLibrary", "Effects"},
@@ -125,6 +134,9 @@ protected:
         case QEvent::ParentChange:
             if (auto widget=qobject_cast<QWidget *>(object)) {
                 const auto name=widget->objectName();
+                if (m_names.contains(name)) Unbound::logEvent("panel.native.state", {
+                    {"reason",event->type()==QEvent::Show ? "show" : "parent-change"},
+                    {"panel",name},{"widget",Unbound::widgetState(widget,false)}});
                 if (name==QLatin1String("UiMainWindow") && widget!=m_window) queueBranch(widget);
                 else if (name==QLatin1String("frameEditPageWidgetsContainer")
                     || name==QLatin1String("WStackPage_Conform") || name==QLatin1String("WStackPage_Color")
@@ -140,7 +152,11 @@ protected:
             break;
         case QEvent::Hide:
             if (auto widget=qobject_cast<QWidget *>(object))
+            {
+                if (m_names.contains(widget->objectName())) Unbound::logEvent("panel.native.state", {
+                    {"reason","hide"},{"panel",widget->objectName()},{"widget",Unbound::widgetState(widget,false)}});
                 if (widget->isModal()) scheduleDiscovery(); // Resume deferred restoration.
+            }
             break;
         default: break; // No work on paint, input, timer or playback events.
         }
@@ -320,6 +336,7 @@ private:
     }
     void undock(const QString &name, bool automatic = false)
     {
+        Unbound::logEvent("panel.placement.request",{{"panel",name},{"automatic",automatic}});
         auto decoration = m_decorations.value(name);
         if (!decoration || !decoration->pane()) return;
         auto session = m_sessions.value(name);
@@ -346,6 +363,8 @@ private:
             // The title-bar Close handler calls this same docking operation.
             if (!automatic) session->dock();
             decoration->setFloating(session->active());
+            Unbound::logEvent("panel.dock.complete",{{"panel",name},{"active",session->active()},
+                {"widget",Unbound::widgetState(decoration->pane(),false)}});
             return;
         }
         m_pendingDockToggles.remove(name);
@@ -382,10 +401,13 @@ private:
             settingsError(m_settings.saveFloating(settingsKey(name), true));
         }
         decoration->setFloating(session->active());
+        Unbound::logEvent("panel.undock.complete",{{"panel",name},{"active",session->active()},
+            {"widget",Unbound::widgetState(pane,false)}});
     }
     void error(const QString &text)
     {
         if (text.isEmpty()) return;
+        Unbound::logEvent("helper.error",{{"message",text}});
         auto box = new QMessageBox(QMessageBox::Warning, QStringLiteral("Unbound"), text, QMessageBox::Ok);
         box->setAttribute(Qt::WA_DeleteOnClose);
         box->setAttribute(Qt::WA_QuitOnClose, false);
@@ -410,6 +432,8 @@ private:
                 undock(name);
             });
             m_decorations.insert(name, decoration);
+            Unbound::logEvent("panel.registered",{{"panel",name},{"label",m_names.value(name)},
+                {"widget",Unbound::widgetState(pane,false)}});
         }
         // Project Manager/other pages can exist before Edit is ready. Keep
         // intent pending, without selecting a page or touching empty layouts.
