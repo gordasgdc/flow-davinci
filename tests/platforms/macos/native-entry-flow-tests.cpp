@@ -60,6 +60,8 @@ int main(int argc,char **argv) {
  left->setFixedWidth(nativeButton->sizeHint().width()+leftRow->contentsMargins().left()+leftRow->contentsMargins().right()+leftRow->spacing()+44);settle();
  auto callerStrip=tools->findChild<QWidget *>("openGateToolbarDoors");
  check(callerStrip&&callerStrip->parentWidget()==tools&&callerStrip->width()>28,"viewer callers use the existing toolbar's available space outside the bounded native button row");
+ auto callerControls=callerStrip?callerStrip->findChild<QWidget *>("openGateDoorControls"):nullptr;
+ check(sourceDoor&&sourceDoor->isVisible()&&sourceDoor->width()>=18&&callerControls&&callerControls->width()>=56,"viewer caller buttons receive actual usable layout width, not only a maximum");
  if(callerStrip)callerStrip->setFixedWidth(32);settle();auto overflow=main.findChild<QToolButton *>("openGateToolbarOverflow");
  check(overflow&&overflow->isVisible()&&overflow->menu()->actions().size()==2,"cramped native header retains both monitors in overflow");
  left->setMinimumWidth(0);left->setMaximumWidth(QWIDGETSIZE_MAX);if(callerStrip){callerStrip->setMinimumWidth(0);callerStrip->setMaximumWidth(QWIDGETSIZE_MAX);}settle();

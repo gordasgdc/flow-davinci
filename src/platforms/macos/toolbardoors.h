@@ -105,7 +105,7 @@ private:
         const QString old=strip->property("openGateDoorMode").toString();
         const QString mode=available>=labeled+(old=="labels"?0:24)?"labels":available>=icons+(old=="icons"?0:12)?"icons":"overflow";
         const int width=mode=="labels"?labeled:mode=="icons"?icons:28;
-        auto controls=strip->findChild<QWidget *>("openGateDoorControls");controls->setMaximumWidth(qMin(qMin(available,strip->width()),width));controls->setVisible(available>=28);
+        auto controls=strip->findChild<QWidget *>("openGateDoorControls");controls->setFixedWidth(qMin(qMin(available,strip->width()),width));controls->setVisible(available>=28);
         for(auto button:buttons){const bool more=button->objectName()=="openGateToolbarOverflow";button->setVisible(more?mode=="overflow":mode!="overflow");if(!more)button->setToolButtonStyle(mode=="labels"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);}
         if(old!=mode){strip->setProperty("openGateDoorMode",mode);logEvent("header.controls.mode",{{"mode",mode},{"available",available}});}
     }}

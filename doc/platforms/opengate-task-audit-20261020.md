@@ -1,3 +1,18 @@
+## Current follow-up: visible monitor callers (2026-10-21 evening)
+
+Branch `fix/visible-viewer-toolbar-callers` corrects the existing toolbar accessory,
+without adding a second toolbar or changing panel caller callbacks. Its controls
+used an Ignored horizontal size policy and only a maximum width; the layout could
+allocate zero width despite the outer strip having room. Assign the calculated
+bounded width to the controls so Source Monitor and Program Monitor are visible.
+Existing label/icon/overflow selection remains in place.
+
+The assembled native-entry fixture now checks actual visible button and controls
+width. It fails on the previous sizing (one failure) and passes with the correction
+(zero failures). This is fixture evidence, not live Resolve acceptance. Not installed,
+merged or published. Native-to-OpenGate acquisition/transaction repair remains open;
+this toolbar correction does not resolve that separate failure.
+
 # OpenGate task audit — 2026-10-20
 
 This is the current acceptance list reconstructed from Jordan’s requests, source,
