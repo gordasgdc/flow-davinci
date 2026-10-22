@@ -62,7 +62,8 @@ int main(int argc,char **argv){
  dragMixerTitle();
  check(mixerTitle->window()!=&main,"custom native Mixer title drags its existing session independently of Timeline");
  auto mixerHost=mixerTitle->window();mixerHost->setGeometry(180,140,420,360);settle(150);const auto mixerFrame=mixerHost->geometry();
- check(controls.invokeWorkflowCommand("panel.toggle.frameEditAudioMeter"),"Mixer hotkey command exists");settle(200);
+ QApplication::setActiveWindow(&main);
+ check(controls.invokeWorkflowCommand("panel.toggle.frameEditAudioMeter"),"Mixer hotkey command dispatches with an active Resolve window");settle(200);
  check(!mixerTitle->isVisible(),"Mixer hotkey hides its retained floating panel");
  auto mixerCallers=component<Unbound::PanelCallerMenu>(&controls);QMenu mixerMenu;mixerCallers->populateFlat(&mixerMenu);
  for(auto action:mixerMenu.actions())if(action->text()=="Mixer")action->trigger();settle(250);
