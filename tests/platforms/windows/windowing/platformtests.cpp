@@ -332,6 +332,10 @@ bool runPlatformWindowTests(QApplication &app)
         windowMouse(QEvent::MouseButtonRelease, buttonPoint, Qt::LeftButton, Qt::NoButton);
         check(clicks == beforeWindow + 1, "Window drag left Qt's button grab stuck");
         SetCursorPos(savedCursor.x, savedCursor.y);
+        // Prior native drag cases can leave the host beyond a small CI display.
+        // Keep the next cursor-driven gesture inside the available work area.
+        host.move(QGuiApplication::primaryScreen()->availableGeometry().topLeft() + QPoint(100,100));
+        app.processEvents();
         // Background and plain title labels share the button's movement path;
         // controls still receive their original press immediately.
         QLabel title("Media Pool", &header);
