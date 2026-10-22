@@ -9,11 +9,13 @@
 #include <functional>
 #include <utility>
 namespace Unbound {
-inline bool panelTitleHit(QWidget *title,QPoint point) {
+inline bool panelTitleHit(QWidget *title,QPoint point,const QString &nativeText={}) {
     if(!title || !title->rect().adjusted(2,2,-2,-2).contains(point))return false;
-    if(auto label=qobject_cast<QLabel *>(title)) {
-        const QSize ink(qMin(label->width(),label->fontMetrics().horizontalAdvance(label->text())+12),label->height());
-        return QStyle::alignedRect(label->layoutDirection(),label->alignment(),ink,label->rect()).contains(point);
+    auto label=qobject_cast<QLabel *>(title);
+    if(label || !nativeText.isEmpty()) {
+        const auto text=nativeText.isEmpty()?label->text():nativeText;
+        const QSize ink(qMin(title->width(),title->fontMetrics().horizontalAdvance(text)+12),title->height());
+        return QStyle::alignedRect(title->layoutDirection(),label?label->alignment():Qt::AlignLeft|Qt::AlignVCenter,ink,title->rect()).contains(point);
     }
     return true;
 }
@@ -21,13 +23,13 @@ inline bool panelTitleHit(QWidget *title,QPoint point) {
 // Native clicks pass through; only a held left-button threshold starts a drag.
 class PanelTitleGesture : public QObject {
 public:
-    PanelTitleGesture(QWidget *title,QObject *owner,std::function<void(QPoint)> move)
-        :QObject(owner),title(title),move(std::move(move)) {title->installEventFilter(this);}
+    PanelTitleGesture(QWidget *title,QObject *owner,std::function<void(QPoint)> move,QString nativeText={})
+        :QObject(owner),title(title),move(std::move(move)),nativeText(std::move(nativeText)) {title->installEventFilter(this);}
     ~PanelTitleGesture() override {if(title)title->removeEventFilter(this);}
 protected:
     bool eventFilter(QObject *,QEvent *event) override {
         if(event->type()==QEvent::MouseButtonPress) {
-            auto mouse=static_cast<QMouseEvent *>(event);armed=mouse->button()==Qt::LeftButton&&panelTitleHit(title,mouse->pos());dragged=false;press=mouse->globalPos();
+            auto mouse=static_cast<QMouseEvent *>(event);armed=mouse->button()==Qt::LeftButton&&panelTitleHit(title,mouse->pos(),nativeText);dragged=false;press=mouse->globalPos();
         } else if(event->type()==QEvent::MouseMove && armed) {
             auto mouse=static_cast<QMouseEvent *>(event);
             if(mouse->buttons().testFlag(Qt::LeftButton) && (mouse->globalPos()-press).manhattanLength()>=QApplication::startDragDistance()) {
@@ -41,6 +43,6 @@ protected:
         return false;
     }
 private:
-    QPointer<QWidget> title;std::function<void(QPoint)> move;QPoint press;bool armed=false,dragged=false;
+    QPointer<QWidget> title;std::function<void(QPoint)> move;QString nativeText;QPoint press;bool armed=false,dragged=false;
 };
 }

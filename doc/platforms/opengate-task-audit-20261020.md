@@ -1,3 +1,28 @@
+## Mounted Mixer interaction repair — 2026-10-22
+
+Jordan accepted the overall 0.0.2 experience and authorized merging the existing
+prototype baseline: local main is 76f0eb4. The first 0.0.2 prerelease is withdrawn
+as a draft pending its replacement; installed/runtime source remains 13ae93d.
+
+Live session 6c834dab logs title presses/movement without panel.title.drag, and
+backtick expands Timeline after Mixer-title interaction at 15:17:07/15:19:50 UTC.
+Detached Mixer expands/restores successfully. A regression using an empty-base-text
+elided QLabel fails against the original title recognizer (exit 5), and passes
+with canonical native-title recognition and bounded text hit-testing. The earlier
+fixture only used a QWidget title and exercised dragging after a placement-button
+cycle; those checks were insufficient for the reported native label variant.
+
+The isolated repair uses existing title-gesture/session modules and a small shared
+nearest-ancestor pointer-target helper. PanelControls becomes shorter. Header
+wiring uses the existing panelSurface lookup after ownership transfers. Native
+Mixer's title gets a drag tooltip; no replacement content, duplicate title strip,
+new panel implementation, layout preset change or settings reset is introduced.
+A displayed assembled fixture passes pointer-based nested Mixer maximize/restore;
+additional remount/title/restore coverage and clean matrices follow this commit.
+These are synthetic fixtures, not acceptance of the repair inside live Resolve.
+Windows managed-workspace parity remains incomplete; its baseline build and
+installer checks passed previously. No new helper has been installed.
+
 ## Developer ID distribution preparation — 2026-10-22
 
 Resolve is closed. The displayed matrix at 59a1d6d passes 8/8, clean/source

@@ -39,7 +39,7 @@ if args.hidden_only:
     tests=['crash-session','workspace-headers','first-install-profile','settings-profile','modular-layout-recovery','attached-toolbar-reveal','native-keyboard-navigation','workflow-command-menu','panel-command-menu','source-presentation','edit-page-lifecycle','workflow-command','workflow-wrappers','panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
 tests += ['panel-caller-flow','keyframes-panel-flow','project-preset-restore','display-placement','pinned-workspace-header','surface-page-navigation','native-tab-viewport','native-preset-bindings','interaction-audit','timeline-overflow','background-flow', 'page-workspace-state','page-arrangement-controls','page-panel-inventory','native-surface-doors','native-entry-flow','clean-arrangements','opengate-first-open','resolve-layout-policy','panel-title-gesture','vacated-contents']
 if args.displayed_only:
-    tests=['panel-sessions','panel-groups','native-arrangements','native-workspace-ui','workspace-reopen','reliability','controls-hidden','viewer-expansion-latency']
+    tests=['panel-sessions','panel-groups','native-arrangements','native-workspace-ui','workspace-reopen','reliability','controls-hidden','viewer-expansion-latency','mixer-mounted']
 receipt = {'matrix': 'displayed' if args.displayed_only else 'hidden' if args.hidden_only else 'functional' if args.functional_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
            'dirty_at_start': bool(git('status', '--porcelain')),
            'source_lock_sha256': hashlib.sha256((root / 'infrastructure/macos/integration-features.json').read_bytes()).hexdigest(),

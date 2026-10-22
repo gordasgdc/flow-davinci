@@ -35,6 +35,7 @@
 #include "footerpanel.h"
 #include "panelexpansioncontroller.h"
 #include "../../core/workspaceviewport.h"
+#include "../../core/panelhovertarget.h"
 #include "workspacecallers.h"
 #include "toolbars.h"
 #include "toolbardoors.h"
@@ -559,14 +560,10 @@ protected:
 private:
     int hoveredExpansionTarget() const {
         if (expansionController->index()>=0) return expansionController->index();
-        auto hovered=QApplication::widgetAt(QCursor::pos());
-        for (int i=0;i<panels.size();++i) {
-            auto surface=panels[i].session->active() ? panels[i].session->window() : Unbound::panelSurface(page(),panels[i].name);
-            bool header=false;
-            for (auto ancestor=hovered;ancestor;ancestor=ancestor->parentWidget()) header |= ancestor->property("groupPanel").toString()==panels[i].name;
-            if (surface && surface->isVisible() && hovered && (surface==hovered || surface->isAncestorOf(hovered) || header)) return i;
-        }
-        return -1;
+        QList<Unbound::PanelHoverSurface> surfaces;
+        for (int i=0;i<panels.size();++i)
+            surfaces.append({i,panels[i].name,panels[i].session->active() ? panels[i].session->window() : Unbound::panelSurface(page(),panels[i].name)});
+        return Unbound::panelHoverTarget(QApplication::widgetAt(QCursor::pos()),surfaces);
     }
     void showPanel(int i,bool visible)
     {
@@ -1101,7 +1098,7 @@ private:
         if (nativeMenus) nativeMenus->wire();
         if (nativeDecoration && page()) for (int i=0; i<panels.size(); ++i) {
             if(panels[i].name=="unboundWorkspaceToolbar" || panels[i].name=="frameEditToolbarTop")continue;
-            auto surface = panels[i].session->active() ? panels[i].session->window() : page()->findChild<QWidget *>(panels[i].name);
+            auto surface = panels[i].session->active() ? panels[i].session->window() : Unbound::panelSurface(page(),panels[i].name);
             if(titleDrags)titleDrags->wire(surface,panels[i].name,panels[i].label,[this,i](QPoint){beginPanelDrag(i);});
             if (panels[i].name=="frameConformTimelines") {
                 timelineControl->wire(surface,[this,i] { togglePanelPlacement(i); },[this,i](QPoint) {beginPanelDrag(i);});

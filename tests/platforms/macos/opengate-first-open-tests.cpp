@@ -14,7 +14,9 @@ int main(int argc,char **argv){
  const bool restart=app.arguments().contains("--restart-check");
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
- QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.setObjectName("UiMainWindow");main.resize(1400,900);auto outer=new QVBoxLayout(&main);
+ const bool displayed=qEnvironmentVariableIntValue("OPENGATE_TEST_DISPLAYED_MIXER");
+ if(displayed)qputenv("UNBOUND_TEST_HIDDEN_HOSTS","0");
+ QWidget main;if(!displayed)main.setAttribute(Qt::WA_DontShowOnScreen);main.setObjectName("UiMainWindow");main.resize(1400,900);auto outer=new QVBoxLayout(&main);
  auto bar=new QMenuBar(&main);bar->setNativeMenuBar(false);outer->setMenuBar(bar);auto workspace=bar->addMenu("Workspace");workspace->setObjectName("workspace");
  auto toolbar=new QStackedWidget(&main);auto tools=new QWidget;tools->setObjectName("pageSingleScreenModeTools");toolbar->addWidget(tools);outer->addWidget(toolbar);auto toolrow=new QHBoxLayout(tools);auto left=new QWidget(tools);left->setObjectName("frameEditTopBarLeftSSM");toolrow->addWidget(left);auto leftrow=new QHBoxLayout(left);leftrow->addWidget(new QPushButton("Media Pool",left));auto right=new QWidget(tools);right->setObjectName("frameEditTopBarRightSSM");right->setLayout(new QHBoxLayout);toolrow->addWidget(right);
  auto pageStack=new QStackedWidget(&main);outer->addWidget(pageStack,1);auto page=new QWidget(pageStack);page->setObjectName("WStackPage_Conform");pageStack->addWidget(page);auto fusion=new QWidget(pageStack);fusion->setObjectName("WStackPage_Fusion");pageStack->addWidget(fusion);auto color=new QWidget(pageStack);color->setObjectName("WStackPage_Color");pageStack->addWidget(color);auto native=new QHBoxLayout(page);
@@ -23,7 +25,8 @@ int main(int argc,char **argv){
  }
  auto mixer=new QWidget(nativePanels["frameConformTimelines"]);mixer->setObjectName("frameEditAudioMeter");
  auto mixerLayout=new QVBoxLayout(mixer);auto mixerRow=new QWidget(mixer);mixerRow->setObjectName("frameMixerMeterTitle");auto mixerTools=new QHBoxLayout(mixerRow);
- auto mixerTitle=new QWidget(mixerRow);mixerTitle->setObjectName("lblMixerMeter");mixerTitle->setMinimumSize(70,24);mixerTools->addWidget(mixerTitle);auto mixerOptions=new QToolButton(mixerRow);mixerOptions->setObjectName("btnAudioMixerOptions");mixerTools->addWidget(mixerOptions);mixerLayout->addWidget(mixerRow);
+ // Resolve can paint an elided title without storing it in QLabel::text().
+ auto mixerTitle=new QLabel(QString(),mixerRow);mixerTitle->setObjectName("lblMixerMeter");mixerTitle->setMinimumSize(70,24);mixerTools->addWidget(mixerTitle);auto mixerOptions=new QToolButton(mixerRow);mixerOptions->setObjectName("btnAudioMixerOptions");mixerTools->addWidget(mixerOptions);mixerLayout->addWidget(mixerRow);
  nativePanels["frameConformTimelines"]->layout()->addWidget(mixer);
  auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");outer->addWidget(footer);auto footrow=new QHBoxLayout(footer);for(const auto &id:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto b=new QPushButton(id,footer);b->setObjectName(id);footrow->addWidget(b);}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
@@ -52,13 +55,32 @@ int main(int argc,char **argv){
  check(mediaHeader&&mediaHeader->isHidden(),"tabbed Media Pool has a tab title without a repeated panel title row");
  for(auto tabs:page->findChildren<QTabWidget *>("unboundPanelTabs"))for(int index=0;index<tabs->count();++index)
   check(!tabs->tabText(index).startsWith("widget")&&!tabs->tabText(index).startsWith("frame"),"tab titles never expose internal widget identifiers");
+ auto dragMixerTitle=[&]{const QPoint p(25,15);QMouseEvent down(QEvent::MouseButtonPress,p,mixerTitle->mapToGlobal(p),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&down);QMouseEvent move(QEvent::MouseMove,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&move);QMouseEvent up(QEvent::MouseButtonRelease,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&up);settle(300);};
+ QList<Unbound::PanelHoverSurface> hoverSurfaces{{1,"frameConformTimelines",timelineCell},{8,"frameEditAudioMeter",mixer}};
+ check(Unbound::panelHoverTarget(mixerTitle,hoverSurfaces)==8,"nested Mixer title takes pointer maximize priority over Timeline");
+ check(Unbound::panelHoverTarget(mixerRow,hoverSurfaces)==8,"nested Mixer header targets Mixer");
+ check(Unbound::panelHoverTarget(timelineHeader,hoverSurfaces)==1,"Timeline header still targets Timeline");
+ if(displayed) {
+  main.raise();main.activateWindow();QApplication::setActiveWindow(&main);settle(200);
+  const auto cursor=QCursor::pos();QCursor::setPos(mixerTitle->mapToGlobal(QPoint(25,15)));settle(100);
+  check(QApplication::widgetAt(QCursor::pos())==mixerTitle,"displayed pointer is over the actual native Mixer title");
+  check(controls.invokeWorkflowCommand("panel.expand.hovered"),"pointer maximize dispatches before Mixer is detached");settle(300);
+  auto expandedMixer=mixerTitle->window();
+  check(expandedMixer!=&main && nativePanels["frameConformTimelines"]->window()==&main,"pointer maximize expands nested Mixer alone");
+  QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
+  check(mixerTitle->window()==&main && mixer->isAncestorOf(mixerTitle),"pointer maximize restores Mixer to its original nested owner");
+  QCursor::setPos(cursor);
+ }
+ dragMixerTitle();
+ check(mixerTitle->window()!=&main,"first-open Mixer title drags before any placement-button initialization");
+ auto initialDockMixer=controls.findChild<QPushButton *>("dock_frameEditAudioMeter");if(initialDockMixer)initialDockMixer->click();settle();
+ check(mixerTitle->toolTip().contains("drag"),"native Mixer title exposes its own drag affordance");
  auto mixerGlyph=mixer->findChild<QToolButton *>("unboundNativeUndock_frameEditAudioMeter");
  check(mixerGlyph&&mixerGlyph->isVisible(),"Mixer nested inside managed Timeline retains its own native placement control");
  if(mixerGlyph)mixerGlyph->click();settle();
  check(mixerTitle->window()!=&main,"Mixer placement control floats its content independently of Timeline");
  auto dockMixer=controls.findChild<QPushButton *>("dock_frameEditAudioMeter");if(dockMixer)dockMixer->click();settle();
  check(mixerTitle->window()==&main,"Mixer docks back without changing Timeline ownership");
- auto dragMixerTitle=[&]{const QPoint p(5,5);QMouseEvent down(QEvent::MouseButtonPress,p,mixerTitle->mapToGlobal(p),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&down);QMouseEvent move(QEvent::MouseMove,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&move);QMouseEvent up(QEvent::MouseButtonRelease,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&up);settle(300);};
  dragMixerTitle();
  check(mixerTitle->window()!=&main,"custom native Mixer title drags its existing session independently of Timeline");
  auto mixerHost=mixerTitle->window();mixerHost->setGeometry(180,140,420,360);settle(150);const auto mixerFrame=mixerHost->geometry();
@@ -72,6 +94,26 @@ int main(int argc,char **argv){
  check(mixerHost->geometry()!=mixerFrame,"Mixer participates in ordinary panel maximize");
  QApplication::setActiveWindow(&main);controls.invokeWorkflowCommand("panel.expand.frameEditAudioMeter");settle(250);
  check(mixerTitle->window()==mixerHost&&mixerHost->geometry()==mixerFrame,"Mixer maximize restores exact floating placement");
+
+ auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
+ auto movedMixer=dynamic_cast<Unbound::MacFloatingHost *>(mixerTitle->window());
+ check(sourceCell&&movedMixer&&movedMixer->attachRequested,"Mixer can mount beside another workspace panel");
+ if(sourceCell&&movedMixer&&movedMixer->attachRequested)movedMixer->attachRequested(sourceCell,Qt::LeftEdge);settle(350);
+ auto mixerCell=main.findChild<QWidget *>("unboundGroupCell_frameEditAudioMeter");
+ auto mountedTitle=mixerCell?mixerCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
+ check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"Mixer mounts in the visible workspace outside Timeline");
+ check(mountedTitle&&mountedTitle->isVisible()&&mountedTitle->text()=="Mixer","repositioned Mixer has the existing readable panel title");
+ if(displayed) {
+  main.raise();main.activateWindow();QApplication::setActiveWindow(&main);settle(150);
+  const auto cursor=QCursor::pos();QCursor::setPos(mixerTitle->mapToGlobal(QPoint(25,15)));settle(100);
+  check(controls.invokeWorkflowCommand("panel.expand.hovered"),"repositioned Mixer pointer maximize dispatches");settle(300);
+  auto expandedMixer=mixerTitle->window();check(expandedMixer!=&main,"repositioned Mixer alone maximizes");
+  QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
+  check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"repositioned Mixer maximize restores its workspace placement");
+  QCursor::setPos(cursor);
+ }
+ dragMixerTitle();
+ check(mixerTitle->window()!=&main&&!binding->contains("frameEditAudioMeter"),"repositioned Mixer native title detaches without its placement button");
 
  if(dockMixer)dockMixer->click();settle(300);
  check(mixerTitle->window()==&main,"Mixer title drag restores exact content ownership on dock");
