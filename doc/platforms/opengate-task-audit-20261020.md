@@ -1,3 +1,34 @@
+## Follow-up in progress — menu refresh and Mixer review (2026-10-22)
+
+Branch perf/panel-menu-refresh starts at accepted main e885918. It resolves the
+current page once per Panels inventory render and excludes OpenGate-owned menu
+mutations from native-command discovery invalidation. Native menu changes still
+invalidate discovery; invocation still rechecks current page and availability.
+No central controller changes, timers shortened or acquisition parallelism added.
+
+Verification: hidden workspace-menu, native-unmodified workflow-command-menu and
+assembled opengate-first-open fixtures pass. Regression checks cover one page
+query for 20 panels, owned submenu churn without command rediscovery, and late
+native command observation. The sandboxed first menu run aborted because macOS
+window services were inaccessible; the unsandboxed synthetic run passed. This is
+fixture evidence only: no claimed live restoration speedup and no installation,
+main merge, push, package or Windows build.
+
+Mixer diagnosis remains open. The 07:50 widget capture contains a visible
+unboundNativeUndock_frameEditAudioMeter beside visible Edit Mixer options. The
+unmatched frameTimelineMixer ancestry belongs to a different native variant and
+does not establish the cause of the screenshot. Do not alias the Edit session to
+that surface on this evidence. Confirm title-drag recognition and control lifetime
+in the exact failing state. User's Source Monitor hotkey report was withdrawn.
+
+Windows architecture audit: existing Windows release still runs core/controller.cpp
+and SidebarFloatSession; the fuller managed workspace runs through the Mac
+PanelControls/session/binding modules. Equal behavior is not implemented by the
+current Windows backend. This machine lacks CMake, MSVC, Windows SDK and Windows Qt
+development libraries; no Windows compilation or runtime acceptance is possible
+with the installed toolchain. Port by extracting the existing Qt workspace modules
+behind native adapters, with shared flow tests; do not create a second workspace UI.
+
 ## User-approved main baseline — 2026-10-22
 
 Jordan reports the installed caller/Keyframes candidate is working and explicitly

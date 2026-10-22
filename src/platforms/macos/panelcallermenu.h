@@ -26,14 +26,16 @@ public:
         return panel.label;
     }
     void populateFlat(QMenu *menu) {
+        const auto page=currentPage();
         for(int i=0;i<panels.size();++i) {
             const auto &panel=panels[i];
-            if(panel.page!="global" && panel.page!=currentPage())continue;
+            if(panel.page!="global" && panel.page!=page)continue;
             auto action=menu->addAction(label(panel));action->setObjectName("openGatePanelToggle_"+panel.id);
-            bind(action,i);update(action,panel);
+            bind(action,i);update(action,panel,page);
         }
     }
     QMenu *wire(QMenu *root) {
+        const auto page=currentPage();
         auto menu=root->findChild<QMenu *>("openGateShowPanel",Qt::FindDirectChildrenOnly);
         if(!menu) {
             menu=new QMenu("Panels",root);menu->setObjectName("openGateShowPanel");menu->setProperty("unboundOwnMenu",true);root->addMenu(menu);
@@ -42,7 +44,7 @@ public:
             const auto &panel=panels[i];
             auto action=menu->findChild<QAction *>("openGateShowPanel_"+panel.id,Qt::FindDirectChildrenOnly);
             if(!action){action=menu->addAction(label(panel));action->setObjectName("openGateShowPanel_"+panel.id);bind(action,i);}
-            update(action,panel);
+            update(action,panel,page);
         }
         if(!watched.contains(menu)) {
             watched.append(menu);connect(menu,&QMenu::aboutToShow,this,[this,root]{wire(root);});
@@ -51,8 +53,8 @@ public:
     }
 
 private:
-    void update(QAction *action,const Panel &panel) {
-        const bool pageAvailable=panel.page=="global" || panel.page==currentPage();
+    void update(QAction *action,const Panel &panel,const QString &page) {
+        const bool pageAvailable=panel.page=="global" || panel.page==page;
         action->setText(label(panel));action->setCheckable(true);action->setVisible(pageAvailable);
         action->setEnabled(pageAvailable && panel.available && panel.available());
         action->setChecked(panel.visible && panel.visible());

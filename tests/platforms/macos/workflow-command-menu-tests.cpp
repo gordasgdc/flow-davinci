@@ -23,6 +23,9 @@ int main(int argc,char **argv) {
         int changes=0;QObject::connect(action,&QAction::changed,[&] { ++changes; });
         QObject::connect(&native,&QMenu::aboutToShow,[&] { observer.wire(&root); });
         for (int i=0;i<50;++i) { observer.wire(&root);QMetaObject::invokeMethod(&native,"aboutToShow",Qt::DirectConnection); }
+        QMenu owned;owned.setProperty("unboundOwnMenu",true);
+        auto nested=owned.addMenu("Show / Hide");
+        for(int i=0;i<20;++i){auto item=nested->addAction(QString::number(i));observer.wire(&root);delete item;observer.wire(&root);}
         Unbound::flushDiagnostics();QFile discovery(logs.path()+"/events.jsonl");discovery.open(QIODevice::ReadOnly);
         ok &= discovery.readAll().count("\"event\":\"command.menu.discovery\"")==1;
         ok &= native.actions()==original && action->associatedWidgets()==hosts;
@@ -37,7 +40,10 @@ int main(int argc,char **argv) {
         ok &= Unbound::openNativeKeyboardCustomization();
         ok &= native.actions().mid(0,3)==original;
         auto ephemeral=native.addAction("OpenGate - Temporary");ephemeral->setObjectName("workspaceWIPlugins_temp");
-        observer.wire(&root);delete ephemeral;observer.wire(&root);
+        observer.wire(&root);ephemeral->trigger();
+        Unbound::flushDiagnostics();QFile late(logs.path()+"/events.jsonl");late.open(QIODevice::ReadOnly);
+        ok &= late.readAll().contains("workspaceWIPlugins_temp");
+        delete ephemeral;observer.wire(&root);
         QObject::disconnect(&native,nullptr,nullptr,nullptr);
         QObject::disconnect(action,&QAction::changed,nullptr,nullptr);
     }
