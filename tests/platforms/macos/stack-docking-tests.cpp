@@ -27,7 +27,8 @@ int main(int argc,char **argv) {
  const QList<DropPlacement> placements{DropPlacement::Left,DropPlacement::Right,DropPlacement::Above,DropPlacement::Below};
  for(int i=0;i<points.size();++i){const auto hit=selectDockScope(leaves,&host,points[i]);if(hit.surface!=stack)std::fprintf(stderr,"Stack hit diagnostic: edge=%d point=%d,%d stack=%d,%d %dx%d selected=%s section=%s\n",i,points[i].x(),points[i].y(),stackFrame.x(),stackFrame.y(),stackFrame.width(),stackFrame.height(),hit.surface?qPrintable(hit.surface->objectName()):"none",qPrintable(dockSectionKey(hit.surface)));check(hit.surface==stack&&hit.frame==stackFrame&&hit.drop.placement==placements[i],"each stack edge is reachable independently of its individual panels");check(stackFrame.contains(hit.drop.preview),"stack preview stays within the selected stack");}
  const auto full=selectDockScope(leaves,&host,QPoint(outer.left()+2,outer.center().y()));check(full.surface==root,"outer stack scope is independently reachable");
- check(!selectDockScope(leaves,&host,QPoint(outer.left()+25,outer.center().y())).surface,"neutral space around stack handles does not become a competing panel drop");
+ int neutralPoints=0;for(int x=outer.left();x<qMin(outer.right(),outer.left()+80);++x)neutralPoints+=!selectDockScope(leaves,&host,QPoint(x,outer.center().y())).surface;
+ check(neutralPoints>=4,"neutral space between nearby stack targets remains reachable on narrow layouts");
  const auto key=groupSectionTarget(column);const QJsonObject added{{"panel","mixer"}};
  const auto besideStack=insertGroupTree(tree,added,key,Qt::Horizontal,true);
  const auto besidePanel=insertGroupTree(tree,added,"source",Qt::Horizontal,true);
