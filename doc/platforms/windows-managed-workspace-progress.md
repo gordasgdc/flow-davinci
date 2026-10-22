@@ -114,3 +114,65 @@ deliberate shared-policy/platform-adapter boundaries, equivalent platform covera
 Mac regression checks, explicit remaining platform gaps and separate live status.
 Build success on two platforms is never cross-platform completion. Extend this
 common foundation; retain Wolfgang Woehl's attribution and MIT notices.
+
+## Checkpoint receipts and next ownership boundary
+
+`25fe2645d039c8d2c683a2b08dc2b87489ee7380` has clean receipts in this worktree:
+`25fe2645d0-hidden-20261022T193031Z` (49/49) and
+`25fe2645d0-displayed-20261022T193554Z` (9/9). These include the two new
+shared policy/diagnostic suites and the accepted assembled Mac flow.
+[Windows run 39840425886](https://github.com/jordantetewsky/OpenGate/actions/runs/39840425886)
+passed compilation, existing native-window suites, shared caller/layout/logging
+fixtures, packaging and export checks. Its source manifest reported dirty status;
+the build log was initially written into the repository root. No clean-source
+candidate claim follows. Logs are retained locally under `build/windows/evidence`.
+
+Dependent worktree `windows-retained-host-calls`, branch
+`feature/windows-retained-host-calls`, isolates the next milestone from that
+unchanged-source matrix. It is incorporated into this feature branch by fast
+forward; main is untouched. Mac compatibility includes now also cover the same
+pointer sampler and native caller policy. The Windows input-age adapter deliberately
+omits uncalibrated ages: Qt 5.15.2's Windows mouse handler uses its elapsed process
+clock, while Cocoa supplies uptime timestamps. No latency improvement is claimed.
+
+Windows run [39842442083](https://github.com/jordantetewsky/OpenGate/actions/runs/39842442083)
+compiled but failed the new production-bootstrap fixture at discovery: its fake
+tree omitted the existing Windows `frameEditPageWidgetsContainer` root.
+Production lookup and assertions were preserved; the fixture now models that root.
+Failed logs are retained. The corrected run
+[39843068499](https://github.com/jordantetewsky/OpenGate/actions/runs/39843068499)
+passes bootstrap -> real layout lease -> native header hide -> hidden page return
+-> flat Panels recall in the same host/frame/owner -> live signal -> page return
+-> explicit dock/exact layout ownership. This is Windows Qt/DLL fixture evidence,
+not live Resolve or complete managed-workspace parity. Its 49 event diagnostic
+trail, settings and build log are retained locally. Installer/export also passed.
+The manifest still reports dirty source; subsequent runs record exact status and
+keep dependency installer logging outside the checkout rather than hiding it.
+
+That new caller route is development-gated by `OPENGATE_WINDOWS_MANAGED_CALLERS=1`
+until shared managed startup/ownership is integrated. It is temporary staging,
+not a second supported product mode or completion of the task. The existing
+default Windows floating-backend suites remain unchanged and continue to run.
+The target is the accepted Mac experience using the same shared engine/session
+policy, with Windows native adapters. The gate must not become a permanent fork.
+
+At `d01130e`, all 49 Mac hidden suites passed, but the receipt correctly reports
+`source_unchanged=false`: the Windows-only fixture correction was committed during
+the run. Do not report it as a clean matrix. Production Mac source was identical
+at `1591016`; the latter has a clean serial displayed 9/9 receipt in the dependent
+worktree, `1591016182-displayed-20261022T195324Z`. Clean final-source matrices remain
+required after further shared changes. No failed receipt was overwritten.
+
+Next extraction reuses `NativePanelPosition`, `NativeGroupSlot`, `NativeRootLayout`,
+`VacatedContents`, `GroupVisibility` and logical tree visibility. The Windows
+adapter adds no Cocoa top overlap to Qt page coordinates; native layout margins
+remain authoritative. The new common ownership fixture checks repeated exact
+box/grid/split/stack recovery, constraints and a Timeline with its toolbar still
+attached. The Windows retained-session path reuses the accepted vacancy guard,
+rather than inventing another placeholder suppression mechanism. Full managed
+assembly, tabs/groups/docking, primary bands, preset startup and the remaining
+numbered flow are still incomplete. No Mac candidate has been built or installed.
+
+The separate requested final identity/migration/revision-4 task is recorded in
+`opengate-identity-migration-task.md`, including stargazer notification. Migration
+execution must not interrupt this parity work; cutover requires concrete approval.

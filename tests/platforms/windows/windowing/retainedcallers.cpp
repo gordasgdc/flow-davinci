@@ -55,6 +55,7 @@ int main(int argc,char **argv) {
     if(host==&main)return 1;
     host->setGeometry(150,160,420,340);turn();const auto frame=host->geometry();const auto owner=live->parentWidget();
     check(toggle->isChecked()&&pane->isHidden(),"header reflects visible retained host while native vacancy stays closed");
+    pane->show();turn();check(pane->isHidden()&&host->isVisible(),"native visibility updates cannot reopen an empty leased slot");
     const int before=nativeToggleCalls;click(toggle);
     check(host->isHidden()&&!toggle->isChecked()&&live->parentWidget()==owner,"native header hides the same leased host");
     check(nativeToggleCalls==before,"managed header input does not invoke native empty-slot toggle");

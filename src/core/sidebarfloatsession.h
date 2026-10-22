@@ -17,6 +17,7 @@
 #include "nodescanvasbounds.h"
 #include "auditionactivationbridge.h"
 #include "paneheaderdrag.h"
+#include "vacatedcontents.h"
 
 namespace Unbound {
 // Move the entire layout, including all widgets/spacers/stretch factors. This
@@ -129,7 +130,7 @@ public:
             [this] { queueGraphRecovery(); }));
     }
 
-    QString start(QWidget *slot, const QString &label, QWidget *pageRoot = nullptr, bool reclaimSplitterSpace = false, bool fadeIn = false, bool preserveNativeLayout = false, bool initiallyHidden = false)
+    QString start(QWidget *slot, const QString &label, QWidget *pageRoot = nullptr, bool reclaimSplitterSpace = false, bool fadeIn = false, bool preserveNativeLayout = false, bool initiallyHidden = false, bool collapseVacancy = false)
     {
         if (active()) return QStringLiteral("This pane is already floating.");
         if (!slot || slot->isWindow() || !slot->parentWidget() || !(pageRoot ? pageRoot : slot->parentWidget())->isVisible())
@@ -254,6 +255,7 @@ public:
             slot->installEventFilter(this);
             slot->hide();
         }
+        if(collapseVacancy)m_vacatedContents.hide(slot);
         if (!m_savedGeometry.isEmpty()) host->restoreGeometry(m_savedGeometry);
         applyPaneDarkCaption(host, slot->window());
         m_hiddenByUser=initiallyHidden;
@@ -289,6 +291,7 @@ public:
         static_cast<PaneFloatingWindow *>(m_host.data())->finishDeferredResize();
         rememberGeometry();
         m_restoring = true;
+        m_vacatedContents.restore();
         stopAuditionBridge();
         restoreInspectorTitlePolicy();
         if (m_root) m_root->removeEventFilter(this);
@@ -436,6 +439,7 @@ private:
     }
     void clear()
     {
+        m_vacatedContents.restore();
         stopAuditionBridge();
         restoreInspectorTitlePolicy();
         delete m_nodesBounds; m_nodesBounds=nullptr;
@@ -454,6 +458,7 @@ private:
         m_layout = nullptr; m_placeholderLayout = nullptr; m_placeholder = nullptr;
     }
     QPointer<QWidget> m_slot, m_root, m_host, m_placeholder;
+    VacatedContents m_vacatedContents;
     QPointer<QLabel> m_inspectorTitle;
     QSizePolicy m_inspectorTitlePolicy;
     NodesCanvasBounds *m_nodesBounds=nullptr;

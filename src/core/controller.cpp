@@ -391,7 +391,7 @@ private:
         const bool preserveNativeLayout = !colorToggle(name).isEmpty();
         error(session->start(pane, m_names.value(name), panePage(pane),
             name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout,
-            automatic && m_settings.hidden(settingsKey(name))));
+            automatic && m_settings.hidden(settingsKey(name)),qEnvironmentVariableIntValue("OPENGATE_WINDOWS_MANAGED_CALLERS")==1));
         if (session->active()) {
             // Manual detachment also resolves startup intent. Lifecycle events
             // must not interpret its newly saved floating state as a restore.

@@ -12,7 +12,8 @@ $version = $releaseVersion.Version
 $buildId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the Windows source commit.' }
-$sourceDirty = [bool](& git -C $repoRoot status --porcelain)
+$sourceStatus = @(& git -C $repoRoot status --porcelain)
+$sourceDirty = $sourceStatus.Count -gt 0
 if ($BuildNumber -lt 0 -or $BuildNumber -gt 65535) { throw 'BuildNumber must be 0..65535 (the Windows numeric revision; default 0).' }
 if (!(Test-Path -LiteralPath (Join-Path $QtPath 'lib\cmake\Qt5\Qt5Config.cmake'))) { throw "Qt 5.15.2 development files not found at $QtPath" }
 $releaseRoot = Join-Path $repoRoot 'release\win'
@@ -59,6 +60,7 @@ try {
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateOwnershipTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($dll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
     Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
@@ -90,7 +92,7 @@ try {
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='windows-floating-pane'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
+    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='windows-floating-pane'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"
