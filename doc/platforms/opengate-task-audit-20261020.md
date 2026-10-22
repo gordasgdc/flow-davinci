@@ -1,3 +1,24 @@
+## Panel/stack docking and tab titles — 2026-10-22
+
+Isolated repair derives section targets from the existing retained split/tab tree.
+Individual panel edges retain their own bounds. Each section has bounded edge-center
+handles on all four edges, with nested handles inset and a neutral halo. Preview
+and release use the same subtree target. No whole-main-window or desktop target
+is introduced; stale section targets reject before mutating session ownership.
+Native and floating groups reuse their existing insert/rebuild/recovery paths.
+
+Focused hidden checks pass individual and stack edges, subtree insertion in both
+native and floating groups, invalid targets and Native ownership recovery. The
+assembled first-open fixture passes the floating Media Pool -> whole vertical
+stack release callback through PanelControls. Displayed window-stack hit testing
+and combined clean matrices remain pending; no live docking acceptance claimed.
+
+Jordan's screenshot/saved tree identifies a Program Monitor + Mixer section
+inside a tab with Source Monitor. The old builder requested a leaf title for
+that section's empty leaf ID and displayed Panel. Section titles now compose
+actual registered panel names, with full tab tooltips. Individual titles retain
+their own names. No parallel content UI, preset reset or duplicate title strip.
+
 ## Mixer repair verification and replacement release — 2026-10-22
 
 Runtime e3caabf7761cf39830b489c708af3f8fe98cabb5 is merged and pushed to main.

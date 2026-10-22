@@ -1035,12 +1035,14 @@ private:
         Unbound::UiWorkTiming timing("group.drop",target ? target->window() : nullptr);
         if (quitting || QApplication::activeModalWidget() || expansionController->index() >= 0 || !panels[source].session->active()) return;
         if (nativeWorkspace->ownsTarget(target)) { dockNative(source,target,edge); return; }
+        const auto section=Unbound::dockSectionKey(target);
         for (int j = 0; j < panels.size(); ++j) if (j != source && panels[j].session->active() &&
-            (panels[j].session->window() == target || panels[j].session->window()->window() == target)) {
+            (panels[j].session->window() == target || panels[j].session->window()->window() == target ||
+             (!section.isEmpty() && target->isAncestorOf(panels[j].session->window())))) {
             if (groupFor(source) && groupFor(source) == groupFor(j)) return;
             const auto frame = target->window()->frameGeometry();
             const auto error = combinePanels(source, j, edge == Qt::Edge(0) ? Qt::Orientation(0) : edge == Qt::LeftEdge || edge == Qt::RightEdge ? Qt::Horizontal : Qt::Vertical,
-                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : panels[j].name,target->window()->geometry());
+                edge == Qt::LeftEdge || edge == Qt::TopEdge, target->isWindow() ? QString() : section.isEmpty()?panels[j].name:section,target->window()->geometry());
             if (error.isEmpty()) if (auto group = groupFor(source)) group->fitFrame(frame);
             status->setText(error.isEmpty() ? QStringLiteral("Panels joined. Drag a member header to detach.") : error);
             Unbound::logEvent(QStringLiteral("group.drop.result"), {{"success", error.isEmpty()}, {"error", error}});

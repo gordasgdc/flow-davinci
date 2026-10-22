@@ -45,6 +45,28 @@ int main(int argc,char **argv){
  }
  check(binding&&binding->active(),"first open mounts existing panel tree in the primary workspace");
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_STACK_DROP")) {
+  auto poolPlacement=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(poolPlacement)poolPlacement->click();settle(350);
+  Unbound::MacFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::MacFloatingHost *>(window);
+  auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QWidget *column=nullptr;
+  for(auto ancestor=sourceCell?sourceCell->parentWidget():nullptr;ancestor&&ancestor!=&main;ancestor=ancestor->parentWidget())
+   if(auto splitter=qobject_cast<QSplitter *>(ancestor))if(splitter->orientation()==Qt::Vertical&&!Unbound::dockSectionKey(splitter).isEmpty()){column=splitter;break;}
+  check(floatingPool&&column,"assembled docking flow finds a floating panel and the retained vertical stack");
+  if(floatingPool&&column) {
+   const auto key=Unbound::dockSectionKey(column);const QRect frame(column->mapToGlobal(QPoint()),column->size());Unbound::DockScopeHit hit;QPoint pointer;int reachable=0;
+   for(int x=frame.left();x<qMin(frame.right(),frame.left()+180);++x){const QPoint point(x,frame.center().y());const auto candidate=Unbound::selectDockScope(Unbound::nativeDockSurfaces(&main),&main,point);if(candidate.surface==column&&candidate.drop.placement==Unbound::DropPlacement::Left){hit=candidate;pointer=point;++reachable;}}
+   check(reachable>=16&&hit.drop.preview.height()==frame.height(),"whole-stack left target is broad and previews the complete vertical span");
+   if(displayed) {
+    Unbound::activateNativeWindowForTest(&main);settle(250);
+    const auto actual=Unbound::resolveDockDestination(floatingPool,pointer,{});
+    check(actual.surface==column&&actual.drop.placement==Unbound::DropPlacement::Left,"real window-stack lookup selects the displayed stack target");
+   }
+   if(hit.surface&&floatingPool->attachRequested)floatingPool->attachRequested(hit.surface,Qt::LeftEdge);settle(350);
+   check(binding->contains("frameEditPageMediaPool")&&Unbound::groupTreeHasTarget(binding->saved()["tree"].toObject(),key),"release route docks beside the full stack and preserves that subtree");
+  }
+  auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
+  check(binding->active()&&binding->contains("frameEditPageMediaPool"),"ordinary workspace selection restores the built-in after the stack drop");
+ }
  auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");
  auto timelineHeader=timelineCell?timelineCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
  check(timelineHeader&&timelineHeader->isVisible(),"embedded Timeline reuses the visible draggable group title");

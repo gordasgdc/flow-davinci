@@ -88,7 +88,7 @@ public:
     {
         if (!host || !panel || !panel->active() || panel->grouped() || panel->pageWidget() != page ||
             panel->nativeOwnerWindow() != host->parentWidget()) return "Panel cannot join this group.";
-        if (!target.isEmpty() && !names().contains(target)) return "Dock target no longer exists.";
+        if (!target.isEmpty() && !groupTreeHasTarget(treeSnapshot(root),target)) return "Dock target no longer exists.";
         const auto tree = insertGroupTree(treeSnapshot(root), {{"panel", panelName(panel)}}, target, orientation, before);
         const auto error = addMember(panel); if (!error.isEmpty()) return error;
         rebuild(tree); refresh(); panel->finishGroupTransfer(); report("group.add"); return {};
@@ -97,7 +97,7 @@ public:
     {
         if (!host || !other || !other->host || other == this || other->page != page ||
             host->parentWidget() != other->host->parentWidget()) return "These groups cannot be merged.";
-        if (!target.isEmpty() && !names().contains(target)) return "Dock target no longer exists.";
+        if (!target.isEmpty() && !groupTreeHasTarget(treeSnapshot(root),target)) return "Dock target no longer exists.";
         const auto tree = insertGroupTree(treeSnapshot(root), other->treeSnapshot(other->root), target, orientation, before);
         parkHeaders();other->parkHeaders();
         QScopedValueRollback<bool> moving(other->releasing, true);

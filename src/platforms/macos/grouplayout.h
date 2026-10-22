@@ -2,6 +2,7 @@
 #pragma once
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QJsonDocument>
 #include <QStringList>
 
 namespace Unbound {
@@ -17,6 +18,20 @@ inline bool groupTreeNames(const QJsonObject &node, QStringList &names, int dept
     if ((node["orientation"] != "horizontal" && node["orientation"] != "vertical" && node["orientation"] != "tabs") || children.size() < 2 || children.size() > 32) return false;
     for (auto child : children) if (!groupTreeNames(child.toObject(), names, depth + 1)) return false;
     return true;
+}
+// A transient target key identifies a retained subtree by its ordered leaves.
+// It is never persisted as a panel ID or shown as a user-facing title.
+inline QString groupSectionTarget(const QJsonObject &node) {
+    if(node.contains("panel"))return {};
+    QStringList names;if(!groupTreeNames(node,names))return {};
+    return "@section:"+QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(names)).toJson(QJsonDocument::Compact));
+}
+inline bool groupTreeHasTarget(const QJsonObject &node,const QString &target) {
+    if(target.isEmpty())return false;
+    if(node.contains("panel"))return node["panel"].toString()==target;
+    if(groupSectionTarget(node)==target)return true;
+    for(auto child:node["children"].toArray())if(groupTreeHasTarget(child.toObject(),target))return true;
+    return false;
 }
 inline QJsonObject splitGroupTree(const QJsonObject &a, const QJsonObject &b, Qt::Orientation orientation, bool before = false)
 {
@@ -35,7 +50,7 @@ inline QJsonObject insertGroupTree(QJsonObject node, const QJsonObject &addition
             node["children"] = children; node["selected"] = selected; return node;
         }
     }
-    if (target.isEmpty() || node.value("panel") == target) {
+    if (target.isEmpty() || node.value("panel") == target || (!node.contains("panel") && groupSectionTarget(node)==target)) {
         auto result=splitGroupTree(node,addition,orientation,before);
         if (orientation==Qt::Orientation(0)) result["selected"]=before ? 0 : 1;
         return result;
