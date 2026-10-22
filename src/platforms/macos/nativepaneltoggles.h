@@ -22,7 +22,7 @@ public:
              std::function<void()> request)
     { entries.append({std::move(toggle),std::move(managed),std::move(shown),std::move(request)}); }
     std::function<bool()> blocked;
-    void sync(QWidget *root) { nativeRoot=root;sync(); }
+    void sync(QWidget *root,bool nativeSnapshot=false) { nativeRoot=root;sync(nativeSnapshot); }
     void wire(QWidget *root) {
         if (!root) return;nativeRoot=root;
         for (auto button:root->window()->findChildren<QAbstractButton *>()) {
@@ -70,18 +70,18 @@ private:
         if(refreshQueued)return;refreshQueued=true;
         QTimer::singleShot(0,this,[this]{refreshQueued=false;sync();});
     }
-    void sync() {
+    void sync(bool nativeSnapshot=false) {
         if(!nativeRoot || unavailable())return;
         // Block every managed peer before changing any value. Native radio-like
         // groups may uncheck a different button as a side effect of setChecked.
         std::vector<std::unique_ptr<QSignalBlocker>> blockers;
-        for(auto it=observed.begin();it!=observed.end();++it)if(entries[it.value()].managed())blockers.emplace_back(new QSignalBlocker(it.key()));
+        for(auto it=observed.begin();it!=observed.end();++it)if(nativeSnapshot || entries[it.value()].managed())blockers.emplace_back(new QSignalBlocker(it.key()));
         QSet<QButtonGroup *> exclusiveGroups;QList<QAbstractButton *> exclusiveButtons;
-        for(auto it=observed.begin();it!=observed.end();++it)if(entries[it.value()].managed()) {
+        for(auto it=observed.begin();it!=observed.end();++it)if(nativeSnapshot || entries[it.value()].managed()) {
             if(auto group=it.key()->group())if(group->exclusive()){exclusiveGroups.insert(group);group->setExclusive(false);}
             if(it.key()->autoExclusive()){exclusiveButtons.append(it.key());it.key()->setAutoExclusive(false);}
         }
-        for(auto it=observed.begin();it!=observed.end();++it){const auto &entry=entries[it.value()];if(entry.managed())it.key()->setChecked(entry.shown());}
+        for(auto it=observed.begin();it!=observed.end();++it){const auto &entry=entries[it.value()];if(nativeSnapshot || entry.managed())it.key()->setChecked(entry.shown());}
         for(auto button:exclusiveButtons)button->setAutoExclusive(true);
         for(auto group:exclusiveGroups)group->setExclusive(true);
     }

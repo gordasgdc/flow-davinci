@@ -63,8 +63,10 @@ int main(int argc,char **argv){
   call("Media Pool");press(buttons["MediaPool"]);check(pool->window()==host&&host->geometry()==frame&&!pool->hiddenByUser(),"header recalls the same hidden float");
  }
  const QJsonValue before=binding->saved()["tree"];settle(700);check(before==binding->saved()["tree"],"idle arrangement stays selected without automatic cycling");
+ if(checked("Media Pool"))call("Media Pool");
  auto nativeReturn=ui?ui->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeReturn)nativeReturn->trigger();settle(450);
  check(!binding->active()&&page->layout()==native,"Native return restores original layout after caller operations");
+ check(buttons["MediaPool"]->isChecked()==nativePanels["frameEditPageMediaPool"]->isVisible()&&buttons["EditIndex"]->isChecked()==nativePanels["frameEditPageEditIndex"]->isVisible(),"Native return reflects native slot visibility rather than stale OpenGate door state");
  }
  if(failures){files.setAutoRemove(false);std::fprintf(stderr,"logs: %s\n",qPrintable(files.path()));}
  std::printf("panel caller flow failures=%d\n",failures);return failures?1:0;

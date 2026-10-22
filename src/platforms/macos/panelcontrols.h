@@ -102,7 +102,7 @@ public:
         };
         workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
         workspaceRestore->resume=[this] { restore(); save(); };
-        workspaceRestore->committed=[this] { syncNativeToggles();save(); };
+        workspaceRestore->committed=[this] { syncNativeToggles(layoutMode=="native");save(); };
         workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty() || !nativeWorkspace->requiredPanels().isEmpty(); };
         workspaceRestore->unavailable=[this] {
             QStringList missing;
@@ -430,6 +430,7 @@ public:
                     Unbound::logEvent("workspace.native-return.failed",{{"page",activePage},{"error",error}});
                     return;
                 }
+                syncNativeToggles(true);
                 Unbound::logEvent("workspace.native-return.complete",{{"page",activePage}});
             } else footer->refreshSurfaces();
             if (auto main = Unbound::resolveMainWindow()) {
@@ -708,7 +709,7 @@ private:
             if(!quitting && !restoringNative && !workspaceRestore->active() && version==bulkVersion)togglePanelDoor(i);
         });
     }
-    void syncNativeToggles() { if (nativeToggles) nativeToggles->sync(page()); }
+    void syncNativeToggles(bool nativeSnapshot=false) { if (nativeToggles) nativeToggles->sync(page(),nativeSnapshot); }
     void wireNativeToggles() { if (!quitting) nativeToggles->wire(page()); }
     QJsonObject arrangement() const
     {
