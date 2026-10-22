@@ -38,6 +38,16 @@ band combinations. The separate command-submenu fixture is added to the matrix.
 Final clean-commit verification results and build hashes are recorded in
 `build/macos/candidate-review.json`, alongside the per-run receipts. Read those
 receipts for actual status; the earlier 42/43 run is retained as failure evidence.
+Clean 6859e7e hidden matrix passes 44/44. Its first displayed run passes
+6/8: panel-groups still expected a programmatic check notification to recall
+Inspector, contrary to the repair's explicit intent boundary. That fixture now
+asserts no recall on observation, then recalls by explicit activation; it passes
+in isolation. The panel-session failure logged native-mouse-up during its synthetic
+held-button grouping sequence; isolated rerun passes with unchanged production
+input and fixture. Retain both failed and passing evidence. Final clean combined
+source with this fixture correction is being verified; do not install from an
+incomplete or failing displayed receipt.
+
 Direct synthetic Keyframes title dragging also passes; physical pointer capture
 and native custom rendering remain live gates. Displayed fixtures and replacement require Resolve closed.
 The native GPU/keyframe content, actual pointer capture and physical remapped-key
