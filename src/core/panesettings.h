@@ -92,6 +92,8 @@ public:
     }
     bool floating(const QString &name) const { return entry(name).value("floating").toBool(); }
     QString saveFloating(const QString &name,bool value) { return saveField(name,"floating",value); }
+    bool hidden(const QString &name) const { return entry(name).value("hidden").toBool(); }
+    QString saveHidden(const QString &name,bool value) { return saveField(name,"hidden",value); }
     bool hasToggle(const QString &name) const { return entry(name).value("toolbarButtonChecked").isBool(); }
     bool toggle(const QString &name) const { return entry(name).value("toolbarButtonChecked").toBool(); }
     QString saveToggle(const QString &name,bool value) { return saveField(name,"toolbarButtonChecked",value); }

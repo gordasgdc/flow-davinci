@@ -63,6 +63,23 @@ public:
     }
     bool active() const { return !m_host.isNull(); }
     QWidget *floatingWindow() const { return m_host.data(); }
+    bool hiddenByUser() const { return m_hiddenByUser; }
+    // Presentation changes retain the leased layout, host and saved geometry.
+    // Native return/dock remains the explicit ownership-restoration operation.
+    bool setHiddenByUser(bool hidden) {
+        if (!m_host) return false;
+        m_hiddenByUser=hidden;
+        m_hiddenByPage=!hidden && m_root && !m_root->isVisible();
+        m_returnFade->stop();m_host->setWindowOpacity(1.0);
+        if (hidden) {
+            static_cast<PaneFloatingWindow *>(m_host.data())->finishDeferredResize();
+            rememberGeometry();m_host->hide();
+        } else if (!m_root || m_root->isVisible()) {
+            if (m_host->isMinimized()) m_host->showNormal(); else m_host->show();
+            m_host->raise();m_host->activateWindow();
+        }
+        return true;
+    }
     QString dock()
     {
         if (!active() || m_restoring) return QString();
@@ -95,7 +112,7 @@ public:
                 if (child && child->parentWidget() == host) child->show();
             if (restoreHost && m_root && !m_root->isVisible()) {
                 m_hiddenByPage=true; // The native hide may precede page Hide.
-            } else if (restoreHost && m_root && !host->isVisible()) {
+            } else if (restoreHost && m_root && !host->isVisible() && !m_hiddenByUser) {
                 const bool withoutActivation=host->testAttribute(Qt::WA_ShowWithoutActivating);
                 host->setAttribute(Qt::WA_ShowWithoutActivating,true);
                 host->show();
@@ -112,7 +129,7 @@ public:
             [this] { queueGraphRecovery(); }));
     }
 
-    QString start(QWidget *slot, const QString &label, QWidget *pageRoot = nullptr, bool reclaimSplitterSpace = false, bool fadeIn = false, bool preserveNativeLayout = false)
+    QString start(QWidget *slot, const QString &label, QWidget *pageRoot = nullptr, bool reclaimSplitterSpace = false, bool fadeIn = false, bool preserveNativeLayout = false, bool initiallyHidden = false)
     {
         if (active()) return QStringLiteral("This pane is already floating.");
         if (!slot || slot->isWindow() || !slot->parentWidget() || !(pageRoot ? pageRoot : slot->parentWidget())->isVisible())
@@ -239,15 +256,16 @@ public:
         }
         if (!m_savedGeometry.isEmpty()) host->restoreGeometry(m_savedGeometry);
         applyPaneDarkCaption(host, slot->window());
-        if (fadeIn) {
+        m_hiddenByUser=initiallyHidden;
+        if (fadeIn && !m_hiddenByUser) {
             host->setAttribute(Qt::WA_ShowWithoutActivating, true);
             m_returnFade->setTargetObject(host);
             host->setWindowOpacity(0.0);
         }
-        host->show();
+        if (!m_hiddenByUser) host->show();
         if (preserveNativeLayout && slot->objectName()==QStringLiteral("m_pFrameNodeGraph"))
             m_nodesBounds=new NodesCanvasBounds(m_content,this);
-        if (fadeIn) {
+        if (fadeIn && !m_hiddenByUser) {
             host->repaint();
             host->setAttribute(Qt::WA_ShowWithoutActivating, false);
             m_returnFade->start();
@@ -330,6 +348,7 @@ protected:
                 QTimer::singleShot(0, this, [this, generation]() {
                     if (!m_host || !m_root || !m_root->isVisible() || !m_hiddenByPage || m_generation != generation) return;
                     m_hiddenByPage = false;
+                    if (m_hiddenByUser) return;
                     if (m_host->layout()) m_host->layout()->activate();
                     applyPaneDarkCaption(m_host, m_root->window());
                     const bool previous = m_host->testAttribute(Qt::WA_ShowWithoutActivating);
@@ -429,6 +448,7 @@ private:
         m_graphRecoveryQueued = false;
         m_nativeLayout = nullptr; m_hostLayout = nullptr; m_content = nullptr;
         m_hiddenByPage = false;
+        m_hiddenByUser = false;
         m_splitter = nullptr; m_splitterSizes.clear(); m_splitterWidgets.clear();
         m_slot = nullptr; m_root = nullptr; m_host = nullptr;
         m_layout = nullptr; m_placeholderLayout = nullptr; m_placeholder = nullptr;
@@ -461,6 +481,7 @@ private:
     QByteArray m_savedGeometry; // Retained across restore/start for this pane.
     unsigned m_generation = 0;
     bool m_hiddenByPage = false;
+    bool m_hiddenByUser = false;
     bool m_restoring = false;
 };
 }

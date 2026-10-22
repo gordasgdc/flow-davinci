@@ -2,7 +2,7 @@ name: Windows baseline and shared workspace checks
 on:
   workflow_dispatch:
   push:
-    branches: [release/0.0.2-prototype, feature/windows-managed-workspace]
+    branches: [release/0.0.2-prototype, feature/windows-managed-workspace, feature/windows-retained-host-calls]
 permissions:
   contents: read
 jobs:
@@ -22,7 +22,8 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          & ./infrastructure/windows/build-release.ps1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath windows-build.log
+          New-Item -ItemType Directory -Force -Path build/windows | Out-Null
+          & ./infrastructure/windows/build-release.ps1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath build/windows/windows-build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows prototype installer
         shell: pwsh
@@ -47,7 +48,7 @@ jobs:
         with:
           name: windows-build-evidence-${{ github.sha }}
           path: |
-            windows-build.log
+            build/windows/windows-build.log
             build/windows/**/release-manifest.json
             build/windows/**/CMakeFiles/CMakeConfigureLog.yaml
           if-no-files-found: warn

@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QChildEvent>
 #include <atomic>
+#include <QScopedValueRollback>
 #include "panesettings.h"
 #include "windowintegration.h"
 #include "controller.h"
@@ -15,6 +16,8 @@
 #include "panedecoration.h"
 #include "interactiondiagnostics.h"
 #include "crashsession.h"
+#include "surfacetrace.h"
+#include "panelcallers.h"
 
 namespace {
 QString audioToggle(const QString &name)
@@ -85,6 +88,7 @@ public:
         setObjectName(QStringLiteral("UnboundPaneController"));
         auto journal = new Unbound::CrashSession(this);
         new Unbound::InteractionDiagnostics(this);
+        new Unbound::SurfaceTrace(this);
         auto windows = new Unbound::WindowDiagnostics(this);
         qApp->installEventFilter(windows);
         connect(qApp, &QCoreApplication::aboutToQuit, journal, [journal] { journal->markClean(); });
@@ -102,6 +106,14 @@ public:
             {"frameAudioPanelSoundLibraryContainer", "Sound Library"}, {"frameAudioPanelAdrContainer", "ADR"},
             {"frameTimelineMixerContainer", "Mixer"}, {"frameMetadataContainer", "Metadata"},
             {"frameInspectorContainer", "Inspector"}};
+        for(auto it=m_names.cbegin();it!=m_names.cend();++it) {
+            const auto name=it.key();const auto page=!audioToggle(name).isEmpty()?"fairlight":!colorToggle(name).isEmpty()?"color":"edit";
+            m_panelCallers.add({name,it.value(),page,[this,name]{return m_candidates.value(name).data();},
+                [this,name]{return m_sessions.value(name);},
+                [name](QAbstractButton *button){return matchesNativeToggle(name,button->objectName());},
+                [this,name](bool visible){auto pane=m_candidates.value(name);if(pane)if(auto toggle=nativeToggle(pane,name))if(toggle->isChecked()!=visible)toggle->click();},
+                [this,name](bool hidden){settingsError(m_settings.saveHidden(settingsKey(name),hidden));}});
+        }
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { delete this; }, Qt::DirectConnection);
         qApp->installEventFilter(this);
         // One initial inventory. Later work is restricted to newly added
@@ -263,6 +275,7 @@ private:
     }
     void restoreColorToggles()
     {
+        const QScopedValueRollback<int> activation(Unbound::nativePanelActivationDepth,Unbound::nativePanelActivationDepth+1);
         if (m_pendingColorToggles.isEmpty()) return;
         for (const auto &name : m_pendingColorToggles) {
             auto decoration=m_decorations.value(name);
@@ -328,6 +341,9 @@ private:
             // native toggle when the user returns and its toolbar is available.
             if (!root || !root->isVisible()) continue;
             if (auto toggle = nativeToggle(pane, name)) {
+                if(toggle->isChecked() && !pane->isVisible()) {
+                    const QSignalBlocker blocked(toggle);toggle->setChecked(false);
+                }
                 if (!toggle->isChecked()) toggle->click();
                 settingsError(m_settings.saveToggle(settingsKey(name), toggle->isChecked()));
                 m_pendingDockToggles.remove(name);
@@ -336,6 +352,7 @@ private:
     }
     void undock(const QString &name, bool automatic = false)
     {
+        const QScopedValueRollback<int> activation(Unbound::nativePanelActivationDepth,Unbound::nativePanelActivationDepth+1);
         Unbound::logEvent("panel.placement.request",{{"panel",name},{"automatic",automatic}});
         auto decoration = m_decorations.value(name);
         if (!decoration || !decoration->pane()) return;
@@ -363,6 +380,7 @@ private:
             // The title-bar Close handler calls this same docking operation.
             if (!automatic) session->dock();
             decoration->setFloating(session->active());
+            QTimer::singleShot(0,&m_panelCallers,[this]{m_panelCallers.sync();});
             Unbound::logEvent("panel.dock.complete",{{"panel",name},{"active",session->active()},
                 {"widget",Unbound::widgetState(decoration->pane(),false)}});
             return;
@@ -372,7 +390,8 @@ private:
         auto toggle = nativeToggle(pane,name);
         const bool preserveNativeLayout = !colorToggle(name).isEmpty();
         error(session->start(pane, m_names.value(name), panePage(pane),
-            name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout));
+            name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout,
+            automatic && m_settings.hidden(settingsKey(name))));
         if (session->active()) {
             // Manual detachment also resolves startup intent. Lifecycle events
             // must not interpret its newly saved floating state as a restore.
@@ -401,6 +420,7 @@ private:
             settingsError(m_settings.saveFloating(settingsKey(name), true));
         }
         decoration->setFloating(session->active());
+        QTimer::singleShot(0,&m_panelCallers,[this]{m_panelCallers.sync();});
         Unbound::logEvent("panel.undock.complete",{{"panel",name},{"active",session->active()},
             {"widget",Unbound::widgetState(pane,false)}});
     }
@@ -415,6 +435,7 @@ private:
     }
     void discover()
     {
+        m_panelCallers.refresh(m_window);
         for (auto it = m_decorations.begin(); it != m_decorations.end();) {
             if (!it.value()->pane()) {
                 m_activationRequested.remove(it.key());
@@ -472,6 +493,7 @@ private:
     Unbound::MainWindowPlacement m_mainPlacement{m_settings};
     Unbound::MainWindowSnap m_mainSnap;
     Unbound::WindowGroupActivation m_windowGroup;
+    Unbound::PlatformPanelCallers m_panelCallers{this};
     bool m_settingsErrorShown = false;
     bool m_restoringToggles = false;
     QSet<QAbstractButton *> m_watchedToggles;

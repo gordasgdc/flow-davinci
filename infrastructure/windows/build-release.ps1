@@ -59,6 +59,7 @@ try {
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($dll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
     Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
     Invoke-Checked $test @()

@@ -7,6 +7,7 @@
 #include <cstdio>
 #include "../../../src/core/interactiondiagnostics.h"
 #include "../../../src/core/crashsession.h"
+#include "../../../src/core/surfacetrace.h"
 
 int main(int argc,char **argv) {
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
@@ -20,6 +21,7 @@ int main(int argc,char **argv) {
     auto action=new QAction("Show Inspector",&main);action->setObjectName("openGateShowInspector");main.addAction(action);
     Unbound::CrashSession journal(nullptr);
     Unbound::InteractionDiagnostics diagnostics(nullptr);
+    Unbound::SurfaceTrace pointer(nullptr);
     QObject::connect(button,&QPushButton::clicked,&main,[&]{
         Unbound::logEvent("panel.visibility.request",{{"panel","inspector"},{"requested",true}});
         action->trigger();
@@ -39,10 +41,11 @@ int main(int argc,char **argv) {
     QApplication::sendEvent(editor,&key);
     QWidget unrelated;unrelated.setObjectName("unrelatedWindow");
     QApplication::sendEvent(&unrelated,&press);
-    QApplication::processEvents();journal.markClean();Unbound::flushDiagnostics();
+    QApplication::processEvents();pointer.flush();journal.markClean();Unbound::flushDiagnostics();
     QFile file(directory.path()+"/events.jsonl");check(file.open(QIODevice::ReadOnly),"event file exists");
     const auto bytes=file.readAll();
     QString session;int clicks=0,buttonSignals=0,actions=0,lazySignals=0,requests=0,complete=0,typed=0;double sequence=0;
+    bool pointerPress=false,pointerRelease=false,nextTurn=false;
     for(const auto &line:bytes.split('\n')) {
         if(line.isEmpty())continue;
         const auto record=QJsonDocument::fromJson(line).object();const auto event=record["event"].toString();
@@ -57,6 +60,11 @@ int main(int argc,char **argv) {
             lazySignals+=record["button"].toObject()["name"]=="openGateLazyMixer";
         }
         requests+=event=="panel.visibility.request";complete+=event=="panel.visibility.complete";
+        if(event=="input.pointer.batch")for(const auto &sample:record["samples"].toArray()) {
+            pointerPress|=sample.toObject()["event"].toInt()==QEvent::MouseButtonPress;
+            pointerRelease|=sample.toObject()["event"].toInt()==QEvent::MouseButtonRelease;
+        }
+        nextTurn|=event=="input.surface.next-turn";
         if(event=="input.key.observed"&&record["text_editing"].toBool()) {
             ++typed;check(!record.contains("key")&&!record.contains("text")&&!record.contains("modifiers"),"typing values are excluded");
         }
@@ -64,6 +72,7 @@ int main(int argc,char **argv) {
     }
     check(clicks>=1&&buttonSignals==2&&actions==2&&requests==2&&complete==2,"pointer and programmatic signals retain transition trail without duplicate connections");
     check(lazySignals==1,"lazily created buttons observed");check(typed>=1&&!bytes.contains("PRIVATE_TYPED_TEXT"),"text editing recorded without contents");
+    check(pointerPress&&pointerRelease&&nextTurn,"same bounded pointer and next-turn trail is present on both platforms");
     QFile marker(directory.path()+"/active-session.json");marker.open(QIODevice::ReadOnly);
     check(QJsonDocument::fromJson(marker.readAll()).object()["clean_shutdown"].toBool(),"session journal records clean shutdown");
     std::printf("shared diagnostic failures=%d\n",failures);return failures?1:0;
