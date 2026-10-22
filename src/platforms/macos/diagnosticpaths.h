@@ -12,4 +12,5 @@ inline QString diagnosticResolveCrashArchive() {
 }
 inline qint64 diagnosticNativeWindowNumber(QWidget *widget) { return nativeWindowNumber(widget); }
 inline qint64 diagnosticNativeKeyWindowNumber() { return nativeKeyWindowNumber(); }
+inline double diagnosticInputAgeMilliseconds(quint64 timestamp) { return nativeInputAgeMilliseconds(timestamp); }
 }
