@@ -150,7 +150,7 @@ void verifyAuditionHeaderDrag(QApplication &app)
     for (int pass=0; pass<2; ++pass) {
         check(session.start(&slot,"Media Pool",&page,false,false,true).isEmpty(), "Audition header setup failed");
         auto host = static_cast<Unbound::PaneFloatingWindow *>(session.floatingWindow());
-        host->setGeometry(1000,500,500,400); app.processEvents();
+        host->setGeometry(100,100,500,400); app.processEvents();
         QCursor::setPos(title->mapToGlobal(QPoint(5,5)));
         mouse(title,QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);
         QCursor::setPos(QCursor::pos()+QPoint(QApplication::startDragDistance()+1,0));
@@ -221,7 +221,7 @@ bool runPlatformWindowTests(QApplication &app)
         Unbound::PaneFloatingWindow host;
         host.setObjectName("unboundFloating_dragTest");
         host.setWindowTitle("Captionless pane fixture");
-        host.setGeometry(600, 200, 400, 300);
+        host.setGeometry(100, 100, 400, 300);
         // Resolve headers may have their own native HWND; Qt must keep routing
         // this child gesture rather than requiring mouse messages on the host.
         QWidget header(&host);
