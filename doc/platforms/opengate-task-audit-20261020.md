@@ -1,3 +1,20 @@
+## Mixer native title candidate — 2026-10-22
+
+Branch fix/mixer-native-title-drag contains the menu optimization and shared Panels
+extraction. A new assembled first-open fixture models lblMixerMeter under
+frameMixerMeterTitle as a custom QWidget rather than a QLabel. It fails before the
+repair at custom native Mixer title drag; the unchanged placement-button test
+passes. The adapter now recognizes only this captured title identity, subject to
+the existing shallow-header and gesture checks. No overlay, new host/session,
+header strip, alternate Mixer alias or central controller growth.
+
+Initial repaired first-open and title-gesture fixtures pass; expanded Mixer recall,
+maximize/restore and ownership assertions are being checked. Universal helper
+compilation passes; final clean-commit build and broader verification follow.
+This is a candidate for a specific demonstrated custom-title gap, not proof that
+it explains every screenshot/control-lifetime issue. Actual native title dragging
+and GPU content remain live gates. Existing installed a7ce036 is unchanged.
+
 ## Delivery requirements added — 2026-10-22
 
 See opengate-prototype-delivery.md for the ordered implementation/acceptance list.
