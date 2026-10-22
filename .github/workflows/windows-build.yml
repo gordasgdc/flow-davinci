@@ -24,6 +24,20 @@ jobs:
           $ErrorActionPreference = 'Stop'
           & ./infrastructure/windows/build-release.ps1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath windows-build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build Windows prototype installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
+          if (!(Test-Path $compiler)) { throw 'Inno Setup compiler is missing from the Windows runner.' }
+          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" infrastructure/windows/prototype-installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash release/packages/*.exe -Algorithm SHA256 | Format-List | Out-File release/packages/SHA256SUMS.txt
+      - name: Retain Windows prototype installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenGate-0.0.2-Windows-prototype
+          path: release/packages/*
+          if-no-files-found: error
       - name: Retain build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -35,6 +49,6 @@ jobs:
             build/windows/**/CMakeFiles/CMakeConfigureLog.yaml
           if-no-files-found: warn
           retention-days: 14
-# Build evidence only: full managed-workspace integration and Resolve runtime
-# parity remain open. This workflow never packages or publishes a user release.
+# Full managed-workspace integration and Resolve runtime parity remain open.
+# This workflow packages an explicitly limited prototype; it never publishes a release.
 # Qt installer syntax: https://aqtinstall.readthedocs.io/en/v3.3.0/cli.html
