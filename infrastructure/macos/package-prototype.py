@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory(prefix='opengate-package-',dir=root/'build/maco
  for entry in entries: copy(commands/entry['file'],workflow/entry['file'])
  support=payload/'Library/Application Support/CineWaltz/OpenGate';support.mkdir(parents=True)
  bundle=json.loads((root/'src/assets/presets/BundledArrangements.json').read_text());chosen=next(e for e in bundle['arrangements'] if e['id']==bundle['default']);state=dict(chosen['workspace']);state['selected_arrangement']=chosen['id'];presets=support/'Presets';presets.mkdir()
- for name,data in [('Workspace.json',state),('Arrangements.json',{'version':1,'arrangements':bundle['arrangements']})]: (presets/name).write_text(json.dumps(data,indent=2)+'\n')
+ for name,data in [('Workspace.json',state),('Arrangements.json',{'version':1,'arrangements':[e for e in bundle['arrangements'] if not e.get('read_only')]})]: (presets/name).write_text(json.dumps(data,indent=2)+'\n')
  copy(root/'LICENSE',support/'LICENSE');copy(root/'doc/releases/opengate-0.0.1-prototype.md',support/'README.md')
  copy(root/'infrastructure/macos/installer/seed-profile.sh',support/'seed-profile.sh')
  for name in ['preinstall','postinstall']: copy(root/'infrastructure/macos/installer'/name,scripts/name);(scripts/name).chmod(0o755)

@@ -3,6 +3,7 @@
 #include "settingsprofile.h"
 #include "../../core/pageworkspacestate.h"
 #include "starterworkspacegeometry.h"
+#include "workspacedisplays.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -60,8 +61,10 @@ public:
     }
     static QRect rectangle(const QJsonObject &object)
     {
-        return {object["x"].toInt(), object["y"].toInt(), object["width"].toInt(), object["height"].toInt()};
+        return object.contains("display") ? DisplayPlacement::resolve(object,workspaceDisplays()) : DisplayPlacement::rect(object);
     }
+    static QJsonObject displayRectangle(const QRect &r,const QJsonObject &previous={})
+    {return DisplayPlacement::capture(r,workspaceDisplays(),previous);}
     QJsonObject data;
 private:
     QString path,failure;

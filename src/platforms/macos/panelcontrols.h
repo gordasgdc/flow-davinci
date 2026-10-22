@@ -76,7 +76,7 @@ public:
             settings.data=Unbound::resolveLayoutEntry("edit")["workspace"].toObject();
             settings.data["selected_arrangement"]=Unbound::WorkspacePresetPolicy::resolveLayoutId("edit");
         }
-        layoutMode=Unbound::PageWorkspaceState::mode(settings.data);
+        layoutMode=Unbound::PageWorkspaceState::mode(settings.data);pendingMainPlacement=settings.data["main_window"].toObject();mainPlacementRecord=pendingMainPlacement;
         managerView=new Unbound::PanelManagerView(this,settings.data);
         status=managerView->status; presetsUi=managerView->presets;
         optionsScroll=managerView->scroll; pin=managerView->pin; constrain=managerView->constrain;
@@ -88,6 +88,7 @@ public:
         presets = presetsUi->selection();
         workspaceRestore=new Unbound::WorkspaceRestoration(this);
         workspaceRestore->running=[this] { return !quitting; };
+        workspaceRestore->checkpoint=[this] { save(true);return settings.pageView("edit"); };
         workspaceRestore->report=[this](QString message) { status->setText(message); };
         workspaceRestore->validate=[this](const QJsonObject &value) {
             return nativeWorkspace->validate(value["native_arrangement"].toObject(),value["groups"].toArray());
@@ -95,16 +96,17 @@ public:
         workspaceRestore->dock=[this] {
             ++bulkVersion; ++groupVersion; restoreExpanded();
             const QScopedValueRollback<bool> transaction(restoringNative,true);
-            const auto error=dockAll();if(!error.isEmpty())return error;
+            const auto error=dockAll(false);if(!error.isEmpty())return error;
             for (const auto &panel:panels) if (panel.session->active()) return panel.name;
             return QString();
         };
         workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
         workspaceRestore->resume=[this] { restore(); save(); };
-        workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty(); };
+        workspaceRestore->committed=[this] { syncNativeToggles(layoutMode=="native");save(); };
+        workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty() || !nativeWorkspace->requiredPanels().isEmpty(); };
         workspaceRestore->unavailable=[this] {
             QStringList missing;
-            for (const auto &panel:panels) if (panel.desired && !panel.session->active() && !panel.pending) missing.append(panel.label);
+            for (const auto &panel:panels) if (panel.desired && !panel.session->active()) missing.append(panel.label);
             return missing;
         };
         presetsUi->workspace = [this] { return arrangement(); };
@@ -212,10 +214,18 @@ public:
         };
         nativeWorkspace->changed = [this] {
             for (int i=0;i<panels.size();++i) updateRow(i);
+            syncNativeToggles();
             nativeWorkspace->refreshNativeTargets(page());
-            if (!quitting) saveTimer.start();
+            if (!quitting) {
+                saveTimer.start();
+                // restoreReady may finish in the binding's queued callback,
+                // after the coordinator's current pass has already returned.
+                if(workspaceRestore && workspaceRestore->active())restoreTimer.start(0);
+            }
         };
-        nativeWorkspace->failed = [this](const QString &error) { status->setText(error); };
+        nativeWorkspace->failed = [this](const QString &error) {
+            if(!workspaceRestore->failPreset(error))status->setText(error);
+        };
         QStringList panelLabels; for (const auto &panel:panels) panelLabels.append(panel.label);
         managerView->addGroups(panelLabels);
         auto firstPanel=managerView->first,secondPanel=managerView->second;
@@ -269,12 +279,13 @@ public:
                 [this,i](double factor) { panels[i].session->setInterfaceScale(factor); },
                 [this,i] { return panels[i].session->active(); }));
             panel.session->changed = [this, i] {
+                if (restoringNative) { updateRow(i); return; }
                 if (!panels[i].session->active()) expansionController->sessionInactive(i);
                 if (!quitting) panels[i].desired = panels[i].session->active() && !panels[i].session->dockPending();
                 if (auto group = groupFor(i)) group->syncVisibility();
                 nativeWorkspace->queueRestore(page());
                 nativeWorkspace->refreshNativeTargets(page());
-                syncNativeToggle(i);
+                syncNativeToggles();
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
             };
@@ -344,22 +355,22 @@ public:
         nativeDrag = new Unbound::NativePanelDrag(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
-            [this, index] { if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
+            [this, index] { if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();return panelShown(index); },
             [this, index] {
                 if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(!workspaceHeader->shown());return;}
-                if (panels[index].session->active()) queuePanelDoor(index);
-                else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
-            }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
+                queuePanelDoor(index);
+            }, [this, index] { return layoutMode=="managed" || panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
         nativeToggles=new Unbound::NativePanelToggles(this);
+        nativeToggles->blocked=[this]{return quitting || restoringNative || (workspaceRestore && workspaceRestore->active());};
         for (int i=0;i<panels.size();++i)
-            nativeToggles->add(panels[i].toggle,[this,i] { return panels[i].session->active(); },
-                [this,i] { return panels[i].session->hiddenByUser(); },[this,i] { queuePanelDoor(i); });
+            nativeToggles->add(panels[i].toggle,[this,i] { return layoutMode=="managed" || panels[i].session->active(); },
+                [this,i] { return panelShown(i); },[this,i] { queuePanelDoor(i); });
         commands=new Unbound::PanelCommandCatalog(this,[this] { return !quitting; });
         for (int i=0;i<panels.size();++i)if(panels[i].name!="frameEditToolbarTop")
             commands->addPanel(panels[i].name,panels[i].label,
                 [this] { return page() && page()->isVisible(); },
-                [this,i] { if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")workspaceHeader->setShown(!workspaceHeader->shown());else if (panels[i].session->active()) queuePanelDoor(i); else requestUndock(i); },
+                [this,i] { if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")workspaceHeader->setShown(!workspaceHeader->shown());else queuePanelDoor(i); },
                 [this,i] { toggleExpanded(i); });
         commands->add({"panel.expand.hovered","Maximize / Restore Panel Under Pointer (Backtick)",
             [this] { return page() && page()->isVisible() && hoveredExpansionTarget()>=0; },
@@ -384,10 +395,7 @@ public:
             [this] { return !quitting && page() && page()->isVisible(); },
             [this,i] {
                 if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();
-                if (nativeWorkspace->contains(panels[i].name)) return nativeWorkspace->selected(panels[i].name);
-                auto session=panels[i].session;
-                if (session->active()) return !session->hiddenByUser() && session->window() && session->window()->isVisible();
-                auto surface=Unbound::panelSurface(page(),panels[i].name); return surface && surface->isVisible();
+                return panelShown(i);
             },
             [this,i] {
                 if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(true);return;}
@@ -422,6 +430,7 @@ public:
                     Unbound::logEvent("workspace.native-return.failed",{{"page",activePage},{"error",error}});
                     return;
                 }
+                syncNativeToggles(true);
                 Unbound::logEvent("workspace.native-return.complete",{{"page",activePage}});
             } else footer->refreshSurfaces();
             if (auto main = Unbound::resolveMainWindow()) {
@@ -441,7 +450,7 @@ public:
         for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
             [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
             [this,i] { return !panels[i].session->hiddenByUser(); },
-            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggle(i);save(); },
+            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggles();save(); },
             [this,i] { return panels[i].session->interfaceScale(); },
             [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
             [this,i] { floatToolbar(i); }});
@@ -632,6 +641,8 @@ private:
         if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(!workspaceHeader->shown());return;}
         enterManagedFromGesture(panels[i].name);
         if (nativeWorkspace->contains(panels[i].name)) { nativeWorkspace->detach(panels[i].name); readyNativeDrag(i); save(); }
+        else if(auto group=groupFor(i)){group->detachMember(panels[i].session);save();}
+        else if(panels[i].session->active() && nativeWorkspace->active())dockNative(i);
         else if (panels[i].session->active()) dockOne(i);
         else requestUndock(i);
     }
@@ -647,7 +658,7 @@ private:
         restoreExpanded(); auto group=groupFor(i);
         const auto direction=edge==Qt::Edge(0) ? Qt::Orientation(0) : edge==Qt::TopEdge || edge==Qt::BottomEdge ? Qt::Vertical : Qt::Horizontal;
         const auto error=nativeWorkspace->dockSelection(page(),panels[i].name,group,
-            target ? nativeWorkspace->targetName(target) : Unbound::nativeRemainderId(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
+            target ? nativeWorkspace->targetName(target) : nativeWorkspace->defaultDockTarget(),direction,edge==Qt::LeftEdge || edge==Qt::TopEdge);
         if (!error.isEmpty() && group && group->active()) {
             group->setChrome(static_cast<Unbound::WindowChrome>(style->currentIndex())); group->setSnapping(snap->isChecked());
         }
@@ -660,7 +671,10 @@ private:
     bool panelShown(int i) const {
         if(nativeWorkspace->contains(panels[i].name))return nativeWorkspace->selected(panels[i].name);
         auto session=panels[i].session;
-        if(session->active())return !session->hiddenByUser() && session->window() && session->window()->isVisible();
+        if(session->active()) {
+            auto group=groupFor(i);
+            return !session->hiddenByUser() && (!group || (!group->windowHidden() && group->selected(session))) && session->window() && session->window()->isVisible();
+        }
         auto target=Unbound::panelSurface(page(),panels[i].name);return target && target->isVisible();
     }
     void beginPanelDrag(int i) {
@@ -682,16 +696,20 @@ private:
         const bool reveal = session->hiddenByUser() || (group && (group->windowHidden() || !group->selected(session))) ||
             (nativeWorkspace->contains(panels[i].name) && !nativeWorkspace->selected(panels[i].name));
         showPanel(i,reveal);
-        syncNativeToggle(i);
+        syncNativeToggles();
         Unbound::logEvent(QStringLiteral("panel.visibility.native-toggle"), {{"panel", panels[i].name}, {"visible", reveal}});
     }
     void queuePanelDoor(int i)
     {
-        if (!panels[i].session->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
+        if (quitting || restoringNative || workspaceRestore->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
         pendingNativeDoors.insert(i);
-        QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
+        const auto version=bulkVersion;
+        QTimer::singleShot(0, this, [this, i, version] {
+            pendingNativeDoors.remove(i);
+            if(!quitting && !restoringNative && !workspaceRestore->active() && version==bulkVersion)togglePanelDoor(i);
+        });
     }
-    void syncNativeToggle(int i) { if (nativeToggles) nativeToggles->sync(i,page()); }
+    void syncNativeToggles(bool nativeSnapshot=false) { if (nativeToggles) nativeToggles->sync(page(),nativeSnapshot); }
     void wireNativeToggles() { if (!quitting) nativeToggles->wire(page()); }
     QJsonObject arrangement() const
     {
@@ -713,7 +731,11 @@ private:
     QString applyWorkspace(QJsonObject value)
     {
         value=Unbound::migrateWorkspaceHeader(Unbound::fitStarterWorkspace(value));
+        if(value.contains("selected_arrangement")) {
+            const QSignalBlocker block(presets);presets->setCurrentIndex(qMax(0,presets->findData(value["selected_arrangement"].toString())));
+        }
         layoutMode=Unbound::PageWorkspaceState::mode(value);
+        pendingMainPlacement=value["main_window"].toObject();mainPlacementRecord=pendingMainPlacement;
         if (footer) footer->setState(value["footer"].toObject());
         if(workspaceHeader)workspaceHeader->setState(value["header"].toObject());
         { const QSignalBlocker blocker(background); background->setChecked(false); }
@@ -836,16 +858,13 @@ private:
             return;
         }
         if (root && root->isVisible() && target && !target->isVisible() && !p.toggle.isEmpty()) {
-            const QString base = QStringLiteral("btnEditToggle") + p.toggle;
-            for (auto button : root->findChildren<QAbstractButton *>()) {
-                if ((button->objectName() == base + "InSSM" || button->objectName() == base + "InDSM" ||
-                    button->objectName() == base + "InEFTM") && button->isVisible() && button->isEnabled()) {
-                    if (!button->isChecked()) button->click();
-                    p.pending = true; updateRow(i);
-                    const unsigned request = ++p.requestVersion;
-                    awaitUndockSurface(i, request, root);
-                    return;
-                }
+            // The pinned toolbar may be a sibling of the page or leased to
+            // its main surface. Use the existing main-window control resolver.
+            if (Unbound::setNativePanelVisibility(root->window(),p.toggle,true,target)) {
+                p.pending = true; updateRow(i);
+                const unsigned request = ++p.requestVersion;
+                awaitUndockSurface(i, request, root);
+                return;
             }
         }
         finishUndock(i);
@@ -861,7 +880,14 @@ private:
             }, [this,i,request](bool ready) {
                 if (quitting || panels[i].requestVersion!=request) return;
                 Unbound::logEvent("panel.undock.readiness",{{"panel",panels[i].name},{"ready",ready}});
-                panels[i].pending=false; finishUndock(i);
+                panels[i].pending=false;
+                if(!ready) {
+                    const auto error=panels[i].label+": native surface did not become visible.";
+                    outcome("undock",i,error);updateRow(i);
+                    if(!workspaceRestore->failPreset(error))status->setText(error);
+                    return;
+                }
+                finishUndock(i);
             });
     }
     void finishUndock(int i)
@@ -889,6 +915,9 @@ private:
             }
             const QRect position = Unbound::WorkspaceSettings::rectangle(p.saved);
             if (position.isValid()) p.session->setFloatingGeometry(position);
+            p.session->restoreWindowMaximized(p.saved["maximized"].toBool());
+            if(p.saved.contains("display")&&Unbound::DisplayPlacement::match(p.saved,Unbound::workspaceDisplays())<0)
+                p.saved["display_fallback"]=Unbound::DisplayPlacement::rect(p.session->floatingGeometry());
             p.session->setInterfaceScale(p.saved["interface_scale"].toDouble(1.0));
             p.session->setPinned(p.name=="unboundWorkspaceToolbar" ? p.saved["toolbar_float_pinned"].toBool(true) : p.saved["pinned"].toBool());
             if (p.saved["hidden"].toBool()) p.session->setHiddenByUser(true);
@@ -905,6 +934,10 @@ private:
             if(!attached.isEmpty())status->setText(attached);
         }
         outcome("undock", i, error);updateRow(i);updateNativeSizing();
+        if(!error.isEmpty()&&workspaceRestore->failPreset(p.label+": "+error))return;
+        if(error.isEmpty())for(const auto &next:panels)if(next.desired&&!next.session->active()) {
+            restoreTimer.start(0);break;
+        }
         // A first maximize from Native UI may need to create the floating
         // session. It uses the same deferred checkpoint as an existing session.
         if(expansionController->index()==i)saveTimer.start();else save();
@@ -924,13 +957,14 @@ private:
         if(workspaceHeader && !workspaceHeader->release())return QStringLiteral("Could not restore the workspace header before changing the workspace.");
         return {};
     }
-    QString dockAll() {
+    QString dockAll(bool cancelRestore=true) {
         QString error;
         {
             // Intermediate session callbacks must not replace the last complete
             // layout. Persist one complete native result after all transfers.
             const QScopedValueRollback<bool> transaction(restoringNative,true);
-            if (workspaceRestore) workspaceRestore->cancel();
+            restoreTimer.stop();
+            if (cancelRestore && workspaceRestore) workspaceRestore->cancel();
             error=releaseWorkspaceBands();
             if(error.isEmpty() && nativeWorkspace && !nativeWorkspace->release(true))
                 error=QStringLiteral("The native layout changed; restoration was stopped.");
@@ -982,6 +1016,7 @@ private:
         };
         group->changed = [this] {
             for (int i = 0; i < panels.size(); ++i) updateRow(i);
+            syncNativeToggles();
             if (!quitting) saveTimer.start();
         };
         for (int i = 0; i < panels.size(); ++i) updateRow(i);
@@ -1040,7 +1075,7 @@ private:
             else { delete group; Unbound::logEvent(QStringLiteral("group.restore.pending"), {{"error", error}}); }
         }
         if (requested) status->setText(pendingGroups.isEmpty() ? QStringLiteral("Panel groups restored.") : QStringLiteral("Some groups are waiting for unavailable panels."));
-        save();
+        workspaceRestore->finishPreset();save();
     }
     void quickExport()
     {
@@ -1083,6 +1118,14 @@ private:
         if (viewerMode && page()) viewerMode->refresh(page()->window());
         // Timeline toolbar stays with Timeline; no independent detach control.
         QWidget *root = page();
+        if(root&&root->isVisible()&&!pendingMainPlacement.isEmpty()) {
+            const auto placement=pendingMainPlacement;pendingMainPlacement={};
+            auto main=root->window();if(main->isMaximized())main->showNormal();
+            const auto frame=Unbound::WorkspaceSettings::rectangle(placement);if(frame.isValid())main->setGeometry(frame);
+            if(placement["maximized"].toBool())main->showMaximized();
+            if(mainPlacementRecord.contains("display")&&Unbound::DisplayPlacement::match(mainPlacementRecord,Unbound::workspaceDisplays())<0)
+                mainPlacementRecord["display_fallback"]=Unbound::DisplayPlacement::rect(main->isMaximized()?main->normalGeometry():main->geometry());
+        }
         updateNativeSizing();
         if (!root || !root->isVisible()) return;
         for(const auto &panel:panels)if(!panel.session->active() && !panel.desired && panel.saved.contains("native_hidden"))
@@ -1090,8 +1133,9 @@ private:
         QList<Unbound::WorkspaceRestoration::Panel> restoring;
         for (const auto &panel:panels) restoring.append({panel.name,panel.saved,panel.desired,panel.session});
         const auto result=workspaceRestore->native(root,nativeWorkspace,restoring,[this](int i) { requestUndock(i,true); });
-        if (!result.error.isEmpty()) status->setText(result.error);
+        if (!result.error.isEmpty()) {status->setText(result.error);workspaceRestore->failPreset(result.error);}
         if (!result.prepared) return;
+        workspaceRestore->finishPreset();
         workspaceRestore->settled(!pendingGroups.isEmpty(),background->isChecked(),
             [this] { restoreGroups(); },[this] { if (background->isChecked()) applyBackgroundVisibility(true); });
     }
@@ -1116,6 +1160,7 @@ private:
                 if(nativeSurfaceDoors.modified(p.name))value["native_hidden"]=nativeSurfaceDoors.hidden(p.name);
                 else value.remove("native_hidden");
             }
+            if(p.session->active()&&!p.session->grouped())value["maximized"]=p.session->windowMaximized();
             value["interface_scale"]=p.session->interfaceScale();
             if (p.name=="unboundWorkspaceToolbar" && p.session->active() && !p.session->grouped()) value["toolbar_float_pinned"]=p.session->pinned();
             value=expansionController->panelSnapshot(i,value);
@@ -1123,9 +1168,17 @@ private:
         }
         return saved;
     }
-    void save()
+    void save(bool retainSelection=false)
     {
         if (quitting) return;
+        if(workspaceRestore && workspaceRestore->savingBlocked()) {
+            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-restore-transaction"}});return;
+        }
+        // A partially acquired preset is a transition, not a working layout.
+        // Preserve the previous complete page checkpoint if native readiness fails.
+        if(!restoringNative && (!pendingGroups.isEmpty() || (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()))) {
+            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-assembly-pending"}});return;
+        }
         Unbound::UiWorkTiming timing("workspace.save",this);
         QElapsedTimer phases;phases.start();
         const auto saved=capturePanelStates();
@@ -1137,10 +1190,14 @@ private:
         snapshot.footer=footer ? footer->snapshot() : QJsonObject();
         snapshot.header=workspaceHeader ? workspaceHeader->snapshot() : QJsonObject();
         snapshot.pinControls=pin->isChecked(); snapshot.hideBackground=background->isChecked();
-        snapshot.selected=presets->currentData().toString(); snapshot.chrome=style->currentIndex();
+        snapshot.selected=retainSelection?settings.pageView("edit")["selected_arrangement"].toString():presets->currentData().toString(); snapshot.chrome=style->currentIndex();
         snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
         snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
         auto captured=snapshot.json();captured["page"]="edit";captured["layout_mode"]=layoutMode;
+        if(auto main=Unbound::resolveMainWindow()) {
+            auto placement=Unbound::WorkspaceSettings::displayRectangle(main->isMaximized()?main->normalGeometry():main->geometry(),mainPlacementRecord);
+            mainPlacementRecord=placement;placement["maximized"]=main->isMaximized();captured["main_window"]=placement;
+        }
         const auto previousMode=Unbound::PageWorkspaceState::mode(settings.pageView("edit"));
         QString pageError;
         if(restoringNative) {
@@ -1171,7 +1228,8 @@ private:
     }
     void updateNativeSizing()
     {
-        if (quitting || expansionController->index()>=0 || !nativeSizing) return;
+        if (quitting || restoringNative || expansionController->index()>=0 || !nativeSizing ||
+            (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty())) return;
         auto root=page();
         QList<Unbound::NativeWorkspacePresentation::Surface> surfaces;
         for (const auto &panel:panels) surfaces.append({panel.name,Unbound::panelSurface(root,panel.name),panel.session,panel.label.endsWith("Toolbar")});
@@ -1231,6 +1289,7 @@ private:
     mutable QElapsedTimer pageScanClock;
     QTimer saveTimer, restoreTimer;
     QString layoutMode="native";
+    QJsonObject pendingMainPlacement,mainPlacementRecord;
     bool quitting = false,restoringNative=false;
     bool toggleScanQueued = false;
     unsigned bulkVersion = 0;

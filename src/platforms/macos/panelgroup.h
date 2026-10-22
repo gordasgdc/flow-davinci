@@ -160,7 +160,8 @@ public:
     QJsonObject snapshot() const
     {
         if (!host) return {};
-        auto value = WorkspaceSettings::rectangle(host->geometry()); const auto tree = treeSnapshot(root);
+        auto value = WorkspaceSettings::displayRectangle(host->isMaximized()?host->normalGeometry():host->geometry(),placementRecord); const auto tree = treeSnapshot(root);
+        value["maximized"]=host->isMaximized();
         value["pinned"] = host->pinned();
         value["hidden"] = windowHidden();
         value["tree"] = tree; value["panels"] = QJsonArray::fromStringList(names());
@@ -179,10 +180,13 @@ public:
         const auto tree = savedTree(value); QStringList expected;
         if (!groupTreeNames(tree, expected)) return false;
         auto current = names(); current.sort(); expected.sort(); if (current != expected) return false;
-        const auto position = WorkspaceSettings::rectangle(value); if (position.isValid()) host->setGeometry(position);
+        placementRecord=value;const auto position = WorkspaceSettings::rectangle(value); if (position.isValid()) host->setGeometry(position);
         host->setPinned(value["pinned"].toBool());
         host->setProperty("unboundGroupDoorHidden",value["hidden"].toBool());
-        rebuild(tree); refresh(); keepOnDisplay(host); return true;
+        rebuild(tree); refresh(); keepOnDisplay(host);if(value["maximized"].toBool())host->showMaximized();
+        if(placementRecord.contains("display")&&DisplayPlacement::match(placementRecord,workspaceDisplays())<0)
+            placementRecord["display_fallback"]=DisplayPlacement::rect(host->isMaximized()?host->normalGeometry():host->geometry());
+        return true;
     }
     bool selected(MacPanelSession *member) const
     {
@@ -290,6 +294,7 @@ protected:
         return false;
     }
 private:
+    QJsonObject placementRecord;
     static QString panelName(MacPanelSession *session)
     { return session->window()->objectName().mid(session->grouped() ? QStringLiteral("unboundGroupCell_").size() : QStringLiteral("unboundFloating_").size()); }
     QStringList names() const { QStringList result; for (auto member : members) if (member) result.append(panelName(member)); return result; }

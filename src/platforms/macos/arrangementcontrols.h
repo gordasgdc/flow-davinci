@@ -39,7 +39,7 @@ public:
             logEvent("arrangement.reorder", {{"success", error.isEmpty()}, {"error", error}});
         };
         reloadPresets(selected);
-        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { if (changed) changed(); });
+        connect(presets, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this] { if (workspace) updateState(workspace()); });
         connect(restore, &QPushButton::clicked, this, [this] { if (restoreRequested) restoreRequested(); });
     }
     QComboBox *selection() const { return presets; }
@@ -65,7 +65,7 @@ public:
         if (!id.isEmpty()) {
             const int index = presets->findData(id);
             if (index < 0 || workspacePage(find(id)) != activePage || find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
-            if (operation == "Restore") presets->setCurrentIndex(index);
+            if (operation == "Restore") { const QSignalBlocker blocked(presets);presets->setCurrentIndex(index); }
         }
         if (operation == "Restore") { if (restoreRequested) restoreRequested(); }
         else manageArrangement(operation, id);

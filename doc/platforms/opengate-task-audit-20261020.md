@@ -1,3 +1,171 @@
+## User-approved main baseline — 2026-10-22
+
+Jordan reports the installed caller/Keyframes candidate is working and explicitly
+requests: “i really think this is working now. Merge to main”. This supersedes
+prior main-merge holds for this candidate only. Record this as user-reported live
+acceptance for baseline promotion, not an exhaustive claim that every historical
+case, GPU configuration, fresh installation or platform has been validated.
+
+Installed and startup-verified source: a7ce036e5cdfd91cee1ea83232b2a91f122cf342.
+Helper SHA-256: 8f9f12816895745cf340b2152c8ce8c744c4c4171ce99b39187b1db73ce58a66.
+The clean source passed 44/44 hidden fixtures and 8/8 displayed fixtures; the
+successful displayed run used foreground Terminal, with earlier failures retained.
+Universal arm64/x86_64 build and signature audit pass. Detailed receipts remain
+in the panel-caller-state-sync worktree's build/macos/candidate-review.json and
+build/macos/test-install-receipt.json. Profiles, arrangements and native shortcuts
+were preserved; the prior installation remains backed up there.
+
+Merge scope: the tested integration/panel-callers-keyframes-live-candidate plus
+this documentation-only acceptance record. Preserve isolated feature branches
+and the live installation. No rebuild/reinstall is needed for this record.
+Push, publication, prototype packaging, Windows implementation/runtime acceptance,
+public-identity cleanup and repository migration are separate actions. No pristine
+live first-user profile test was performed; the existing active profile was kept.
+Resolve Layout remains the first-profile default, with Jordan Tetewsky Preset
+available as an optional saved workspace.
+
+Everything below is historical evidence unless superseded by this entry.
+
+## Current integration review — caller state and Keyframes (2026-10-22)
+
+User authorized implementation, isolated feature commits, combined verification
+and installation of the correct candidate. Resolve is currently open: do not
+replace its loaded helper or terminate it. Installed helper remains 53e23ee,
+verified by SHA-256 d7e4c40820665b6e13fc53049296c21dbd6a52b1e4516c433cef5eb68810e6ce.
+No merge to main, publication or prototype release is authorized by this repair.
+
+Integration: integration/panel-callers-keyframes-live-candidate, built on 53e23ee.
+- fix/panel-caller-state-sync: native checked notifications cannot generate panel
+  commands; radio-like checks reflect selected/visible presentation. Header input
+  calls the existing controller instead of operating leased native slots. Toolbar,
+  Panels and workflow dispatch share the presentation query; queued recalls are
+  invalidated across workspace transactions. Placement remains separate.
+- fix/keyframes-panel-parity: reuse the native Keyframes btnUndock through a small
+  NativePlacementCaller adapter, with the existing panel/session/group/expansion
+  controllers. No parallel Keyframes host or content implementation.
+- New assembled caller regression fails five checks against 53e23ee and passes
+  the repair. A new Keyframes regression reproduced its native tray bypass before
+  the placement adapter; repaired checks pass floating hide/recall, tab grouping,
+  standalone/grouped maximize restore, page return, process restart and Native
+  ownership return. These are synthetic Qt checks, not live Resolve acceptance.
+
+First clean combined matrix: 42/43 passed at 0c8eea9; the manifest test
+failed because added acceptance strings were descriptive rather than the schema's
+required pending value. Corrected the source lock, preserving the test. Receipt:
+`build/macos/verification/0c8eea9347-hidden-20261022T120314Z/receipt.json`.
+
+Additional assembled checks reproduced two gaps and now pass focused repairs:
+- Explicit floating placement goes back into the visible managed tree, using
+  an existing dock target. It cannot silently return content to a parked slot.
+  Grouped placement detaches the member; header doors never invoke this path.
+- Native return reflects actual restored native slot visibility, rather than
+  retaining OpenGate's last hidden/selected check. Normal Native signals still
+  belong to Resolve. This is a state reflection, not another visibility command.
+Keyframes maximize now checks exact workspace viewport bounds through all four
+band combinations. The separate command-submenu fixture is added to the matrix.
+Final clean-commit verification results and build hashes are recorded in
+`build/macos/candidate-review.json`, alongside the per-run receipts. Read those
+receipts for actual status; the earlier 42/43 run is retained as failure evidence.
+Clean 6859e7e hidden matrix passes 44/44. Its first displayed run passes
+6/8: panel-groups still expected a programmatic check notification to recall
+Inspector, contrary to the repair's explicit intent boundary. That fixture now
+asserts no recall on observation, then recalls by explicit activation; it passes
+in isolation. The panel-session failure logged native-mouse-up during its synthetic
+held-button grouping sequence; isolated rerun passes with unchanged production
+input and fixture. Retain both failed and passing evidence. Final clean combined
+source with this fixture correction is being verified; do not install from an
+incomplete or failing displayed receipt.
+
+Direct synthetic Keyframes title dragging also passes; physical pointer capture
+and native custom rendering remain live gates. Displayed fixtures and replacement require Resolve closed.
+The native GPU/keyframe content, actual pointer capture and physical remapped-key
+behavior need live acceptance. Source/Program visual fit remains live review.
+
+Public labels should be OpenGate. Internal Unbound identifiers/settings paths and
+Wolfgang's inherited attribution remain. The exact reported “Unbound Test” label
+has not yet been located; do not claim it fixed. Public release cleanup, capability
+compatibility checks and repository migration remain separate follow-ups.
+Windows implementation/release work follows the user's Mac flow acceptance;
+no Windows install is possible here. Future prototype notes must distinguish Mac
+live evidence, Windows build evidence and external confirmations.
+
+## Live panel-caller follow-up (2026-10-21 after 53e23ee installation)
+
+Open: Media Pool/Index automatic visibility feedback loop in OpenGate Resolve
+Layout, floating Media Pool recall/placement inconsistency, and toolbar checked
+states not matching actual presentation (including visible Mixer). Logs from
+session 2370aadd-a044-4120-9153-cbecb206ba25 show repeated tab selection between
+Media Pool and Index without corresponding input clicks. Do not mark live flow
+accepted on the strength of the prior fixture passes.
+
+Add Keyframes to this same acceptance sweep. It is already registered as
+frameEditPageKeyframeEditor / KeyframeEditor / contents-session in PanelControls;
+registration alone does not establish working native surface discovery or behavior.
+Verify its real widget, detach control and title dragging, floating and grouped
+show/hide/recall, toolbar/native caller and checked-state synchronization,
+backtick maximize/restore, saved placement and Native/OpenGate/page transitions.
+Reuse the existing panel/session controllers; do not build a parallel Keyframes UI.
+No live Keyframes acceptance has been established.
+
+## Current follow-up: Native to OpenGate restore repair (2026-10-21 evening)
+
+Branch `fix/native-workspace-entry-transaction` includes the viewer toolbar fix.
+The installed `dbb5c8d` is still the live build; this repair is not installed,
+merged or published. Live acceptance remains open.
+
+Evidence: the installed session repeatedly dispatched Inspector through invisible
+`btnEditToggleInspectorInEFTM`, then timed out. The user's visible SSM Inspector
+click triggered Resolve's native action; Resolve Layout and Jordan then logged
+complete restoration. The recorded hierarchy puts EFTM/DSM in non-current toolbar
+stack pages. The new assembled regression reproduced acquisition failure before
+the repair (three assertions failed).
+
+Repair reuses the existing native control and workspace coordinators:
+- Select the current native toolbar branch, including when the complete band is
+  hidden; reject inactive variants. Reconcile a mirrored checked state against
+  actual target visibility before one native activation, then await real readiness.
+  No Inspector-specific click, native ancestor force-show or new UI layer.
+- Suppress ordinary session vacancy/visibility reconciliation during native return,
+  and vacancy collapse while the managed plan is still acquiring its panels.
+- Keep checkpoint writes deferred through forward restoration and asynchronous
+  rollback. Completion is connected to deferred native-plan mounting. Preserve
+  the prior selected workspace alongside its layout; selection requests alone do
+  not persist. Capture unsaved current geometry before beginning a new request.
+- Readiness timeout fails acquisition instead of trying to detach an unavailable
+  surface. A superseded forward pass cannot mount after rollback starts. Rollback
+  failure blocks checkpoint overwrite and reports its own failure, without recursion.
+
+Focused assembled checks pass for stale checked states, inactive EFTM preceding
+SSM, mutually exclusive sidebars, hidden-toolbar restoration, failed managed
+restore returning to the prior tree and selection, and failed Native restore
+leaving no partial floating hosts. Hidden-band comparison checks tree/tab identity
+and split proportions: captured pixel heights grew from [333,332] to [372,371]
+when the band was hidden, as required. Coordinator checks cover pending rollback,
+rollback failure and save protection. Broader final validation/build receipts are
+recorded under `build/macos/native-entry-repair-verification`; fixture evidence
+cannot establish actual Resolve initialization or native rendering acceptance.
+
+Required live check after reviewed installation: close Inspector in Original
+Resolve UI, select Jordan and Resolve Layout without manually opening Inspector,
+repeat with Workspace Toolbar hidden, switch projects/pages and verify the saved
+tree, floating placements, selected name and absence of native background leakage.
+Confirm both monitor callers are visible and preserve their panels' locations.
+
+## Current follow-up: visible monitor callers (2026-10-21 evening)
+
+Branch `fix/visible-viewer-toolbar-callers` corrects the existing toolbar accessory,
+without adding a second toolbar or changing panel caller callbacks. Its controls
+used an Ignored horizontal size policy and only a maximum width; the layout could
+allocate zero width despite the outer strip having room. Assign the calculated
+bounded width to the controls so Source Monitor and Program Monitor are visible.
+Existing label/icon/overflow selection remains in place.
+
+The assembled native-entry fixture now checks actual visible button and controls
+width. It fails on the previous sizing (one failure) and passes with the correction
+(zero failures). This is fixture evidence, not live Resolve acceptance. Not installed,
+merged or published. Native-to-OpenGate acquisition/transaction repair remains open;
+this toolbar correction does not resolve that separate failure.
+
 # OpenGate task audit — 2026-10-20
 
 This is the current acceptance list reconstructed from Jordan’s requests, source,
@@ -8,6 +176,123 @@ checklists and build notes are evidence, not proof that this list is complete.
 installation, publication, merge to main and live-project changes remain on hold.**
 Jordan required this review before another install. Do not continue the pending
 temporary-project proposal as if it were approval.
+
+## Displayed-test repair — floating restore continuation
+
+The displayed candidate run caught real restore failures: sequential acquisition
+only scheduled its next step for a pending managed native plan, so floating-only
+workspace/group reload could stop after its first panel. Fixed continuation to
+advance while any desired session is still inactive. Pending groups also block
+checkpoint replacement, and final group assembly runs the completion reporter.
+Focused eleven-panel session, group reload and native-workspace UI suites now pass.
+The isolated reliability rerun passes with the application active (prior displayed
+run reported inactive state and focus assertions failed). Final clean-commit
+combined displayed run remains required. Retain the failed displayed receipt;
+no repair from these branches has been installed or merged into main.
+
+## Native-binding fixture correction — supersedes timing-only diagnosis
+
+The clean 978bcce follow-up still failed, so fixed waits were not sufficient.
+Inspection found fixture diagnostics, generated workflow scripts and keyboard
+presets shared one watched temporary directory. Creating those unrelated files
+could invalidate NativePresetBindings before queued dispatch. Production separates
+these directories. The fixture now mirrors that separation, isolates legacy
+Shortcuts.json too, and retains bounded expected-count delivery and per-key state.
+The isolated corrected fixture passes. Production shortcut code is unchanged.
+Earlier passing timing-only runs did not establish the cause; retained failure
+receipts remain part of the evidence. Final clean follow-up and displayed checks
+are still required before installation review.
+
+## Combined candidate verification — review pending
+
+Production source 47f747a: 40/41 hidden suites pass; native-preset-bindings retained
+an intermittent synthetic-input failure. Single processEvents / MetaCall delivery
+was insufficient: a later preset rewrite could precede queued dispatch. A short
+fixed wait also failed intermittently. The fixture now waits for its explicit
+expected invocation counts with a one-second deadline while processing events;
+negative cases still drain events and assert no invocation. Per-key focus/counter
+diagnostics retained. Two isolated runs of the bounded fixture pass. No production
+shortcut code changed. Final clean-commit follow-up and displayed suites pending.
+
+Helper, bootstrap, launcher and universal architecture audit passed at 47f747a.
+Task scope is still preinstall review, not installation or main merge. Physical
+multi-display/project-switch behavior and user preset visual match remain live gates.
+
+## Verification follow-up — display policy and failed acquisition
+
+Combined 6b27fd6 matrix: 40/41 suites passed; panel-commands exposed clamping of
+intentional partial off-screen placement on an unchanged display. Corrected policy
+preserves that placement and clamps when display bounds change or disappear.
+Focused display and panel-command fixtures pass. Native-frame-adjusted fallback
+coordinates are recorded separately so automatic saves preserve original identity.
+
+Added rollback on preset acquisition failure: capture prior complete page checkpoint,
+release partial hosts and resume that view; clear the request identity before rollback
+to prevent recursion. A fixture that disables Media Pool activation passes: prior
+Native view returns and no partial floating hosts remain visible. Existing Original
+Resolve UI command is unchanged. Final clean-source matrix/build still required.
+The multi-display feature currently concerns OpenGate window placement; toggling
+Resolve's own native Dual Screen configuration is not implemented or claimed.
+
+## Display-aware workspace follow-up — implementation under verification
+
+Branch feature/workspace-display-placement builds on the viewer-button/preset
+branch. Shared display-placement policy records logical screen identity and local
+coordinates without assuming two displays. The macOS Qt adapter supplies screen
+inventory. Floating panels, groups and primary-window snapshots retain placement;
+Qt-maximized state is stored separately from normal geometry. Missing-display
+fallback preserves the original record during automatic saves; intentional moves
+record a new placement. Legacy coordinates remain readable.
+
+Isolated tests pass four-display placement, negative desktop coordinates, display
+reordering/relocation, lower resolution, missing-display fallback, unchanged saves,
+reconnect and ambiguous-identity geometry tie-breaks. Physical multi-display and
+Windows adapter acceptance are not established. Independent page-state fixture
+passes. Assembled flow, final matrix and production build remain pending.
+No install before Jordan reviews; preserve the installed main baseline and local presets.
+
+## Toolbar/preset follow-up evidence
+
+Branch feature/workspace-toolbar-viewer-buttons integrates the isolated restore fix.
+Existing Source/Program callers are reused, moved into available space in the same
+native toolbar rather than the bounded native left-button row. No duplicate caller
+or panel commands added. Hidden assembled entry fixture passes readable allocation,
+constrained-width overflow, native show/hide, drag and Native-return behavior.
+
+Bundle now contains only immutable Resolve Layout and the captured saved Jordan
+Tetewsky Preset (stable shipped id opengate.preset.jordan-tetewsky.edit). Other
+local arrangements are untouched. Fresh-profile and prototype-installer fixtures
+pass visibility, single user-preset inventory and no-overwrite checks. No package
+was built, installed, merged to main or published. Preset rendering still needs
+Jordan's live comparison after review. Multi-display work follows separately.
+
+## Follow-up after approved baseline — preset restore failure
+
+Jordan reports selecting saved OpenGate presets or Resolve Layout after a project
+switch leaves separate floating panels with the native workspace exposed. Original
+Resolve UI recovery works. The best-so-far tag remains a preserved checkpoint,
+not a claim that this newly reported case works. No repair installed yet.
+
+Incident logs at 22:01 UTC show Media Pool activation fails, no native-plan assembly
+request follows, yet arrangement.restore is logged. The saved Jordan Tetewsky
+Preset exists with a managed tree, proportions, tabs and visibility; backed up
+locally along with logs. Do not overwrite it or ask the user to rebuild it.
+
+Repair isolated on fix/project-switch-workspace-restore: sequentially acquire
+native surfaces so mutually exclusive sidebar activation cannot hide another
+pending surface; resolve native callers from the main window (toolbar may be a
+page sibling). Resume assembly after each acquisition. Report completion only when
+required sessions/groups are ready; preserve last complete checkpoint while pending.
+The new deferred-sidebar regression fails against the installed baseline and passes
+with the repair. Assembled first-open and restore ordering checks pass. Live acceptance
+and broader checks remain pending.
+
+Next requirements: each page retains its own mode/unsaved state; unsupported pages
+stay Native; an OpenGate arrangement must not leave native background or placeholders
+exposed. Bundle only Jordan's saved preset, retain Resolve Layout. Existing viewer
+callers need visibility/overflow review. Multi-display snapshots must preserve screen
+identity and placement across n screens with reversible missing-display fallback.
+No install before user review; next install must use a backed-up fresh-user profile.
 
 ## User-approved baseline — 2026-10-21
 

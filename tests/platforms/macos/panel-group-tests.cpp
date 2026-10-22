@@ -631,7 +631,9 @@ int main(int argc, char **argv)
             toggle->click(); settle(120);
             check(!inspector->window()->isVisible() && !toggle->isChecked(), "native click hides floating Inspector once despite toggled and clicked signals");
             toggle->setChecked(true); settle(120);
-            check(inspector->window()->isVisible() && toggle->isChecked(), "shortcut-style native check change recalls Inspector");
+            check(!inspector->window()->isVisible() && !toggle->isChecked(), "programmatic native check observation cannot recall a hidden Inspector");
+            toggle->click(); settle(120);
+            check(inspector->window()->isVisible() && toggle->isChecked(), "explicit native activation recalls Inspector through its retained session");
             controls.findChild<QComboBox *>("groupFirst")->setCurrentIndex(0);
             controls.findChild<QComboBox *>("groupSecond")->setCurrentIndex(4);
             controls.findChild<QPushButton *>("group_3")->click(); settle(240);
