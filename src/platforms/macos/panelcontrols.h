@@ -102,7 +102,7 @@ public:
         };
         workspaceRestore->apply=[this](const QJsonObject &value) { return applyWorkspace(value); };
         workspaceRestore->resume=[this] { restore(); save(); };
-        workspaceRestore->committed=[this] { save(); };
+        workspaceRestore->committed=[this] { syncNativeToggles();save(); };
         workspaceRestore->groupsPending=[this] { return !pendingGroups.isEmpty() || !nativeWorkspace->requiredPanels().isEmpty(); };
         workspaceRestore->unavailable=[this] {
             QStringList missing;
@@ -214,6 +214,7 @@ public:
         };
         nativeWorkspace->changed = [this] {
             for (int i=0;i<panels.size();++i) updateRow(i);
+            syncNativeToggles();
             nativeWorkspace->refreshNativeTargets(page());
             if (!quitting) {
                 saveTimer.start();
@@ -284,7 +285,7 @@ public:
                 if (auto group = groupFor(i)) group->syncVisibility();
                 nativeWorkspace->queueRestore(page());
                 nativeWorkspace->refreshNativeTargets(page());
-                syncNativeToggle(i);
+                syncNativeToggles();
                 if (viewerMode && page()) viewerMode->refresh(page()->window());
                 updateRow(i); updateNativeSizing(); readyNativeDrag(i); if (!quitting) saveTimer.start();
             };
@@ -354,22 +355,22 @@ public:
         nativeDrag = new Unbound::NativePanelDrag(this);
         callers = new Unbound::WorkspaceCallers(this);
         for (int index = 0; index < panels.size(); ++index) callers->add({QStringLiteral("unboundCaller_") + panels[index].name, panels[index].label,
-            [this, index] { if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();return panels[index].session->active() && !panels[index].session->hiddenByUser(); },
+            [this, index] { if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();return panelShown(index); },
             [this, index] {
                 if(workspaceHeader && panels[index].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(!workspaceHeader->shown());return;}
-                if (panels[index].session->active()) queuePanelDoor(index);
-                else QTimer::singleShot(0, this, [this, index] { requestUndock(index); });
-            }, [this, index] { return panels[index].toggle.isEmpty() || panels[index].session->active(); }});
+                queuePanelDoor(index);
+            }, [this, index] { return layoutMode=="managed" || panels[index].toggle.isEmpty() || panels[index].session->active(); }});
         callers->wire();
         nativeToggles=new Unbound::NativePanelToggles(this);
+        nativeToggles->blocked=[this]{return quitting || restoringNative || (workspaceRestore && workspaceRestore->active());};
         for (int i=0;i<panels.size();++i)
-            nativeToggles->add(panels[i].toggle,[this,i] { return panels[i].session->active(); },
-                [this,i] { return panels[i].session->hiddenByUser(); },[this,i] { queuePanelDoor(i); });
+            nativeToggles->add(panels[i].toggle,[this,i] { return layoutMode=="managed" || panels[i].session->active(); },
+                [this,i] { return panelShown(i); },[this,i] { queuePanelDoor(i); });
         commands=new Unbound::PanelCommandCatalog(this,[this] { return !quitting; });
         for (int i=0;i<panels.size();++i)if(panels[i].name!="frameEditToolbarTop")
             commands->addPanel(panels[i].name,panels[i].label,
                 [this] { return page() && page()->isVisible(); },
-                [this,i] { if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")workspaceHeader->setShown(!workspaceHeader->shown());else if (panels[i].session->active()) queuePanelDoor(i); else requestUndock(i); },
+                [this,i] { if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")workspaceHeader->setShown(!workspaceHeader->shown());else queuePanelDoor(i); },
                 [this,i] { toggleExpanded(i); });
         commands->add({"panel.expand.hovered","Maximize / Restore Panel Under Pointer (Backtick)",
             [this] { return page() && page()->isVisible() && hoveredExpansionTarget()>=0; },
@@ -394,10 +395,7 @@ public:
             [this] { return !quitting && page() && page()->isVisible(); },
             [this,i] {
                 if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar")return workspaceHeader->shown();
-                if (nativeWorkspace->contains(panels[i].name)) return nativeWorkspace->selected(panels[i].name);
-                auto session=panels[i].session;
-                if (session->active()) return !session->hiddenByUser() && session->window() && session->window()->isVisible();
-                auto surface=Unbound::panelSurface(page(),panels[i].name); return surface && surface->isVisible();
+                return panelShown(i);
             },
             [this,i] {
                 if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(true);return;}
@@ -451,7 +449,7 @@ public:
         for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
             [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
             [this,i] { return !panels[i].session->hiddenByUser(); },
-            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggle(i);save(); },
+            [this,i](bool visible) { if (quitting) return;showPanel(i,visible);syncNativeToggles();save(); },
             [this,i] { return panels[i].session->interfaceScale(); },
             [this,i](double factor) { if (!quitting) { panels[i].session->setInterfaceScale(factor);save(); } },
             [this,i] { floatToolbar(i); }});
@@ -670,7 +668,10 @@ private:
     bool panelShown(int i) const {
         if(nativeWorkspace->contains(panels[i].name))return nativeWorkspace->selected(panels[i].name);
         auto session=panels[i].session;
-        if(session->active())return !session->hiddenByUser() && session->window() && session->window()->isVisible();
+        if(session->active()) {
+            auto group=groupFor(i);
+            return !session->hiddenByUser() && (!group || (!group->windowHidden() && group->selected(session))) && session->window() && session->window()->isVisible();
+        }
         auto target=Unbound::panelSurface(page(),panels[i].name);return target && target->isVisible();
     }
     void beginPanelDrag(int i) {
@@ -692,16 +693,20 @@ private:
         const bool reveal = session->hiddenByUser() || (group && (group->windowHidden() || !group->selected(session))) ||
             (nativeWorkspace->contains(panels[i].name) && !nativeWorkspace->selected(panels[i].name));
         showPanel(i,reveal);
-        syncNativeToggle(i);
+        syncNativeToggles();
         Unbound::logEvent(QStringLiteral("panel.visibility.native-toggle"), {{"panel", panels[i].name}, {"visible", reveal}});
     }
     void queuePanelDoor(int i)
     {
-        if (!panels[i].session->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
+        if (quitting || restoringNative || workspaceRestore->active() || !page() || !page()->isVisible() || pendingNativeDoors.contains(i)) return;
         pendingNativeDoors.insert(i);
-        QTimer::singleShot(0, this, [this, i] { pendingNativeDoors.remove(i); togglePanelDoor(i); });
+        const auto version=bulkVersion;
+        QTimer::singleShot(0, this, [this, i, version] {
+            pendingNativeDoors.remove(i);
+            if(!quitting && !restoringNative && !workspaceRestore->active() && version==bulkVersion)togglePanelDoor(i);
+        });
     }
-    void syncNativeToggle(int i) { if (nativeToggles) nativeToggles->sync(i,page()); }
+    void syncNativeToggles() { if (nativeToggles) nativeToggles->sync(page()); }
     void wireNativeToggles() { if (!quitting) nativeToggles->wire(page()); }
     QJsonObject arrangement() const
     {
@@ -1008,6 +1013,7 @@ private:
         };
         group->changed = [this] {
             for (int i = 0; i < panels.size(); ++i) updateRow(i);
+            syncNativeToggles();
             if (!quitting) saveTimer.start();
         };
         for (int i = 0; i < panels.size(); ++i) updateRow(i);

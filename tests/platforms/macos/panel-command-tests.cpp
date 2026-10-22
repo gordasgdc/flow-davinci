@@ -84,22 +84,42 @@ int main(int argc,char **argv) {
         ready=false; send(Qt::Key_F23); check(footerCalls==1,"shutdown context blocks catalog dispatch"); ready=true;
     }
     {
-        QWidget nativeRoot; bool active=true,hidden=false; int requested=0,nativeSignals=0;
+        QWidget nativeRoot; nativeRoot.setAttribute(Qt::WA_DontShowOnScreen);nativeRoot.show(); bool active=true,hidden=false; int requested=0,nativeSignals=0;
         Unbound::NativePanelToggles bridge(nullptr);
-        bridge.add("Inspector",[&] { return active; },[&] { return hidden; },[&] { ++requested; });
+        bridge.add("Inspector",[&] { return active; },[&] { return !hidden; },[&] { ++requested; });
         auto button=new QPushButton(&nativeRoot); button->setCheckable(true);
         button->setObjectName("btnEditToggleInspectorInHeader");
         QObject::connect(button,&QAbstractButton::toggled,[&] { ++nativeSignals; });
-        bridge.wire(&nativeRoot); bridge.wire(&nativeRoot); bridge.sync(0,&nativeRoot);
+        button->show();bridge.wire(&nativeRoot); bridge.wire(&nativeRoot); bridge.sync(&nativeRoot);
         check(button->isChecked() && nativeSignals==0 && requested==0,"sync blocks native signals and does not invoke a door");
-        button->click(); check(requested==2,"repeated wiring dispatches each clicked/toggled signal once for the door coalescer");
-        active=false; hidden=false; bridge.sync(0,&nativeRoot);
-        check(!button->isChecked(),"inactive panel sync leaves native state alone");
+        button->setChecked(false); check(requested==0,"programmatic native checked changes are observations, not panel commands");
+        button->click(); check(requested==1,"one explicit activation dispatches one panel command after repeated wiring");
+        active=false; hidden=false; bridge.sync(&nativeRoot);
+        check(button->isChecked(),"inactive panel sync leaves native state alone");
         delete button;
         button=new QPushButton(&nativeRoot); button->setCheckable(true);
         button->setObjectName("btnEditToggleInspectorInHeader");
-        bridge.wire(&nativeRoot); button->click();
-        check(requested==3,"replacement native buttons are wired after old buttons are destroyed");
+        active=true;button->show();bridge.wire(&nativeRoot); button->click();
+        check(requested==2,"replacement native buttons are wired after old buttons are destroyed");
+    }
+    {
+        QWidget root;root.setAttribute(Qt::WA_DontShowOnScreen);root.show();
+        QPushButton pool(&root),index(&root);pool.setObjectName("btnEditToggleMediaPoolInSSM");index.setObjectName("btnEditToggleEditIndexInSSM");
+        pool.setCheckable(true);index.setCheckable(true);pool.show();index.show();
+        QButtonGroup radio;radio.addButton(&pool);radio.addButton(&index);radio.setExclusive(true);
+        bool poolShown=true,indexShown=false;int requests=0;
+        Unbound::NativePanelToggles bridge(nullptr);
+        bridge.add("MediaPool",[]{return true;},[&]{return poolShown;},[&]{++requests;});
+        bridge.add("EditIndex",[]{return true;},[&]{return indexShown;},[&]{++requests;});
+        bridge.wire(&root);bridge.sync(&root);
+        index.setChecked(true);QApplication::processEvents();
+        check(requests==0 && pool.isChecked()&&!index.isChecked(),"native radio peer notifications cannot select an inactive OpenGate tab");
+        poolShown=false;bridge.sync(&root);
+        check(!pool.isChecked()&&!index.isChecked()&&radio.exclusive(),"all hidden panels clear radio checks while preserving native group policy");
+        poolShown=true;indexShown=true;bridge.sync(&root);
+        check(pool.isChecked()&&index.isChecked(),"separately visible OpenGate panels can both be checked despite native exclusivity");
+        Unbound::setNativePanelVisibility(&root,"MediaPool",false);
+        check(requests==0,"explicit native acquisition never queues OpenGate recall");
     }
     {
         const QJsonObject previous{{"hidden",true},{"pinned",true},{"width",321},{"custom","retained"}};
@@ -146,8 +166,8 @@ int main(int argc,char **argv) {
         QWidget root,page(&root),floating(&root,Qt::Tool);auto toggle=new QPushButton(&floating);
         toggle->setObjectName("btnEditToggleMixerInSSM");toggle->setCheckable(true);toggle->setChecked(true);
         Unbound::NativePanelToggles bridge(nullptr);int calls=0;
-        bridge.add("Mixer",[] { return true; },[] { return true; },[&] { ++calls; });
-        bridge.wire(&page);bridge.sync(0,&page);
+        bridge.add("Mixer",[] { return true; },[] { return false; },[&] { ++calls; });
+        root.setAttribute(Qt::WA_DontShowOnScreen);root.show();floating.show();toggle->show();bridge.wire(&page);bridge.sync(&page);
         check(!toggle->isChecked() && calls==0,"native toggle sync reaches a floated Workspace Toolbar without emitting native signals");
         toggle->click();check(calls>0,"floated native toolbar retains its panel-door bridge");
     }
