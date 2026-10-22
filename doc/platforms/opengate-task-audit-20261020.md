@@ -1,3 +1,18 @@
+## Windows build preparation — 2026-10-22
+
+Branch feature/windows-workspace-parity now prepares a manually dispatched Windows
+MSVC/Qt baseline build, the existing backend fixture checks, and a new shared
+WorkspacePanelCallers regression. It does not package/publish or claim the older
+Windows controller implements the managed Mac workspace. The shared regression
+covers floating hide/recall identity and geometry, inactive-tab selection without
+relocation, page-change cancellation and unavailable panels.
+
+The GitHub API confirms Jordan's repository has no registered workflows. The new
+workflow remains local: pushing/registering/dispatching it is not yet authorized.
+No Windows compilation has occurred. A Windows build environment is required
+before the native workspace/session port can be compiled and iterated safely;
+shared Qt checks on this Mac are separate evidence, not Windows acceptance.
+
 ## Delivery requirements added — 2026-10-22
 
 See opengate-prototype-delivery.md for the ordered implementation/acceptance list.
