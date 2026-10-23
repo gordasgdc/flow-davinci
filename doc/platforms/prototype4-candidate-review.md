@@ -2,26 +2,46 @@
 
 Target: separate Mac and Windows installer assets on the existing OpenGate
 repository. Repository identity migration is deferred. Main and the accepted Mac
-prototype.3 asset remain stable. This document is preparation, not a release or
-live-acceptance claim. Exact final artifacts/checksums are pending final checks.
+prototype.3 asset remain stable. This is a tester candidate, not a live-acceptance claim. Final artifacts are
+compiled, fixture-tested and packaged; publication/download verification is tracked
+separately in the progress ledger.
 
 ## Behavioral evidence and boundaries
 
-The numbered native-entry contract is authoritative. Mac runtime source is frozen
-at `0348946`; its 52 hidden suites pass with clean, unchanged source. Final serial
-displayed suites passed 9/9; the earlier 7/9 failure is preserved. This checkpoint
-is superseded for packaging by the requested Mac log-directory change and shared
-startup handshake extraction, both requiring new verification. Windows `0348946` run `39897083542` passes all 44
-invocations, including hidden and displayed production-DLL first-open flows,
-outer-Inspector discovery, native HWND ownership, workflow wrappers, packaging
-and support export. Later Keyframes/delayed-start/section-docking additions and
-final artifact naming/export changes require their own runner result.
+The numbered native-entry contract is authoritative. Current Mac production
+source is `d90358e`, unchanged at fixture checkpoint `d749352`. The latter
+passes the full serial displayed matrix **9/9**, receipt
+`d749352945-displayed-20261023T045406Z`. The matching hidden matrix passes **52/52**, receipt
+`d749352945-hidden-20261023T045646Z`; both record clean, unchanged source. Two earlier displayed 8/9 failures and isolated failures
+are preserved in the progress ledger. The Mixer fixture now establishes native
+focus before a command that requires an active window; outcome assertions are
+unchanged. Other earlier intermittent failures have no established cause.
+
+Windows `614360d` run
+[39902934723](https://github.com/jordantetewsky/OpenGate/actions/runs/39902934723)
+passes **48/48** invocations, including displayed first-open through the shipped
+DLL and the automatic IO-plugin entry, section docking, native HWND ownership,
+workflow wrappers and negative helper-coexistence coverage. Installer compilation
+and support export also pass. Its source is clean; production source equals the
+preceding successful `890b579` run. No candidate installer has been executed and
+neither platform's candidate has live Resolve acceptance.
+
+| Platform | Final artifact | SHA256 |
+| --- | --- | --- |
+| macOS | OpenGate-0.0.2-Prototype.4-macOS-universal.pkg | `7dd6455a1a07581f9c2b6a8dbd0dc75989b3b347f72b0b2be2a8acbab13084bb` |
+| Windows | OpenGate-0.0.2-Prototype.4-Windows-x64.exe | `6808ca6d9eca4e4659b50d9c4690d75933662678588822d3769455407bb5e2a4` |
+
+Mac source/package `d749352` is Developer ID signed, notarized, stapled and
+Gatekeeper accepted. The public filename is a byte-identical copy of the package
+`OpenGate-0.0.2-Prototype-macOS-d749352-pkgd749352.pkg`. Windows is unsigned.
+The release includes manifests, checksums and verification evidence, including
+earlier failed runs. The accepted revision 3 Mac installer is unchanged.
 
 | Contract/action | Production entry and existing shared owner | Automated evidence | Live status |
 | --- | --- | --- | --- |
 | First open, built-in protection, Save/Update, unsaved restart | Mac ControlService / Windows UnboundStart → PanelControls → WorkspaceRestoration, WorkspaceSettings, ArrangementStore | first-open through Windows DLL; direct Mac first-open; preset policy and fresh-process restart | Windows pending |
 | Title drag, vacancy reclaim, float, hide/recall | NativePanelTitleDrags, ManagedPanelSession, WorkspacePanelCallers, NativePanelToggles | first-open, panel-caller flow, retained-session and ownership fixtures | Actual Resolve widgets/input pending on Windows |
-| Tab/group selection, individual/section docking and previews | PanelGroup, NativeArrangement, DockScopeTargets, DropPolicy | shared stack-docking assertions; displayed production first-open section variant failed; corrected DLL-boundary fixture awaiting runner | GPU/rendering and physical neutral release pending |
+| Tab/group selection, individual/section docking and previews | PanelGroup, NativeArrangement, DockScopeTargets, DropPolicy | shared stack-docking assertions; corrected displayed production-DLL and native IO first-open section variants pass on Windows | GPU/rendering and physical neutral release pending |
 | Temporary maximize/restore and nested Mixer | PanelExpansionController and existing session restore | displayed first-open/Mixer route, exact host/geometry checks | Physical/remapped keys and native rendering pending |
 | Keyframes, mounted/detached callers | Existing panel session, native placement control and visibility policy | Mac and Windows Keyframes flows pass | Windows Resolve Keyframes structure pending |
 | Workspace Toolbar/Page Navigation, permanent Panels | Existing native leases, PinnedWorkspaceHeader, FooterPanel, WorkspaceHeaders; Windows title-strip adapter | band combinations, viewport bounds, native title owner and parked-slot rejection | Actual Windows permanent title-strip structure pending |
@@ -64,7 +84,7 @@ Record Windows version, display scaling/monitor arrangement, GPU and exact Resol
 edition/version. Save work and quit Resolve before double-clicking the Windows
 installer. It requests standard elevation for shared Workflow Integration scripts.
 Start Resolve normally. Automatic Windows IO-plugin startup is implemented but
-awaiting runner and live verification; the recovery launcher remains in Start. Do not run a legacy Unbound helper alongside
+verified through runner fixtures; actual Resolve discovery remains pending live testing. The recovery launcher remains in Start. Do not run a legacy Unbound helper alongside
 this candidate in the same Resolve process.
 
 Follow the same eight steps above, starting with automatic Resolve Layout on the

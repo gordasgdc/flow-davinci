@@ -451,3 +451,49 @@ The manifest deliberately records LiveAccepted and ManagedWorkspaceParity false.
 Jordan reported using input during displayed checks and requested a fresh serial
 run with input idle. This is context, not proof that input caused every earlier
 failure. The Mixer focus correction passed in isolation; full matrix pending.
+
+## 2026-10-23: final Mac verification and immutable package
+
+Clean checkpoint `d749352945570b8d8a37177558d6b0b8bd92266c` passes **52/52 hidden**
+and **9/9 serial displayed** suites. Receipts:
+`d749352945-hidden-20261023T045646Z/receipt.json` and
+`d749352945-displayed-20261023T045406Z/receipt.json` under the isolated
+`prototype4-mac-verification/build/macos/verification` directory. Both record
+source_unchanged true and dirty_at_start false. Production source equals d90358e.
+No assertion or timing threshold was reduced. Earlier failed receipts, isolated
+logs and Mixer failure events remain retained, including the compiler diagnostic
+from the first instrumentation attempt. User input during prior tests was reported;
+it does not establish the cause of every prior failure.
+
+Universal runtime, SDK bootstrap handshake, launcher/workflow requests and real
+payload inventory/hash checks pass. Signing, package-input rejection, transactional
+upgrade/downgrade/uninstall/rollback and support-export privacy fixtures pass.
+Mac package: `OpenGate-0.0.2-Prototype-macOS-d749352-pkgd749352.pkg`
+SHA256 `7dd6455a1a07581f9c2b6a8dbd0dc75989b3b347f72b0b2be2a8acbab13084bb`.
+Developer ID signed; Apple Accepted submission
+`9afe86a0-761e-4a56-a7e2-8b13b40f6962`; stapled, ticket validated, Gatekeeper
+accepted, package payload verified. Installed revision 3 remains unchanged.
+Mac and Windows candidate installation/live acceptance are still pending; no
+performance improvement is claimed.
+
+## 2026-10-23: final Windows fixture correction verified; publication preparation
+
+Run [39902934723](https://github.com/jordantetewsky/OpenGate/actions/runs/39902934723)
+at clean `614360d9068e99346ff91195828a4aba7bd599a1` passes all **48/48** invocations,
+installer compilation and support export. This includes the common fixture's native
+focus precondition. Production source is unchanged from 890b579. Downloaded
+installer hash matches the runner:
+`6808ca6d9eca4e4659b50d9c4690d75933662678588822d3769455407bb5e2a4`.
+Final artifacts are prepared under `build/review/prototype4-assets`, with separate
+platform manifests, evidence ZIPs and conventional SHA256SUMS.txt. The Mac public
+filename is `OpenGate-0.0.2-Prototype.4-macOS-universal.pkg`; its bytes are unchanged
+from the signed/notarized d749352 package above. The tag contains only documentation
+changes after the final Windows fixture checkpoint. Main production code remains
+the accepted revision 3; its download/support README is a separate documentation
+update. Repository migration remains deferred.
+
+Ledger at preparation: implemented / compiled / fixture-tested / packaged = yes;
+candidate installed / live-accepted / published = no. Windows needs actual Resolve
+Studio discovery and complete live flow feedback. Mac needs Jordan's regression
+check after download. The numbered native-entry contract was reread and mapped
+to entry points and assembled coverage in prototype4-candidate-review.md.

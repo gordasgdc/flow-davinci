@@ -1,91 +1,89 @@
 # OpenGate
 
-OpenGate by CineWaltz makes DaVinci Resolve’s Edit panels movable, groupable windows with saved workspaces.
+OpenGate by CineWaltz gives DaVinci Resolve movable panels, split/tab groups and
+saved workspaces while preserving Resolve's real native content.
 
-**[Download the accepted Mac 0.0.2 prototype.3](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.3)**
+**[Download 0.0.2 prototype.4 — macOS and Windows tester preview](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.4)**
 
-Revision 3 is the accepted Mac checkpoint on main. This feature branch develops
-Windows parity for **0.0.2 prototype.4** using the same managed workspace core.
-Prototype.4 is not yet published. Windows runner fixtures and packaging are
-separate from live acceptance; a Windows Resolve tester is still required.
+Prototype.4 brings the shared managed workspace to Windows and moves Mac logs to
+OpenGate's own log folder. Windows live Resolve acceptance is pending testers.
+The [accepted prototype.3 Mac installer](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.3)
+remains available unchanged for rollback.
 
-## Install the published Mac release
+## Install and first launch
 
-1. Download the `.pkg` from revision 3's Assets section.
-2. Save your project and quit Resolve.
-3. Double-click the installer, then reopen Resolve.
+1. Download your platform's installer from the release's **Assets** section.
+2. Save your work and quit Resolve, then double-click the `.pkg` (Mac) or `.exe` (Windows).
+3. Open Resolve normally. OpenGate should load automatically. A first OpenGate
+   profile opens **Resolve Layout**; existing profiles retain their last working
+   arrangement, including unsaved changes and user presets.
 
-Revision 3 is universal for Apple Silicon and Intel, requires macOS 15+ and
-Resolve 21 at its standard location, and is signed and notarized. New profiles
-enter OpenGate's **Resolve Layout** automatically. Existing profiles retain their
-last working arrangement, including unsaved changes. User presets are preserved;
-the built-in Resolve Layout cannot be overwritten.
+Mac: universal Apple Silicon/Intel, macOS 15+, Resolve 21 at its standard location;
+Developer ID signed and Apple notarized. Windows: x64, Resolve Studio 21.1 with
+Qt 5.15.2; installer unsigned. Windows free-edition startup is unverified. Automatic
+startup is implemented and fixture-tested; actual Windows Resolve plugin discovery
+still needs tester confirmation. The Start-menu OpenGate launcher is for recovery.
+Please report failures to load automatically.
 
-The main title strip retains **Panels**. Workspace Toolbar and Page Navigation
-can be hidden independently. **Use Original Resolve UI** restores native ownership
-while preserving the OpenGate arrangement for later return.
+Drag panel titles to rearrange, float or group them. Use **Panels** in the permanent
+main title strip to hide and recall panels. **Workspace Toolbar** and **Page
+Navigation** hide independently. **Use Original Resolve UI** restores native
+ownership while preserving the OpenGate arrangement. The built-in Resolve Layout
+is immutable; use **Save as New** for a writable preset.
 
-## Features and current development
+Assign commands in Resolve's **Keyboard Customization → Workspace → Workflow
+Integrations**. The hovered-panel command is **OpenGate - Maximize-Restore Hovered
+Panel**. Physical/remapped keys and GPU rendering require live testing on Windows.
 
-- Independent panels, magnetic split/tab groups and saved arrangements.
-- Separate Source and Program Monitors, panel visibility and shared maximize/restore commands.
-- Independently hideable native Workspace Toolbar and Page Navigation; supported panel interface-size controls.
-- Native-preset hotkeys on ordinary launch, remapping and alternate assignments. Stabilize and other hotkeys work in the maintainer’s current live trial.
-- Stabilize selected timeline video clips through Resolve’s API, without requiring Inspector visibility.
-- An OpenGate Commands submenu, wrapped keyboard-command labels, compact header clearance and scrollable narrow panels.
-- Experimental timeline-tab scrolling, using discrete native arrow steps without changing the selected timeline.
+## Send support logs
 
-Use Resolve’s Keyboard Customization under **Workspace → Workflow Integrations** to assign OpenGate commands. The backtick command is **OpenGate - Maximize-Restore Hovered Panel**. An explicitly unassigned native command stays unassigned.
+Reproduce the issue, note its time, then double-click the export entry:
 
-Fixtures and a local trial do not establish every native layout/page combination. Fixed Playhead real scrolling in both states, header overlap in all native layouts, overflow and arrangement restoration still need broader live feedback. See the [candidate notes](doc/platforms/opengate-priority-live-candidate.md) and [task audit](doc/platforms/opengate-task-audit-20261020.md). Supported metric scaling does not scale every custom-painted timeline track or GPU surface.
-
-## Development candidate and recovery
-
-The Windows candidate uses the shared managed layout, panel commands and
-persistence with focused native window/input/discovery adapters. See the
-[parity evidence ledger](doc/platforms/windows-managed-workspace-progress.md) for
-actual test results and remaining gaps. Windows fixtures cannot prove native GPU
-painting, physical/remapped keys or real Resolve widget compatibility.
-
-Prototype.4 is intended to start automatically with Resolve on both platforms.
-The Windows IO-plugin adapter is awaiting its runner result and a Studio tester;
-free-edition startup is unverified. The Start-menu OpenGate entry remains a
-recovery launcher.
-
-### Send support logs
-
-Reproduce the issue, then export immediately:
-
-| Platform | Double-click export | Log folder |
+| Platform | Export entry | Raw log folder |
 | --- | --- | --- |
 | Mac prototype.4 | Applications → OpenGate Tools → Export OpenGate Support | `~/Library/Logs/OpenGate` |
 | Windows prototype.4 | Start → OpenGate → Export OpenGate Support Logs | `%LOCALAPPDATA%\OpenGate\Logs` |
 
-Send Jordan the **OpenGate support ZIP on your Desktop**, with the approximate
-local time/time zone, Resolve version/edition, page, panel, steps, expected result
-and actual result. Include a screenshot for painting or geometry problems.
-Nothing uploads automatically. Export leaves Resolve and settings alone.
+Send Jordan the **OpenGate support ZIP created on your Desktop**, plus your local
+time/time zone, Resolve version and edition, OS version, page/panel, reproduction
+steps, expected result and actual result. Include a screenshot for painting or
+geometry issues; on Windows also include display scaling and monitor arrangement.
+Nothing uploads automatically. Review the ZIP before sharing it.
 
-Mac prototype.3 logs remain in `~/Library/Logs/Unbound`; prototype.4 export reads
-both locations without moving or deleting older evidence. The product is OpenGate;
-internal Unbound filenames and settings paths remain for compatibility.
-Both runtimes record OpenGate events with build/session/sequence information,
-observed input/signals and operation outcomes. A click does not prove the native
-operation completed. Mac's export contains a filtered event summary; Windows also
-includes bounded runtime logs and widget-structure inventories for first testers.
-Review the ZIP before sharing it. Neither export copies project/media/database files.
+Events identify OpenGate, module, build, session and sequence, along with observed
+input/signals and operation outcomes. A recorded click is not proof that Resolve
+completed an operation. Mac export filters private paths and project titles from
+its event summary; Windows includes bounded logs and native widget inventories.
+Neither exporter copies projects, media or databases. Mac prototype.3 logs stay
+in `~/Library/Logs/Unbound`; prototype.4 export reads both folders.
 
-The same Tools/Start-menu folders provide uninstall. See the
-[candidate review and live checklists](doc/platforms/prototype4-candidate-review.md).
+## Uninstall and recovery
 
-Quit Resolve before installation or removal. Removing only the launcher does not
-unload a resident helper. Uninstall preserves arrangements, presets and shortcuts.
-The accepted revision 3 Mac package remains available unchanged for rollback.
-Repository identity migration is a separate deferred task. Responsiveness work
-remains on hold; no performance improvement is claimed.
+Quit Resolve, then use **Applications → OpenGate Tools → Uninstall OpenGate** on
+Mac or **Start → OpenGate → Uninstall OpenGate** on Windows. Presets, shortcuts and
+arrangements remain. Ordinary uninstall/reinstall does not create a fresh profile.
+Keep a verified backup before any separately planned first-user demonstration.
+Removing only the launcher does not remove the resident plugin.
 
-## Development and acknowledgments
+## Verification and development
 
-OpenGate is developed by CineWaltz. Thanks to [Wolfgang Woehl’s Unbound](https://github.com/wolfgangw/unbound) for the foundation. Original copyright and MIT notices remain in [LICENSE](LICENSE). Internal Unbound identifiers remain for compatibility.
+Read the [release's testing status and checksums](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.4),
+[equivalent Mac/Windows live checklists](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/prototype4-candidate-review.md)
+and [evidence ledger](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/windows-managed-workspace-progress.md).
+Builds and fixtures do not establish installation or live acceptance. No
+performance improvement is claimed. Main's production code remains the accepted
+Mac revision 3 checkpoint; prototype.4 source is identified by its release tag.
+Repository identity migration is a separate, deferred task.
 
-The [historical upstream README](doc/upstream-readme.md) preserves inherited Windows build and usage documentation. macOS source, tests and infrastructure are under their respective `platforms/macos` directories. OpenGate is not affiliated with Blackmagic Design.
+New cross-platform features require one behavioral specification, deliberate
+shared-code/platform-adapter boundaries, equivalent coverage, Mac regressions,
+and explicit platform gaps and live-test status. Two successful builds are not
+cross-platform completion.
+
+## Acknowledgments
+
+OpenGate is developed by CineWaltz, based on
+[Wolfgang Woehl's Unbound](https://github.com/wolfgangw/unbound). Inherited copyright
+and MIT notices remain in [LICENSE](LICENSE). Internal Unbound identifiers remain
+where needed for compatibility. See the [historical upstream README](doc/upstream-readme.md).
+OpenGate is not affiliated with Blackmagic Design.
