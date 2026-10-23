@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QMenuBar>
@@ -11,7 +12,7 @@
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 int main(int argc,char **argv){
- QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files;
+ QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};

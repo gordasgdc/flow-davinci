@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
@@ -19,7 +20,7 @@ class HiddenDialogs : public QObject {
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto value=dynamic_cast<T *>(child))return value;return nullptr;}
 int main(int argc,char **argv) {
  QApplication app(argc,argv);HiddenDialogs hiddenDialogs;app.installEventFilter(&hiddenDialogs);app.setQuitOnLastWindowClosed(false);qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
- const bool restart=app.arguments().contains("--restart-check");QTemporaryDir files;
+ const bool restart=app.arguments().contains("--restart-check");QTemporaryDir files(OpenGateTest::evidenceTemplate("native-entry-flow-tests"));OpenGateTest::retainEvidence(files);
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}
  int errors=0;auto check=[&](bool ok,const char *why){if(!ok){++errors;std::fprintf(stderr,"FAIL %s\n",why);}};
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(1300,800);auto outer=new QVBoxLayout(&main);

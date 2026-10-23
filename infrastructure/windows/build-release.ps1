@@ -23,8 +23,17 @@ $locked = $false
 . (Join-Path $PSScriptRoot 'generate-icons.ps1')
 . (Join-Path $PSScriptRoot 'audit-dependencies.ps1')
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
-    & $Program @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
+    $command = Get-Command $Program -ErrorAction Stop
+    $previousPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell wraps native stderr as NativeCommandError. Retain
+        # every diagnostic and let the executable finish its assertions; its
+        # exit code remains authoritative, including crashes and failures.
+        $ErrorActionPreference = 'Continue'
+        & $command @Arguments
+        $exitCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($exitCode -ne 0) { throw "$Program failed with exit code $exitCode" }
 }
 try {
     try { $locked = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $locked = $true }
@@ -57,6 +66,7 @@ try {
     Invoke-Checked 'cmake' @('--build', $testBuild, '--config', 'Release', '--', '/m:1', '/nr:false')
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
+    $env:OPENGATE_FIXTURE_ROOT = Join-Path $repoRoot 'build\windows\fixtures'
     Invoke-Checked 'python' @((Join-Path $repoRoot 'tests\platforms\macos\test-workflow-command-wrappers.py'), '--windows')
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()

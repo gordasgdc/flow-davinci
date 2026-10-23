@@ -107,7 +107,12 @@ private:
         const int width=mode=="labels"?labeled:mode=="icons"?icons:28;
         auto controls=strip->findChild<QWidget *>("openGateDoorControls");controls->setFixedWidth(qMin(qMin(available,strip->width()),width));controls->setVisible(available>=28);
         for(auto button:buttons){const bool more=button->objectName()=="openGateToolbarOverflow";button->setVisible(more?mode=="overflow":mode!="overflow");if(!more)button->setToolButtonStyle(mode=="labels"?Qt::ToolButtonTextBesideIcon:Qt::ToolButtonIconOnly);}
-        if(old!=mode){strip->setProperty("openGateDoorMode",mode);logEvent("header.controls.mode",{{"mode",mode},{"available",available}});}
+        if(old!=mode || strip->property("openGateDoorAvailable").toInt()!=available){
+            strip->setProperty("openGateDoorMode",mode);strip->setProperty("openGateDoorAvailable",available);
+            logEvent("header.controls.mode",{{"mode",mode},{"available",available},{"slot_width",strip->width()},
+                {"slot_left",strip->geometry().left()},{"row_width",row->width()},{"start",start},
+                {"controls_width",controls->width()},{"controls_visible",controls->isVisible()}});
+        }
     }}
     QList<Door> doors;QList<QPointer<QWidget>> strips;QTimer timer;
 };

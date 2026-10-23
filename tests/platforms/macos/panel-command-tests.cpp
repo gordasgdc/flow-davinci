@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 // SPDX-License-Identifier: MIT
 #include <QTemporaryDir>
 #include <QLineEdit>
@@ -11,7 +12,7 @@
 int main(int argc,char **argv) {
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM","1");
     QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
-    QTemporaryDir files; qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Shortcuts.json").toUtf8());
+    QTemporaryDir files(OpenGateTest::evidenceTemplate("panel-command-tests"));OpenGateTest::retainEvidence(files); qputenv("UNBOUND_SHORTCUTS_FILE",(files.path()+"/Shortcuts.json").toUtf8());
     qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());
     int failures=0; auto check=[&](bool ok,const char *why) { if (!ok) { ++failures; std::fprintf(stderr,"FAIL: %s\n",why); } };
     QWidget main; main.setAttribute(Qt::WA_DontShowOnScreen); main.show(); QApplication::setActiveWindow(&main);

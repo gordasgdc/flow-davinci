@@ -19,6 +19,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 --outputdir "$env:RUNNER_TEMP/Qt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify native command exit and diagnostic handling
+        shell: powershell
+        run: ./tests/platforms/windows/native-command-runner.ps1
       - name: Compile and exercise the Windows backend
         shell: powershell
         run: |
