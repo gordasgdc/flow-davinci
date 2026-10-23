@@ -148,6 +148,7 @@ try {
         try {
             Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
             Invoke-Fixture 'powershell.exe' @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $repoRoot 'tests\platforms\windows\io-startup.ps1'),'-BuildDirectory',(Join-Path $build 'Release'))
+            Invoke-Fixture 'powershell.exe' @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $repoRoot 'tests\platforms\windows\io-startup.ps1'),'-BuildDirectory',(Join-Path $build 'Release'),'-Conflict')
         }
         finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER; Remove-Item Env:OPENGATE_TEST_STACK_DROP }
         Invoke-Fixture $test @('--audition-taskbar-native')

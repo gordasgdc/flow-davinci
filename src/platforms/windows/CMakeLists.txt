@@ -130,3 +130,8 @@ set_property(TARGET OpenGateIOBootstrap PROPERTY MSVC_RUNTIME_LIBRARY MultiThrea
 target_compile_definitions(OpenGateIOBootstrap PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNBOUND_BUILD_ID="${UNBOUND_BUILD_ID}")
 target_link_libraries(OpenGateIOBootstrap PRIVATE version advapi32)
 set_target_properties(OpenGateIOBootstrap PROPERTIES OUTPUT_NAME OpenGate PREFIX "" SUFFIX ".dvcp" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+add_executable(OpenGateIOConflictTests "${UNBOUND_ROOT}/tests/platforms/windows/io-conflict.cpp")
+target_compile_definitions(OpenGateIOConflictTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(OpenGateIOConflictTests PRIVATE Qt5::Widgets)
+set_target_properties(OpenGateIOConflictTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

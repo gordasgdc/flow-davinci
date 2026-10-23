@@ -87,6 +87,20 @@ result and actual result. Include screenshots for painting/geometry failures.
 Logs identify OpenGate, module, build, session, sequence, input, observed signals
 and operation outcomes. Export uploads nothing and leaves Resolve running.
 
+
+## First-time tutorial preparation
+
+Do not infer a fresh profile from uninstall: normal uninstall preserves presets,
+shortcuts and unsaved arrangements. Jordan requested a first-time OpenGate tutorial
+only after the final download page is available. Before that session, quit Resolve,
+verify a reversible backup of OpenGate's existing profile and installation rollback
+artifacts, then temporarily isolate only the OpenGate profile. Preserve both log
+folders as evidence. Do not reset native Resolve preferences, projects or databases.
+Record the download, installer, ordinary Resolve launch into Resolve Layout, panel
+flow and Desktop support ZIP export. Restore the prior OpenGate profile afterward
+when Jordan requests it. This simulates a first OpenGate profile, not a new Resolve
+installation or untouched native keyboard configuration.
+
 ## Candidate/release gate
 
 Before publication: retain final passing Windows build/fixture/package/export
