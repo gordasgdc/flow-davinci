@@ -1,78 +1,91 @@
-# Source and platform boundaries
+# OpenGate source and platform boundaries
 
-Unbound has one shared Qt core and one selected native backend per build.
-Windows remains the implemented release platform. macOS has a separate development
-area and currently rejects application configuration explicitly.
+The accepted Mac revision 3 is the behavioral reference. Windows parity extends
+that implementation through focused adapters. The numbered
+[native-entry contract](platforms/opengate-native-entry-flow-acceptance.md) defines
+user-visible behavior; the [evidence ledger](platforms/windows-managed-workspace-progress.md)
+separates implementation, compilation, fixtures, packaging, installation and live
+acceptance. Older documents describing Mac as unimplemented are historical.
 
-## Shared code
+## Shared workspace behavior
 
-`src/core/` owns discovery, pane registration, native toggle intent, reversible
-reparenting, header buttons, page visibility, Nodes bounds, settings serialization,
-per-page placement tracking and snap calculations. Widget work stays on Resolve's
-Qt GUI thread. `startController()` queues initialization on the existing application
-and retains the existing idempotency guard.
+`src/core/panelcontrols.h` is the accepted workspace coordinator, mechanically
+extracted from Mac. Mac compatibility headers retain the existing entry points.
+`ManagedPanelSession`, `PanelGroup`, `NativeArrangement`, `NativeWorkspaceBinding`
+and the layout-tree modules preserve real Resolve widgets, signals, native slots,
+constraints and reversible ownership. There is one managed layout engine.
 
-`src/platform/` describes the boundary:
+Panel callers, native header toggles, command dispatch, grouped visibility and
+retained-host recall share the same session state. Workspace restoration,
+snapshots, immutable Resolve Layout and user preset policy also live in core.
+Settings paths are platform-specific; existing identifiers and schemas remain
+compatible. No installer resets arrangements, shortcuts or native preferences.
 
-- `windowintegration.h` includes the single CMake-selected `windowbackend.h`.
-  The backend supplies `PaneFloatingWindow`, `MainWindowSnap`, dark-caption and
-  window-identity helpers. This compile-time contract preserves the existing
-  Windows classes without introducing another window ownership layer.
-  `WindowGroupActivation` raises visible peers on activation without changing focus
-  or introducing a recurring timer; its native implementation belongs to the backend.
-- `windowplacement.h` declares native capture, restoration and eligibility hooks.
-  The common placement tracker retains monitor checks, page lifecycle and Qt
-  geometry fallback. Native Windows placement records and coordinate conventions
-  are unchanged.
+Native toolbar/footer leases, independent band visibility, panel-title gestures,
+dock scopes/previews, temporary expansion and native return reuse the accepted
+modules. Unsupported pages retain native behavior. The older Windows Color and
+Fairlight floating implementation is preserved for regression coverage, not
+silently advertised as shared managed-page support.
 
-Core must not include platform paths or native OS headers. Backend implementation
-headers can include core headers and OS APIs. Each target gets exactly one backend
-include directory; there is no runtime backend selection.
+Diagnostics reuse `InteractionDiagnostics`, `DiagnosticSink`, `CrashSession`,
+workflow request/result logging and bounded read-only widget inventories. Events
+carry OpenGate identity, build, module, process, session, sequence and UTC time.
+An input or observed signal is not itself proof that the intended native operation
+completed. Text-editor key values and contents are excluded.
 
-## Platform implementations
+## Platform adapters and bootstrap
 
-`src/platforms/windows/` contains the existing launcher, DLL export, native window
-classes, placement hooks and resource templates. Its `windowing.cmake` supplies the
-same backend to production, shared fixtures and Windows diagnostics. The launcher
-remains independent of Qt; the helper uses Resolve's Qt runtime.
+`src/platform/nativewindowcontract.h` declares native chrome, pinning, movement,
+visibility, window order and request-wake operations. Coordinate conversions and
+OS input APIs belong under `src/platforms/<platform>/`. Resolve workflow/preset
+paths, widget aliases, native spacing and modifier labels have explicit adapters;
+Mac values are preserved rather than generalized into Windows assumptions.
 
-`src/platforms/macos/` is reserved for Cocoa/Objective-C++ implementation and an
-independently validated loading mechanism. It must implement the contracts before
-building the shared controller. Further platforms should get their own source,
-infrastructure, tests and documentation directories.
+On Mac, the existing IO/OFX loader reaches the widget probe and `ControlService`,
+which initializes shared `PanelControls`. Cocoa handling remains in
+`nativechrome.mm`. The existing universal build, signing, notarization and
+transactional installer paths remain in use.
 
-## Build and release infrastructure
+On Windows, the Qt-independent launcher waits for Resolve, loads its adjacent
+`Unbound.dll` and invokes `UnboundStart`. `managedworkspace.cpp` preserves the
+idempotent GUI-thread handoff and owns service lifetime, diagnostics and command
+bridges. It creates the same shared `PanelControls` used by Mac.
+`WorkspaceHostWindow` adapts the existing `PaneFloatingWindow` implementation;
+Windows movement, resize, contact snapping, taskbar identity, native ownership
+and physical/Qt logical coordinate conversion remain Windows code. Managed hosts
+have native captions; the historical captionless mechanisms still have tests.
 
-The root `CMakeLists.txt` selects the platform. Windows resources and native link
-libraries are declared only under `src/platforms/windows/`.
+The Windows title-access adapter requires a recognized visible permanent project
+strip. It rejects parked or ambiguous owners and records missing structure for a
+tester. Inspector discovery prefers the common inner widget and recognizes the
+older Windows outer frame without renaming native objects. Actual Windows Resolve
+structure and GPU content remain live verification gates.
 
-`build-unbound-release.cmd` and `build-unbound-release.ps1` remain compatible public
-entry points. Implementation is in `infrastructure/windows/`, with separate icon
-and dependency-audit helpers. Windows diagnostic build commands live there too.
-Each script resolves paths from its own location, not the caller's directory.
+## Build, packaging and tests
 
-Build output is ignored under `build/<platform>/`. Windows release artifacts remain
-exactly `Unbound.exe` and `Unbound.dll` in immutable `release/win/<version>/`
-directories. Future macOS releases belong under `release/mac/`; no macOS package
-or signing policy is implemented yet.
+Windows builds with VS2022, Qt 5.15.2 MSVC x64 and PowerShell. Root build wrappers
+remain compatible. `infrastructure/windows/build-release.ps1` builds the shipped
+DLL and test-only legacy helper, runs all independent fixtures serially, retains
+a complete JSON receipt and blocks packaging if any assertion fails. Only the
+production binaries, workflow scripts and provenance enter release output; the
+legacy helper is never shipped. See [Windows development](platforms/windows.md).
 
-Original artwork and shared PNGs live in `src/assets/`. The Windows ICO and resource
-templates live in `src/platforms/windows/resources/`. Source and artwork are covered
-by the root MIT `LICENSE`. Local inspection tools are not release dependencies.
+The shared assembled first-open fixture runs directly and through the Windows
+production DLL, including fresh-process persistence. Native Windows adapter
+fixtures verify HWND ownership and window behavior. Equivalent checks remain
+required for every new platform adapter; compilation is insufficient.
 
-## Tests
+Mac's complete applicable matrix consists of hidden suites and serial displayed
+suites. Displayed suites require Resolve closed. Every receipt records source
+identity and cleanliness; failed runs are retained. Responsiveness is a separate
+held gate, with no unmeasured performance claim. Candidate packages are built only
+after matching regression evidence and do not establish live acceptance.
 
-`tests/core/pane-float/` contains shared Qt fixtures. Its platform test contract
-isolates native bootstrap invocation, window placement checks and native window
-tests in `tests/platforms/windows/windowing/`. The current fixture executable uses
-the Windows backend; a Mac backend and test adapter are still required to run it
-on macOS. No fixture coverage was intentionally removed during the split.
+Each future cross-platform feature requires one behavioral specification,
+deliberate shared-policy/platform boundaries, equivalent platform coverage, Mac
+regression verification and explicit gaps/live-testing status. Extend this common
+foundation rather than creating parallel controllers, layout engines or stores.
 
-Launcher tests, Inspector probes and the preserved diagnostic controller are under
-`tests/platforms/windows/`. The release script retains its existing test invocations
-and dependency audit. Native interactive tests remain manually selectable with
-`--snap-native` and `--taskbar-native` on Windows.
-
-A successful structural/configuration check on macOS does not validate Windows
-compilation or runtime behavior. Run the Windows release command on its supported
-toolchain and validate a newly built helper in a fresh Resolve process.
+Wolfgang Woehl's inherited copyright, MIT license and applicable notices remain.
+Public product labels say OpenGate; compatibility identifiers may remain Unbound.
+Repository identity migration is a separate deferred task, not part of parity.

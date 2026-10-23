@@ -1,4 +1,15 @@
-﻿# Unbound development
+# OpenGate development
+
+## Current platform status (2026-10-22)
+
+Mac revision 3 is the accepted behavioral baseline. The Windows parity branch
+now starts the shared managed workspace through its Windows DLL. Read
+`doc/architecture.md` and `doc/platforms/windows-managed-workspace-progress.md`
+for current boundaries and exact verification status. The older product and
+captionless-controller descriptions below document preserved Windows mechanisms;
+they do not redefine the authoritative numbered native-entry contract.
+Mac is implemented; statements below saying otherwise are historical.
+
 
 ## Product
 

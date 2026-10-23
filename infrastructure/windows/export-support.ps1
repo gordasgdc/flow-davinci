@@ -2,7 +2,8 @@
 param(
     [string]$InstallDirectory = $PSScriptRoot,
     [string]$LogDirectory = $(if ($env:UNBOUND_DIAGNOSTICS_DIR) { $env:UNBOUND_DIAGNOSTICS_DIR } else { Join-Path $env:LOCALAPPDATA 'OpenGate\Logs' }),
-    [string]$OutputDirectory = [Environment]::GetFolderPath('Desktop')
+    [string]$OutputDirectory = [Environment]::GetFolderPath('Desktop'),
+    [string]$WorkflowDirectory = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins')
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -31,7 +32,22 @@ if (Test-Path -LiteralPath $incidents) {
         Copy-Evidence $_.FullName ('Logs\Incidents\'+$_.Name)
     }
 }
-foreach ($file in @('release-manifest.json','runtime-build-manifest.json','README.txt')) { Copy-Evidence (Join-Path $InstallDirectory $file) $file }
+foreach ($file in @('release-manifest.json','runtime-build-manifest.json','workflow-commands-manifest.json','README.txt')) { Copy-Evidence (Join-Path $InstallDirectory $file) $file }
+$workflow = @()
+$workflowManifest = Join-Path $InstallDirectory 'workflow-commands-manifest.json'
+if(Test-Path -LiteralPath $workflowManifest -PathType Leaf) {
+    try {
+        $entries = @(Get-Content -LiteralPath $workflowManifest -Raw | ConvertFrom-Json)
+        $names = @('OpenGate.py') + @($entries | ForEach-Object { $_.file })
+        foreach($file in $names) {
+            if([IO.Path]::GetFileName($file) -ne $file -or $file -notmatch '^OpenGate(?: - .+)?\.py$'){continue}
+            $path = Join-Path $WorkflowDirectory $file
+            $present = Test-Path -LiteralPath $path -PathType Leaf
+            $hash = if($present){(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}else{$null}
+            $workflow += @{ file=$file; present=$present; sha256=$hash }
+        }
+    } catch { $failures.Add(@{file='workflow-commands-manifest.json';error=$_.Exception.Message}) }
+}
 foreach ($inventory in @(@{ directory='PageInventory'; pattern='*-WStackPage_*-*.json' }, @{ directory='WindowInventory'; pattern='*-UiMainWindow-*.json' })) {
     $source = Join-Path $LogDirectory $inventory.directory
     if (Test-Path -LiteralPath $source) {
@@ -56,7 +72,7 @@ $resolve = @(Get-Process -Name Resolve -ErrorAction SilentlyContinue | ForEach-O
 $receipt = @{
     schema=1; product='OpenGate'; platform='windows'; captured_utc=(Get-Date).ToUniversalTime().ToString('o')
     os_version=[Environment]::OSVersion.VersionString; architecture=$env:PROCESSOR_ARCHITECTURE
-    powershell=$PSVersionTable.PSVersion.ToString(); resolve=$resolve; binaries=$binaries
+    powershell=$PSVersionTable.PSVersion.ToString(); resolve=$resolve; binaries=$binaries; workflow=$workflow
     files=@($copied.ToArray()); errors=@($failures.ToArray())
     limitations='Live log snapshot; records may continue after export. Build/fixture results do not establish live acceptance. Missing logs can mean the helper did not load. Native crash attribution is unknown.'
 }
@@ -69,8 +85,8 @@ Describe the page, panel and expected result; screenshots are useful for paintin
 events.jsonl uses the same event names and envelope as Mac: OpenGate component,
 module, build, session, event_sequence, UTC time, input and observed signals.
 An observed click is evidence of input, not proof that a command succeeded.
-No project, media, Resolve database, native preferences or typed editor contents
-are collected. Settings are left in place. Nothing is uploaded automatically.
+No project, media, Resolve database or native preference files are copied, and
+typed editor contents are excluded. Settings are left in place. Nothing is uploaded automatically.
 Keep the folder if ZIP creation fails. Export again after reproducing a problem.
 '@ | Set-Content -LiteralPath (Join-Path $stage 'READ-ME.txt') -Encoding UTF8
 $zip = $stage + '.zip'
