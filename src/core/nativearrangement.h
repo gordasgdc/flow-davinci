@@ -11,6 +11,7 @@
 #include "panellayoutvisibility.h"
 #include "grouppanelheader.h"
 #include "paneltitlegesture.h"
+#include "../platform/workspaceuiconventions.h"
 namespace Unbound {
 // Page-level ownership, independent of floating host chrome and drop detection.
 // The retained native layout is always represented explicitly in the tree.
@@ -123,7 +124,7 @@ public:
             cells[name]=cell;
         }
         if (!rebuild(tree)) { retire(); return QStringLiteral("Could not render the native arrangement."); }
-        auto error=scoped ? scopedLease.mount(position.surface(),host,page->window()) : lease.mount(page,host);
+        auto error=scoped ? scopedLease.mount(position.surface(),host,page->window()) : lease.mount(page,host,nativeWorkspaceLayoutOwner(page));
         if (!error.isEmpty()) { if (!lease.active() && !scopedLease.active()) retire(); return error; }
         pageOwner=page;
         ownerDestroyed=connect(page,&QObject::destroyed,this,[this] {

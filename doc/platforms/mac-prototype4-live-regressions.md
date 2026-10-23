@@ -76,3 +76,43 @@ pending. This is not an installation-ready repair candidate.
 
 The installed application, profiles, native preferences, projects and media have
 not been changed by this investigation. No Resolve process has been terminated.
+
+## Controller-preservation experiment
+
+The corrected live comparison adds a specific clue: successful Native-mode
+double-clicks at event sequences 9760 and 9848 are followed by two native
+`btnSourceClipMode` pressed/clicked pairs. The failing managed attempts lack that
+step. No OpenGate code invokes those buttons. This narrows the activation gap but
+does not prove why Resolve skips it.
+
+Mac inventory shows `WStackPage_Conform -> m_pConformPanel
+(UiConformerPanelImp) -> native panel containers`. The existing root lease moves
+that controller into a hidden stash and moves arranged players outside its
+ancestry. The experiment leases the controller's presentation layout instead,
+keeping the controller visible, inside its original page and above arranged
+players. It extends the existing root lease, not a new layout engine. Mac adapter
+discovery uses the direct child name observed in this Resolve inventory. Windows
+retains its current page-owner discovery until its native topology is verified;
+the shared nested-owner primitive is covered by the shared ownership fixture.
+
+The first realistic-controller assembled run exposed wrong maximize bounds:
+the outer controller rectangle includes a reserved strip. Production viewport
+selection was corrected to use the actual managed body. Original assertions and
+thresholds were retained. Failed log:
+`opengate-first-open-native-controller-first.log`; passing rerun:
+`opengate-first-open-native-controller-viewport.log`.
+
+An equivalent hidden fixture compiled against unchanged accepted v3 source also
+fails the new visible-controller ancestry assertion. It additionally fails the
+new Native-mode Panels policy, as expected. The first baseline compilation failed
+on the renamed host type; the retry maps only `WorkspaceFloatingHost` to its v3
+name `MacFloatingHost`. Both build logs and the failing baseline flow are retained.
+This demonstrates a pre-existing ownership gap, **not** a reproduced v3 clip-load
+failure. No old binary was installed and no media decoding was exercised.
+
+`b8de266e9a-hidden-20261023T054325Z/receipt.json` records 52/52 clean hidden passes
+for the earlier Panels/diagnostic checkpoint. It does not cover this subsequent
+ownership experiment. Its new complete matrix must include `native-controller-flow`.
+The experiment has focused shared ownership, native entry and assembled flow
+passes; complete hidden/displayed matrices, Windows runner coverage and live
+Source loading remain pending. No fix for native backtick painting is claimed.

@@ -24,7 +24,9 @@ int main(int argc,char **argv){
  QWidget main;if(!displayed)main.setAttribute(Qt::WA_DontShowOnScreen);main.setObjectName("UiMainWindow");main.resize(1400,900);auto outer=new QVBoxLayout(&main);
  auto bar=new QMenuBar(&main);bar->setNativeMenuBar(false);outer->setMenuBar(bar);auto workspace=bar->addMenu("Workspace");workspace->setObjectName("workspace");
  auto toolbar=new QStackedWidget(&main);auto tools=new QWidget;tools->setObjectName("pageSingleScreenModeTools");toolbar->addWidget(tools);outer->addWidget(toolbar);auto toolrow=new QHBoxLayout(tools);auto left=new QWidget(tools);left->setObjectName("frameEditTopBarLeftSSM");toolrow->addWidget(left);auto leftrow=new QHBoxLayout(left);leftrow->addWidget(new QPushButton("Media Pool",left));auto right=new QWidget(tools);right->setObjectName("frameEditTopBarRightSSM");right->setLayout(new QHBoxLayout);toolrow->addWidget(right);
- auto pageStack=new QStackedWidget(&main);outer->addWidget(pageStack,1);auto page=new QWidget(pageStack);page->setObjectName("WStackPage_Conform");pageStack->addWidget(page);auto fusion=new QWidget(pageStack);fusion->setObjectName("WStackPage_Fusion");pageStack->addWidget(fusion);auto color=new QWidget(pageStack);color->setObjectName("WStackPage_Color");pageStack->addWidget(color);auto native=new QHBoxLayout(page);
+ auto pageStack=new QStackedWidget(&main);outer->addWidget(pageStack,1);auto page=new QWidget(pageStack);page->setObjectName("WStackPage_Conform");pageStack->addWidget(page);auto fusion=new QWidget(pageStack);fusion->setObjectName("WStackPage_Fusion");pageStack->addWidget(fusion);auto color=new QWidget(pageStack);color->setObjectName("WStackPage_Color");pageStack->addWidget(color);auto nativeOwner=page;
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_NATIVE_EDIT_CONTROLLER")){auto pageLayout=new QVBoxLayout(page);nativeOwner=new QWidget(page);nativeOwner->setObjectName("m_pConformPanel");pageLayout->addWidget(nativeOwner);}
+ auto native=new QHBoxLayout(nativeOwner);
  QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
   auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
@@ -74,6 +76,7 @@ int main(int argc,char **argv){
  if(!binding||!binding->active()){files.setAutoRemove(false);std::fprintf(stderr,"Startup logs retained: %s\n",qPrintable(files.path()));return 1;}
 
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ if(nativeOwner!=page)check(nativeOwner->parentWidget()==page&&nativeOwner->isVisible()&&nativeOwner->isAncestorOf(nativePanels["widgetEditSourcePlayer"]),"OpenGate keeps the real Edit controller visible and above Source in the native hierarchy");
  #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
  for(int requestIndex=0;requestIndex<2;++requestIndex) {
   QSaveFile request(Unbound::diagnosticDirectory()+"/show-controls.request");
@@ -266,7 +269,7 @@ int main(int argc,char **argv){
  check(!afterUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"Update writes the current layout into only the selected user workspace");
  visibility("Workspace Toolbar");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
- check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
+ check(binding&&!binding->active()&&nativeOwner->layout()==native,"Native returns original native layout");
 #ifdef Q_OS_MACOS
  check(Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"Original Resolve UI has no OpenGate Panels overlay");
 #endif
@@ -277,9 +280,9 @@ int main(int argc,char **argv){
 #ifdef Q_OS_MACOS
  check(Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"temporary Native maximize does not bring back the Panels overlay");
 #endif
- if(expandSource)expandSource->click();settle();check(nativePanels["widgetEditSourcePlayer"]->parentWidget()==page,"Native maximize restores the exact native panel parent");
+ if(expandSource)expandSource->click();settle();check(nativePanels["widgetEditSourcePlayer"]->parentWidget()==nativeOwner,"Native maximize restores the exact native panel parent");
  sendTitle(QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);sendTitle(QEvent::MouseMove,{90,5},Qt::NoButton,Qt::LeftButton);sendTitle(QEvent::MouseButtonRelease,{90,5},Qt::LeftButton,Qt::NoButton);settle();
- Unbound::WorkspaceSettings gestureState;check(gestureState.data["layout_mode"]=="managed"&&page->layout()==native,"Native title drag enters OpenGate without loading the default or moving unrelated native slots");
+ Unbound::WorkspaceSettings gestureState;check(gestureState.data["layout_mode"]=="managed"&&nativeOwner->layout()==native,"Native title drag enters OpenGate without loading the default or moving unrelated native slots");
  check(nativePanels["frameEditPageMediaPool"]->isHidden(),"Native-origin drag also leaves no visible empty slot");
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
  check(binding&&binding->active(),"choosing Resolve Layout re-enters OpenGate through existing restoration");
@@ -312,7 +315,7 @@ int main(int argc,char **argv){
   check(nativePanels["frameEditPageMediaPool"]->isHidden(),"page return cannot resurrect a floated panel vacancy");
  }
  }
- check(page->layout()==native,"shutdown returns exact native layout ownership");
+ check(nativeOwner->layout()==native,"shutdown returns exact native layout ownership");
  QProcess child;child.setProgram(app.applicationFilePath());QStringList childArguments{"--restart-check"};
 #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
  childArguments.append(app.arguments().last());

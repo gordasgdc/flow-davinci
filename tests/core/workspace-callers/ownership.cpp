@@ -55,6 +55,33 @@ int main(int argc,char **argv) {
             delete workspace;
         }
     }
+    // A presentation lease must not hide or remove the real native controller
+    // above its arranged widgets. Native callbacks may depend on that context.
+    {
+        QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(900,650);
+        auto outer=new QVBoxLayout(&main);auto page=new QWidget(&main);outer->addWidget(page);
+        auto pageLayout=new QVBoxLayout(page);auto controller=new QWidget(page);pageLayout->addWidget(controller);
+        auto nativeLayout=new QVBoxLayout(controller);auto source=new QPushButton("Native source",controller);nativeLayout->addWidget(source);
+        auto untouched=new QWidget(controller);nativeLayout->addWidget(untouched);
+        main.show();QApplication::processEvents();
+        const auto frame=main.geometry();int callbacks=0;
+        QObject::connect(source,&QPushButton::clicked,controller,[&] {
+            check(controller->isVisible()&&controller->isAncestorOf(source),"native callback retains visible controller ancestry");++callbacks;
+        });
+        for(int cycle=0;cycle<3;++cycle) {
+            NativePanelPosition position;check(position.acquire(source,page).isEmpty(),"nested controller source lease acquired");
+            auto workspace=new QWidget(&main);auto layout=new QVBoxLayout(workspace);layout->addWidget(source);
+            NativeRootLayout lease;check(lease.mount(page,workspace,controller).isEmpty(),"existing lease accepts a nested native layout owner");
+            source->show();QApplication::processEvents();source->click();
+            check(page->layout()==pageLayout&&controller->parentWidget()==page&&controller->isVisible(),"outer controller remains native, visible and in its original page");
+            check(NativeRootLayout::contains(page,workspace)&&NativeRootLayout::ownsParkedWidget(untouched,page),"nested roots preserve managed membership and parked native recovery");
+            check(main.geometry()==frame&&callbacks==cycle+1,"nested lease preserves main geometry and native signal delivery");
+            source->setParent(position.contentParking());source->hide();
+            check(lease.restore()&&controller->layout()==nativeLayout&&page->layout()==pageLayout,"nested lease restores both exact native layouts");
+            check(position.restore()&&source->parentWidget()==controller&&untouched->parentWidget()==controller,"nested lease restores exact widget owners");
+            delete workspace;
+        }
+    }
     QWidget slot;slot.setAttribute(Qt::WA_DontShowOnScreen);slot.setMinimumSize(130,70);slot.show();
     const auto policy=slot.sizePolicy();{VacatedContents vacancy;vacancy.hide(&slot);slot.show();QApplication::processEvents();
         check(slot.isHidden(),"leased empty native slot cannot reopen from a native show");vacancy.restore();}

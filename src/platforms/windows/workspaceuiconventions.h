@@ -4,6 +4,9 @@
 #include <QStyle>
 #include <QWidget>
 namespace Unbound {
+// A different controller container needs Windows inventory evidence before it
+// can replace the current page owner; the shared lease supports nested owners.
+inline QWidget *nativeWorkspaceLayoutOwner(QWidget *page) { return page; }
 inline int nativeWorkspaceTitleGap(QWidget *row) {
     if(!row)return 0;
     const int spacing=row->layout()?row->layout()->spacing():-1;
