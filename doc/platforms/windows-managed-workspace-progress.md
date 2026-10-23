@@ -176,3 +176,47 @@ numbered flow are still incomplete. No Mac candidate has been built or installed
 The separate requested final identity/migration/revision-4 task is recorded in
 `opengate-identity-migration-task.md`, including stargazer notification. Migration
 execution must not interrupt this parity work; cutover requires concrete approval.
+
+## Shared managed-session and coordinator checkpoint (2026-10-22)
+
+The release target is `v0.0.2-prototype.4` in the existing repository. Standalone
+repository migration is deferred; it must not delay parity implementation.
+
+`676a631` passed Windows runner [39888491564](https://github.com/jordantetewsky/OpenGate/actions/runs/39888491564):
+shared managed sessions ran both offscreen and with the Windows Qt platform;
+shared caller, logging, tree, ownership and preset policy fixtures passed;
+retained DLL-bootstrap callers, existing Windows windowing checks, installer
+construction and non-mutating support export passed. Downloaded evidence is in
+`build/windows/evidence/39888491564`. The manifest records clean source and still
+truthfully identifies the production backend as `windows-floating-pane`, parity
+false and live acceptance false. These are development artifacts, not candidates.
+The earlier missing-include compile failure at `6750b42` is preserved separately.
+
+The accepted `ManagedPanelSession`, floating host, panel group, native mounting,
+placement and dock-scope modules now live in core with Mac compatibility includes.
+Windows uses the existing `PaneFloatingWindow` mechanisms through a focused
+window adapter: actual HWND ownership, native movement/resize, system-menu pin,
+clipping and explicitly distinguished physical/native and Qt logical coordinates.
+Native input age is unknown, never fabricated. No playback/performance claim.
+`22fe282` passed Windows [39889519984](https://github.com/jordantetewsky/OpenGate/actions/runs/39889519984),
+adding the existing Mac section-docking assertions without weakening them.
+
+A frozen Mac hidden matrix at `22fe282` is being retained in the sessions
+worktree. Its first-install fixture failed before assertions because it read the
+Mac compatibility include instead of the moved core recipe (regex returned None).
+`da040ad` corrects that single source path; all recipe, immutable seed and
+no-overwrite assertions remain intact and the individual fixture passes. The
+failed receipt is not replaced or reported as passed.
+
+The next mechanical extraction (`07fb04c`) shares the existing native workspace
+binding, restoration ordering, snapshot schema and arrangement controls. No new
+layout engine, persistence format or controller is introduced. Legacy Mac session
+names remain aliases; common implementations use ManagedPanelSession. The Mac
+restoration fixture passes, including preflight, rollback boundaries and stale
+callback cancellation. Equivalent Windows execution is pending the next runner.
+
+Production Windows managed startup/discovery, permanent Panels/title integration,
+complete bands/page/Native transitions and the assembled numbered flow remain
+open. Shared components passing is not evidence those production paths are wired.
+No new Mac package, installation, live acceptance, release publication or migration
+cutover occurred. Revision 3's accepted Mac asset remains unchanged.
