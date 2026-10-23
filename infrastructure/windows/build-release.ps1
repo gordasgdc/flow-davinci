@@ -154,7 +154,8 @@ try {
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
     Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
+    $workflowHashes = @(Get-ChildItem -LiteralPath (Join-Path $destination 'workflow-commands') -File | Get-FileHash -Algorithm SHA256)
+    @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"

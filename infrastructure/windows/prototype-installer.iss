@@ -5,10 +5,14 @@
 #ifndef BuildVersion
   #error BuildVersion is required
 #endif
+#ifndef BuildRevision
+  #error BuildRevision is required
+#endif
 [Setup]
 AppId=OpenGate-CineWaltz-Prototype
 AppName=OpenGate
 AppVersion={#BuildVersion}
+AppVerName=OpenGate {#BuildVersion} prototype.{#BuildRevision}
 AppPublisher=CineWaltz; based on Unbound by Wolfgang Woehl
 DefaultDirName={autopf}\OpenGate
 DefaultGroupName=OpenGate
@@ -19,7 +23,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir={#SourceRoot}\release\packages
-OutputBaseFilename=OpenGate-{#BuildVersion}-Prototype-Windows-x64
+OutputBaseFilename=OpenGate-{#BuildVersion}-Prototype.{#BuildRevision}-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 SetupLogging=yes
