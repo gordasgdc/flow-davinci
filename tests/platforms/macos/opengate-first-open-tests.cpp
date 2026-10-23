@@ -9,6 +9,9 @@
 #include <cstdio>
 #include "panelcontrols.h"
 #include "../workspacetestactivation.h"
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+#include "../windows/windowing/managedbootstrap.h"
+#endif
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 int main(int argc,char **argv){
@@ -49,7 +52,15 @@ int main(int argc,char **argv){
  QWidget projectStrip(&main);projectStrip.setObjectName("UiProjectsMainBarImp");
  projectStrip.setGeometry(0,page->mapTo(&main,QPoint()).y(),100,32);projectStrip.show();
  {
- PanelControls controls;settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ ManagedBootstrapFixture bootstrap(app.arguments().last());
+ check(bootstrap.controller()!=nullptr,qPrintable(bootstrap.error));
+ if(!bootstrap.controller())return 1;
+ auto &controls=*bootstrap.controller();
+#else
+ PanelControls controls;
+#endif
+ settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
  if(restart){
   check(binding&&binding->active()&&!binding->contains("frameEditPageMediaPool"),"restart retains the unsaved detached panel instead of reloading Resolve Layout");
   auto header=component<Unbound::PinnedWorkspaceHeader>(&controls);check(header&&!header->shown(),"restart retains the unsaved hidden header");
@@ -245,7 +256,11 @@ int main(int argc,char **argv){
  }
  }
  check(page->layout()==native,"shutdown returns exact native layout ownership");
- QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();
+ QProcess child;child.setProgram(app.applicationFilePath());QStringList childArguments{"--restart-check"};
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ childArguments.append(app.arguments().last());
+#endif
+ child.setArguments(childArguments);child.start();
  check(child.waitForFinished(30000),"fresh-process managed restart completes");
  const auto childErrors=child.readAllStandardError();if(!childErrors.isEmpty())std::fprintf(stderr,"%s",childErrors.constData());
  check(child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0,"last working OpenGate arrangement persists across a new process");

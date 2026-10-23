@@ -92,11 +92,21 @@ target_compile_definitions(OpenGateDiagnosticTests PRIVATE WIN32_LEAN_AND_MEAN N
 target_link_libraries(OpenGateDiagnosticTests PRIVATE Qt5::Widgets)
 set_property(TARGET OpenGateWorkspaceCallerTests PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_link_libraries(OpenGateWorkspaceCallerTests PRIVATE Qt5::Widgets)
-add_library(UnboundHelper SHARED "${UNBOUND_ROOT}/src/core/controller.cpp" bootstrap.cpp ${CMAKE_CURRENT_BINARY_DIR}/helper.rc)
+add_library(UnboundHelper SHARED managedworkspace.cpp bootstrap.cpp ${CMAKE_CURRENT_BINARY_DIR}/helper.rc)
 target_compile_definitions(UnboundHelper PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNBOUND_BUILD_ID="${UNBOUND_BUILD_ID}")
 set_target_properties(UnboundHelper PROPERTIES OUTPUT_NAME Unbound)
 set_property(TARGET UnboundHelper PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_link_libraries(UnboundHelper PRIVATE UnboundWindowsWindowing)
+# Preserve the historical Windows mechanism assertions against their original
+# controller. This test-only DLL is never installed or included in release output.
+add_library(OpenGateLegacyFixtureHelper SHARED "${UNBOUND_ROOT}/src/core/controller.cpp" bootstrap.cpp)
+target_compile_definitions(OpenGateLegacyFixtureHelper PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNBOUND_BUILD_ID="${UNBOUND_BUILD_ID}")
+target_link_libraries(OpenGateLegacyFixtureHelper PRIVATE UnboundWindowsWindowing)
+add_executable(OpenGateProductionFlowTests "${UNBOUND_ROOT}/tests/platforms/macos/opengate-first-open-tests.cpp")
+target_include_directories(OpenGateProductionFlowTests PRIVATE "${UNBOUND_ROOT}/src/core")
+target_compile_definitions(OpenGateProductionFlowTests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX OPENGATE_TEST_PRODUCTION_BOOTSTRAP)
+target_link_libraries(OpenGateProductionFlowTests PRIVATE UnboundWindowsWindowing)
+set_target_properties(OpenGateLegacyFixtureHelper OpenGateProductionFlowTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 # Preserve the release script's existing Release/ artifact layout.
 foreach(target Unbound UnboundHelper UnboundLauncherTests OpenGateWorkspaceCallerTests OpenGateDiagnosticTests OpenGateLayoutPolicyTests OpenGateRetainedCallerTests OpenGateOwnershipTests OpenGateManagedSessionTests OpenGatePresetPolicyTests OpenGateStackDockingTests OpenGateWorkspaceRestorationTests OpenGatePinnedHeaderTests OpenGatePageNavigationTests OpenGateNativeEntryTests OpenGateFirstOpenTests OpenGatePanelCallerFlowTests OpenGateNativePresetTests OpenGatePanelCommandTests OpenGateWindowAdapterTests)
     set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

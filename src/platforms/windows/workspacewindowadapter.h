@@ -13,8 +13,14 @@ public:
         if(owner)inheritPaneTaskbarIdentity(this,owner);
     }
 };
-// Windows Qt page coordinates already exclude the OS caption. The existing
-// native page layout reserves any custom header; there is no Cocoa content
-// overlap inset to apply. Preserve its own margins in NativeRootLayout.
-inline int nativeWorkspaceTopInset(QWidget *) { return 0; }
+// Qt excludes the Windows caption already. Resolve's own project strip can
+// still overlap a page inside the client rectangle; reserve only that measured
+// overlap, independently of native caption height or DPI.
+inline int nativeWorkspaceTopInset(QWidget *page) {
+    if(!page)return 0;
+    auto main=page->window();int bottom=0;
+    for(auto strip:main->findChildren<QWidget *>("UiProjectsMainBarImp",Qt::FindDirectChildrenOnly))
+        if(strip->isVisible())bottom=qMax(bottom,strip->mapTo(main,QPoint(0,strip->height())).y());
+    return qMax(0,bottom-page->mapTo(main,QPoint()).y());
+}
 }

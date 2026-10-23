@@ -108,7 +108,9 @@ try {
     Invoke-Fixture (Join-Path $build 'Release\OpenGateNativePresetTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
-    Invoke-Fixture (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($dll)
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
+    $legacyFixtureDll = Join-Path $build 'Release\OpenGateLegacyFixtureHelper.dll'
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($legacyFixtureDll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
     Invoke-Fixture (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
     Invoke-Fixture $test @()
@@ -119,14 +121,14 @@ try {
     Invoke-Fixture $test @('--nodes-canvas-test')
     Invoke-Fixture $test @('--shutdown-test')
     Invoke-Fixture $test @('--close-all-test')
-    Invoke-Fixture $test @('--standalone-test', $dll)
-    Invoke-Fixture $test @('--standalone-test', '--visible-start', $dll)
-    Invoke-Fixture $test @('--standalone-test', '--toggle-state-test', $dll)
-    Invoke-Fixture $test @('--standalone-test', '--color-selected-test', $dll)
-    Invoke-Fixture $test @('--reclaim-test', $dll)
-    Invoke-Fixture $test @('--fairlight-test', $dll)
-    Invoke-Fixture $test @('--fairlight-test', '--restore', $dll)
-    Invoke-Fixture $test @('--discovery-test', $dll)
+    Invoke-Fixture $test @('--standalone-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--visible-start', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--toggle-state-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--color-selected-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--reclaim-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--fairlight-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--fairlight-test', '--restore', $legacyFixtureDll)
+    Invoke-Fixture $test @('--discovery-test', $legacyFixtureDll)
     $env:QT_QPA_PLATFORM = 'windows'
     try {
         Invoke-Fixture (Join-Path $build 'Release\OpenGateWindowAdapterTests.exe') @()
@@ -144,7 +146,7 @@ try {
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='windows-floating-pane'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
+    @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"

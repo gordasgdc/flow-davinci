@@ -20,6 +20,14 @@ int main(int argc,char **argv) {
     auto toolbar=new QWidget(&main);toolbar->setObjectName("pageSingleScreenModeTools");layout->addWidget(toolbar);
     auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");layout->addWidget(footer);
     main.show();settle();int opened=0;
+    {
+        QWidget page(&main);page.setGeometry(0,strip->y()+5,600,300);page.show();
+        check(Unbound::nativeWorkspaceTopInset(&page)==strip->height()-5,"custom project strip overlap is reserved in logical page coordinates");
+        page.move(0,strip->geometry().bottom()+1);
+        check(Unbound::nativeWorkspaceTopInset(&page)==0,"native layout already below the project strip receives no duplicate inset");
+        strip->hide();page.move(0,0);
+        check(Unbound::nativeWorkspaceTopInset(&page)==0,"hidden project strip reserves no height");strip->show();
+    }
     check(Unbound::setNativeHeaderMenu(&main,true,[&]{++opened;}),"permanent native title owner accepts Panels access");
     auto panels=strip->findChild<QToolButton *>("openGateTitlePanels");
     check(panels&&titleLayout->indexOf(panels)>=0,"Panels occupies the native title layout, with reserved space");
