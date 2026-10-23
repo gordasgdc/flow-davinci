@@ -4,6 +4,7 @@
 #include <cstdio>
 #include "panelcommandcatalog.h"
 #include "nativepaneltoggles.h"
+#include "nativepanelvisibility.h"
 #include "workspacesnapshot.h"
 #include "panelexpansioncontroller.h"
 #include <QPushButton>
@@ -137,7 +138,7 @@ int main(int argc,char **argv) {
             "last-view schema retains independent doors, footer state and selected preset identity");
     }
     {
-        Unbound::MacPanelSession session;
+        Unbound::ManagedPanelSession session;
         Unbound::PanelExpansionController expansion(nullptr);
         int undocked=0,cancelled=0,restored=0,nativeRestored=0,saved=0;
         expansion.running=[] { return true; }; expansion.update=[](int) {}; expansion.save=[&] { ++saved; };

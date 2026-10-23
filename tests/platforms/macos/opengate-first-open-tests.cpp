@@ -7,6 +7,7 @@
 #include <QThread>
 #include <cstdio>
 #include "panelcontrols.h"
+#include "../workspacetestactivation.h"
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 int main(int argc,char **argv){
