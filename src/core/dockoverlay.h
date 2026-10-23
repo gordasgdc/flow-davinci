@@ -2,7 +2,7 @@
 #pragma once
 #include <QWidget>
 #include <QPainter>
-#include "windowsnap.h"
+#include "workspaceframepolicy.h"
 namespace Unbound {
 class DockCompass : public QWidget
 {
