@@ -16,7 +16,7 @@ static void record_state(const char *phase, int inspect_windows)
     const char *home = getenv("HOME");
     if (!home) return;
     char path[4096];
-    int length = snprintf(path, sizeof(path), "%s/Library/Logs/Unbound/ofx-loading-probe.log", home);
+    int length = snprintf(path, sizeof(path), "%s/Library/Logs/OpenGate/ofx-loading-probe.log", home);
     if (length < 0 || (size_t)length >= sizeof(path)) return;
     FILE *log = fopen(path, "a");
     if (!log) return;

@@ -12,6 +12,6 @@ xcrun clang "${opengate_macos_flags[@]}" -Wall -Wextra -Werror -fvisibility=hidd
 /usr/bin/codesign --force --sign - "$bundle/Contents/MacOS/UnboundLoadingProbe.ofx"
 xcrun clang "${opengate_macos_flags[@]}" -Wall -Wextra -Werror "$root/tests/platforms/macos/ofx-probe-host.c" -o "$out/probe-host"
 # Isolate the host-test log from evidence produced by Resolve.
-mkdir -p "$out/test-home/Library/Logs/Unbound"
+mkdir -p "$out/test-home/Library/Logs/OpenGate"
 HOME="$out/test-home" "$out/probe-host" "$bundle/Contents/MacOS/UnboundLoadingProbe.ofx"
 echo "PASS: OpenFX discovery entry points. Bundle: $bundle"

@@ -191,7 +191,9 @@ The shortcut cannot attach a helper to a Resolve process that never loaded it.
 
 ## Diagnostics and tests
 
-Local logs are in `~/Library/Logs/Unbound/`:
+Prototype.4 writes new logs to `~/Library/Logs/OpenGate/`. Earlier releases use
+`~/Library/Logs/Unbound/`; those files remain intact and support export reads both.
+Workspace settings and presets retain their existing paths. Log files include:
 
 - `events.jsonl`: helper start/stop, control requests, button actions/results,
   docking checks and window moves, resizes, visibility, activation and state.

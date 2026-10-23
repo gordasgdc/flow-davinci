@@ -4,7 +4,7 @@
 #include "nativechrome.h"
 namespace Unbound {
 inline QString diagnosticDirectory() {
-    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR", QDir::homePath()+"/Library/Logs/Unbound");
+    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR", QDir::homePath()+"/Library/Logs/OpenGate");
 }
 inline QString diagnosticModule() { return QStringLiteral("UnboundWidgetProbe.dylib"); }
 inline QString diagnosticResolveCrashArchive() {

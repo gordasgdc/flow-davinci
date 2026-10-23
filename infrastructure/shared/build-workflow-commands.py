@@ -24,7 +24,7 @@ for command,label in commands:
     filename='OpenGate - '+label+'.py'
     source='''# OpenGate by CineWaltz; native Workflow Integration command bridge.
 import json, os, pathlib, time, uuid
-base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/Unbound")))
+base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/OpenGate")))
 directory=base/"command-requests"
 directory.mkdir(parents=True,exist_ok=True)
 token=str(uuid.uuid4())
@@ -78,7 +78,7 @@ try:
 except Exception as _error:
     _result={"success":False,"reason":"scripting-api-error","error_type":type(_error).__name__}
 _result.update({"command":"edit.inspector.stabilize","issued_ms":int(time.time()*1000),"started_ms":_started_ms})
-base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/Unbound")))
+base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/OpenGate")))
 directory=base/"command-results"
 directory.mkdir(parents=True,exist_ok=True)
 token=str(uuid.uuid4())
@@ -87,7 +87,7 @@ temporary.write_text(json.dumps(_result))
 os.replace(temporary,directory/(token+".json"))
 '''
     if args.platform=='windows':
-        source=source.replace('str(pathlib.Path.home()/"Library/Logs/Unbound")',
+        source=source.replace('str(pathlib.Path.home()/"Library/Logs/OpenGate")',
             'str(pathlib.Path(os.environ.get("LOCALAPPDATA",str(pathlib.Path.home()/"AppData/Local")))/"OpenGate/Logs")')
     (output/filename).write_text(source)
     manifest.append(dict(command=command,label='OpenGate - '+label,file=filename))
@@ -95,7 +95,7 @@ os.replace(temporary,directory/(token+".json"))
 if args.platform=='windows':
     # Reuse the accepted menu entry, adapting only its platform log directory.
     entry=(root/'src/platforms/macos/OpenGate.py').read_text()
-    entry=entry.replace('directory = pathlib.Path.home() / "Library/Logs/Unbound"',
+    entry=entry.replace('directory = pathlib.Path.home() / "Library/Logs/OpenGate"',
         'directory = pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path(os.environ.get("LOCALAPPDATA",str(pathlib.Path.home()/"AppData/Local")))/"OpenGate/Logs")))')
     (output/'OpenGate.py').write_text(entry)
 print('Built',len(manifest),'individual OpenGate workflow command targets:',output)

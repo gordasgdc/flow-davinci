@@ -35,7 +35,7 @@ The build checks the two exported discovery functions in an isolated test host.
 Install `build/macos/ofx-probe/UnboundLoadingProbe.ofx.bundle` under
 `/Library/OFX/Plugins/`, then start Resolve normally. The probe advertises zero
 effects and writes process identity, main-thread status and Qt singleton presence
-to `~/Library/Logs/Unbound/ofx-loading-probe.log`. No Qt functions are called and
+to `~/Library/Logs/OpenGate/ofx-loading-probe.log`. No Qt functions are called and
 no widgets are changed by discovery. When Qt is available, the probe retains its
 library and queues a read-only active-window check on the main dispatch queue.
 A scanner process entry alone does not prove access to Resolve's UI. Remove this
@@ -59,7 +59,7 @@ see the platform status document. The OpenFX bundle is retained for diagnostics.
 widget inspector loads only in the Qt host on the main queue and links to the
 installed Resolve Qt libraries. It requires runtime Qt 5.15.2. Three snapshots,
 after 2, 10 and 30 seconds, record widget names, classes, parent names, visibility
-and geometry under `~/Library/Logs/Unbound/widgets-{1,2,3}.json`. Open a project
+and geometry under `~/Library/Logs/OpenGate/widgets-{1,2,3}.json`. Open a project
 during this interval to include its panels. These are local diagnostic files;
 review them before sharing. Snapshot capture does not modify widgets.
 
