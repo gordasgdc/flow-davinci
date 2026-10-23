@@ -64,6 +64,8 @@ try {
     Invoke-Checked (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateStackDockingTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceRestorationTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGatePinnedHeaderTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGatePageNavigationTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($dll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
