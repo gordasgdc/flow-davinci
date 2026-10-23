@@ -22,7 +22,15 @@ foreach($file in $data.files){
     $path=Join-Path $manifest.DirectoryName $file.file
     if((Get-FileHash -LiteralPath $path).Hash -ne $file.sha256){throw 'Evidence checksum mismatch'}
 }
+$inventories=Join-Path $logs 'WindowInventory'
+$null=New-Item -ItemType Directory -Path $inventories
+'{"read_only":true,"nodes":[{"name":"UiProjectsMainBarImp"}]}' | Set-Content (Join-Path $inventories 'fixture-UiMainWindow-1.json')
+'PRIVATE_UNRELATED_CONTENT' | Set-Content (Join-Path $inventories 'do-not-export.json')
+& (Join-Path $repo 'infrastructure/windows/export-support.ps1') -LogDirectory $logs -InstallDirectory $install -OutputDirectory $output
+$latest=Get-ChildItem $output -Directory | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+if(!(Test-Path (Join-Path $latest.FullName 'Logs\WindowInventory\fixture-UiMainWindow-1.json'))){throw 'Native structure evidence missing'}
+if(Test-Path (Join-Path $latest.FullName 'Logs\WindowInventory\do-not-export.json')){throw 'Unrecognized inventory exported'}
 $empty=Join-Path $root 'empty';$null=New-Item -ItemType Directory -Path $empty
 & (Join-Path $repo 'infrastructure/windows/export-support.ps1') -LogDirectory $empty -InstallDirectory $empty -OutputDirectory $output
-if(@(Get-ChildItem $output -Filter '*.zip').Count -ne 2){throw 'Missing-log export failed'}
+if(@(Get-ChildItem $output -Filter '*.zip').Count -ne 3){throw 'Missing-log export failed'}
 Write-Host "PASS: exported logs/provenance, checksums, no mutation, allowlist and missing-helper case. Evidence: $root"

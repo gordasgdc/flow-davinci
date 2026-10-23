@@ -16,12 +16,15 @@ namespace Unbound {
 // This is evidence for page-specific adapters, never permission to move a widget.
 class PagePanelInventory : public QObject {
 public:
-    explicit PagePanelInventory(QObject *owner):QObject(owner) {
+    enum class Scope { Pages, MainWindow };
+    explicit PagePanelInventory(QObject *owner,Scope scope=Scope::Pages):QObject(owner),scope(scope) {
         qApp->installEventFilter(this);
         QTimer::singleShot(0,this,[this] {
-            for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="UiMainWindow")
+            for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="UiMainWindow") {
+                if(this->scope==Scope::MainWindow) { if(window->isVisible())schedule(window);continue; }
                 for(auto page:window->findChildren<QWidget *>())
                     if(page->objectName().startsWith("WStackPage_") && page->isVisible())schedule(page);
+            }
         });
     }
     ~PagePanelInventory() override {if(qApp)qApp->removeEventFilter(this);}
@@ -71,10 +74,13 @@ protected:
         if(event->type()!=QEvent::Show && event->type()!=QEvent::ChildAdded)return false;
         if(auto widget=qobject_cast<QWidget *>(object))
             for(auto page=widget;page;page=page->parentWidget())
-                if(page->objectName().startsWith("WStackPage_")){if(page->isVisible())schedule(page);break;}
+                if(matches(page)){if(page->isVisible())schedule(page);break;}
         return false;
     }
 private:
+    bool matches(QWidget *widget) const {
+        return scope==Scope::MainWindow?widget->objectName()=="UiMainWindow":widget->objectName().startsWith("WStackPage_");
+    }
     void schedule(QWidget *page) {
         if(queued.contains(page) || captures.value(page)>=4)return;
         if(!captures.contains(page)) {
@@ -85,13 +91,13 @@ private:
         QTimer::singleShot(750,this,[this,safe,page] {
             queued.remove(page);if(!safe || !safe->isVisible())return;
             const auto count=++captures[page];const auto inventory=capture(safe);
-            const auto directory=diagnosticDirectory()+"/PageInventory";
+            const auto directory=diagnosticDirectory()+(scope==Scope::MainWindow?"/WindowInventory":"/PageInventory");
             QDir().mkpath(directory);
             auto name=safe->objectName();name.replace('/','_');name.replace('\\','_');
             const auto path=directory+"/"+diagnosticSessionId()+"-"+name+"-"+QString::number(count)+".json";
             QSaveFile file(path);bool written=false;
             if(file.open(QIODevice::WriteOnly)) {const auto bytes=QJsonDocument(inventory).toJson(QJsonDocument::Compact);written=file.write(bytes)==bytes.size() && file.commit();}
-            const auto retained=QDir(directory).entryList({"*-WStackPage_*-*.json"},QDir::Files,QDir::Time);
+            const auto retained=QDir(directory).entryList({scope==Scope::MainWindow?"*-UiMainWindow-*.json":"*-WStackPage_*-*.json"},QDir::Files,QDir::Time);
             for(int i=32;i<retained.size();++i)QFile::remove(directory+"/"+retained[i]);
             logEvent("capability.page.inventory",{{"page_widget",safe->objectName()},{"path",path},{"success",written},
                 {"nodes",inventory["nodes"].toArray().size()},{"truncated",inventory["truncated"]},{"read_only",true}});
@@ -100,5 +106,6 @@ private:
         });
     }
     QSet<QWidget *> queued;QHash<QWidget *,int> captures;
+    Scope scope;
 };
 }

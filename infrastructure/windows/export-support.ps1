@@ -32,6 +32,14 @@ if (Test-Path -LiteralPath $incidents) {
     }
 }
 foreach ($file in @('release-manifest.json','runtime-build-manifest.json','README.txt')) { Copy-Evidence (Join-Path $InstallDirectory $file) $file }
+foreach ($inventory in @(@{ directory='PageInventory'; pattern='*-WStackPage_*-*.json' }, @{ directory='WindowInventory'; pattern='*-UiMainWindow-*.json' })) {
+    $source = Join-Path $LogDirectory $inventory.directory
+    if (Test-Path -LiteralPath $source) {
+        Get-ChildItem -LiteralPath $source -Filter $inventory.pattern -File | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 32 | ForEach-Object {
+            Copy-Evidence $_.FullName ('Logs\'+$inventory.directory+'\'+$_.Name)
+        }
+    }
+}
 $binaries = @()
 foreach ($file in @('Unbound.exe','Unbound.dll')) {
     $path = Join-Path $InstallDirectory $file
