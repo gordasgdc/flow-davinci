@@ -6,6 +6,13 @@ The planned final release is OpenGate 0.0.2 revision 4. Preparation is authorize
 the concrete repository cutover requires Jordan's approval after verification.
 No cutover, release publication or repository renaming has been performed.
 
+Jordan subsequently deferred migration for tonight. Continue Windows parity
+steps 1–5 and publish the test candidate as `v0.0.2-prototype.4` in the existing
+repository so a Windows Resolve tester can perform step 6. Live Windows
+acceptance is not a prerequisite to publishing that explicitly labeled test
+release; compilation, fixtures and packaging must still be complete and truthful.
+Repository migration and stargazer notification remain a separate later task.
+
 ## Goal and sequence
 
 Publish OpenGate as a standalone GitHub repository created normally, not with
