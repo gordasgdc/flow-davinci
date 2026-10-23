@@ -342,3 +342,25 @@ standard installer elevation; no installer has run on Jordan's machine. Settings
 native preferences and projects are excluded from installation/uninstallation.
 Latest adapter/command/installer changes are implemented but not yet runner-tested
 or packaged. Publication and live acceptance remain pending.
+
+## 2026-10-23: Mac displayed focus evidence (before final packaging)
+
+The d90358e hidden matrix passes 52/52. Two complete serial displayed runs each
+passed 8/9; neither is a passing matrix. Preserve receipts
+`d90358ebe7-displayed-20261023T043725Z` (panel-sessions failure) and
+`d90358ebe7-displayed-20261023T044902Z` (Mixer failure), with all suite logs.
+The original isolated panel-sessions also failed background-key preservation;
+a diagnostic-only rerun passed unchanged assertions. Its cause is unestablished.
+The first diagnostic build failed a local variable-name collision; its failed
+compile log is retained along with the corrected run. No thresholds changed.
+
+The second matrix's retained Mixer events explicitly show command sequence 716
+rejected with `reason: no-active-window`, followed by sequence 717 accepted with
+`active_window: UiMainWindow` and successful Mixer expansion. Its fixture used
+Qt-only activation before processing queued Cocoa events. The focus setup now
+uses the existing native test activation helper already used by the assembled
+docking flow, and adds an active-workspace precondition plus requested/actual
+pointer diagnostics. All original dispatch, maximize and exact ownership/return
+assertions remain. This is a fixture setup correction, with no production change.
+Retained failure directory: `opengate-opengate-first-open-tests-rHNgkH` under the
+local temporary root. A corrected full serial matrix is still required.

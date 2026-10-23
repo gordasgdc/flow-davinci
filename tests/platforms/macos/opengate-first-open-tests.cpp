@@ -166,8 +166,14 @@ int main(int argc,char **argv){
  check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"Mixer mounts in the visible workspace outside Timeline");
  check(mountedTitle&&mountedTitle->isVisible()&&mountedTitle->text()=="Mixer","repositioned Mixer has the existing readable panel title");
  if(displayed) {
-  main.raise();main.activateWindow();QApplication::setActiveWindow(&main);settle(150);
-  const auto cursor=QCursor::pos();QCursor::setPos(mixerTitle->mapToGlobal(QPoint(25,15)));settle(100);
+  // This command requires a foreground workspace. Qt-only activation can be
+  // cleared by queued Cocoa activation events (retained run 20261023T044902Z
+  // reports no-active-window). Establish the real native focus as in the
+  // assembled docking flow above; do not change command or outcome assertions.
+  Unbound::activateNativeWindowForTest(&main);settle(150);
+  const auto cursor=QCursor::pos();const auto requested=mixerTitle->mapToGlobal(QPoint(25,15));QCursor::setPos(requested);settle(100);
+  std::fprintf(stderr,"MIXER focus=%s requested=%d,%d actual=%d,%d\n",QApplication::activeWindow()?qPrintable(QApplication::activeWindow()->objectName()):"null",requested.x(),requested.y(),QCursor::pos().x(),QCursor::pos().y());
+  check(QApplication::activeWindow()==&main,"repositioned Mixer command has an active native workspace");
   check(controls.invokeWorkflowCommand("panel.expand.hovered"),"repositioned Mixer pointer maximize dispatches");settle(300);
   auto expandedMixer=mixerTitle->window();check(expandedMixer!=&main,"repositioned Mixer alone maximizes");
   QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
