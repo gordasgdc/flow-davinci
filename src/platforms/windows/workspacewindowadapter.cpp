@@ -5,6 +5,7 @@
 #include <QPointer>
 #include <QTimer>
 #include "workspacewindowadapter.h"
+#include "workspacetitleaccess.h"
 #include "../../core/diagnostics.h"
 
 namespace Unbound {
@@ -12,6 +13,19 @@ namespace {
 HWND handle(QWidget *widget) { return widget?reinterpret_cast<HWND>(widget->winId()):nullptr; }
 QJsonObject rectangle(const RECT &r) {return {{"x",int(r.left)},{"y",int(r.top)},{"width",int(r.right-r.left)},{"height",int(r.bottom-r.top)}};}
 constexpr UINT pinCommand=0x1f10;
+class CommandRequestWatch : public QObject,public QAbstractNativeEventFilter {
+public:
+    CommandRequestWatch(QObject *owner,std::function<void()> ready):QObject(owner),ready(std::move(ready)),messageId(RegisterWindowMessageW(L"OpenGate.WorkflowCommandReady.v1")){qApp->installNativeEventFilter(this);}
+    ~CommandRequestWatch() override {if(qApp)qApp->removeNativeEventFilter(this);}
+    bool nativeEventFilter(const QByteArray &,void *message,long *) override {
+        const auto msg=static_cast<MSG *>(message);
+        if(messageId&&msg->message==messageId&&!queued) {
+            queued=true;QTimer::singleShot(0,this,[this]{queued=false;if(ready)ready();});
+        }
+        return false;
+    }
+private:std::function<void()> ready;UINT messageId=0;bool queued=false;
+};
 class PinWatch : public QObject,public QAbstractNativeEventFilter {
 public:
     explicit PinWatch(QWidget *widget):QObject(widget),window(widget){setObjectName("openGateNativePinWatch");qApp->installNativeEventFilter(this);}
@@ -61,6 +75,18 @@ void applyNativeChrome(QWidget *widget,bool) {
     if(auto host=dynamic_cast<WorkspaceHostWindow *>(widget))host->setNativeTitleBarEnabled(!widget->windowFlags().testFlag(Qt::FramelessWindowHint));
     if(widget)applyPaneDarkCaption(widget,widget->parentWidget());
 }
+bool setNativeHeaderMenu(QWidget *widget,bool enabled,const std::function<void()> &opened) {
+    if(!widget)return false;
+    auto access=dynamic_cast<WorkspaceTitleAccess *>(widget->findChild<QObject *>("openGateWorkspaceTitleAccess",Qt::FindDirectChildrenOnly));
+    if(!access&&!enabled)return true;
+    if(!access)access=new WorkspaceTitleAccess(widget);
+    return access->update(enabled,opened);
+}
+int nativeChromeFlags(QWidget *widget) {
+    if(!widget)return 0;const auto style=GetWindowLongPtr(handle(widget),GWL_STYLE);
+    return ((style&WS_CAPTION)==WS_CAPTION?1:0)|((style&WS_THICKFRAME)?2:0);
+}
+QObject *watchNativeCommandRequests(QObject *owner,std::function<void()> ready){return new CommandRequestWatch(owner,std::move(ready));}
 bool setNativePin(QWidget *widget,bool pinned,const std::function<void(bool)> &changed) {
     if(!widget||QGuiApplication::platformName()!=QLatin1String("windows"))return false;
     const auto native=handle(widget);auto menu=GetSystemMenu(native,FALSE);if(!menu)return false;
@@ -111,4 +137,18 @@ void setNativeExpansionPriority(QWidget *widget,bool expanded){
     if(!expanded)widget->setProperty("openGateNativePriorTopmost",QVariant());
 }
 int nativeVisibilityFlags(QWidget *widget){const auto native=handle(widget);return (IsWindowVisible(native)?1:0)|(IsIconic(native)?4:0);}
+bool setNativeBackgroundHidden(QWidget *main,const QList<QWidget *> &panels,bool hidden) {
+    if(!main||QGuiApplication::platformName()!=QLatin1String("windows"))return false;
+    const auto background=handle(main);
+    if(hidden) {
+        ShowWindow(background,SW_HIDE);
+        // Windows hides owned HWNDs with their owner. Reveal only the retained
+        // panels that were logically visible; hidden/minimized panels stay so.
+        for(auto panel:panels)if(panel&&panel->isVisible()&&!panel->isMinimized())ShowWindow(handle(panel),SW_SHOWNOACTIVATE);
+        for(auto panel:panels)if(panel&&panel->isVisible()&&!panel->isMinimized()&&!IsWindowVisible(handle(panel))) {
+            ShowWindow(background,SW_SHOWNOACTIVATE);return false;
+        }
+    } else ShowWindow(background,SW_SHOWNOACTIVATE);
+    main->setProperty("unboundBackgroundHidden",hidden);return true;
+}
 }

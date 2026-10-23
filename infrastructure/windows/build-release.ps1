@@ -66,6 +66,11 @@ try {
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceRestorationTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGatePinnedHeaderTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGatePageNavigationTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateNativeEntryTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateFirstOpenTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGatePanelCallerFlowTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGateNativePresetTests.exe') @()
+    Invoke-Checked (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($dll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
@@ -88,6 +93,7 @@ try {
     Invoke-Checked $test @('--discovery-test', $dll)
     $env:QT_QPA_PLATFORM = 'windows'
     try {
+        Invoke-Checked (Join-Path $build 'Release\OpenGateWindowAdapterTests.exe') @()
         Invoke-Checked (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @('--displayed')
         Invoke-Checked $test @('--audition-taskbar-native')
         Invoke-Checked $test @('--snap-native')

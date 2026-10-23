@@ -52,7 +52,7 @@ int main(int argc,char **argv){
  check(binding->saved()["tree"]==tree&&nativeCalls==nativeBefore,"deferred programmatic native radio state cannot cycle or select tabs");
  press(buttons["EditIndex"]);check(binding->selected("frameEditPageEditIndex")&&nativeCalls==nativeBefore,"one physical header click selects an inactive tab without operating native slots");
  auto detach=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(detach)detach->click();settle(350);
- Unbound::MacPanelSession *pool=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::MacPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageMediaPool")pool=candidate;
+ Unbound::ManagedPanelSession *pool=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::ManagedPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageMediaPool")pool=candidate;
  check(pool&&pool->active(),"Media Pool owns a retained floating session");
  if(pool){
   auto host=pool->window();host->setGeometry(180,140,440,340);settle(150);const auto frame=host->geometry();

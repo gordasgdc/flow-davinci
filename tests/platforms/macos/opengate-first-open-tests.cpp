@@ -60,7 +60,7 @@ int main(int argc,char **argv){
  check(!controls.isVisible(),"first open requires no Panel Manager");
  if(qEnvironmentVariableIntValue("OPENGATE_TEST_STACK_DROP")) {
   auto poolPlacement=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(poolPlacement)poolPlacement->click();settle(350);
-  Unbound::MacFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::MacFloatingHost *>(window);
+  Unbound::WorkspaceFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::WorkspaceFloatingHost *>(window);
   auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QWidget *column=nullptr;
   for(auto ancestor=sourceCell?sourceCell->parentWidget():nullptr;ancestor&&ancestor!=&main;ancestor=ancestor->parentWidget())
    if(auto splitter=qobject_cast<QSplitter *>(ancestor))if(splitter->orientation()==Qt::Vertical&&!Unbound::dockSectionKey(splitter).isEmpty()){column=splitter;break;}
@@ -131,7 +131,7 @@ int main(int argc,char **argv){
  check(mixerTitle->window()==mixerHost&&mixerHost->geometry()==mixerFrame,"Mixer maximize restores exact floating placement");
 
  auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
- auto movedMixer=dynamic_cast<Unbound::MacFloatingHost *>(mixerTitle->window());
+ auto movedMixer=dynamic_cast<Unbound::WorkspaceFloatingHost *>(mixerTitle->window());
  check(sourceCell&&movedMixer&&movedMixer->attachRequested,"Mixer can mount beside another workspace panel");
  if(sourceCell&&movedMixer&&movedMixer->attachRequested)movedMixer->attachRequested(sourceCell,Qt::LeftEdge);settle(350);
  auto mixerCell=main.findChild<QWidget *>("unboundGroupCell_frameEditAudioMeter");

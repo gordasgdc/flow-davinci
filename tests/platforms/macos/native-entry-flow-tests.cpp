@@ -75,7 +75,7 @@ int main(int argc,char **argv) {
  trigger("Workspace Toolbar");trigger("Page Navigation");check(!toolbar->isHidden()&&!footer->isHidden()&&page->height()==pageHeight,"Show restores original bands and content bounds");
  check(title->text()=="Project name retained"&&nativeButton->parentWidget()==left,"native header controls and title retained");
  if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(sourceDoor->mapToGlobal(QPoint()));settle(500);
- auto floating=dynamic_cast<Unbound::MacFloatingHost *>(source->window());check(floating&&floating!=&main,"native header drag callback detaches source directly");
+ auto floating=dynamic_cast<Unbound::WorkspaceFloatingHost *>(source->window());check(floating&&floating!=&main,"native header drag callback detaches source directly");
  if(floating&&floating->attachRequested)floating->attachRequested(timeline,Qt::RightEdge);settle(450);
  check(source->window()==&main&&page->findChild<QWidget *>("unboundNativePanelPosition_frameConformTimelines"),"native first drop creates a scoped arrangement");
  auto expand=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expand)expand->click();settle(500);
@@ -108,7 +108,7 @@ int main(int argc,char **argv) {
  if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(QPoint());settle(450);
  if(programDoor&&programDoor->drag)programDoor->drag(QPoint());settle(450);
  if(timelineDoor&&timelineDoor->drag)timelineDoor->drag(QPoint());settle(450);
- auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::MacFloatingHost *>(program->window());
+ auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::WorkspaceFloatingHost *>(program->window());
  check(timelineHost!=&main&&toolbar->window()==&main&&footer->window()==&main,"fully rearranged panels never take primary workspace bands");
  const auto primaryFrame=main.geometry();
  auto expandTimeline=controls.findChild<QPushButton *>("expand_frameConformTimelines");if(expandTimeline)expandTimeline->click();settle(600);
