@@ -57,6 +57,7 @@ try {
     Invoke-Checked 'cmake' @('--build', $testBuild, '--config', 'Release', '--', '/m:1', '/nr:false')
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
+    Invoke-Checked 'python' @((Join-Path $repoRoot 'tests\platforms\macos\test-workflow-command-wrappers.py'), '--windows')
     Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
     Invoke-Checked (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()

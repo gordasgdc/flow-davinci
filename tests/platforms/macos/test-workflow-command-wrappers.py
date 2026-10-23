@@ -3,8 +3,12 @@ import json,os,runpy,subprocess,tempfile,sys
 from types import SimpleNamespace as Obj
 from pathlib import Path
 root=Path(__file__).resolve().parents[3]
-subprocess.run(['python3',str(root/'infrastructure/macos/build-workflow-commands.py')],check=True)
-output=root/'build/macos/workflow-commands'
+platform='windows' if '--windows' in sys.argv else 'macos'
+if platform=='windows':
+    subprocess.run([sys.executable,str(root/'infrastructure/shared/build-workflow-commands.py'),'--platform','windows'],check=True)
+else:
+    subprocess.run([sys.executable,str(root/'infrastructure/macos/build-workflow-commands.py')],check=True)
+output=root/('build/'+platform+'/workflow-commands')
 manifest=json.loads((output/'manifest.json').read_text())
 assert len({entry['command'] for entry in manifest})==len(manifest)==30
 with tempfile.TemporaryDirectory() as directory:
