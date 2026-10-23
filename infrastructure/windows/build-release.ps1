@@ -55,6 +55,7 @@ function Invoke-Fixture([string]$Program, [string[]]$Arguments) {
         Write-Host ('FAIL fixture: '+$errorText)
     }
     $fixtureResults.Add(@{ program=(Split-Path -Leaf $Program); arguments=$Arguments; platform=$env:QT_QPA_PLATFORM;
+        variants=@{ outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER };
         status=$status; exit_code=$exitCode; error=$errorText; started_utc=$started.ToString('o');
         elapsed_seconds=((Get-Date).ToUniversalTime()-$started).TotalSeconds })
     Save-FixtureReceipt $false
@@ -106,6 +107,7 @@ try {
     Invoke-Fixture (Join-Path $build 'Release\OpenGateNativeEntryTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateFirstOpenTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCallerFlowTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateKeyframesFlowTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateNativePresetTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
@@ -113,6 +115,9 @@ try {
     $env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR='1'
     try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
     finally { Remove-Item Env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR }
+    $env:OPENGATE_TEST_DELAYED_INDEX='1'
+    try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+    finally { Remove-Item Env:OPENGATE_TEST_DELAYED_INDEX }
     $legacyFixtureDll = Join-Path $build 'Release\OpenGateLegacyFixtureHelper.dll'
     Invoke-Fixture (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($legacyFixtureDll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
@@ -138,8 +143,9 @@ try {
         Invoke-Fixture (Join-Path $build 'Release\OpenGateWindowAdapterTests.exe') @()
         Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @('--displayed')
         $env:OPENGATE_TEST_DISPLAYED_MIXER='1'
+        $env:OPENGATE_TEST_STACK_DROP='1'
         try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
-        finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER }
+        finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER; Remove-Item Env:OPENGATE_TEST_STACK_DROP }
         Invoke-Fixture $test @('--audition-taskbar-native')
         Invoke-Fixture $test @('--snap-native')
         Invoke-Fixture $test @('--captionless-native')

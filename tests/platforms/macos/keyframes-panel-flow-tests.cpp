@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include <QApplication>
 #include <QButtonGroup>
 #include <QElapsedTimer>
@@ -11,7 +12,7 @@
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 int main(int argc,char **argv){
- QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files;
+ QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-keyframes-flow-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
@@ -53,7 +54,7 @@ int main(int argc,char **argv){
  auto press=[&](QPushButton *button){const auto p=button->rect().center();QMouseEvent down(QEvent::MouseButtonPress,p,button->mapToGlobal(p),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(button,&down);QMouseEvent up(QEvent::MouseButtonRelease,p,button->mapToGlobal(p),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(button,&up);settle(250);};
  check(binding&&binding->active(),"assembled first launch mounts Resolve Layout");
  if(restart){
-  Unbound::MacPanelSession *restored=nullptr;for(auto object:controls.children())if(auto session=dynamic_cast<Unbound::MacPanelSession *>(object))if(session->panelTitle()=="Keyframes")restored=session;
+  Unbound::ManagedPanelSession *restored=nullptr;for(auto object:controls.children())if(auto session=dynamic_cast<Unbound::ManagedPanelSession *>(object))if(session->panelTitle()=="Keyframes")restored=session;
   check(restored&&restored->active()&&restored->grouped()&&editor->window()!=&main,"restart reacquires Keyframes into its saved floating group");
   check(checked("Keyframes")==buttons["KeyframeEditor"]->isChecked(),"restart synchronizes Keyframes header and Panels state");
   return failures?1:0;
@@ -63,7 +64,7 @@ int main(int argc,char **argv){
  check(binding->contains("frameEditPageKeyframeEditor")&&checked("Keyframes")&&buttons["KeyframeEditor"]->isChecked(),"header acquires real Keyframes content into OpenGate instead of exposing parked native UI");
  check(editor->isVisible()&&editor->window()==&main&&keyframes->isHidden(),"Keyframes uses existing content lease and leaves no native placeholder");
  press(nativeDetach);
- Unbound::MacPanelSession *keySession=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::MacPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageKeyframeEditor")keySession=candidate;
+ Unbound::ManagedPanelSession *keySession=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::ManagedPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageKeyframeEditor")keySession=candidate;
  check(nativeKeyframeDetaches==0,"native Keyframes float control uses OpenGate placement instead of a parallel native tray");
  check(keySession&&keySession->floating()&&!binding->contains("frameEditPageKeyframeEditor"),"Keyframes float control detaches the existing panel session");
  if(keySession){
@@ -84,8 +85,8 @@ int main(int argc,char **argv){
   QApplication::setActiveWindow(&main);controls.invokeWorkflowCommand("panel.expand.frameEditPageKeyframeEditor");settle(300);
   check(keySession->window()==host&&host->geometry()==frame,"Keyframes maximize restore retains exact floating placement");
   auto detachPool=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(detachPool)detachPool->click();settle(300);
-  auto poolHost=main.findChild<Unbound::MacFloatingHost *>("unboundFloating_frameEditPageMediaPool");
-  auto keyHost=dynamic_cast<Unbound::MacFloatingHost *>(host);if(keyHost&&poolHost&&keyHost->attachRequested)keyHost->attachRequested(poolHost,Qt::Edge(0));settle(350);
+  auto poolHost=main.findChild<Unbound::WorkspaceFloatingHost *>("unboundFloating_frameEditPageMediaPool");
+  auto keyHost=dynamic_cast<Unbound::WorkspaceFloatingHost *>(host);if(keyHost&&poolHost&&keyHost->attachRequested)keyHost->attachRequested(poolHost,Qt::Edge(0));settle(350);
   check(keySession->grouped()&&keySession->window()->window()!=&main,"Keyframes can tab with another floating panel through the existing controller");
   call("Media Pool");if(!checked("Keyframes"))press(buttons["KeyframeEditor"]);settle(200);
   auto groupHost=keySession->window()->window();const auto groupFrame=groupHost->geometry();
