@@ -46,7 +46,15 @@ Source is in `src/platforms/windows/`; shared behavior is in `src/core/`.
 Build/release implementation is in `infrastructure/windows/`. Both root release
 wrappers remain usable from other working directories.
 
-The Windows launcher still waits for Resolve, injects the adjacent DLL and exits.
+Ordinary Resolve startup loads `OpenGate.dvcp.bundle/Contents/Win64/OpenGate.dvcp`
+from `%ProgramData%\Blackmagic Design\DaVinci Resolve\Support\IOPlugins`.
+The no-codec IO handshake is shared with the accepted Mac plugin. The Windows
+adapter reuses the launcher's Qt/window readiness checks, reads Inno's existing
+machine-wide InstallLocation, and loads that installation's `Unbound.dll`.
+A bounded startup worker queues the existing GUI-thread service; no background
+app, login service, extra layout engine or per-session click is required.
+This uses the documented Studio SDK; free-edition startup is unverified.
+The recovery launcher still waits for Resolve, injects the adjacent DLL and exits.
 The exported `UnboundStart` calling convention and return values are unchanged.
 The export delegates to the Windows managed service, which creates shared
 PanelControls on Resolve's GUI thread. `WorkspaceHostWindow` reuses the existing

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <cwchar>
 #include "launcherdiagnostics.h"
+#include "resolvereadiness.h"
 
 struct Handle {
     HANDLE h = nullptr;
@@ -45,17 +46,6 @@ static MODULEENTRY32W findModule(const std::vector<MODULEENTRY32W> &list, const 
     for (const auto &entry : list) if (_wcsicmp(entry.szModule, name) == 0) return entry;
     return MODULEENTRY32W{};
 }
-static bool qtCompatible(const wchar_t *path)
-{
-    DWORD unused;
-    const DWORD size = GetFileVersionInfoSizeW(path, &unused);
-    if (!size) return false;
-    std::vector<BYTE> data(size);
-    if (!GetFileVersionInfoW(path, 0, size, data.data())) return false;
-    VS_FIXEDFILEINFO *info = nullptr; UINT length = 0;
-    if (!VerQueryValueW(data.data(), L"\\", reinterpret_cast<void **>(&info), &length) || length < sizeof(*info)) return false;
-    return HIWORD(info->dwFileVersionMS) == 5 && LOWORD(info->dwFileVersionMS) == 15 && HIWORD(info->dwFileVersionLS) == 2;
-}
 static DWORD invoke(HANDLE process, LPTHREAD_START_ROUTINE address, void *argument)
 {
     Handle thread(CreateRemoteThread(process, nullptr, 0, address, argument, 0, nullptr));
@@ -77,33 +67,19 @@ static DWORD resolveProcess()
     } while (Process32NextW(processes.h, &pe));
     return pid;
 }
-struct WindowSearch { DWORD pid; bool ready = false; };
-static BOOL CALLBACK findQtWindow(HWND window, LPARAM parameter)
-{
-    auto &search = *reinterpret_cast<WindowSearch *>(parameter);
-    DWORD pid = 0;
-    GetWindowThreadProcessId(window, &pid);
-    if (pid != search.pid || !IsWindowVisible(window)) return TRUE;
-    wchar_t name[256]{};
-    GetClassNameW(window, name, 256);
-    // A visible Qt window (including Project Manager) proves QApplication has
-    // been constructed. Merely finding Qt DLLs during process startup does not.
-    if (wcsncmp(name, L"Qt5", 3) == 0) { search.ready = true; return FALSE; }
-    return TRUE;
-}
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
 {
     Unbound::launcherDiagnostic("launcher.start");
     try {
         if (std::wstring(command) == L"--version") {
-            MessageBoxW(nullptr, UNBOUND_VERSION, L"Unbound", MB_OK);
+            MessageBoxW(nullptr, UNBOUND_VERSION, L"OpenGate", MB_OK);
             return 0;
         }
-        require(std::wstring(command).empty(), L"Unknown argument. Run Unbound without arguments, or use --version.");
+        require(std::wstring(command).empty(), L"Unknown argument. Run OpenGate without arguments, or use --version.");
         // Keep repeated launches from accumulating invisible waiting helpers.
         Handle waiter(CreateMutexW(nullptr, FALSE, L"Local\\Unbound.Launcher.Wait"));
         const DWORD mutexError = GetLastError();
-        require(waiter.h != nullptr, L"Cannot initialize Unbound's launcher guard.");
+        require(waiter.h != nullptr, L"Cannot initialize OpenGate's launcher guard.");
         if (mutexError == ERROR_ALREADY_EXISTS) return 0;
         DWORD pid = 0;
         Unbound::launcherDiagnostic("launcher.waiting-for-resolve");
@@ -121,8 +97,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
             Sleep(1000);
         }
         Unbound::launcherDiagnostic("launcher.resolve.ready",{},pid);
-        require(!findModule(loaded, L"gammaray_probe.dll").modBaseAddr, L"GammaRay is already attached. Restart Resolve before using standalone Unbound.");
-        require(!findModule(loaded, L"Unbound.dll").modBaseAddr, L"Unbound is already loaded. Restart Resolve before loading another build.");
+        require(!findModule(loaded, L"gammaray_probe.dll").modBaseAddr, L"GammaRay is already attached. Restart Resolve before using OpenGate.");
+        require(!findModule(loaded, L"Unbound.dll").modBaseAddr, L"OpenGate is already loaded. Restart Resolve before loading another build.");
         auto qt = findModule(loaded, L"Qt5Core.dll");
         require(qt.modBaseAddr && qtCompatible(qt.szExePath) && findModule(loaded, L"Qt5Widgets.dll").modBaseAddr,
             L"This build requires Resolve with Qt 5.15.2 x64. Its required Qt libraries are not loaded or are incompatible.");
@@ -139,7 +115,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         FreeLibrary(local);
         require(start != nullptr, L"Unbound.dll is missing its startup export.");
         Handle process(OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, pid));
-        require(process.h != nullptr, L"Cannot attach. Run Resolve and Unbound at the same privilege level; no elevation is performed automatically.");
+        require(process.h != nullptr, L"Cannot attach. Run Resolve and OpenGate at the same privilege level; no elevation is performed automatically.");
         BOOL wow64 = FALSE;
         require(IsWow64Process(process.h, &wow64) && !wow64, L"Only 64-bit Resolve is supported.");
         const auto load = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "LoadLibraryW");
@@ -167,7 +143,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         require(injected.modBaseAddr != nullptr, L"Resolve could not load Unbound.dll. Its existing Qt/MSVC runtime must satisfy the helper dependencies.");
         require(invoke(process.h, reinterpret_cast<LPTHREAD_START_ROUTINE>(injected.modBaseAddr + offset),
             nullptr) == 1,
-            L"Unbound loaded, but could not queue startup on Resolve's GUI thread. Restart Resolve before retrying.");
+            L"OpenGate loaded, but could not queue startup on Resolve's GUI thread. Restart Resolve before retrying.");
         Unbound::launcherDiagnostic("launcher.bootstrap.complete",{},pid);
         return 0;
     } catch (const std::wstring &error) {

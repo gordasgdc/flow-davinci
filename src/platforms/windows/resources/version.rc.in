@@ -11,10 +11,10 @@ BEGIN
  BEGIN
   BLOCK "040904B0"
   BEGIN
-   VALUE "CompanyName", "Unbound\0"
-   VALUE "FileDescription", "Unbound - Floating panes for DaVinci Resolve\0"
+   VALUE "CompanyName", "CineWaltz\0"
+   VALUE "FileDescription", "OpenGate - Managed workspace for DaVinci Resolve\0"
    VALUE "FileVersion", "@UNBOUND_VERSION@\0"
-   VALUE "ProductName", "Unbound\0"
+   VALUE "ProductName", "OpenGate\0"
    VALUE "ProductVersion", "@UNBOUND_VERSION@\0"
    VALUE "LegalCopyright", "Copyright (c) 2026 Wolfgang Woehl\0"
    VALUE "Comments", "Build @UNBOUND_BUILD_ID@\0"

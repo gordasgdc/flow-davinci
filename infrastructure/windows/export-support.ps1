@@ -3,6 +3,7 @@ param(
     [string]$InstallDirectory = $PSScriptRoot,
     [string]$LogDirectory = $(if ($env:UNBOUND_DIAGNOSTICS_DIR) { $env:UNBOUND_DIAGNOSTICS_DIR } else { Join-Path $env:LOCALAPPDATA 'OpenGate\Logs' }),
     [string]$OutputDirectory = [Environment]::GetFolderPath('Desktop'),
+    [string]$StartupPlugin = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\IOPlugins\OpenGate.dvcp.bundle\Contents\Win64\OpenGate.dvcp'),
     [string]$WorkflowDirectory = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins')
 )
 $ErrorActionPreference = 'Stop'
@@ -69,11 +70,13 @@ $resolve = @(Get-Process -Name Resolve -ErrorAction SilentlyContinue | ForEach-O
     try { $version = (Get-Item -LiteralPath $_.Path).VersionInfo.FileVersion } catch { }
     @{ pid=$_.Id; version=$version }
 })
+$startupPresent = Test-Path -LiteralPath $StartupPlugin -PathType Leaf
+$startupHash = if($startupPresent){(Get-FileHash -LiteralPath $StartupPlugin -Algorithm SHA256).Hash}else{$null}
 $receipt = @{
     schema=1; product='OpenGate'; platform='windows'; captured_utc=(Get-Date).ToUniversalTime().ToString('o')
     os_version=[Environment]::OSVersion.VersionString; architecture=$env:PROCESSOR_ARCHITECTURE
     powershell=$PSVersionTable.PSVersion.ToString(); resolve=$resolve; binaries=$binaries; workflow=$workflow
-    files=@($copied.ToArray()); errors=@($failures.ToArray())
+    startup_plugin=@{present=$startupPresent;sha256=$startupHash}; files=@($copied.ToArray()); errors=@($failures.ToArray())
     limitations='Live log snapshot; records may continue after export. Build/fixture results do not establish live acceptance. Missing logs can mean the helper did not load. Native crash attribution is unknown.'
 }
 $receipt | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $stage 'support-manifest.json') -Encoding UTF8

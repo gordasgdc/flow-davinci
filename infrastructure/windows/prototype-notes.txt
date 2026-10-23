@@ -6,8 +6,9 @@ adapters. Synthetic fixtures do not establish live Resolve, GPU rendering or
 physical/remapped keyboard acceptance. Send diagnostic evidence for missing
 panels, title controls, ownership/painting errors or inconsistent actions.
 
-Requires Resolve 21.1 and Windows x64. Save and quit Resolve before installing,
-upgrading, downgrading or uninstalling. Start Resolve, then OpenGate from Start.
+Requires Resolve Studio 21.1 and Windows x64; free-edition startup is unverified. Save and quit Resolve before installing,
+upgrading, downgrading or uninstalling. Open Resolve normally: its native IO plugin starts OpenGate automatically.
+Start > OpenGate remains a recovery launcher if automatic loading fails.
 The installer requests standard administrator approval for Resolve's Workflow
 Integration menu/shortcut scripts in ProgramData. Runtime settings and logs stay
 in each user's profile. The helper remains loaded until Resolve exits. Uninstall and reopen Resolve to

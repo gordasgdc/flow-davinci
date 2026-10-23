@@ -122,14 +122,39 @@ int main(int argc,char **argv){
   check(floatingPool&&column,"assembled docking flow finds a floating panel and the retained vertical stack");
   if(floatingPool&&column) {
    const auto key=Unbound::dockSectionKey(column);const QRect frame(column->mapToGlobal(QPoint()),column->size());Unbound::DockScopeHit hit;QPoint pointer;int reachable=0;
-   for(int x=frame.left();x<qMin(frame.right(),frame.left()+180);++x){const QPoint point(x,frame.center().y());const auto candidate=Unbound::selectDockScope(Unbound::nativeDockSurfaces(&main),&main,point);if(candidate.surface==column&&candidate.drop.placement==Unbound::DropPlacement::Left){hit=candidate;pointer=point;++reachable;}}
+   auto leaves=Unbound::nativeDockSurfaces(&main);
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+   // Inline static registries are private to each Windows DLL/EXE. Discover the
+   // actual rendered cells for the geometry assertion; exercise the DLL's own
+   // registry through its event filter below, never an empty EXE-local copy.
+   leaves.clear();for(auto cell:main.findChildren<QWidget *>())
+    if(cell->property("groupPanel").isValid()&&cell->isVisible())leaves.append(cell);
+#endif
+   for(int x=frame.left();x<qMin(frame.right(),frame.left()+180);++x){const QPoint point(x,frame.center().y());const auto candidate=Unbound::selectDockScope(leaves,&main,point);if(candidate.surface==column&&candidate.drop.placement==Unbound::DropPlacement::Left){hit=candidate;pointer=point;++reachable;}}
    check(reachable>=16&&hit.drop.preview.height()==frame.height(),"whole-stack left target is broad and previews the complete vertical span");
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+   QWidget *releasedTarget=nullptr;Qt::Edge releasedEdge=Qt::Edge(0);
+   QPointer<Unbound::WorkspaceFloatingHost> retainedPool=floatingPool;
+   const auto attach=floatingPool->attachRequested;
+   floatingPool->attachRequested=[&](QWidget *target,Qt::Edge edge){releasedTarget=target;releasedEdge=edge;if(attach)attach(target,edge);};
+   Unbound::activateNativeWindowForTest(floatingPool);settle(250);
+   floatingPool->beginPointerDrag(floatingPool->mapToGlobal(QPoint(80,12)),true);
+   QMouseEvent move(QEvent::MouseMove,floatingPool->mapFromGlobal(pointer),pointer,Qt::NoButton,Qt::LeftButton,Qt::NoModifier);
+   QApplication::sendEvent(floatingPool,&move);
+   auto preview=floatingPool->findChild<QWidget *>("unboundSnapPreview");
+   check(preview&&preview->isVisible()&&preview->geometry()==hit.drop.preview,"real window-stack lookup selects the displayed stack target");
+   QMouseEvent release(QEvent::MouseButtonRelease,floatingPool->mapFromGlobal(pointer),pointer,Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+   QApplication::sendEvent(floatingPool,&release);settle(350);
+   check(releasedTarget==column&&releasedEdge==Qt::LeftEdge,"production mouse release routes to the actual retained stack");
+   if(retainedPool)retainedPool->attachRequested=attach;
+#else
    if(displayed) {
     Unbound::activateNativeWindowForTest(&main);settle(250);
     const auto actual=Unbound::resolveDockDestination(floatingPool,pointer,{});
     check(actual.surface==column&&actual.drop.placement==Unbound::DropPlacement::Left,"real window-stack lookup selects the displayed stack target");
    }
    if(hit.surface&&floatingPool->attachRequested)floatingPool->attachRequested(hit.surface,Qt::LeftEdge);settle(350);
+#endif
    check(binding->contains("frameEditPageMediaPool")&&Unbound::groupTreeHasTarget(binding->saved()["tree"].toObject(),key),"release route docks beside the full stack and preserves that subtree");
   }
   auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);

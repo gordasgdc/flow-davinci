@@ -125,3 +125,12 @@ foreach(target Unbound UnboundHelper UnboundLauncherTests OpenGateWorkspaceCalle
     set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 endforeach()
 install(TARGETS Unbound UnboundHelper RUNTIME DESTINATION .)
+
+# Resolve discovers this native IO bootstrap automatically on ordinary launch.
+# It has no Qt dependency; GUI startup waits for the existing Windows readiness
+# checks and enters the same shipped Unbound.dll/UnboundStart as recovery launch.
+add_library(OpenGateIOBootstrap SHARED io-bootstrap.cpp)
+set_property(TARGET OpenGateIOBootstrap PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)
+target_compile_definitions(OpenGateIOBootstrap PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNBOUND_BUILD_ID="${UNBOUND_BUILD_ID}")
+target_link_libraries(OpenGateIOBootstrap PRIVATE version advapi32)
+set_target_properties(OpenGateIOBootstrap PROPERTIES OUTPUT_NAME OpenGate PREFIX "" SUFFIX ".dvcp" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

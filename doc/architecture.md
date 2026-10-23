@@ -46,7 +46,11 @@ which initializes shared `PanelControls`. Cocoa handling remains in
 `nativechrome.mm`. The existing universal build, signing, notarization and
 transactional installer paths remain in use.
 
-On Windows, the Qt-independent launcher waits for Resolve, loads its adjacent
+On Windows, a Qt-independent native IO plugin loads automatically with Resolve
+and uses the existing Windows readiness checks and GUI-thread bootstrap. Its
+handshake/metadata policy is shared with Mac in `core/iopluginentry.h`. The
+Windows loader resolves the helper through Inno’s existing installation record.
+The recovery launcher waits for Resolve and loads its adjacent
 `Unbound.dll` and invokes `UnboundStart`. `managedworkspace.cpp` preserves the
 idempotent GUI-thread handoff and owns service lifetime, diagnostics and command
 bridges. It creates the same shared `PanelControls` used by Mac.
