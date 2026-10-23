@@ -1,6 +1,10 @@
 if(NOT WIN32 OR NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Unbound requires Windows x64 and MSVC")
 endif()
+# Shared native UI text and Qt narrow string conversions use UTF-8. MSVC's
+# machine-dependent ANSI source charset corrupts non-ASCII labels and cannot
+# round-trip a QStringLiteral against the same UTF-8 command/status text.
+add_compile_options(/utf-8)
 enable_language(RC)
 foreach(value UNBOUND_VERSION UNBOUND_BUILD UNBOUND_BUILD_ID)
     if(NOT DEFINED ${value})
