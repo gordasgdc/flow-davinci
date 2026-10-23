@@ -2,6 +2,7 @@
 #pragma once
 #include <QAbstractSpinBox>
 #include <QAbstractButton>
+#include <QAbstractItemView>
 #include <QAction>
 #include <QActionEvent>
 #include <QApplication>
@@ -55,7 +56,7 @@ protected:
     {
         const auto type = event->type();
         if (type != QEvent::ActionAdded && type != QEvent::Shortcut && type != QEvent::Show && type != QEvent::Polish &&
-            type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate &&
+            type != QEvent::MouseButtonPress && type != QEvent::MouseButtonDblClick && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate &&
             type != QEvent::ChildAdded && type != QEvent::ParentChange && type != QEvent::Hide) return false;
         auto widget = qobject_cast<QWidget *>(object);
         if ((type == QEvent::ChildAdded || type == QEvent::ParentChange) && related(widget)) queueButtonScan(widget);
@@ -78,11 +79,12 @@ protected:
             event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress))
             observeButton(qobject_cast<QAbstractButton *>(widget));
         if (!related(widget)) return false;
-        if (event->type() == QEvent::MouseButtonPress) {
+        if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
             QPointer<QWidget> receiver = widget;
-            logEvent(QStringLiteral("input.click"), {{"receiver", widgetState(widget,false)}, {"focus_before", widgetState(QApplication::focusWidget(),false)}});
-            QTimer::singleShot(0, this, [receiver] {
-                logEvent(QStringLiteral("input.click.focus-result"), {{"receiver", widgetState(receiver,false)},
+            const QString input = type == QEvent::MouseButtonDblClick ? QStringLiteral("input.double-click") : QStringLiteral("input.click");
+            logEvent(input, {{"receiver", widgetState(widget,false)}, {"focus_before", widgetState(QApplication::focusWidget(),false)}});
+            QTimer::singleShot(0, this, [receiver,input] {
+                logEvent(input + QStringLiteral(".focus-result"), {{"receiver", widgetState(receiver,false)},
                     {"focus", widgetState(QApplication::focusWidget(),false)}, {"active_window", widgetState(QApplication::activeWindow(),false)}});
             });
             auto button = qobject_cast<QAbstractButton *>(widget);
@@ -187,6 +189,23 @@ private:
         if(!root)return;
         observeButton(qobject_cast<QAbstractButton *>(root));
         for(auto button:root->findChildren<QAbstractButton *>())observeButton(button);
+        observeMediaPool(qobject_cast<QAbstractItemView *>(root));
+        for(auto view:root->findChildren<QAbstractItemView *>())observeMediaPool(view);
+        viewerDiagnostics->observeSourceStack(qobject_cast<QStackedWidget *>(root));
+        for(auto stack:root->findChildren<QStackedWidget *>())viewerDiagnostics->observeSourceStack(stack);
+    }
+    void observeMediaPool(QAbstractItemView *view)
+    {
+        if (!view || view->objectName()!=QLatin1String("mediaPoolClipView") || mediaPools.contains(view)) return;
+        mediaPools.insert(view);
+        connect(view,&QObject::destroyed,this,[this,view] {mediaPools.remove(view);});
+        // Observe native delivery, never activate an item or read clip names/paths.
+        auto record=[view](const QString &event,const QModelIndex &index) {
+            logEvent(event,{{"view",widgetState(view,false)},{"valid_index",index.isValid()},
+                {"focus",widgetState(QApplication::focusWidget(),false)},{"observation","qt-item-view-signal"}});
+        };
+        connect(view,&QAbstractItemView::doubleClicked,this,[record](const QModelIndex &index) {record("media-pool.double-clicked",index);});
+        connect(view,&QAbstractItemView::activated,this,[record](const QModelIndex &index) {record("media-pool.activated",index);});
     }
     void queueButtonScan(QWidget *root)
     {
@@ -271,6 +290,7 @@ private:
     ViewerDiagnostics *viewerDiagnostics = nullptr;
     QSet<QAction *> tracked;
     QSet<QAbstractButton *> buttons;
+    QSet<QAbstractItemView *> mediaPools;
     QJsonArray lastViewerActions;
     QList<QPointer<QWidget>> controlsScanRoots;
     QString lastPage;

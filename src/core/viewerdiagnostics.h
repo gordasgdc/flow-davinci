@@ -4,6 +4,7 @@
 #include <QMetaMethod>
 #include <QSignalMapper>
 #include <QSet>
+#include <QStackedWidget>
 #include <QTimer>
 #include "diagnostics.h"
 #include "../platform/diagnosticplatform.h"
@@ -23,6 +24,7 @@ public:
     void scan()
     {
         for (auto widget : QApplication::allWidgets()) {
+            observeSourceStack(qobject_cast<QStackedWidget *>(widget));
             if ((widget->objectName() != "widgetEditSourcePlayer" && widget->objectName() != "widgetEditTimelinePlayer") || players.contains(widget)) continue;
             players.insert(widget);
             connect(widget, &QObject::destroyed, this, [this, widget] { players.remove(widget); });
@@ -55,6 +57,18 @@ public:
             logEvent(QStringLiteral("viewer.native-signals"), {{"player", widgetState(widget)}, {"signals", inventory}});
         }
     }
+    void observeSourceStack(QStackedWidget *stack)
+    {
+        if (!stack || stack->objectName()!=QLatin1String("stackedEditSourceOfflinePlayers") || stacks.contains(stack)) return;
+        stacks.insert(stack);
+        connect(stack,&QObject::destroyed,this,[this,stack] {stacks.remove(stack);});
+        auto record=[stack](const QString &event) {
+            logEvent(event,{{"stack",widgetState(stack,false)},{"current_index",stack->currentIndex()},
+                {"selected_page",widgetState(stack->currentWidget(),false)},{"observation","qt-stacked-widget"}});
+        };
+        connect(stack,&QStackedWidget::currentChanged,this,[record](int) {record("source.page.changed");});
+        record("source.page.observed");
+    }
     void capture(const QString &phase, const QString &command)
     {
         QJsonArray windows, viewers;
@@ -72,6 +86,7 @@ public:
     }
 private:
     QSet<QWidget *> players;
+    QSet<QStackedWidget *> stacks;
     QTimer focusSnapshot,focusSettled;
     QString lastFocusSignal;
 };

@@ -4,6 +4,7 @@
 #include <QTemporaryDir>
 #include <QVBoxLayout>
 #include <QMouseEvent>
+#include <QListWidget>
 #include <cstdio>
 #include "../../../src/core/interactiondiagnostics.h"
 #include "../../../src/core/crashsession.h"
@@ -35,6 +36,27 @@ int main(int argc,char **argv) {
     button->click();
     auto lazy=new QPushButton("Mixer",&main);lazy->setObjectName("openGateLazyMixer");layout->addWidget(lazy);
     QApplication::processEvents();lazy->click();
+    // Lazy native content: the observer must leave actual item-view delivery and
+    // the application's connected Source selection callback intact, exactly once.
+    auto media=new QListWidget(&main);media->setObjectName("mediaPoolClipView");layout->addWidget(media);
+    media->addItem("PRIVATE_CLIP_NAME");
+    auto source=new QStackedWidget(&main);source->setObjectName("stackedEditSourceOfflinePlayers");layout->addWidget(source);
+    auto first=new QWidget;first->setObjectName("fixtureSourceFirst");source->addWidget(first);
+    auto second=new QWidget;second->setObjectName("fixtureSourceSecond");source->addWidget(second);
+    int nativeDoubleClicks=0;
+    QObject::connect(media,&QAbstractItemView::doubleClicked,&main,[&](const QModelIndex &index) {
+        check(index.isValid(),"native item handler receives a valid model index");
+        ++nativeDoubleClicks;source->setCurrentWidget(second);
+    });
+    main.resize(500,600);QApplication::processEvents();
+    const auto point=media->visualItemRect(media->item(0)).center();
+    for(auto type:{QEvent::MouseButtonPress,QEvent::MouseButtonRelease,QEvent::MouseButtonDblClick,QEvent::MouseButtonRelease}) {
+        QMouseEvent event(type,point,Qt::LeftButton,type==QEvent::MouseButtonRelease?Qt::NoButton:Qt::LeftButton,Qt::NoModifier);
+        QApplication::sendEvent(media->viewport(),&event);
+    }
+    QApplication::processEvents();
+    check(nativeDoubleClicks==1&&source->currentWidget()==second,"double click reaches native handler once and changes Source selection");
+    check(media->parentWidget()==&main&&source->parentWidget()==&main&&second->parentWidget()==source,"observation preserves native ownership");
     QApplication::setActiveWindow(&main);editor->setFocus();QApplication::processEvents();
     check(QApplication::focusWidget()==editor,"fixture establishes the editor as input receiver");
     QKeyEvent key(QEvent::KeyPress,Qt::Key_X,Qt::NoModifier,"PRIVATE_TYPED_TEXT");
@@ -46,6 +68,7 @@ int main(int argc,char **argv) {
     const auto bytes=file.readAll();
     QString session;int clicks=0,buttonSignals=0,actions=0,lazySignals=0,requests=0,complete=0,typed=0;double sequence=0;
     bool pointerPress=false,pointerRelease=false,nextTurn=false;
+    int doubleInputs=0,mediaDoubleSignals=0,sourceChanges=0;
     for(const auto &line:bytes.split('\n')) {
         if(line.isEmpty())continue;
         const auto record=QJsonDocument::fromJson(line).object();const auto event=record["event"].toString();
@@ -55,6 +78,12 @@ int main(int argc,char **argv) {
         check(!session.isEmpty()&&record["session"]==session,"session correlates signals and transitions");
         check(record["event_sequence"].toDouble()>sequence,"event order is monotonic");sequence=record["event_sequence"].toDouble();
         clicks+=event=="input.click";actions+=event=="input.action.triggered";
+        doubleInputs+=event=="input.double-click";
+        mediaDoubleSignals+=event=="media-pool.double-clicked";
+        if(event=="source.page.changed") {
+            ++sourceChanges;
+            check(record["current_index"]==1&&record["selected_page"].toObject()["name"]=="fixtureSourceSecond","Source log reports actual native selection");
+        }
         if(event=="input.button.clicked") {
             buttonSignals+=record["button"].toObject()["name"]=="openGateInspector";
             lazySignals+=record["button"].toObject()["name"]=="openGateLazyMixer";
@@ -73,6 +102,8 @@ int main(int argc,char **argv) {
     check(clicks>=1&&buttonSignals==2&&actions==2&&requests==2&&complete==2,"pointer and programmatic signals retain transition trail without duplicate connections");
     check(lazySignals==1,"lazily created buttons observed");check(typed>=1&&!bytes.contains("PRIVATE_TYPED_TEXT"),"text editing recorded without contents");
     check(pointerPress&&pointerRelease&&nextTurn,"same bounded pointer and next-turn trail is present on both platforms");
+    check(doubleInputs==1&&mediaDoubleSignals==1&&sourceChanges==1,"double-click input, native activation signal and Source transition logged once");
+    check(!bytes.contains("PRIVATE_CLIP_NAME"),"media diagnostics exclude clip names");
     QFile marker(directory.path()+"/active-session.json");marker.open(QIODevice::ReadOnly);
     check(QJsonDocument::fromJson(marker.readAll()).object()["clean_shutdown"].toBool(),"session journal records clean shutdown");
     std::printf("shared diagnostic failures=%d\n",failures);return failures?1:0;
