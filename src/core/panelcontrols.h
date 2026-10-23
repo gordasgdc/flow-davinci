@@ -448,6 +448,7 @@ public:
                 [this,i] { if (!quitting && !QApplication::activeModalWidget())togglePanelDoor(i); },
                 [this,i](QPoint) {beginPanelDrag(i);}});
         headers=new Unbound::WorkspaceHeaders(this);
+        headers->managedWorkspace=[this] { return !workspaceMenu->nativeActive(); };
         for (int i=0;i<panels.size();++i) headers->add({panels[i].name,panels[i].label,
             [this,i]() -> QWidget * { return panels[i].session->active() && panels[i].session->window() ? panels[i].session->window()->window() : nullptr; },
             [this,i] { return !panels[i].session->hiddenByUser(); },

@@ -33,6 +33,7 @@ public:
     }
     void add(Panel panel) { panels.append(std::move(panel)); }
     std::function<QWidget *()> primary,projectSurface,primaryHeader;
+    std::function<bool()> managedWorkspace = [] { return true; };
     std::function<void(QMenu *)> panelEntries;
     std::function<void(QMenu *,QWidget *)> surfaceControls;
     std::function<QList<Window>()> windows;
@@ -53,6 +54,7 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
+        if ((event->type()==QEvent::Show || event->type()==QEvent::Hide) && object->objectName().startsWith("WStackPage_")) schedule();
         if (object==projectLabel && (event->type()==QEvent::Paint || event->type()==QEvent::LayoutRequest || event->type()==QEvent::Show)) {
             if (object->property("text").toString().trimmed()!=lastProject) schedule();return false;
         }
@@ -83,6 +85,11 @@ private:
         // every retained surface get their own independent title-bar access.
         if (auto main=projectSurface ? projectSurface() : nullptr) current.insert(main->window());
         for (auto host:current) {
+            if (!managedWorkspace()) {
+                setNativeHeaderMenu(host,false,{});
+                if (!known.contains(host)) known.append(host);
+                continue;
+            }
             if (!host->property("unboundHeaderOriginalTitle").isValid()) host->setProperty("unboundHeaderOriginalTitle",host->windowTitle());
             const bool mainSurface=projectSurface && projectSurface() && projectSurface()->window()==host;
             if(!mainSurface) {

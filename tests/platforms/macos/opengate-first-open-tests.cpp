@@ -267,16 +267,25 @@ int main(int argc,char **argv){
  visibility("Workspace Toolbar");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
  check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
+#ifdef Q_OS_MACOS
+ check(Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"Original Resolve UI has no OpenGate Panels overlay");
+#endif
  check(mixerTitle->window()==&main&&mixerTitle->parentWidget()==mixerRow&&mixerRow->parentWidget()==mixer,"Native return preserves Mixer title and content owners");
  auto expandSource=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expandSource)expandSource->click();settle();
  check(nativePanels["widgetEditSourcePlayer"]->window()!=&main,"temporary maximize remains available in Native");
  Unbound::WorkspaceSettings duringNativeMaximize;check(duringNativeMaximize.data["layout_mode"]=="native","temporary maximize does not enter OpenGate mode");
+#ifdef Q_OS_MACOS
+ check(Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"temporary Native maximize does not bring back the Panels overlay");
+#endif
  if(expandSource)expandSource->click();settle();check(nativePanels["widgetEditSourcePlayer"]->parentWidget()==page,"Native maximize restores the exact native panel parent");
  sendTitle(QEvent::MouseButtonPress,{5,5},Qt::LeftButton,Qt::LeftButton);sendTitle(QEvent::MouseMove,{90,5},Qt::NoButton,Qt::LeftButton);sendTitle(QEvent::MouseButtonRelease,{90,5},Qt::LeftButton,Qt::NoButton);settle();
  Unbound::WorkspaceSettings gestureState;check(gestureState.data["layout_mode"]=="managed"&&page->layout()==native,"Native title drag enters OpenGate without loading the default or moving unrelated native slots");
  check(nativePanels["frameEditPageMediaPool"]->isHidden(),"Native-origin drag also leaves no visible empty slot");
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
  check(binding&&binding->active(),"choosing Resolve Layout re-enters OpenGate through existing restoration");
+#ifdef Q_OS_MACOS
+ check(!Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"OpenGate re-entry restores permanent Panels access");
+#endif
  QPointer<QWidget> retainedToolbar=toolbar;
  for(const auto &id:{"frameEditPageMediaPool","frameEditPageEditIndex","widgetEditSourcePlayer","widgetEditTimelinePlayer","widgetEditInspector","frameConformTimelines"}){
   auto command=controls.findChild<QPushButton *>(QString("undock_")+id);if(command)command->click();settle(200);
@@ -294,6 +303,9 @@ int main(int argc,char **argv){
   pageStack->setCurrentWidget(i%2?color:fusion);settle(180);
   check(footer->window()==&main,"page switching never transfers the global native footer to a panel");
   check(Unbound::currentWorkspacePage(&main)==(i%2?QStringLiteral("color"):QStringLiteral("fusion")),"fixture switches to the actual destination page");
+#ifdef Q_OS_MACOS
+  check(Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty(),"native destination pages have no OpenGate Panels overlay");
+#endif
   auto recovery=menu->findChild<QAction *>("unboundRestoreNativeWorkspace");check(recovery&&recovery->isChecked(),"unsupported pages truthfully display Native mode");
   pageStack->setCurrentWidget(page);settle(300);
   check(binding->active()&&binding->saved()==retainedPlan,"page return preserves the exact Edit arrangement instead of reloading a preset");

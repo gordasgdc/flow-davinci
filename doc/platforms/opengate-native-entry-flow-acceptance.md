@@ -18,8 +18,12 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
 5. A persistent title drag, detach or grouping action in Native enters OpenGate
    and completes the gesture without loading Resolve Layout or resetting unrelated
    panel positions. Native-origin changes form an unnamed working arrangement.
-6. The permanent main-window top strip holds window controls, project title and
-   Panels even when Workspace Toolbar is hidden. Floating panel titles stay panel
+6. In OpenGate mode, the permanent main-window top strip holds window controls,
+   project title and Panels even when Workspace Toolbar is hidden. In Original
+   Resolve UI, hide the OpenGate Panels title accessory, including during temporary
+   Native maximize; restore it on OpenGate re-entry. This is Jordan's explicit
+   2026-10-23 clarification following its overlap with a native Inspector button.
+   Floating panel titles stay panel
    titles; neither Panels nor the project label migrates to Inspector. One primary
    workspace owns the existing native-style Workspace Toolbar above its panel
    area and complete native Page Navigation below it, including Home and Settings.

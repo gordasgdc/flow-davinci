@@ -33,6 +33,11 @@ int main(int argc,char **argv) {
     headers.schedule();settle();bool ok=first.windowTitle()=="Timeline" && second.windowTitle()=="Source Monitor";
     ok &= !Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty()&&Unbound::nativeHeaderMenuFrameForTest(&first).isEmpty()&&Unbound::nativeHeaderMenuFrameForTest(&second).isEmpty();
     toolbar.hide();headers.schedule();settle();ok &= !Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty();toolbar.show();
+    bool managed=true;headers.managedWorkspace=[&] {return managed;};
+    managed=false;headers.schedule();settle();
+    ok &= Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty();
+    managed=true;headers.schedule();settle();
+    ok &= !Unbound::nativeHeaderMenuFrameForTest(&main).isEmpty();
     project->hide();project->setText("Project B");headers.schedule();settle();do { const bool passed=(first.windowTitle()=="Timeline"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     QMenu local;headers.populate(&local,&second);do { const bool passed=(local.actions().size()==3 && local.actions()[1]->text()=="Source Monitor"); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
     local.actions()[1]->trigger();settle();do { const bool passed=(!source && calls==1); if(!passed)std::fprintf(stderr,"FAIL header line %d\n",__LINE__); ok &= passed; } while(false);
