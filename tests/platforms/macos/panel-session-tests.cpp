@@ -1,4 +1,5 @@
 #include "native-fixture-start.h"
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include <QApplication>
 #include <QCoreApplication>
 #include <QStackedLayout>
@@ -46,7 +47,8 @@ int main(int argc, char **argv)
     qputenv("OPENGATE_NATIVE_PRESET_SHORTCUTS","0");
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
-    QTemporaryDir logs;
+    QTemporaryDir logs(OpenGateTest::evidenceTemplate("panel-sessions"));
+    OpenGateTest::retainEvidence(logs);
     qputenv("UNBOUND_DIAGNOSTICS_DIR", logs.path().toUtf8());
     qputenv("UNBOUND_LAUNCH_DIRECTORY", logs.path().toUtf8());
     qputenv("UNBOUND_WORKSPACE_FILE", (logs.path() + QStringLiteral("/Workspace.json")).toUtf8());
@@ -501,7 +503,9 @@ int main(int argc, char **argv)
         check(!(Unbound::nativeVisibilityFlags(source->window()) & 2), "native tool panels do not auto-hide on application deactivation");
         auto hideBackground = controls.findChild<QCheckBox *>("hideResolveBackground");
         controls.activateWindow(); settle(); const auto backgroundKey = Unbound::nativeKeyWindowNumber();
+        std::fprintf(stderr,"BACKGROUND before key=%lld controls=%lld frontmost=%lld self=%lld\n",backgroundKey,Unbound::nativeWindowNumber(&controls),Unbound::nativeFrontmostProcessForTest(),QCoreApplication::applicationPid());
         hideBackground->setChecked(true); settle();
+        std::fprintf(stderr,"BACKGROUND after key=%lld controls=%lld frontmost=%lld\n",Unbound::nativeKeyWindowNumber(),Unbound::nativeWindowNumber(&controls),Unbound::nativeFrontmostProcessForTest());
         check(!(Unbound::nativeVisibilityFlags(&main) & 1) && (Unbound::nativeVisibilityFlags(source->window()) & 1) && main.isVisible(),
             "background hides natively while detached panel and Qt page ownership remain alive");
         check(Unbound::nativeKeyWindowNumber() == backgroundKey, "background hiding preserves the active controls key window");
@@ -578,6 +582,8 @@ int main(int argc, char **argv)
         check(source->window() == groupedHost && groupedHost->geometry() == groupedGeometry, "grouped source expansion returns to its original group geometry");
         const auto priorPointer = QCursor::pos();
         QCursor::setPos(source->mapToGlobal(QPoint(source->width() / 2, source->height() / 2)));
+        const auto diagnosticHover=QApplication::widgetAt(QCursor::pos());const auto desired=source->mapToGlobal(QPoint(source->width()/2,source->height()/2));
+        std::fprintf(stderr,"HOVER requested=%d,%d actual=%d,%d hit=%s source_ancestor=%d key=%lld group=%lld frontmost=%lld self=%lld\n",desired.x(),desired.y(),QCursor::pos().x(),QCursor::pos().y(),diagnosticHover?qPrintable(diagnosticHover->objectName()):"null",diagnosticHover&&(diagnosticHover==source||source->isAncestorOf(diagnosticHover)),Unbound::nativeKeyWindowNumber(),Unbound::nativeWindowNumber(groupedHost),Unbound::nativeFrontmostProcessForTest(),QCoreApplication::applicationPid());
         QKeyEvent maximizeOverride(QEvent::ShortcutOverride, Qt::Key_QuoteLeft, Qt::NoModifier);
         QApplication::sendEvent(source, &maximizeOverride);
         check(maximizeOverride.isAccepted(), "hovered panel reserves backtick before competing native shortcuts");

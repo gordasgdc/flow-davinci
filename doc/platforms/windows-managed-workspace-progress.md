@@ -404,3 +404,50 @@ any new displayed matrix.
   him before uninstall. Ordinary uninstall preserves profiles; a tutorial profile
   isolation requires a verified reversible backup, with native Resolve preferences
   and projects left alone.
+
+## 2026-10-23: Mac displayed focus evidence (before final packaging)
+
+The d90358e hidden matrix passes 52/52. Two complete serial displayed runs each
+passed 8/9; neither is a passing matrix. Preserve receipts
+`d90358ebe7-displayed-20261023T043725Z` (panel-sessions failure) and
+`d90358ebe7-displayed-20261023T044902Z` (Mixer failure), with all suite logs.
+The original isolated panel-sessions also failed background-key preservation;
+a diagnostic-only rerun passed unchanged assertions. Its cause is unestablished.
+The first diagnostic build failed a local variable-name collision; its failed
+compile log is retained along with the corrected run. No thresholds changed.
+
+The second matrix's retained Mixer events explicitly show command sequence 716
+rejected with `reason: no-active-window`, followed by sequence 717 accepted with
+`active_window: UiMainWindow` and successful Mixer expansion. Its fixture used
+Qt-only activation before processing queued Cocoa events. The focus setup now
+uses the existing native test activation helper already used by the assembled
+docking flow, and adds an active-workspace precondition plus requested/actual
+pointer diagnostics. All original dispatch, maximize and exact ownership/return
+assertions remain. This is a fixture setup correction, with no production change.
+Retained failure directory: `opengate-opengate-first-open-tests-rHNgkH` under the
+local temporary root. A corrected full serial matrix is still required.
+
+## 2026-10-23: Windows final startup runner evidence
+
+Run [39901109518](https://github.com/jordantetewsky/OpenGate/actions/runs/39901109518),
+clean source `890b5799d1ecae60d522cfc8325095b7e346be64`: **48/48 fixture
+invocations passed**, compiled and packaged. Downloaded evidence lives under
+`build/windows/evidence/39901109518`; receipt is complete/all_passed and source_dirty
+is false. The previous startup run 39900270149 also passed 47/47; preserved.
+The latest adds rejection of a mismatched already-loaded helper, preserving
+coexistence without initializing a competing controller. Displayed assembly runs
+the real shipped DLL and native IO entry through first open, section docking,
+Mixer, unsaved restart, Native ownership return and re-entry. Hidden variants
+exercise delayed acquisition and Windows outer Inspector discovery.
+
+Downloaded `OpenGate-0.0.2-Prototype.4-Windows-x64.exe` SHA256:
+`84e5df9dae89956595c176fe83ec599bdf0e73804401fa1d0776c3255b034f16`, matching
+the runner checksum. Native IO bootstrap dependency audit uses only Windows
+system DLLs; installer compilation and support-export checks passed. No installer
+has been executed on a Windows host; actual Resolve plugin discovery, widget
+hierarchy, GPU painting, physical/remapped input and live acceptance are pending.
+The manifest deliberately records LiveAccepted and ManagedWorkspaceParity false.
+
+Jordan reported using input during displayed checks and requested a fresh serial
+run with input idle. This is context, not proof that input caused every earlier
+failure. The Mixer focus correction passed in isolation; full matrix pending.
