@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert 'unboundWorkspaceToolbar' not in workspace['native_arrangement']['panels']
     # The compiled adapter and installer use the same existing panel recipe.
     import re
-    source=(root/'src/platforms/macos/resolvelayout.h').read_text()
+    source=(root/'src/core/resolvelayout.h').read_text()
     compiled=json.loads(re.search(r'R"layout\((.*)\)layout"',source).group(1))
     selected=next(e for e in bundle['arrangements'] if e['id']==bundle['default'])
     assert compiled==selected['workspace']
