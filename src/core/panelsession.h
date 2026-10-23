@@ -362,10 +362,11 @@ public:
         const bool scrollToolbar=widget->objectName()==QLatin1String("frameEditToolbarTop") ||
             widget->findChild<QWidget *>("pageSingleScreenModeTools");
         const bool scrollMediaPool=widget->objectName()==QLatin1String("frameEditPageMediaPool");
-        const bool scrollViewer=widget->objectName()==QLatin1String("widgetEditSourcePlayer") ||
-            widget->objectName()==QLatin1String("widgetEditTimelinePlayer") ||
-            widget->objectName()==QLatin1String("stackedEditSourceOfflinePlayers");
-        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool || scrollViewer;
+        // Diagnostic comparison against public v4: retain the native viewer's
+        // direct presentation parent, as before 50f7498. Other overflow paths,
+        // native minima, ownership/recovery and command behavior are unchanged.
+        // This is not evidence that native footage loading has been repaired.
+        const bool scrollContent=scrollInspector || scrollToolbar || scrollMediaPool;
         box->addWidget(scrollContent ? overflow.wrap(widget,host,scrollToolbar) : widget);
         relaxedWidth = widget->objectName() == QLatin1String("widgetEditInspector") ||
             widget->objectName() == QLatin1String("frameEditPageMediaPool");

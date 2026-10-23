@@ -28,6 +28,7 @@ int main(int argc,char **argv) {
     check(a.undock(source,page,"Source Monitor").isEmpty()&&b.undock(mixer,page,"Mixer").isEmpty(),"same managed sessions acquire native content on both platforms");
     auto retained=a.window();check(retained&&retained!=&main&&a.nativeOwnerWindow()==&main&&a.pageWidget()==page,"session retains native ownership boundary");
     if(!retained||!b.window())return 1;
+    check(source->parentWidget()==retained,"diagnostic viewer uses direct host ownership without a scroll viewport");
     retained->setGeometry(140,160,480,350);turn();const auto frame=retained->geometry();
     a.setHiddenByUser(true);turn();check(!retained->isVisible()&&a.active(),"hiding keeps the lease active");
     page->hide();turn();page->show();turn();check(!retained->isVisible(),"page return preserves explicit user hide");
@@ -40,8 +41,15 @@ int main(int argc,char **argv) {
     PanelLayoutCallbacks callbacks;callbacks.leaf=[&](const QString &id){return id==source->objectName()?left:right;};callbacks.title=[&](const QString &id){return id==source->objectName()?a.panelTitle():b.panelTitle();};
     auto surface=buildPanelLayoutSurface(tree,&group,&group,callbacks);check(surface!=nullptr,"existing surface renders the donated native layouts");if(surface)column->addWidget(surface);
     group.show();a.finishGroupTransfer();b.finishGroupTransfer();turn();
+    check(source->parentWidget()==left,"direct viewer follows its retained group cell after layout donation");
     auto tabs=qobject_cast<QTabWidget *>(surface);check(tabs&&tabs->tabText(0)=="Source Monitor"&&tabs->tabText(1)=="Mixer","group tabs have actual panel titles");
     const auto groupFrame=group.geometry();if(tabs)tabs->setCurrentIndex(1);turn();
+    if(tabs)tabs->setCurrentIndex(0);turn();
+    check(a.beginGroupedExpansion(),"direct viewer supports temporary grouped expansion");turn();
+    check(a.expandedWindow()&&source->window()==a.expandedWindow(),"expanded viewer retains the original native widget");
+    a.endGroupedExpansion();turn();
+    check(source->parentWidget()==left&&source->window()==&group,"viewer expansion restores its exact group parent");
+    if(tabs)tabs->setCurrentIndex(1);turn();
     check(source->window()==&group&&mixer->window()==&group&&group.geometry()==groupFrame,"tab selection leaves native content in its retained group");
     check(b.beginGroupedExpansion(),"same session supports temporary grouped expansion");turn();
     auto expanded=b.expandedWindow();check(expanded&&mixer->window()==expanded,"temporary expansion leases the same real Mixer content");

@@ -1,3 +1,31 @@
+## V4 viewer-parent diagnostic candidate — 2026-10-23
+
+Preparation only; no installation, uninstall, Resolve termination or push.
+Jordan requests a v4-based diagnostic trial and later a full uninstall/install,
+with status updates and preserved settings/rollback. Installed October 21
+32e3be1 remains untouched. Its Find/hotkeys work, but double-click loading and
+the expected viewer experience fail. 78ae2ac is the working loading reference.
+
+This isolated branch starts at exact public v4 d749352. The sole production
+change removes added Source/Program scroll wrappers (50f7498), keeping native
+minimum sizes and existing session/group ownership. Media Pool wrappers, root
+layout ownership, slot suppression, toggle synchronization, grab zones, magnetic
+groups/tabs, native commands and the shared Windows foundation are unchanged.
+Rejected eb59502 and subsequent controller-ownership experiments are excluded.
+Narrow viewers intentionally lose the added overflow scrollbars in this trial;
+that is a diagnostic tradeoff, not a proposed final product regression.
+
+Purpose: determine whether removing viewer wrappers on v4 changes actual
+Media Pool double-click loading. A pass implicates this presentation boundary
+but still needs controlled confirmation; a fail leaves Media Pool wrappers and
+embedding/suppression unresolved. Find and tab selection are recorded separately,
+not promised fixed. No fixture may claim native clip loading or GPU success.
+
+The current work is build/fixture/package preparation only. Displayed fixtures
+require Resolve closed; they must remain pending while it runs. Full uninstall/
+install must preserve user settings and native mappings and retain byte-verified
+October 21 rollback. Re-read the numbered entry contract before readiness review.
+
 ## Panel/stack docking and tab titles — 2026-10-22
 
 Isolated repair derives section targets from the existing retained split/tab tree.
