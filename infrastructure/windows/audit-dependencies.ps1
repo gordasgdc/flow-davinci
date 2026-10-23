@@ -8,7 +8,8 @@ function Get-UnboundDependencies {
     $allowed = @('ADVAPI32.dll','VERSION.dll','KERNEL32.dll','USER32.dll','SHELL32.dll','GDI32.dll','ole32.dll','dwmapi.dll','COMCTL32.dll',
         'Qt5Core.dll','Qt5Gui.dll','Qt5Widgets.dll','MSVCP140.dll','VCRUNTIME140.dll','VCRUNTIME140_1.dll')
     $dependencyReport = @{}
-    foreach ($file in @($exe, $dll, $bootstrap) | Where-Object { $_ }) {
+    $files = @($exe, $dll, $bootstrap) | Where-Object { $_ }
+    foreach ($file in $files) {
         $report = & $dumpbin /dependents $file
         if ($LASTEXITCODE -ne 0) { throw "Dependency audit failed: $file" }
         $dependencies = @($report | ForEach-Object {
