@@ -54,9 +54,12 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         const auto type = event->type();
+        const bool navigationInput=type==QEvent::DragEnter || type==QEvent::Drop || type==QEvent::MouseButtonDblClick;
+        if(navigationInput && !viewerDiagnostics->nativeLoadingTraceEnabled())return false;
         if (type != QEvent::ActionAdded && type != QEvent::Shortcut && type != QEvent::Show && type != QEvent::Polish &&
             type != QEvent::MouseButtonPress && type != QEvent::KeyPress && type != QEvent::ShortcutOverride && type != QEvent::WindowActivate &&
-            type != QEvent::ChildAdded && type != QEvent::ParentChange && type != QEvent::Hide) return false;
+            type != QEvent::ChildAdded && type != QEvent::ParentChange && type != QEvent::Hide &&
+            type != QEvent::DragEnter && type != QEvent::Drop && type != QEvent::MouseButtonDblClick) return false;
         auto widget = qobject_cast<QWidget *>(object);
         if ((type == QEvent::ChildAdded || type == QEvent::ParentChange) && related(widget)) queueButtonScan(widget);
         if (widget && widget->objectName().startsWith("WStackPage_") && (type==QEvent::Show || type==QEvent::Hide) && !pageScanQueued) {
@@ -78,6 +81,16 @@ protected:
             event->type() == QEvent::MouseButtonPress || event->type() == QEvent::KeyPress))
             observeButton(qobject_cast<QAbstractButton *>(widget));
         if (!related(widget)) return false;
+        if (viewerDiagnostics->nativeLoadingTraceEnabled() && (type==QEvent::DragEnter || type==QEvent::Drop || type==QEvent::MouseButtonDblClick)) {
+            // Application event filters see the event before its receiver. Do
+            // not mistake this accepted flag for the native handler's result.
+            QJsonObject state{{"receiver",widgetState(widget,false)},
+                {"event_type",int(type)},{"phase","before-native-handler"},
+                {"accepted_before",event->isAccepted()},{"accepts_drops",widget->acceptDrops()},
+                {"host",widgetState(widget->window(),false)}};
+            logEvent("input.navigation.delivery",state);
+            viewerDiagnostics->captureLoading("input-navigation-before",QString::number(int(type)));
+        }
         if (event->type() == QEvent::MouseButtonPress) {
             QPointer<QWidget> receiver = widget;
             logEvent(QStringLiteral("input.click"), {{"receiver", widgetState(widget,false)}, {"focus_before", widgetState(QApplication::focusWidget(),false)}});
@@ -161,6 +174,19 @@ private:
                 {"focus", widgetState(QApplication::focusWidget(),false)},
                 {"page",currentWorkspacePage(resolveMainWindow())}, {"observation","qt-button-signal"}});
         };
+        if(viewerDiagnostics->nativeLoadingTraceEnabled() && button->objectName().contains("ToggleMediaPool")) {
+            connect(button,&QAbstractButton::toggled,this,[this,button](bool checked) {
+                logEvent("native.toggle.observed",{{"button",widgetState(button,false)},
+                    {"emitted_checked",checked},{"current_checked",button->isChecked()}});
+                QPointer<QAbstractButton> alive(button);
+                QTimer::singleShot(0,this,[alive,checked] {
+                    if(!alive)return;
+                    logEvent("native.toggle.next-turn",{{"button",widgetState(alive,false)},
+                        {"emitted_checked",checked},{"current_checked",alive->isChecked()},
+                        {"relationship","temporal-observation-not-command-identification"}});
+                });
+            });
+        }
         // Press precedes the action; clicked also covers keyboard and programmatic activation.
         connect(button, &QAbstractButton::pressed, this, [record] { record(QStringLiteral("input.button.pressed")); });
         connect(button, &QAbstractButton::clicked, this, [record] { record(QStringLiteral("input.button.clicked")); });
@@ -174,7 +200,9 @@ private:
             logEvent(QStringLiteral("input.action.triggered"), {{"action", action->objectName()},
                 {"label", action->text()}, {"focus", widgetState(QApplication::focusWidget(),false)},
                 {"page",currentWorkspacePage(resolveMainWindow())}, {"observation","qt-action-signal"}});
-            if (action->objectName() == "workspaceViewerModeCinemaViewer" || action->text().contains("Cinema Viewer", Qt::CaseInsensitive)) {
+            const auto label=action->text().remove('&');
+            if (action->objectName() == "workspaceViewerModeCinemaViewer" || label.contains("Cinema Viewer", Qt::CaseInsensitive) ||
+                (viewerDiagnostics->nativeLoadingTraceEnabled() && (label.contains("Match Frame", Qt::CaseInsensitive) || label.contains("Find in Media Pool", Qt::CaseInsensitive)))) {
                 viewerDiagnostics->capture("command-triggered", action->objectName());
                 const QString name = action->objectName();
                 QTimer::singleShot(0, this, [this, name] { viewerDiagnostics->capture("command-dispatched", name); });
@@ -187,6 +215,10 @@ private:
         if(!root)return;
         observeButton(qobject_cast<QAbstractButton *>(root));
         for(auto button:root->findChildren<QAbstractButton *>())observeButton(button);
+        if(viewerDiagnostics->nativeLoadingTraceEnabled()) {
+            viewerDiagnostics->observe(root);
+            for(auto widget:root->findChildren<QWidget *>())viewerDiagnostics->observe(widget);
+        }
     }
     void queueButtonScan(QWidget *root)
     {

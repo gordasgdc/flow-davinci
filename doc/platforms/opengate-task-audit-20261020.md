@@ -1,3 +1,144 @@
+## Independent Claude review reconciled — 2026-10-23
+
+Archived the supplied read-only report and its SHA-256 under
+build/regression-evidence/claude-review-20261023 in the investigation worktree.
+Its conclusions were checked individually, not adopted as established causes.
+
+Verified: floating Source ancestry in working001 and failing 9eb69c5 has the same
+shape (stack -> floating host -> main). This refutes reparenting being invariably
+incompatible with loading. It does NOT prove Source-side state is equivalent or
+exonerate hosting interactions. Working001 has 10 native Source contexts, 6 grouped
+contexts and 2 floating contexts; the saved empty native_arrangement is a point-in-
+time snapshot, not proof of one configuration throughout the session. No specific
+successful load was correlated to those two floating snapshots. The Media Pool
+wrapper/transfer/managed-ownership differences remain a strong isolation target.
+
+Verified: 3bde0f7 changes toggled handling from reveal-on-divergence to scheduled
+checked-state synchronization. Find setting that toggle is not captured, so this
+remains a mechanism hypothesis. The report's claim that next-turn revelation
+explains eb59502's failure is likewise unproven. Do not reverse the toggle rewrite
+and reintroduce the documented Media Pool/Index feedback loop.
+
+Verified: ResponsivenessProbe excludes UiMainWindow in its receiver filter.
+Cross-layout ui.responsiveness samples therefore have different coverage; this does
+not invalidate separately scoped ui.work measurements. Stage destination_lookup
+contains the expensive native window-list query, but no substage timing separates
+that API from the rest of target resolution. Do not claim all measured stage time
+is the API cost. Crash breadcrumb/file flushing costs remain unmeasured. Avoid
+per-drag z-order caching without handling external window/occluder changes.
+PanelMenus::ownerOf's full scan also rejects conflicting attached owners, even
+when its parent walk found one. An early return would change that safety behavior;
+it is not an automatically safe optimization.
+
+Corrections applied only in sibling native-loading-routes (not installed):
+- Runtime inventory lists each candidate method, signature/type or absence on
+  clip view, player and UiConformerPanelImp. Native handler execution is explicitly
+  unobserved; slots are never invoked or treated as observable signals.
+- Existing coalesced subtree discovery now observes lazy-created targets. Fixture
+  creates a player after initial scan and checks a single explicit missing-method
+  inventory, without another main-window Show.
+- Trace-off returns before new navigation event casts/ancestor walks. Process-wide
+  Resize tracking removed. Added trace does not provide resize latency measurement.
+- Media Pool toggled observation logs emitted value and current value, then checks
+  next-turn state. Fixture confirms visibility of a signal-blocked reversal without
+  changing native input behavior. This is not proof Find follows that path.
+- check-native-loading-coverage.py requires an explicit session and connected
+  request/content signals plus conformer method inventory. It exits 2 on the installed
+  old trace, correctly identifying missing coverage instead of missing loading.
+  Even a passing gate does not prove a signal reached its handler or rendered a clip.
+
+Hidden fixture passes tracing on/off; native input delivery/acceptance is preserved,
+clip payload is absent, lazy observation and toggle state reversal are recorded only
+when opted in. Source page observer absence in old logs was expected because that
+observer was not in those binaries; it is not independent proof of attachment failure.
+Existing source.presentation.boundary already contains stack selection snapshots.
+No new software installed, no settings changes, no live inputs, no Resolve termination,
+and no upstream push. Prior built diagnostic binary is superseded by the revised
+source/build; do not install the earlier binary as though it contained this review.
+
+Next discriminating live test: first pass the observation coverage gate. Hold Source
+hosting fixed while comparing Media Pool native versus transferred ownership, and
+capture double-click/drop separately. A fresh native starting state matters: returning
+from a managed layout may retain state, so two failures do not automatically falsify
+Media Pool ownership as a contributor. Capture named Find independently with toggle
+state; Show Media Pool is not a substitute. Timing trials use baseline diagnostics
+with added loading trace off and corrected measurement scope; causal trace-on trials
+are not a latency benchmark. No causal repair is yet demonstrated.
+
+## Independent investigation and next discriminating test — 2026-10-23
+
+Installed runtime remains 9eb69c5. No new install, settings change, Resolve
+termination, project input or upstream push occurred in this investigation.
+Jordan additionally reports that 0.0.1 felt faster across many interactions.
+Preserve this as a reported responsiveness regression, not a controlled benchmark.
+
+### Loading observations prepared, not live-verified
+
+Isolated branch diagnose/native-loading-routes (sibling native-loading-routes),
+based on installed 9eb69c5, adds passive observations inside the existing
+InteractionDiagnostics and ViewerDiagnostics. OPENGATE_TRACE_NATIVE_LOADING=1
+opts into input drop/double-click delivery, runtime-confirmed native signals
+PlaceClipOnSourceViewer / DragEntered / DropTriggered / MatchFrameTriggered,
+CurrentItemsChanged / CurrentTitleChanged notifications, selected Source stack
+page, ancestry, and coalesced show/hide/resize/reparent counts. No private native
+method is invoked and no clip or MIME payload is read. Detailed observations
+are off by default. Loading snapshots avoid allWidgets scans, layout size-hint
+queries and forced immediate file flushing. Signal availability/connection is
+recorded, so missing instrumentation must not be mistaken for missing emission.
+Existing ordinary diagnostic behavior remains; trace-off is not logging-off.
+
+Hidden interaction fixture passes with tracing enabled and disabled: native
+receiver still gets its drop and double-click and accepts them; trace-off omits
+new delivery records; clip payload is absent. Production translation unit passes
+arm64/x86_64 syntax checks. These tests do not validate Resolve signal emission,
+correct clip identity, rendered pictures, or visible flicker. Native content-change
+notifications deliberately say clip_identity_verified=false. Sequence/timing links
+are temporal observations, not proof that one event caused another.
+
+Next live capture, once a diagnostic build is reviewed and installed: use two
+visually distinct clips and record double-click and drop with Source in Native,
+managed side-by-side and floating states. Separate tabbed Match Frame and named
+Find in Media Pool. Reuse all existing reported failures; this capture is to obtain
+missing internal events, not ask Jordan to reconstruct prior results. For each
+input identify delivered event -> available/emitted native request -> content
+notification -> selected page/visibility/owner -> actual displayed clip. A missing
+native request narrows input routing; a request with no content notification
+narrows downstream handling; content notification without the correct picture
+leaves identity/presentation unresolved. Do not synthesize a native call or another
+reveal callback from any of these outcomes alone.
+
+### Responsiveness evidence and limits
+
+Current session a3b86445-e438-417c-bd10-f8832da240ed contains workspace presentation
+sections with median 197.48 ms / max 270.03 ms (5 samples), group drops median
+183.74 ms / max 289.96 ms (6), workspace saves median 53.87 ms / max 169.87 ms
+(106). These are scoped code durations, not end-to-end or GPU latency. Working001
+also contains slow operations. Captures differ in gestures, layout, idle time and
+session coverage; overall event-rate comparisons are invalid as a speed ranking.
+Evidence: build/regression-evidence/responsiveness-comparison-20261023.json.
+
+The buffered diagnostic sink and immediate click/request flushing already exist
+in 78ae2ac; their presence is not a newly introduced cause. ViewerDiagnostics is
+also nearly identical between 78ae2ac and v4. Changed event frequency, snapshot
+volume, new layout work and interactions remain candidates. Measure the same
+build/action with added trace off/on before attributing delay to this instrumentation,
+then compare equivalent operations against 78ae2ac. GPU presentation and visual
+blinking still require visual evidence. No performance improvement is claimed.
+
+### Separate Mixer repair
+
+Sibling v4-mixer-expansion-width starts at exact d749352. Captured native
+frameEditAudioMixer maximum width is 864 while expanded host width is 1728,
+consistent with Jordan's screenshots. The assembled first-open fixture reproduced
+the cap failure before the change. A narrow temporary expansion lease removes only
+that Mixer container cap while expanded, restoring its exact original maximum on
+restore/session deactivation. Existing track sizing is untouched. The same fixture
+passes after the change, including retained control interaction and restored cap.
+Logs: sibling build/macos/mixer-width-before-unsandboxed.log (exit 1) and
+mixer-width-after.log (exit 0). Initial sandbox attempt could not create Qt windows;
+unsandboxed hidden runs are the behavioral results. Not installed, not live-accepted,
+and not combined with a speculative loading repair.
+
 ## V4 viewer-parent diagnostic candidate — 2026-10-23
 
 Preparation only; no installation, uninstall, Resolve termination or push.
