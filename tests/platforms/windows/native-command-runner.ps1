@@ -22,3 +22,6 @@ $missing=$false
 try {Invoke-Checked (Join-Path $root 'does-not-exist.exe') @()} catch {$missing=$true}
 if(!$missing){throw 'Missing executable was accepted'}
 Write-Host "PASS: native stderr retained, zero/nonzero exits enforced, missing programs rejected, paths with spaces. Evidence: $root"
+# The intentional nonzero child probe leaves LASTEXITCODE set. GitHub's
+# PowerShell wrapper propagates it even though every assertion above passed.
+exit 0

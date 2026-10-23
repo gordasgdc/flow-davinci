@@ -220,3 +220,76 @@ complete bands/page/Native transitions and the assembled numbered flow remain
 open. Shared components passing is not evidence those production paths are wired.
 No new Mac package, installation, live acceptance, release publication or migration
 cutover occurred. Revision 3's accepted Mac asset remains unchanged.
+
+## Shared controller and assembled-flow audit (2026-10-22, continued)
+
+The accepted PanelControls implementation and only its required dependency
+closure are now shared. Mac compatibility headers preserve existing entry points;
+there is no second managed layout/preset/panel controller. Native Resolve paths
+and window operations remain platform adapters. Shared request/result routing
+also reuses the existing WorkflowCommandBridge. The shared workflow generator
+produces all 30 Mac scripts and its manifest byte-for-byte identically to the
+previous generator; Windows changes only its directory and native wake primitive.
+Both generated-script fixtures pass locally, including atomic requests, no-ctypes
+fallback and selected-clip API completion without recursive requests.
+
+Windows runs `39889984665` and `39890856228` failed the unchanged restoration
+message/order assertion with MSVC's implicit source charset. Windows `/utf-8`
+compilation fixed the actual Unicode conversion mismatch. Run
+[39891163351](https://github.com/jordantetewsky/OpenGate/actions/runs/39891163351)
+passes restoration, pinned header and complete navigation assertions, shared
+session/tree/ownership/preset fixtures, existing windowing/DLL fixtures, packaging
+and support export. Full downloaded receipts are retained in
+`build/windows/evidence/39891163351`; failures remain under their own run IDs.
+
+Run `39892392253` compiled most shared assembled fixtures but failed on fixture
+portability: an implicit Mac-only activation helper, transitive visibility include
+and old session alias. Test activation now has a Windows native adapter; required
+includes are explicit and common session types replace aliases without changing
+assertions. Run `39893148184` then compiled the full shared controller but failed
+Native entry's cramped toolbar overflow assertion. This is an open production/
+fixture investigation, not a parity pass. Full workflow and build logs are kept
+in `build/windows/evidence/39893148184`. New runs retain every assembled fixture's
+settings and event trail under `build/windows/fixtures`. Native stderr is retained
+and executable exit codes remain mandatory; a dedicated Windows runner fixture
+checks success, failure code 23, missing programs and paths containing spaces.
+The next orchestration records every independent suite, then fails packaging if
+any fixture failed. No assertion/threshold has been relaxed.
+
+Frozen Mac `594dc80` hidden receipt `594dc803cc-hidden-20261023T024230Z` and frozen
+`82017ba` receipt `82017ba934-hidden-20261023T025908Z` each pass all 51 suites with
+clean/unchanged source. Resolve reopened, so the first displayed request was
+correctly NOT RUN. Jordan closed it again. Displayed matrix
+`82017ba934-displayed-20261023T031806Z` passes 7/9: panel sessions and hidden controls
+failed drag/release conditions. The session log shows requested/cursor mismatch
+and source deactivation; causation is not established. Both subsequently pass in
+isolated logs beside the failed receipt. Those passes do not replace the failed
+matrix. The fresh serial matrix at frozen `23caf36`, receipt
+`23caf36877-displayed-20261023T032515Z`, passes all 9 suites with clean, unchanged
+source. Resolve may reopen. The corresponding 51-suite hidden matrix is running.
+
+Windows run `39894669562` stopped after the native-command runner's assertions
+all passed: its deliberately failing child left LASTEXITCODE nonzero, which the
+GitHub PowerShell wrapper propagated. The fixture now exits zero only after all
+assertions pass; thrown assertions still fail. No production behavior or assertion
+changed. This failed workflow remains recorded separately.
+
+Windows permanent Panels access currently accepts a uniquely recognized visible
+native project-title strip with its own actual box layout. Parked/native-toolbar
+slots are rejected and logged; no guessed overlay or empty replacement row is
+created. Actual Windows Resolve title-strip structure remains unverified and
+requires tester WindowInventory evidence. The Windows startup service is prepared
+but not yet selected by the packaged helper. The production backend remains the
+older backend until shared assembled tests and a production DLL flow are wired
+and verified. Do not report component/fixture coverage as production parity.
+
+The existing read-only PagePanelInventory now also supports an explicit main
+window scope for Windows discovery diagnostics; default Mac scope is unchanged.
+Only names, classes, hierarchy, Qt geometry/constraints and method metadata are
+read, never project/control text or custom property getters. Main-window capture
+is bounded and separately stored. Windows support export allowlists these files;
+new coverage preserves all previous export assertions and checks unrelated JSON
+is excluded. The individual Mac privacy/ownership inventory fixture passes.
+
+No candidate installation, Mac package replacement, live Windows acceptance,
+publication, main merge or repository migration has occurred.
