@@ -10,6 +10,7 @@
 #include "diagnostics.h"
 #include "panelplacementcontrol.h"
 #include "nativepaneldecoration.h"
+#include "../platform/workspaceuiconventions.h"
 namespace Unbound {
 class DoorGlyph : public QIconEngine {
 public:
@@ -97,7 +98,7 @@ private:
             const QRect titleRect(title->mapToGlobal(QPoint()),title->size());
             const QRect rowRect(row->mapToGlobal(QPoint()),row->size());
             if(titleRect.bottom()<rowRect.top() || titleRect.top()>rowRect.bottom())continue;
-            const int origin=row->mapToGlobal(QPoint(start,0)).x();available=qMin(available,qMax(0,titleRect.left()-origin-12));
+            const int origin=row->mapToGlobal(QPoint(start,0)).x();available=qMin(available,qMax(0,titleRect.left()-origin-nativeWorkspaceTitleGap(row)));
         }
         const auto buttons=strip->findChildren<QToolButton *>();
         int labeled=0;for(auto button:buttons)if(button->objectName()!="openGateToolbarOverflow")labeled+=button->fontMetrics().horizontalAdvance(button->text())+30;

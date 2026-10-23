@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../platform/workspaceuiconventions.h"
 #include <QCheckBox>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -26,7 +27,7 @@ public:
         pin=new QCheckBox("Keep controls on top",owner); pin->setObjectName("pinControls"); pin->setChecked(saved["pin_controls"].toBool());
         constrain=new QCheckBox("Keep a window grip reachable",owner); constrain->setChecked(saved["keep_on_screen"].toBool(true));
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
-        snap=new QCheckBox("Snap window edges (Option bypasses)",owner); snap->setObjectName("snapWindows");
+        snap=new QCheckBox(nativeWorkspaceSnapLabel(),owner); snap->setObjectName("snapWindows");
         snap->setChecked(saved["snap_windows"].toBool(true)); options->addWidget(snap);
         // Ordinary arrangements use automatic shell visibility. Historical
         // hide_background/native_workspace_mode values describe the old flow;
