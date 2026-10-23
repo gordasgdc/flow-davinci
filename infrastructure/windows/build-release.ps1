@@ -55,7 +55,7 @@ function Invoke-Fixture([string]$Program, [string[]]$Arguments) {
         Write-Host ('FAIL fixture: '+$errorText)
     }
     $fixtureResults.Add(@{ program=(Split-Path -Leaf $Program); arguments=$Arguments; platform=$env:QT_QPA_PLATFORM;
-        variants=@{ outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER };
+        variants=@{ io_bootstrap=$env:OPENGATE_TEST_IO_BOOTSTRAP; outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER };
         status=$status; exit_code=$exitCode; error=$errorText; started_utc=$started.ToString('o');
         elapsed_seconds=((Get-Date).ToUniversalTime()-$started).TotalSeconds })
     Save-FixtureReceipt $false
@@ -76,15 +76,16 @@ try {
     & (Join-Path $repoRoot 'tests\platforms\windows\version\main.ps1')
     $exe = Join-Path $build 'Release\Unbound.exe'
     $dll = Join-Path $build 'Release\Unbound.dll'
+    $ioPlugin = Join-Path $build 'Release\OpenGate.dvcp'
     foreach ($file in @($exe, $dll)) {
         $info = (Get-Item -LiteralPath $file).VersionInfo
-        if ($info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
+        if ($info.ProductName -ne 'OpenGate' -or $info.CompanyName -ne 'CineWaltz' -or $info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
             $info.FileMajorPart -ne $releaseVersion.Major -or $info.FileMinorPart -ne $releaseVersion.Minor -or
             $info.FileBuildPart -ne $releaseVersion.Patch -or $info.FilePrivatePart -ne $BuildNumber) {
             throw "Version resource mismatch: $file"
         }
     }
-    $dependencyReport = Get-UnboundDependencies -exe $exe -dll $dll
+    $dependencyReport = Get-UnboundDependencies -exe $exe -dll $dll -bootstrap $ioPlugin
     # Tests exercise the same shared pane code plus the standalone DLL bootstrap.
     $testBuild = Join-Path $repoRoot 'build\windows\pane-tests'
     Invoke-Checked 'cmake' @('-S', (Join-Path $repoRoot 'tests\core\pane-float'), '-B', $testBuild,
@@ -144,7 +145,10 @@ try {
         Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @('--displayed')
         $env:OPENGATE_TEST_DISPLAYED_MIXER='1'
         $env:OPENGATE_TEST_STACK_DROP='1'
-        try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+        try {
+            Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
+            Invoke-Fixture 'powershell.exe' @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $repoRoot 'tests\platforms\windows\io-startup.ps1'),'-BuildDirectory',(Join-Path $build 'Release'))
+        }
         finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER; Remove-Item Env:OPENGATE_TEST_STACK_DROP }
         Invoke-Fixture $test @('--audition-taskbar-native')
         Invoke-Fixture $test @('--snap-native')
@@ -157,11 +161,11 @@ try {
     if($failedFixtures.Count -gt 0){throw "$($failedFixtures.Count) Windows fixtures failed. No candidate was packaged; all results are retained."}
     # Preserve binary provenance with the candidate and installed support exporter.
     New-Item -ItemType Directory -Path $destination | Out-Null
-    Copy-Item -LiteralPath $exe, $dll -Destination $destination
+    Copy-Item -LiteralPath $exe, $dll, $ioPlugin -Destination $destination
     Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
-    $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
+    $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'), (Join-Path $destination 'OpenGate.dvcp'))
     $workflowHashes = @(Get-ChildItem -LiteralPath (Join-Path $destination 'workflow-commands') -File | Get-FileHash -Algorithm SHA256)
-    @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
+    @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; Startup='native-io-plugin'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"

@@ -47,10 +47,36 @@ persistence with focused native window/input/discovery adapters. See the
 actual test results and remaining gaps. Windows fixtures cannot prove native GPU
 painting, physical/remapped keys or real Resolve widget compatibility.
 
-Mac's Applications/OpenGate Tools folder contains support export and uninstall.
-Windows candidates provide Start-menu entries for **Export OpenGate Support Logs**
-and uninstall. Export creates a ZIP to send with reproduction steps and timestamps;
-it uploads nothing and leaves Resolve and settings alone.
+Prototype.4 is intended to start automatically with Resolve on both platforms.
+The Windows IO-plugin adapter is awaiting its runner result and a Studio tester;
+free-edition startup is unverified. The Start-menu OpenGate entry remains a
+recovery launcher.
+
+### Send support logs
+
+Reproduce the issue, then export immediately:
+
+| Platform | Double-click export | Log folder |
+| --- | --- | --- |
+| Mac prototype.4 | Applications → OpenGate Tools → Export OpenGate Support | `~/Library/Logs/OpenGate` |
+| Windows prototype.4 | Start → OpenGate → Export OpenGate Support Logs | `%LOCALAPPDATA%\OpenGate\Logs` |
+
+Send Jordan the **OpenGate support ZIP on your Desktop**, with the approximate
+local time/time zone, Resolve version/edition, page, panel, steps, expected result
+and actual result. Include a screenshot for painting or geometry problems.
+Nothing uploads automatically. Export leaves Resolve and settings alone.
+
+Mac prototype.3 logs remain in `~/Library/Logs/Unbound`; prototype.4 export reads
+both locations without moving or deleting older evidence. The product is OpenGate;
+internal Unbound filenames and settings paths remain for compatibility.
+Both runtimes record OpenGate events with build/session/sequence information,
+observed input/signals and operation outcomes. A click does not prove the native
+operation completed. Mac's export contains a filtered event summary; Windows also
+includes bounded runtime logs and widget-structure inventories for first testers.
+Review the ZIP before sharing it. Neither export copies project/media/database files.
+
+The same Tools/Start-menu folders provide uninstall. See the
+[candidate review and live checklists](doc/platforms/prototype4-candidate-review.md).
 
 Quit Resolve before installation or removal. Removing only the launcher does not
 unload a resident helper. Uninstall preserves arrangements, presets and shortcuts.

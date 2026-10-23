@@ -342,3 +342,35 @@ standard installer elevation; no installer has run on Jordan's machine. Settings
 native preferences and projects are excluded from installation/uninstallation.
 Latest adapter/command/installer changes are implemented but not yet runner-tested
 or packaged. Publication and live acceptance remain pending.
+
+## 2026-10-23: explicit startup parity and log branding corrections
+
+Jordan requires installation followed by ordinary Resolve launch on Windows,
+with no per-session OpenGate launch. The earlier manual-launch notes are a gap,
+not accepted parity. Native IO plugin adaptation is in progress; no automatic
+Windows launch is claimed yet. Installed SDK documents Win64 bundles under
+ProgramData/Blackmagic Design/DaVinci Resolve/Support/IOPlugins and describes
+Studio support; free-edition support remains unverified.
+
+Mac log output and command transport move together to Library/Logs/OpenGate.
+Older Unbound logs remain intact, support export reads both, settings paths stay
+unchanged. Export privacy assertions and both platform workflow-wrapper tests
+pass after this change. Prior signed Mac artifact 0348946 is preserved but is
+not the final candidate for this request; fresh full verification/build needed.
+
+Windows a59ddba run 39898066892 compiled, passed 45/46 fixture invocations, and
+failed the added displayed stack-drop variant. Packaging/export stages were
+skipped, not passed. All evidence retained under build/windows/evidence/39898066892.
+The test queried nativeDockScopes from its EXE, while registration occurred in
+the production DLL's separate inline-static registry. Correct the fixture to
+measure actual rendered cells and route mouse events through the DLL event filter,
+asserting its preview and actual released target. Retain the 16-pixel breadth
+threshold, full-height preview, exact subtree/ownership assertions. This correction
+requires a new runner result; it is not a pass.
+
+Mac 0348946 full results: 52/52 hidden, final serial 9/9 displayed, clean unchanged
+source. Earlier serial 7/9 failure remains preserved; cause unestablished. Signed,
+notarized package SHA256 6ab744b2d6ab11a78f62d261c80d2a07fd4b4feca611ce61e0f1aefe495a9eba.
+No candidate installed, live accepted, merged or published. Resolve can remain
+open for editing while implementation/hidden checks run; notify Jordan before
+any new displayed matrix.

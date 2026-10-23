@@ -31,6 +31,7 @@ CloseApplications=yes
 RestartApplications=no
 UninstallDisplayIcon={app}\Unbound.exe
 [Files]
+Source: "{#SourceRoot}\release\win\{#BuildVersion}\OpenGate.dvcp"; DestDir: "{commonappdata}\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\OpenGate.dvcp.bundle\Contents\Win64"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
@@ -46,7 +47,7 @@ Name: "{group}\Export OpenGate Support Logs"; Filename: "{app}\Export OpenGate S
 Name: "{group}\Prototype limitations"; Filename: "{app}\README.txt"
 Name: "{group}\Uninstall OpenGate"; Filename: "{uninstallexe}"
 [Code]
-function PrepareToInstall(var NeedsRestart: Boolean): String;
+function ResolveStopReason(): String;
 var Locator, Services, Processes: Variant;
 begin
   Result := '';
@@ -55,8 +56,20 @@ begin
     Services := Locator.ConnectServer('', 'root\CIMV2');
     Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name="Resolve.exe"');
     if Processes.Count > 0 then
-      Result := 'Save your work and quit DaVinci Resolve before installing OpenGate.';
+      Result := 'Save your work and quit DaVinci Resolve before installing or uninstalling OpenGate.';
   except
     Result := 'Could not check whether Resolve is closed. Close Resolve and retry.';
   end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := ResolveStopReason();
+end;
+function InitializeUninstall(): Boolean;
+var Reason: String;
+begin
+  Reason := ResolveStopReason();
+  Result := Reason = '';
+  if not Result then MsgBox(Reason, mbInformation, MB_OK);
 end;
