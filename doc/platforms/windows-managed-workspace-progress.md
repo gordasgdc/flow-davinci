@@ -497,3 +497,36 @@ candidate installed / live-accepted / published = no. Windows needs actual Resol
 Studio discovery and complete live flow feedback. Mac needs Jordan's regression
 check after download. The numbered native-entry contract was reread and mapped
 to entry points and assembled coverage in prototype4-candidate-review.md.
+
+## 2026-10-23: prototype.4 published and tutorial preparation
+
+Published prerelease:
+https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.4
+Tag source `0052c09`; only documentation differs from Windows-tested 614360d.
+Both public installer URLs were downloaded anonymously and their SHA256 hashes
+match the final artifacts above. All nine draft assets were checked byte-for-byte
+before publication. Anonymous download of the accepted prototype.3 Mac package
+still matches `f84d7edb5f4e87e3220dc153afc999b0cf4c091cfd1d00b00c44cfdc29cc1131`.
+Public download verification is retained in
+`build/review/prototype4-public-download/download-verification.json`.
+
+Main README updated in a7b8459 with prototype.4 downloads, startup requirements,
+log paths/export steps, rollback and live-testing gaps. Remote README blob matches
+the reviewed local file. Main production source is unchanged from accepted 28ff7d6;
+no parity code was merged to main. The standalone-repository migration is deferred.
+
+At Jordan's explicit request, after publication/download verification and with
+Resolve closed, revision 3 was removed by its installed transactional uninstaller.
+All 36 inventoried paths are absent; no matching system IO/OFX autoload leftovers.
+Original OpenGate settings were copied and hash-verified, then moved intact into
+the Desktop tutorial backup, with a second verified copy and accepted Mac rollback
+installer. Native Resolve preferences, keyboard assignments, projects/media and
+logs were not reset. The profile path is absent for a fresh OpenGate install.
+Jordan will download and install prototype.4 for the demonstration; no candidate
+was installed by this development task. Transactional install recovery remains.
+
+Final development ledger: implemented / compiled / fixture-tested / packaged /
+published = yes. Prototype.4 installed / live-accepted = pending on both platforms.
+Windows Resolve discovery, actual widget ownership/rendering, physical/remapped
+input and the complete live sequence require a Windows tester. Jordan's Mac
+regression checklist remains in prototype4-candidate-review.md.
