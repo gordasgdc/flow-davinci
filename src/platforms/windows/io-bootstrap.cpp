@@ -33,12 +33,20 @@ DWORD WINAPI startWhenReady(void *pinnedModule) {
             if(!length||length>=32768||!qtCompatible(path)) {
                 Unbound::launcherDiagnostic("bootstrap.io.incompatible-qt",{},GetCurrentProcessId());break;
             }
-            // Reuse a manually loaded helper if present; never create another
-            // controller/image for the same Resolve session.
+            const auto file=helperPath();
+            if(file.empty()) {Unbound::launcherDiagnostic("bootstrap.io.installation-record-missing",{},GetCurrentProcessId());break;}
+            // Reuse only this installation's helper. An old Unbound build has
+            // the same DLL/export names but a different panel controller.
             auto helper=GetModuleHandleW(L"Unbound.dll");
+            if(helper) {
+                wchar_t loaded[32768]{},expected[32768]{};
+                const auto loadedLength=GetModuleFileNameW(helper,loaded,32768);
+                const auto expectedLength=GetFullPathNameW(file.c_str(),32768,expected,nullptr);
+                if(!loadedLength||loadedLength>=32768||!expectedLength||expectedLength>=32768||_wcsicmp(loaded,expected)!=0) {
+                    Unbound::launcherDiagnostic("bootstrap.io.other-helper-loaded",L"A different OpenGate or Unbound helper is already loaded. Restart Resolve before using this installation.",GetCurrentProcessId());break;
+                }
+            }
             if(!helper) {
-                const auto file=helperPath();
-                if(file.empty()) {Unbound::launcherDiagnostic("bootstrap.io.installation-record-missing",{},GetCurrentProcessId());break;}
                 helper=LoadLibraryExW(file.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
                 if(!helper) {Unbound::launcherDiagnostic("bootstrap.io.helper-load-failed",L"Windows error "+std::to_wstring(GetLastError()),GetCurrentProcessId());break;}
             }

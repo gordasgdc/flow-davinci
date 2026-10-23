@@ -396,3 +396,33 @@ notarized package SHA256 6ab744b2d6ab11a78f62d261c80d2a07fd4b4feca611ce61e0f1aef
 No candidate installed, live accepted, merged or published. Resolve can remain
 open for editing while implementation/hidden checks run; notify Jordan before
 any new displayed matrix.
+
+## 2026-10-23: startup adapter implemented; new Mac hidden matrix passes
+
+- Shared IO handshake extracted mechanically in 0770701 from the accepted Mac
+  bootstrap; platform callbacks retain their own scheduling/loading mechanics.
+- Mac log-directory change d90358e: 52/52 hidden suites pass with clean unchanged
+  source, receipt `prototype4-mac-verification/build/macos/verification/
+  d90358ebe7-hidden-20261023T042356Z/receipt.json`. Displayed checks pending Jordan
+  closing Resolve. Package input/signing/transaction fixtures also pass.
+- Windows 3bfb18f adds a Qt-independent IO bootstrap, installed at the SDK's
+  documented Win64 bundle path. It reuses Inno's existing InstallLocation record,
+  existing Windows readiness/version checks and UnboundStart GUI-thread handoff.
+  No login service, background application or competing workspace controller.
+  Startup diagnostics carry module OpenGate.dvcp in the existing event envelope.
+- Minimal Windows IO ABI checked against the locally installed Resolve SDK: all
+  used constants, packed context size/alignment/member offset and property names.
+  The shared Mac wrapper compiles against that SDK. No SDK codecs are distributed.
+- Run 39900270149 is pending. It adds the real IO plugin entry to the assembled
+  displayed flow, including repeated initialization, retained ownership and stack
+  docking. Its fixture creates/removes a disposable Inno record and refuses to
+  overwrite an existing installation. Actual installer execution and Windows
+  Resolve/Studio startup remain unverified. No fixture result implies live acceptance.
+- Public Windows messages/resource product labels now say OpenGate. Compatibility
+  DLL names and inherited Wolfgang Woehl copyright remain unchanged.
+- Jordan has requested publication of v4 and an eventual uninstall/fresh-user
+  tutorial setup. Do not alter the installed revision 3 or isolate settings while
+  Jordan edits. First finish checks and publish the verified download page; notify
+  him before uninstall. Ordinary uninstall preserves profiles; a tutorial profile
+  isolation requires a verified reversible backup, with native Resolve preferences
+  and projects left alone.
