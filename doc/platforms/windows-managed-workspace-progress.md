@@ -293,3 +293,52 @@ is excluded. The individual Mac privacy/ownership inventory fixture passes.
 
 No candidate installation, Mac package replacement, live Windows acceptance,
 publication, main merge or repository migration has occurred.
+
+## Production startup verification (2026-10-22, continued)
+
+`23caf36` completed the clean/unchanged 51-suite hidden matrix in
+`23caf36877-hidden-20261023T033524Z` and the 9-suite serial displayed matrix above.
+The preceding sandbox-limited hidden receipt `23caf36877-hidden-20261023T033255Z`
+is preserved: window-service/pasteboard access failed and Qt reported no screens.
+It is not a behavioral pass. Resolve is free to run during subsequent hidden work.
+
+Windows `923b5f4` run `39895642757` completed all 40 fixture invocations: 39 passed;
+only cramped toolbar overflow failed. Its retained event record reports a 32px
+slot, 26px available and hidden controls. The Mac-specific 12px title gutter was
+subtracting more than Windows' 6px native layout spacing. `4fb8bdd` adapts Windows
+to actual native spacing; Mac remains exactly 12px and keeps its Option label.
+The existing 28px minimum and 32px fixture assertion are unchanged. The focused
+Mac native-entry regression passes. Windows snapping is labeled Alt.
+
+`c832ee6` switches the packaged Windows DLL to the accepted shared PanelControls;
+the Windows service contains only bootstrap/lifetime, diagnostics and command
+integration. There is no second managed controller or a production legacy-mode
+switch. The original controller remains in an unshipped test-only DLL to preserve
+all historical Windows mechanism assertions. The same complete first-open
+fixture also loads the actual shipped DLL through UnboundStart, checks repeated
+bootstrap, Native return and fresh-process restart. Run `39896147572` passes this
+production-DLL flow and 39 other invocations; only the same toolbar overflow
+assertion fails. Evidence for both runs is retained under their run IDs.
+
+The Windows adapter now measures an overlapping native project strip in Qt
+logical coordinates. The OS caption remains excluded. Existing native-owner,
+background hide/recovery, hidden-host and title-access checks pass on Windows.
+An additional production flow models the older Windows outer Inspector frame
+without renaming native widgets; canonical layout identities remain shared.
+These synthetic structures do not verify the actual Windows Resolve hierarchy.
+
+The existing single-use Mac manager-launch request policy was extracted in
+`0cb69c4`, separately from Windows wiring. Windows command generation reuses the
+accepted menu entry with only a directory adaptation. Generated Mac command
+behavior remains unchanged. A new shared filesystem-wake fixture preserves stale
+startup rejection, recent explicit launch, duplicate token rejection and reuse.
+Its sandbox run missed watcher events; the same unchanged fixture passes with
+filesystem notification access. The full Mac service regression is still pending
+for this latest extraction. Latest full matrices must precede candidate readiness.
+
+Windows installer integration now includes 30 command scripts plus OpenGate's
+manager menu entry in Resolve's documented ProgramData workflow root. This needs
+standard installer elevation; no installer has run on Jordan's machine. Settings,
+native preferences and projects are excluded from installation/uninstallation.
+Latest adapter/command/installer changes are implemented but not yet runner-tested
+or packaged. Publication and live acceptance remain pending.

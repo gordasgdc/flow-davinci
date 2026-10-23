@@ -552,7 +552,9 @@ protected:
             if (widget && (widget->objectName() == QLatin1String("UiMainWindow") ||
                 widget->objectName() == QLatin1String("WStackPage_Conform"))) restoreTimer.start();
             else if (widget) for (const auto &panel : panels)
-                if (panel.desired && !panel.pending && !panel.session->active() && widget->objectName() == panel.name)
+                if (panel.desired && !panel.pending && !panel.session->active() &&
+                    (widget->objectName() == panel.name || (!Unbound::nativeWorkspacePanelAlias(panel.name).isEmpty() &&
+                     widget->objectName() == Unbound::nativeWorkspacePanelAlias(panel.name))))
                     restoreTimer.start();
         }
         return false;

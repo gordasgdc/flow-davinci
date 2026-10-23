@@ -28,6 +28,9 @@ int main(int argc,char **argv){
  QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
   auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
+ #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR"))nativePanels["widgetEditInspector"]->setObjectName("frameEditPageInspector");
+ #endif
  auto mixer=new QWidget(nativePanels["frameConformTimelines"]);mixer->setObjectName("frameEditAudioMeter");
  auto mixerLayout=new QVBoxLayout(mixer);auto mixerRow=new QWidget(mixer);mixerRow->setObjectName("frameMixerMeterTitle");auto mixerTools=new QHBoxLayout(mixerRow);
  // Resolve can paint an elided title without storing it in QLabel::text().
@@ -71,6 +74,17 @@ int main(int argc,char **argv){
  if(!binding||!binding->active()){files.setAutoRemove(false);std::fprintf(stderr,"Startup logs retained: %s\n",qPrintable(files.path()));return 1;}
 
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ for(int requestIndex=0;requestIndex<2;++requestIndex) {
+  QSaveFile request(Unbound::diagnosticDirectory()+"/show-controls.request");
+  check(request.open(QIODevice::WriteOnly),"production workflow launch request opens");request.write(QByteArray::number(requestIndex));
+  check(request.commit(),"production workflow launch request publishes atomically");settle(250);
+  check(controls.isVisible(),"production DLL consumes workflow entry and shows its retained manager");
+  check(!QFile::exists(request.fileName()),"production workflow entry is single-use");
+  int managers=0;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundPanelTest")++managers;
+  check(managers==1,"repeated workflow entry never creates another controller");controls.hide();
+ }
+ #endif
  if(qEnvironmentVariableIntValue("OPENGATE_TEST_STACK_DROP")) {
   auto poolPlacement=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(poolPlacement)poolPlacement->click();settle(350);
   Unbound::WorkspaceFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::WorkspaceFloatingHost *>(window);

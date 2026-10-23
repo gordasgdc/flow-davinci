@@ -10,6 +10,7 @@
 #include "../../core/pagepanelinventory.h"
 #include "../../core/workflowcommandbridge.h"
 #include "../../core/workflowcommandresults.h"
+#include "../../core/controllaunchrequests.h"
 namespace {
 // Windows bootstrap/lifetime only. The accepted shared PanelControls owns all
 // layout, panel commands, native return and persistence; no second controller.
@@ -25,13 +26,19 @@ public:
         new Unbound::PagePanelInventory(this,Unbound::PagePanelInventory::Scope::MainWindow);
         Unbound::logEvent("helper.start",{{"backend","shared-managed-workspace"},{"platform","windows"},
             {"live_accepted",false},{"qt",qVersion()}});
+        const auto directory=qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",Unbound::diagnosticDirectory());
+        auto launches=new Unbound::ControlLaunchRequests(this,directory,[this] {
+            if(!controls)return;
+            controls->showNormal();Unbound::keepOnDisplay(controls);controls->raise();controls->activateWindow();
+            Unbound::logEvent("controls.show");
+        });
         controls=new PanelControls;
         Unbound::logEvent("controls.ready",{{"visible",controls->isVisible()},{"startup","managed-workspace"}});
-        const auto directory=qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",Unbound::diagnosticDirectory());
         new Unbound::WorkflowCommandBridge(this,directory,[this](QString id) {
             return controls&&controls->invokeWorkflowCommand(id);
         });
         new Unbound::WorkflowCommandResults(this,directory);
+        launches->consume(true);
         connect(qApp,&QCoreApplication::aboutToQuit,this,[this] {
             delete controls.data();journal->markClean();Unbound::flushDiagnostics();
         });

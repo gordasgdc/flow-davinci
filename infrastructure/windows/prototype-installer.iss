@@ -10,9 +10,11 @@ AppId=OpenGate-CineWaltz-Prototype
 AppName=OpenGate
 AppVersion={#BuildVersion}
 AppPublisher=CineWaltz; based on Unbound by Wolfgang Woehl
-DefaultDirName={localappdata}\Programs\OpenGate
+DefaultDirName={autopf}\OpenGate
 DefaultGroupName=OpenGate
-PrivilegesRequired=lowest
+; Resolve discovers native workflow shortcut targets in the shared ProgramData
+; directory. Standard installer elevation writes only OpenGate-owned files there.
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -30,6 +32,8 @@ Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.dll"; DestDir: "{app}
 Source: "{#SourceRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\infrastructure\windows\prototype-notes.txt"; DestDir: "{app}"; DestName: "README.txt"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\release-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceRoot}\release\win\{#BuildVersion}\workflow-commands\*.py"; DestDir: "{commonappdata}\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins"; Flags: ignoreversion
+Source: "{#SourceRoot}\release\win\{#BuildVersion}\workflow-commands\manifest.json"; DestDir: "{app}"; DestName: "workflow-commands-manifest.json"; Flags: ignoreversion
 Source: "{#SourceRoot}\infrastructure\windows\export-support.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\infrastructure\windows\export-support.cmd"; DestDir: "{app}"; DestName: "Export OpenGate Support Logs.cmd"; Flags: ignoreversion
 [Icons]

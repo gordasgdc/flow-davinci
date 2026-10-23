@@ -95,6 +95,7 @@ try {
     Invoke-Fixture 'python' @((Join-Path $repoRoot 'tests\platforms\macos\test-workflow-command-wrappers.py'), '--windows')
     Invoke-Fixture (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateControlLaunchTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateOwnershipTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @()
@@ -109,6 +110,9 @@ try {
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
+    $env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR='1'
+    try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+    finally { Remove-Item Env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR }
     $legacyFixtureDll = Join-Path $build 'Release\OpenGateLegacyFixtureHelper.dll'
     Invoke-Fixture (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($legacyFixtureDll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
@@ -133,6 +137,9 @@ try {
     try {
         Invoke-Fixture (Join-Path $build 'Release\OpenGateWindowAdapterTests.exe') @()
         Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @('--displayed')
+        $env:OPENGATE_TEST_DISPLAYED_MIXER='1'
+        try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+        finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER }
         Invoke-Fixture $test @('--audition-taskbar-native')
         Invoke-Fixture $test @('--snap-native')
         Invoke-Fixture $test @('--captionless-native')
@@ -145,6 +152,7 @@ try {
     # Preserve binary provenance with the candidate and installed support exporter.
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
     @{ Product='OpenGate'; Version=$version; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')

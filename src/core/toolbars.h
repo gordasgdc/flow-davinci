@@ -8,6 +8,7 @@
 #include <QTimer>
 #include "diagnostics.h"
 #include "panelplacementcontrol.h"
+#include "../platform/workspaceuiconventions.h"
 namespace Unbound {
 inline QWidget *panelSurface(QWidget *page, const QString &name)
 {
@@ -20,6 +21,13 @@ inline QWidget *panelSurface(QWidget *page, const QString &name)
         if (!result && name == QLatin1String("widgetEditSourcePlayer")) {
             result = page->findChild<QStackedWidget *>("stackedEditSourceOfflinePlayers");
             if (!result) result = page->window()->findChild<QStackedWidget *>("stackedEditSourceOfflinePlayers");
+        }
+        if(!result) {
+            const auto alias=nativeWorkspacePanelAlias(name);
+            if(!alias.isEmpty()) {
+                result=page->findChild<QWidget *>(alias);
+                if(!result)result=page->window()->findChild<QWidget *>(alias);
+            }
         }
         return result;
     }

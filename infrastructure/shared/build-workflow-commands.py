@@ -92,4 +92,10 @@ os.replace(temporary,directory/(token+".json"))
     (output/filename).write_text(source)
     manifest.append(dict(command=command,label='OpenGate - '+label,file=filename))
 (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+if args.platform=='windows':
+    # Reuse the accepted menu entry, adapting only its platform log directory.
+    entry=(root/'src/platforms/macos/OpenGate.py').read_text()
+    entry=entry.replace('directory = pathlib.Path.home() / "Library/Logs/Unbound"',
+        'directory = pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path(os.environ.get("LOCALAPPDATA",str(pathlib.Path.home()/"AppData/Local")))/"OpenGate/Logs")))')
+    (output/'OpenGate.py').write_text(entry)
 print('Built',len(manifest),'individual OpenGate workflow command targets:',output)
