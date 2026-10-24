@@ -117,7 +117,7 @@ public:
         }
         refreshMetricScale();
         groupContainer->setVisible(!userHidden);
-        reconcileSourcePlayerPresentation(content,"join-group");
+        reconcileOwnedSourcePresentation("join-group");
         return {};
     }
     void finishGroupTransfer()
@@ -125,7 +125,7 @@ public:
         if (!grouped() || !host) return;
         UiWorkTiming hide("panel.group.hide-old-host",host);
         host->hide();
-        reconcileSourcePlayerPresentation(content,"group-ready");
+        reconcileOwnedSourcePresentation("group-ready");
     }
     void detachFromGroup(bool deferHostShow = false)
     {
@@ -142,7 +142,7 @@ public:
         static_cast<WorkspaceFloatingHost *>(host.data())->setChrome(chrome);
         setFloatingGeometry(detachedGeometry);
         if (!deferHostShow) host->setVisible(!userHidden && originalPage && originalPage->isVisible());
-        reconcileSourcePlayerPresentation(content,"leave-group");
+        reconcileOwnedSourcePresentation("leave-group");
     }
     QWidget *expandedWindow() const { return expandedHost; }
     bool beginGroupedExpansion()
@@ -227,7 +227,7 @@ public:
                 }
             }
         }
-        if (!hide) reconcileSourcePlayerPresentation(content,"door");
+        if (!hide) reconcileOwnedSourcePresentation("door");
         auto actualSurface=window(); auto actualHost=actualSurface ? actualSurface->window() : nullptr;
         logEvent(hide ? QStringLiteral("panel.hide") : QStringLiteral("panel.show"), {{"widget", widgetState(host)},
             {"placement",panelPlacementName(placement())},{"stage","session-state"},{"requested_hidden",userHidden},
@@ -557,6 +557,19 @@ protected:
         return false;
     }
 private:
+    void reconcileOwnedSourcePresentation(const QString &boundary)
+    {
+        // A native callback can explicitly hide the outer Source stack while
+        // its layout is being transferred (recovery is intentionally suspended
+        // then). Showing the destination cell does not clear that hidden bit.
+        // Repair only our leased content at completed ownership/door boundaries;
+        // never reveal a hidden host, select a tab or borrow Cinema content.
+        auto surface=expandedHost ? expandedHost.data() : window();
+        if (!userHidden && content && surface && surface->isAncestorOf(content) &&
+            content->objectName()=="stackedEditSourceOfflinePlayers" && !visibleCinemaViewer())
+            content->show();
+        reconcileSourcePlayerPresentation(content,boundary);
+    }
     bool nativeOwner(QWidget *parent) const
     {
         return parent && originalMain && parent->window() == originalMain;

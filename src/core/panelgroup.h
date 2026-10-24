@@ -34,9 +34,9 @@ public:
     bool active() const { return host; }
     QWidget *window() const { return host; }
     bool windowHidden() const { return host && host->property("unboundGroupDoorHidden").toBool(); }
-    void setWindowHidden(bool hidden) {
+    void setWindowHidden(bool hidden,bool activate=true) {
         if (!host) return;host->setProperty("unboundGroupDoorHidden",hidden);refresh();
-        if (!hidden) { host->raise();host->activateWindow(); }
+        if (!hidden && activate) { host->raise();host->activateWindow(); }
         report("group.window.visibility");
     }
     bool contains(ManagedPanelSession *session) const { return host && members.contains(session); }

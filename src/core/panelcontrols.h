@@ -5,6 +5,8 @@
 #include <QApplication>
 #include <QAction>
 #include <QAbstractButton>
+#include <QAbstractItemView>
+#include <QMouseEvent>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLabel>
@@ -535,6 +537,7 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (quitting) return false;
+        if (event->type()==QEvent::MouseButtonDblClick) queueSourceRecall(object,static_cast<QMouseEvent *>(event));
         if (expansionController->index() >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
@@ -560,6 +563,32 @@ protected:
         return false;
     }
 private:
+    void queueSourceRecall(QObject *object,QMouseEvent *event) {
+        if (layoutMode!="managed" || restoringNative || workspaceRestore->savingBlocked() ||
+            event->button()!=Qt::LeftButton || Unbound::visibleCinemaViewer() || !page() || !page()->isVisible()) return;
+        auto viewport=qobject_cast<QWidget *>(object);
+        auto view=viewport ? qobject_cast<QAbstractItemView *>(viewport->parentWidget()) : nullptr;
+        if (!view || view->viewport()!=viewport || view->objectName()!="mediaPoolClipView" ||
+            !view->indexAt(event->pos()).isValid()) return;
+        int source=-1;bool ownedPool=false;
+        for(int i=0;i<panels.size();++i) {
+            auto session=panels[i].session;
+            if(panels[i].name=="widgetEditSourcePlayer" && session->active())source=i;
+            if(panels[i].name=="frameEditPageMediaPool" && session->active() && session->window())
+                ownedPool=session->window()->isAncestorOf(view);
+        }
+        if(source<0 || !ownedPool || panelShown(source))return;
+        const auto version=bulkVersion;QPointer<QWidget> origin=page();
+        // Let Resolve receive the original event. This only recalls the retained
+        // destination after that dispatch; it never simulates a loading command.
+        QTimer::singleShot(0,this,[this,source,version,origin] {
+            if(quitting || restoringNative || version!=bulkVersion || !origin || origin!=page() ||
+                !origin->isVisible() || Unbound::visibleCinemaViewer() || layoutMode!="managed" || workspaceRestore->savingBlocked() ||
+                !panels[source].session->active() || panelShown(source))return;
+            showPanel(source,true,false);save();
+            Unbound::logEvent("source.navigation.recall",{{"reason","media-pool-double-click"}});
+        });
+    }
     int hoveredExpansionTarget() const {
         if (expansionController->index()>=0) return expansionController->index();
         QList<Unbound::PanelHoverSurface> surfaces;
@@ -567,10 +596,10 @@ private:
             surfaces.append({i,panels[i].name,panels[i].session->active() ? panels[i].session->window() : Unbound::panelSurface(page(),panels[i].name)});
         return Unbound::panelHoverTarget(QApplication::widgetAt(QCursor::pos()),surfaces);
     }
-    void showPanel(int i,bool visible)
+    void showPanel(int i,bool visible,bool activate=true)
     {
         if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){workspaceHeader->setShown(visible);return;}
-        if (visible) if (auto group=groupFor(i)) if (group->windowHidden()) group->setWindowHidden(false);
+        if (visible) if (auto group=groupFor(i)) if (group->windowHidden()) group->setWindowHidden(false,activate);
         if (!panels[i].session->active()) {
             auto parked=Unbound::panelSurface(page(),panels[i].name);
             if(visible && nativeWorkspace->active() && Unbound::NativeRootLayout::ownsParkedWidget(parked,page())) {
@@ -602,7 +631,7 @@ private:
         }
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
         else {
-            panels[i].session->setHiddenByUser(!visible);
+            panels[i].session->setHiddenByUser(!visible,activate);
             if (auto group=groupFor(i)) group->syncVisibility(visible ? panels[i].session : nullptr);
         }
     }

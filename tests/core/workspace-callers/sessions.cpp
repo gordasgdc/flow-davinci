@@ -8,6 +8,17 @@
 #include "../../../src/core/panellayoutsurface.h"
 #include "../../../src/core/panellayoutsnapshot.h"
 
+class NativeSourceStack : public QStackedWidget {
+public:
+    using QStackedWidget::QStackedWidget;
+    bool hideDuringTransfer=false;
+    bool event(QEvent *event) override {
+        const bool result=QStackedWidget::event(event);
+        if (hideDuringTransfer && event->type()==QEvent::ParentChange) hide();
+        return result;
+    }
+};
+
 int main(int argc,char **argv) {
     QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files;
     const bool displayed=app.arguments().contains("--displayed");
@@ -59,5 +70,23 @@ int main(int argc,char **argv) {
     check(page->layout()==original&&source->parentWidget()==page&&mixer->parentWidget()==page,"Native return restores exact original widget/layout ownership");
     check(source->minimumSize()==sourceMinimum&&mixer->minimumSize()==mixerMinimum&&source->sizePolicy()==policy&&main.geometry()==mainFrame,"constraints and primary frame survive the assembled session sequence");
     source->click();check(edits==2,"native signal still works after ownership return");
+    {
+        auto stack=new NativeSourceStack(page);stack->setObjectName("stackedEditSourceOfflinePlayers");
+        auto picture=new QPushButton("Native selected page");picture->setObjectName("widgetEditSourcePlayer");
+        auto offline=new QPushButton("Offline");stack->addWidget(picture);stack->addWidget(offline);original->addWidget(stack);stack->show();turn();
+        ManagedPanelSession viewer;check(viewer.undock(stack,page,"Source Monitor").isEmpty(),"real Source stack is leased");
+        auto host=viewer.window();
+        WorkspaceFloatingHost destination(&main);auto row=new QVBoxLayout(&destination);auto cell=new QWidget(&destination);row->addWidget(cell);destination.show();turn();
+        stack->hideDuringTransfer=true;
+        check(viewer.attachToGroup(cell,true).isEmpty(),"Source transfer with native hide succeeds");viewer.finishGroupTransfer();turn();
+        check(stack->parentWidget()==cell&&stack->isVisible()&&picture->isVisible(),"native-hidden Source stack is visible in its existing visible destination cell");
+        check(stack->currentWidget()==picture&&offline->isHidden(),"transfer preserves the native selected page");
+        viewer.setHiddenByUser(true,false);turn();check(!stack->isVisible(),"repair respects explicit hidden group cell");
+        viewer.setHiddenByUser(false,false);turn();
+        viewer.detachFromGroup();turn();
+        check(viewer.window()==host&&stack->isVisible()&&picture->isVisible(),"Source survives native hide while returning to its retained float");
+        stack->hideDuringTransfer=false;
+        check(viewer.dock().isEmpty()&&stack->parentWidget()==page,"Source returns to exact native owner after repaired transfers");
+    }
     std::printf("shared managed-session failures=%d\n",failures);return failures?1:0;
 }
