@@ -1,3 +1,18 @@
+## Bounded loading experiment — 2026-10-24
+
+Current installed payload remains 2642b15: all 54 files verified read-only.
+Resolve is closed; latest session ad6840d9 records clean shutdown. Historical
+installation claims below are superseded by these receipts and the current
+handoff. Existing same-build native/floating/embedded controls are not repeated.
+
+Isolated experiment/native-stash-visibility changes only the parked native tree's
+visibility under an explicit launch flag, clipping it out of the unchanged full
+managed arrangement. See native-stash-visibility-experiment-20261024.md for executed
+paths, falsification, failed-patch differences and acceptance gaps. No loading
+repair or architectural constraint is established. Hidden Source reveal, native
+picture acceptance and blink remain open. Find/Match Frame remain separate.
+No installation, live input, Resolve termination, merge, push or publication.
+
 ## Independent Claude review reconciled — 2026-10-23
 
 Archived the supplied read-only report and its SHA-256 under

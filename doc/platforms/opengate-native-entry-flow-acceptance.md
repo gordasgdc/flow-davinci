@@ -18,8 +18,12 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
 5. A persistent title drag, detach or grouping action in Native enters OpenGate
    and completes the gesture without loading Resolve Layout or resetting unrelated
    panel positions. Native-origin changes form an unnamed working arrangement.
-6. The permanent main-window top strip holds window controls, project title and
-   Panels even when Workspace Toolbar is hidden. Floating panel titles stay panel
+6. In OpenGate mode, the permanent main-window top strip holds window controls,
+   project title and Panels even when Workspace Toolbar is hidden. In Original
+   Resolve UI, hide the OpenGate Panels title accessory, including during temporary
+   Native maximize; restore it on OpenGate re-entry. This is Jordan's explicit
+   2026-10-23 clarification following its overlap with a native Inspector button.
+   Floating panel titles stay panel
    titles; neither Panels nor the project label migrates to Inspector. One primary
    workspace owns the existing native-style Workspace Toolbar above its panel
    area and complete native Page Navigation below it, including Home and Settings.
@@ -31,6 +35,12 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
    retain their behavior. Remaining docked content reclaims vacated space; native
    visibility updates cannot reopen empty leased slots. Detach does not shrink
    the user's primary window. Native return restores exact owners and constraints.
+   In OpenGate mode, X on a floating panel or group hides its retained placement;
+   Panels or its shortcut recalls the same host, geometry and group. Closing must
+   not dock into a native slot. Docked hide/show keeps its existing behavior;
+   dragging or an explicit placement control changes docking. This is Jordan's
+   agreed 2026-10-23 clarification and supersedes earlier close-to-dock policy for
+   OpenGate mode. Original Resolve UI retains its existing close behavior.
 9. Panels is a flat current-page inventory including Workspace Toolbar and Page
    Navigation. Optional parked panels must be reachable. No All Panels, Edit,
    Workspace or Floating Windows inventory subtrees. Header controls cannot overlap
@@ -39,6 +49,13 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
    remain one arranged element; use overflow when narrow. Mixer keeps its own
    existing placement control/title drag even while nested in Timeline. Each panel
    has one readable title; no internal widget identifiers or duplicate title rows.
+   Explicit navigation commands reveal their destination using this same panel
+   visibility model: Find in Media Pool reveals Media Pool, Match Frame reveals
+   Source, and Reverse Match Frame reveals Timeline. Retain floating geometry and
+   group membership; show a hidden group and select every nested tab on the path
+   to the destination. Resolve executes the native command once; OpenGate never
+   replays it. Ordinary background updates do not reveal panels. Stabilize is an
+   operation, not navigation: keep Inspector hidden and the selected tab unchanged.
 10. Native painting must remain correct throughout resize, stacked timelines,
     docking and maximize. A blank timeline until a width threshold is a live bug;
     dummy-widget fixtures cannot prove this fixed. Preserve native minima or

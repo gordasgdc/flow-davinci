@@ -14,6 +14,42 @@ int main(int argc,char **argv) {
     qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());int failures=0;
     auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
     using namespace Unbound;
+    // Test the experimental variable and its reversibility, not native clip
+    // loading: QPushButton signals cannot stand in for Resolve's player.
+    for (int mode=0;mode<3;++mode) {
+        if (mode==0) qunsetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH");
+        else qputenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH","1");
+        QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(900,600);
+        auto outer=new QVBoxLayout(&main);auto page=new QWidget(&main);outer->addWidget(page);
+        page->setObjectName(mode==2?"WStackPage_Color":"WStackPage_Conform");
+        auto native=new QVBoxLayout(page);auto controller=new QWidget(page);native->addWidget(controller);
+        controller->setStyleSheet("background: rgb(255,0,0)");
+        auto children=new QVBoxLayout(controller);auto visible=new QPushButton("native",controller);
+        auto hidden=new QPushButton("hidden native",controller);children->addWidget(visible);children->addWidget(hidden);hidden->hide();
+        main.show();QApplication::processEvents();
+        auto managed=new QWidget(page);managed->setStyleSheet("background: rgb(10,20,30)");
+        NativeRootLayout lease;check(lease.mount(page,managed).isEmpty(),"experiment root mounts");
+        QApplication::processEvents();const auto geometry=managed->geometry();const auto mainGeometry=main.geometry();
+        auto focus=QApplication::focusWidget();
+        const auto pixels=main.grab().toImage();
+        auto stash=main.findChild<QWidget *>("unboundNativeLayoutStash");
+        lease.enableVisibilityExperiment();QApplication::processEvents();
+        const bool enabled=mode==1;
+        check(stash&&stash->isVisible()==enabled&&visible->isVisible()==enabled,"only opted-in Edit parked ancestry becomes effectively visible");
+        check(hidden->isHidden(),"experiment does not force explicitly hidden native children open");
+        check(managed->geometry()==geometry&&main.geometry()==mainGeometry&&QApplication::focusWidget()==focus,"experiment leaves managed geometry and focus unchanged");
+        check(main.grab().toImage()==pixels,"clipped parked widgets do not change rendered workspace pixels");
+        if(enabled) {
+            check(!stash->mask().isEmpty()&&!stash->mask().intersects(stash->rect()),"shown stash has no painted footprint");
+            check(stash->testAttribute(Qt::WA_TransparentForMouseEvents),"shown stash cannot intercept pointer input");
+            page->hide();QApplication::processEvents();check(!stash->isVisible(),"parked experiment follows page departure");
+            page->show();QApplication::processEvents();check(stash->isVisible(),"parked experiment follows page return");
+        }
+        check(lease.restore()&&page->layout()==native&&controller->parentWidget()==page,"experiment Native return restores exact ownership");
+        QApplication::processEvents();check(visible->isVisible()&&hidden->isHidden(),"experiment Native return preserves native child visibility");
+        delete managed;
+    }
+    qunsetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH");
     for(int kind=0;kind<4;++kind) {
         QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(1100,700);auto outer=new QVBoxLayout(&main);
         auto page=new QWidget(&main);outer->addWidget(page);auto native=new QVBoxLayout(page);

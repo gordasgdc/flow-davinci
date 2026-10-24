@@ -136,6 +136,7 @@ public:
         });
         if (!scoped && cells.contains(nativeLeaf())) error=lease.retainNativeRemainder(cells.value(nativeLeaf()));
         if (!error.isEmpty()) { restoreOwned(false); return error; }
+        if (!scoped && !cells.contains(nativeLeaf())) lease.enableVisibilityExperiment();
         for (auto it=panels.begin();it!=panels.end();++it) {
             auto session=it.value(); error=session->attachToGroup(cells.value(it.key()),true);
             if (!error.isEmpty()) { restoreOwned(false); return error; }

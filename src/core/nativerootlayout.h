@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QPointer>
 #include <QVBoxLayout>
+#include <QEvent>
+#include <QRegion>
 #include "diagnostics.h"
 #include "../platform/workspacewindowintegration.h"
 namespace Unbound {
@@ -87,6 +89,7 @@ public:
         if (!active() || remainder || !container || container->layout() ||
             !contains(page,container) || container==surface || stash->isAncestorOf(container))
             return QStringLiteral("The remaining native workspace cannot be placed here.");
+        stopVisibilityExperiment();
         remainder=container;
         auto layout=new QVBoxLayout(container); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
         layout->addWidget(stash);
@@ -98,12 +101,31 @@ public:
         logEvent("workspace.native-root.remainder",{{"page",page->objectName()},{"unmanaged_controls",visibility.size()}});
         return {};
     }
+    // Causal experiment only: change effective visibility of the parked tree,
+    // without giving it a layout leaf, pixels or pointer targets. Never force
+    // individually hidden native children open. No input/command is replayed.
+    void enableVisibilityExperiment() {
+        if (!active() || remainder || visibleStashExperiment ||
+            page->objectName()!="WStackPage_Conform" ||
+            qgetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH")!="1") return;
+        visibleStashExperiment=true;
+        stash->setAttribute(Qt::WA_TransparentForMouseEvents,true);
+        stash->setAttribute(Qt::WA_ShowWithoutActivating,true);
+        // An empty mask means 'no mask' in Qt. Use a nonempty region wholly
+        // outside the widget instead, so even native background stays clipped.
+        stash->setMask(QRegion(-1,-1,1,1));
+        page->installEventFilter(this);
+        stash->setVisible(page->isVisible());
+        logEvent("workspace.native-root.visibility-experiment",{{"enabled",true},
+            {"stash_visible",stash->isVisible()},{"mask_intersects_rect",stash->mask().intersects(stash->rect())}});
+    }
     bool restore() {
         if (!page) return true;
         if (!nativeLayout || !stash || stash->layout()!=nativeLayout || page->layout()!=customLayout) {
             logEvent("workspace.native-root.restore-rejected",{{"reason","native-or-custom-layout-replaced"}});
             return false;
         }
+        stopVisibilityExperiment();
         // Park our tree before returning the original layout. Never delete a
         // native control merely because its presentation container is retiring.
         auto parking=new QWidget(main); parking->hide(); parking->setLayout(customLayout);
@@ -145,8 +167,28 @@ public:
         logEvent("workspace.native-root.restore",{{"page",page->objectName()},{"native_layout_restored",true}});
         clear(); return true;
     }
+protected:
+    bool eventFilter(QObject *object,QEvent *event) override {
+        if (visibleStashExperiment && object==page && stash) {
+            if (event->type()==QEvent::Hide) stash->hide();
+            else if (event->type()==QEvent::Show) stash->show();
+        }
+        return false;
+    }
 private:
+    void stopVisibilityExperiment() {
+        if (!visibleStashExperiment) return;
+        if (page) page->removeEventFilter(this);
+        if (stash) {
+            stash->hide(); stash->clearMask();
+            stash->setAttribute(Qt::WA_TransparentForMouseEvents,false);
+            stash->setAttribute(Qt::WA_ShowWithoutActivating,false);
+        }
+        visibleStashExperiment=false;
+    }
     void clear() {
+        if (page && visibleStashExperiment) page->removeEventFilter(this);
+        visibleStashExperiment=false;
         disconnect(pageDestroyed); pageDestroyed={};
         page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; remainder=nullptr; nativeLayout=nullptr; customLayout=nullptr;
         visibility.clear(); baselineVisibility.clear();
@@ -158,5 +200,6 @@ private:
     QMetaObject::Connection pageDestroyed;
     QSize minimum; QSizePolicy policy;
     QVariant rootProperty;
+    bool visibleStashExperiment=false;
 };
 }
