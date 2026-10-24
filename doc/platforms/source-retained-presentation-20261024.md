@@ -1,8 +1,34 @@
 # Source presentation follow-up — October 24
 
-Status: uninstalled candidate based on 435aa40. No live acceptance, no merge.
+## GitHub checkpoint status
+
+Runtime source: ee078c22717c018cb7a81112e31b7df131b8b127, based on 435aa40.
 Worktree: source-retained-presentation; branch fix/source-retained-presentation.
-Installed experiment remains 435aa40; Resolve session fa277ce7, PID 8239.
+This is a recovery checkpoint, not a release or a main-merge candidate.
+
+The October 24 restoration receipt at 23:26 UTC records installation of ee078c2,
+54 matching payload files and 12 unchanged protected settings/preferences files.
+The receipt is local at build/macos/restore-ee078c2/receipt.json. It records runtime
+identity verification for that launch, not the current state of a later process.
+The full 52 hidden fixture suites passed before packaging; fixtures do not prove
+native clip loading or rendering. Jordan reported successful loading in an
+experiment-enabled session, with floating-window and drag problems remaining.
+Other runs reported double-click, Match Frame, reveal, blinking and startup issues.
+No complete live acceptance is claimed.
+
+The loading experiment still requires OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH=1.
+OPENGATE_TRACE_NATIVE_LOADING=1 enables additional tracing. A normal launch does
+not automatically enable the visibility experiment. This remains unfinished
+everyday behavior, not a requirement users should have to manage.
+
+The code assessment also found that ordinary floating Close handlers still dock
+panels or dissolve groups, contrary to the agreed hide-and-recall contract; tests
+currently encode that old behavior. Follow the
+[repair checklist](opengate-repair-checklist-20261024.md) for the next bounded repair.
+
+The sections below retain the original preinstallation investigation and fixture
+evidence. References to the installed experiment there mean the historical
+435aa40 session fa277ce7, PID 8239, not the later restored ee078c2 installation.
 
 ## Evidence and executed paths
 
@@ -77,6 +103,7 @@ Stabilize and submenu implementations are unchanged, not newly live accepted.
 Startup screenshot restored the prior native-remainder comparison checkpoint;
 it is not evidence of a clean first launch or failure restoring a saved full layout.
 
-No candidate installation or new live test is claimed. The product is not ready
+At the time of the investigation above, no candidate installation or new live test
+was claimed; the checkpoint status above records subsequent installation. The product is not ready
 for main: actual A/B pictures with hidden/tabbed/floating Source, absence of blink
 and layout movement, Match Frame/Find, and persistence still require acceptance.
