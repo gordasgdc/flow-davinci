@@ -34,5 +34,5 @@ testdir="$(mktemp -d "$root/build/macos/launcher-test.XXXXXX")"
 UNBOUND_LAUNCH_DIRECTORY="$testdir" "$out/MacOS/OpenGate" --self-test
 mkdir -p "$testdir/workflow-home"
 HOME="$testdir/workflow-home" python3 "$root/src/platforms/macos/OpenGate.py"
-test -s "$testdir/workflow-home/Library/Logs/Unbound/show-controls.request"
+test -s "$testdir/workflow-home/Library/Logs/OpenGate/show-controls.request"
 echo 'PASS: Workflow Integration launch request'

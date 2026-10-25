@@ -15,12 +15,13 @@
 #include "workflowcommandbridge.h"
 #include "workflowcommandresults.h"
 #include "timelinetabscrolling.h"
+#include "../../core/controllaunchrequests.h"
 
 namespace Unbound {
 class ControlService : public QObject
 {
 public:
-    explicit ControlService(QObject *parent) : QObject(parent), watcher(this)
+    explicit ControlService(QObject *parent) : QObject(parent)
     {
         setObjectName(QStringLiteral("unboundControlService"));
         journal=new CrashSession(this);
@@ -35,10 +36,8 @@ public:
         new BoundaryDiagnostics(this);
         new PagePanelInventory(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
-            QDir::homePath() + QStringLiteral("/Library/Logs/Unbound"));
-        QDir().mkpath(directory);
-        watcher.addPath(directory);
-        connect(&watcher, &QFileSystemWatcher::directoryChanged, this, [this] { consumeLaunchRequest(false); });
+            QDir::homePath() + QStringLiteral("/Library/Logs/OpenGate"));
+        launches=new ControlLaunchRequests(this,directory,[this]{showControls();});
         #ifdef UNBOUND_FEATURE_MANIFEST
         logEvent("helper.feature-manifest", {{"manifest", QJsonDocument::fromJson(QByteArray(UNBOUND_FEATURE_MANIFEST)).object()}});
 #endif
@@ -51,7 +50,7 @@ public:
             return controls && controls->invokeWorkflowCommand(id);
         });
         new WorkflowCommandResults(this,directory);
-        consumeLaunchRequest(true);
+        launches->consume(true);
         connect(qApp,&QCoreApplication::aboutToQuit,this,[this] { journal->markClean(); });
     }
     ~ControlService() override { delete controls.data(); }
@@ -65,27 +64,9 @@ public:
         logEvent(QStringLiteral("controls.show"));
     }
 private:
-    void consumeLaunchRequest(bool startup)
-    {
-        QFile request(directory+QStringLiteral("/show-controls.request"));
-        if (!request.open(QIODevice::ReadOnly)) return;
-        const auto age=QFileInfo(request).lastModified().msecsTo(QDateTime::currentDateTimeUtc());
-        const auto token=request.readAll(); request.close();
-        // Consume the single-use request, including stale files from an older
-        // Resolve session. A recent explicit launch may precede helper startup.
-        request.remove();
-        if (token.isEmpty() || token==lastRequest) return;
-        lastRequest=token;
-        if (startup && (age<0 || age>15000)) {
-            logEvent("controls.launch.stale",{{"age_ms",double(age)}}); return;
-        }
-        logEvent("controls.launch.request",{{"request",QString::fromUtf8(token)},{"startup",startup}});
-        showControls();
-    }
     CrashSession *journal=nullptr;
-    QFileSystemWatcher watcher;
+    ControlLaunchRequests *launches=nullptr;
     QPointer<PanelControls> controls;
     QString directory;
-    QByteArray lastRequest;
 };
 }

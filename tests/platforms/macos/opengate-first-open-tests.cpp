@@ -1,16 +1,24 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QMenuBar>
 #include <QProcess>
 #include <QInputDialog>
+#include <QListWidget>
 #include <QTemporaryDir>
 #include <QThread>
 #include <cstdio>
 #include "panelcontrols.h"
+#include "../workspacetestactivation.h"
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+#include "../windows/windowing/managedbootstrap.h"
+#endif
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
+#include "../../core/workspace-callers/retainedclosechecks.h"
+#include "../../core/workspace-callers/persistencesnapshots.h"
 int main(int argc,char **argv){
- QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files;
+ QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
@@ -23,6 +31,10 @@ int main(int argc,char **argv){
  QHash<QString,QWidget *> nativePanels;for(const auto &id:{"frameConformTimelines","widgetEditSourcePlayer","widgetEditTimelinePlayer","frameEditPageMediaPool","frameEditPageEditIndex","widgetEditInspector","frameEditPageMetadata"}){
   auto panel=new QWidget(page);panel->setObjectName(id);auto layout=new QVBoxLayout(panel);layout->addWidget(new QPushButton(id,panel));native->addWidget(panel);nativePanels[id]=panel;if(QString(id)=="frameEditPageMetadata")panel->hide();
  }
+ #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR"))nativePanels["widgetEditInspector"]->setObjectName("frameEditPageInspector");
+ #endif
+ auto clips=new QListWidget;clips->setObjectName("mediaPoolClipView");clips->addItems({"Clip A","Clip B"});nativePanels["frameEditPageMediaPool"]->layout()->addWidget(clips);
  auto mixer=new QWidget(nativePanels["frameConformTimelines"]);mixer->setObjectName("frameEditAudioMeter");
  auto mixerLayout=new QVBoxLayout(mixer);auto mixerRow=new QWidget(mixer);mixerRow->setObjectName("frameMixerMeterTitle");auto mixerTools=new QHBoxLayout(mixerRow);
  // Resolve can paint an elided title without storing it in QLabel::text().
@@ -47,20 +59,48 @@ int main(int argc,char **argv){
  QWidget projectStrip(&main);projectStrip.setObjectName("UiProjectsMainBarImp");
  projectStrip.setGeometry(0,page->mapTo(&main,QPoint()).y(),100,32);projectStrip.show();
  {
- PanelControls controls;settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ ManagedBootstrapFixture bootstrap(app.arguments().last());
+ check(bootstrap.controller()!=nullptr,qPrintable(bootstrap.error));
+ if(!bootstrap.controller())return 1;
+ auto &controls=*bootstrap.controller();
+#else
+ PanelControls controls;
+#endif
+ settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_RETAINED_CLOSE")) {
+  checkRetainedClose(controls,main,*pageStack,page,fusion,check);
+  std::printf("retained close failures=%d\n",failures);return failures?1:0;
+ }
+ recordPersistenceSnapshot(restart?"restart":"first-open");
  if(restart){
   check(binding&&binding->active()&&!binding->contains("frameEditPageMediaPool"),"restart retains the unsaved detached panel instead of reloading Resolve Layout");
   auto header=component<Unbound::PinnedWorkspaceHeader>(&controls);check(header&&!header->shown(),"restart retains the unsaved hidden header");
   return failures?1:0;
  }
  check(binding&&binding->active(),"first open mounts existing panel tree in the primary workspace");
+ if(qgetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH")=="1") {
+  auto stash=main.findChild<QWidget *>("unboundNativeLayoutStash");
+  check(stash&&stash->isVisible()&&!stash->mask().intersects(stash->rect()),"assembled full workspace enables the clipped native visibility experiment");
+ }
  check(indexActivations==1,"startup acquires native Index once without a repeated toggle loop");
  if(!binding||!binding->active()){files.setAutoRemove(false);std::fprintf(stderr,"Startup logs retained: %s\n",qPrintable(files.path()));return 1;}
 
  check(!controls.isVisible(),"first open requires no Panel Manager");
+ #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ for(int requestIndex=0;requestIndex<2;++requestIndex) {
+  QSaveFile request(Unbound::diagnosticDirectory()+"/show-controls.request");
+  check(request.open(QIODevice::WriteOnly),"production workflow launch request opens");request.write(QByteArray::number(requestIndex));
+  check(request.commit(),"production workflow launch request publishes atomically");settle(250);
+  check(controls.isVisible(),"production DLL consumes workflow entry and shows its retained manager");
+  check(!QFile::exists(request.fileName()),"production workflow entry is single-use");
+  int managers=0;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundPanelTest")++managers;
+  check(managers==1,"repeated workflow entry never creates another controller");controls.hide();
+ }
+ #endif
  if(qEnvironmentVariableIntValue("OPENGATE_TEST_STACK_DROP")) {
   auto poolPlacement=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(poolPlacement)poolPlacement->click();settle(350);
-  Unbound::MacFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::MacFloatingHost *>(window);
+  Unbound::WorkspaceFloatingHost *floatingPool=nullptr;for(auto window:QApplication::topLevelWidgets())if(window->objectName()=="unboundFloating_frameEditPageMediaPool")floatingPool=dynamic_cast<Unbound::WorkspaceFloatingHost *>(window);
   auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QWidget *column=nullptr;
   for(auto ancestor=sourceCell?sourceCell->parentWidget():nullptr;ancestor&&ancestor!=&main;ancestor=ancestor->parentWidget())
    if(auto splitter=qobject_cast<QSplitter *>(ancestor))if(splitter->orientation()==Qt::Vertical&&!Unbound::dockSectionKey(splitter).isEmpty()){column=splitter;break;}
@@ -79,6 +119,38 @@ int main(int argc,char **argv){
   }
   auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
   check(binding->active()&&binding->contains("frameEditPageMediaPool"),"ordinary workspace selection restores the built-in after the stack drop");
+ }
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_SOURCE_RECALL")) {
+  auto dispatch=[&](QPoint point,Qt::MouseButton button=Qt::LeftButton){
+   QMouseEvent event(QEvent::MouseButtonDblClick,point,clips->viewport()->mapToGlobal(point),button,button,Qt::NoModifier);
+   QApplication::sendEvent(clips->viewport(),&event);settle(100);
+  };
+  auto cell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
+  QPointer<QWidget> retained=cell;const QJsonValue tree=binding->saved()["tree"];
+  binding->setVisible("widgetEditSourcePlayer",false);settle(100);
+  dispatch(QPoint(-2,-2));check(!binding->selected("widgetEditSourcePlayer"),"blank Media Pool input does not recall Source");
+  auto point=clips->visualItemRect(clips->item(0)).center();
+  dispatch(point,Qt::RightButton);check(!binding->selected("widgetEditSourcePlayer"),"right double-click does not recall Source");
+  dispatch(point);
+  check(binding->selected("widgetEditSourcePlayer")&&retained==main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer"),"clip double-click recalls the existing hidden Source cell");
+  check(tree==binding->saved()["tree"],"Source recall preserves the managed tree");
+  auto placement=controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer");if(placement)placement->click();settle(300);
+  Unbound::ManagedPanelSession *source=nullptr;
+  for(auto child:controls.children())if(auto session=dynamic_cast<Unbound::ManagedPanelSession *>(child))
+   if(session->active()&&session->window()&&session->window()->objectName()=="unboundFloating_widgetEditSourcePlayer")source=session;
+  check(source,"Source recall fixture finds retained floating session");
+  if(source){auto host=source->window();auto geometry=host->geometry();source->setHiddenByUser(true);settle(100);dispatch(point);
+   check(source->window()==host&&host->isVisible()&&host->geometry()==geometry,"clip double-click recalls floating Source without replacing or moving it");}
+  check(binding->dockSelection(page,"widgetEditSourcePlayer",nullptr,"widgetEditTimelinePlayer",Qt::Orientation(0),false).isEmpty(),"fixture places Source in a retained viewer tab group");settle(200);
+  binding->setVisible("widgetEditTimelinePlayer",true);settle(100);
+  auto tabCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QPointer<QWidget> tabOwner=tabCell?tabCell->parentWidget():nullptr;
+  auto program=nativePanels["widgetEditTimelinePlayer"];auto programFrame=program->geometry();
+  check(!binding->selected("widgetEditSourcePlayer"),"Source starts behind Program tab");dispatch(point);
+  check(binding->selected("widgetEditSourcePlayer")&&tabCell&&tabCell->parentWidget()==tabOwner,"clip double-click selects the existing Source tab");
+  check(program->geometry()==programFrame,"tab recall retains the Program viewer geometry");
+  const auto recalledPlan=binding->saved();dispatch(point);
+  check(binding->saved()==recalledPlan,"repeated double-click on already selected Source does not change layout state");
+  auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
  }
  auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");
  auto timelineHeader=timelineCell?timelineCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
@@ -131,7 +203,7 @@ int main(int argc,char **argv){
  check(mixerTitle->window()==mixerHost&&mixerHost->geometry()==mixerFrame,"Mixer maximize restores exact floating placement");
 
  auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
- auto movedMixer=dynamic_cast<Unbound::MacFloatingHost *>(mixerTitle->window());
+ auto movedMixer=dynamic_cast<Unbound::WorkspaceFloatingHost *>(mixerTitle->window());
  check(sourceCell&&movedMixer&&movedMixer->attachRequested,"Mixer can mount beside another workspace panel");
  if(sourceCell&&movedMixer&&movedMixer->attachRequested)movedMixer->attachRequested(sourceCell,Qt::LeftEdge);settle(350);
  auto mixerCell=main.findChild<QWidget *>("unboundGroupCell_frameEditAudioMeter");
@@ -139,8 +211,14 @@ int main(int argc,char **argv){
  check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"Mixer mounts in the visible workspace outside Timeline");
  check(mountedTitle&&mountedTitle->isVisible()&&mountedTitle->text()=="Mixer","repositioned Mixer has the existing readable panel title");
  if(displayed) {
-  main.raise();main.activateWindow();QApplication::setActiveWindow(&main);settle(150);
-  const auto cursor=QCursor::pos();QCursor::setPos(mixerTitle->mapToGlobal(QPoint(25,15)));settle(100);
+  // This command requires a foreground workspace. Qt-only activation can be
+  // cleared by queued Cocoa activation events (retained run 20261023T044902Z
+  // reports no-active-window). Establish the real native focus as in the
+  // assembled docking flow above; do not change command or outcome assertions.
+  Unbound::activateNativeWindowForTest(&main);settle(150);
+  const auto cursor=QCursor::pos();const auto requested=mixerTitle->mapToGlobal(QPoint(25,15));QCursor::setPos(requested);settle(100);
+  std::fprintf(stderr,"MIXER focus=%s requested=%d,%d actual=%d,%d\n",QApplication::activeWindow()?qPrintable(QApplication::activeWindow()->objectName()):"null",requested.x(),requested.y(),QCursor::pos().x(),QCursor::pos().y());
+  check(QApplication::activeWindow()==&main,"repositioned Mixer command has an active native workspace");
   check(controls.invokeWorkflowCommand("panel.expand.hovered"),"repositioned Mixer pointer maximize dispatches");settle(300);
   auto expandedMixer=mixerTitle->window();check(expandedMixer!=&main,"repositioned Mixer alone maximizes");
   QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
@@ -207,7 +285,9 @@ int main(int argc,char **argv){
  if(update)update->trigger();settle();Unbound::ArrangementStore afterUpdate;
  check(!afterUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"Update writes the current layout into only the selected user workspace");
  visibility("Workspace Toolbar");
+ recordPersistenceSnapshot("before-native-return");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
+ recordPersistenceSnapshot("after-native-return");
  check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
  check(mixerTitle->window()==&main&&mixerTitle->parentWidget()==mixerRow&&mixerRow->parentWidget()==mixer,"Native return preserves Mixer title and content owners");
  auto expandSource=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expandSource)expandSource->click();settle();
@@ -243,7 +323,12 @@ int main(int argc,char **argv){
  }
  }
  check(page->layout()==native,"shutdown returns exact native layout ownership");
- QProcess child;child.setProgram(app.applicationFilePath());child.setArguments({"--restart-check"});child.start();
+ recordPersistenceSnapshot("before-restart");
+ QProcess child;child.setProgram(app.applicationFilePath());QStringList childArguments{"--restart-check"};
+#ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
+ childArguments.append(app.arguments().last());
+#endif
+ child.setArguments(childArguments);child.start();
  check(child.waitForFinished(30000),"fresh-process managed restart completes");
  const auto childErrors=child.readAllStandardError();if(!childErrors.isEmpty())std::fprintf(stderr,"%s",childErrors.constData());
  check(child.exitStatus()==QProcess::NormalExit&&child.exitCode()==0,"last working OpenGate arrangement persists across a new process");

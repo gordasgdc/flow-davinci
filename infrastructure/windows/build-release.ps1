@@ -10,6 +10,10 @@ Set-StrictMode -Version Latest
 $releaseVersion = Get-UnboundReleaseVersion -repoRoot $repoRoot -Version $Version
 $version = $releaseVersion.Version
 $buildId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+$sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the Windows source commit.' }
+$sourceStatus = @(& git -C $repoRoot status --porcelain)
+$sourceDirty = $sourceStatus.Count -gt 0
 if ($BuildNumber -lt 0 -or $BuildNumber -gt 65535) { throw 'BuildNumber must be 0..65535 (the Windows numeric revision; default 0).' }
 if (!(Test-Path -LiteralPath (Join-Path $QtPath 'lib\cmake\Qt5\Qt5Config.cmake'))) { throw "Qt 5.15.2 development files not found at $QtPath" }
 $releaseRoot = Join-Path $repoRoot 'release\win'
@@ -19,9 +23,44 @@ $locked = $false
 . (Join-Path $PSScriptRoot 'generate-icons.ps1')
 . (Join-Path $PSScriptRoot 'audit-dependencies.ps1')
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
-    & $Program @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
+    $command = Get-Command $Program -ErrorAction Stop
+    $previousPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell wraps native stderr as NativeCommandError. Retain
+        # every diagnostic and let the executable finish its assertions; its
+        # exit code remains authoritative, including crashes and failures.
+        $ErrorActionPreference = 'Continue'
+        & $command @Arguments
+        $exitCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($exitCode -ne 0) { throw "$Program failed with exit code $exitCode" }
 }
+$fixtureResults = [Collections.Generic.List[object]]::new()
+function Save-FixtureReceipt([bool]$Complete) {
+    $directory = Join-Path $repoRoot 'build\windows\fixtures'
+    $null = New-Item -ItemType Directory -Force -Path $directory
+    $failed = @($fixtureResults | Where-Object { $_.status -eq 'FAIL' })
+    @{ schema=1; product='OpenGate'; source_commit=$sourceCommit; source_dirty=$sourceDirty;
+       complete=$Complete; all_passed=($Complete -and $fixtureResults.Count -gt 0 -and $failed.Count -eq 0);
+       scope='Compiled fixtures; no installation, live Resolve, GPU or physical keyboard acceptance'; tests=@($fixtureResults.ToArray()) } |
+        ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $directory 'fixture-receipt.json') -Encoding UTF8
+}
+function Invoke-Fixture([string]$Program, [string[]]$Arguments) {
+    $started = (Get-Date).ToUniversalTime(); $status='PASS'; $errorText=$null; $exitCode=$null
+    Write-Host ('RUN fixture: '+(Split-Path -Leaf $Program)+' '+($Arguments -join ' '))
+    try { Invoke-Checked $Program $Arguments; $exitCode=$LASTEXITCODE }
+    catch {
+        $status='FAIL';$errorText=$_.Exception.Message
+        if($errorText -match 'exit code (-?\d+)'){$exitCode=[int]$Matches[1]}
+        Write-Host ('FAIL fixture: '+$errorText)
+    }
+    $fixtureResults.Add(@{ program=(Split-Path -Leaf $Program); arguments=$Arguments; platform=$env:QT_QPA_PLATFORM;
+        variants=@{ outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER; retained_close=$env:OPENGATE_TEST_RETAINED_CLOSE };
+        status=$status; exit_code=$exitCode; error=$errorText; started_utc=$started.ToString('o');
+        elapsed_seconds=((Get-Date).ToUniversalTime()-$started).TotalSeconds })
+    Save-FixtureReceipt $false
+}
+
 try {
     try { $locked = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $locked = $true }
     if (!$locked) { throw 'Another Unbound release build is running.' }
@@ -53,39 +92,81 @@ try {
     Invoke-Checked 'cmake' @('--build', $testBuild, '--config', 'Release', '--', '/m:1', '/nr:false')
     $env:PATH = "$QtPath\bin;$env:PATH"
     $env:QT_QPA_PLATFORM = 'offscreen'
-    Invoke-Checked (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
+    $env:OPENGATE_FIXTURE_ROOT = Join-Path $repoRoot 'build\windows\fixtures'
+    Invoke-Fixture 'python' @((Join-Path $repoRoot 'tests\platforms\macos\test-workflow-command-wrappers.py'), '--windows')
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateWorkspaceCallerTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateDiagnosticTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateControlLaunchTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateLayoutPolicyTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateOwnershipTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateStackDockingTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateWorkspaceRestorationTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePinnedHeaderTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePageNavigationTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateNativeEntryTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateFirstOpenTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCallerFlowTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateKeyframesFlowTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateNativePresetTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
+    $env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR='1'
+    try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+    finally { Remove-Item Env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR }
+    $env:OPENGATE_TEST_DELAYED_INDEX='1'
+    try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+    finally { Remove-Item Env:OPENGATE_TEST_DELAYED_INDEX }
+    $legacyFixtureDll = Join-Path $build 'Release\OpenGateLegacyFixtureHelper.dll'
+    Invoke-Fixture (Join-Path $build 'Release\OpenGateRetainedCallerTests.exe') @($legacyFixtureDll)
     $test = Join-Path $testBuild 'Release\pane-float-smoke.exe'
-    Invoke-Checked (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
-    Invoke-Checked $test @()
-    Invoke-Checked $test @('--main-placement-test')
-    Invoke-Checked $test @('--settings-json-test')
-    Invoke-Checked $test @('--header-button-test')
-    Invoke-Checked $test @('--inspector-title-test')
-    Invoke-Checked $test @('--nodes-canvas-test')
-    Invoke-Checked $test @('--shutdown-test')
-    Invoke-Checked $test @('--close-all-test')
-    Invoke-Checked $test @('--standalone-test', $dll)
-    Invoke-Checked $test @('--standalone-test', '--visible-start', $dll)
-    Invoke-Checked $test @('--standalone-test', '--toggle-state-test', $dll)
-    Invoke-Checked $test @('--standalone-test', '--color-selected-test', $dll)
-    Invoke-Checked $test @('--reclaim-test', $dll)
-    Invoke-Checked $test @('--fairlight-test', $dll)
-    Invoke-Checked $test @('--fairlight-test', '--restore', $dll)
-    Invoke-Checked $test @('--discovery-test', $dll)
+    Invoke-Fixture (Join-Path $testBuild 'Release\audition-activation-test.exe') @()
+    Invoke-Fixture $test @()
+    Invoke-Fixture $test @('--main-placement-test')
+    Invoke-Fixture $test @('--settings-json-test')
+    Invoke-Fixture $test @('--header-button-test')
+    Invoke-Fixture $test @('--inspector-title-test')
+    Invoke-Fixture $test @('--nodes-canvas-test')
+    Invoke-Fixture $test @('--shutdown-test')
+    Invoke-Fixture $test @('--close-all-test')
+    Invoke-Fixture $test @('--standalone-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--visible-start', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--toggle-state-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--standalone-test', '--color-selected-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--reclaim-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--fairlight-test', $legacyFixtureDll)
+    Invoke-Fixture $test @('--fairlight-test', '--restore', $legacyFixtureDll)
+    Invoke-Fixture $test @('--discovery-test', $legacyFixtureDll)
     $env:QT_QPA_PLATFORM = 'windows'
     try {
-        Invoke-Checked $test @('--audition-taskbar-native')
-        Invoke-Checked $test @('--snap-native')
-        Invoke-Checked $test @('--captionless-native')
-        Invoke-Checked $test @('--frame-paint-native')
+        Invoke-Fixture (Join-Path $build 'Release\OpenGateWindowAdapterTests.exe') @()
+        Invoke-Fixture (Join-Path $build 'Release\OpenGateManagedSessionTests.exe') @('--displayed')
+        $env:OPENGATE_TEST_DISPLAYED_MIXER='1'
+        $env:OPENGATE_TEST_STACK_DROP='1'
+        try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+        finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER; Remove-Item Env:OPENGATE_TEST_STACK_DROP }
+        $env:OPENGATE_TEST_RETAINED_CLOSE='1'
+        try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+        finally { Remove-Item Env:OPENGATE_TEST_RETAINED_CLOSE }
+        Invoke-Fixture $test @('--audition-taskbar-native')
+        Invoke-Fixture $test @('--snap-native')
+        Invoke-Fixture $test @('--captionless-native')
+        Invoke-Fixture $test @('--frame-paint-native')
     }
     finally { $env:QT_QPA_PLATFORM = 'offscreen' }
-    # Only these two runtime files are distributed; build records stay in build/.
+    Save-FixtureReceipt $true
+    $failedFixtures = @($fixtureResults | Where-Object { $_.status -eq 'FAIL' })
+    if($failedFixtures.Count -gt 0){throw "$($failedFixtures.Count) Windows fixtures failed. No candidate was packaged; all results are retained."}
+    # Preserve binary provenance with the candidate and installed support exporter.
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll -Destination $destination
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'))
-    @{ Version=$version; BuildId=$buildId; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; Dependencies=$dependencyReport } |
+    $workflowHashes = @(Get-ChildItem -LiteralPath (Join-Path $destination 'workflow-commands') -File | Get-FileHash -Algorithm SHA256)
+    @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
+    Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"
 } finally {
     if ($locked) { $mutex.ReleaseMutex() }

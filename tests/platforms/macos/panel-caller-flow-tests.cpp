@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include <QApplication>
 #include <QButtonGroup>
 #include <QElapsedTimer>
@@ -11,7 +12,7 @@
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 int main(int argc,char **argv){
- QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files;
+ QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("panel-caller-flow-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=false;
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
@@ -52,7 +53,7 @@ int main(int argc,char **argv){
  check(binding->saved()["tree"]==tree&&nativeCalls==nativeBefore,"deferred programmatic native radio state cannot cycle or select tabs");
  press(buttons["EditIndex"]);check(binding->selected("frameEditPageEditIndex")&&nativeCalls==nativeBefore,"one physical header click selects an inactive tab without operating native slots");
  auto detach=controls.findChild<QPushButton *>("undock_frameEditPageMediaPool");if(detach)detach->click();settle(350);
- Unbound::MacPanelSession *pool=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::MacPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageMediaPool")pool=candidate;
+ Unbound::ManagedPanelSession *pool=nullptr;for(auto session:controls.findChildren<QObject *>())if(auto candidate=dynamic_cast<Unbound::ManagedPanelSession *>(session))if(candidate->window()&&candidate->window()->objectName()=="unboundFloating_frameEditPageMediaPool")pool=candidate;
  check(pool&&pool->active(),"Media Pool owns a retained floating session");
  if(pool){
   auto host=pool->window();host->setGeometry(180,140,440,340);settle(150);const auto frame=host->geometry();

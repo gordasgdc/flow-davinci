@@ -399,8 +399,13 @@ int main(int argc, char **argv)
         check((contents ? a.undockContents(source, page, "Source") : a.undock(source, page, "Source")).isEmpty(), "refloat source for close test");
         check((contents ? b.undockContents(program, page, "Program") : b.undock(program, page, "Program")).isEmpty(), "refloat program for close test");
         check(group.join(&a, &b, orientation).isEmpty(), "regroup for close test");
-        group.window()->close(); settle();
-        check(!group.active() && !a.active() && !b.active(), "closing group safely docks both members");
+        auto retainedHost=group.window();const auto retainedFrame=retainedHost->geometry();const auto retainedTree=group.snapshot().value("tree");
+        retainedHost->close(); settle();
+        check(group.active() && a.active() && b.active() && group.windowHidden() && !retainedHost->isVisible(), "closing group retains both members and hides its host");
+        group.setWindowHidden(false);settle();
+        check(group.window()==retainedHost && retainedHost->geometry()==retainedFrame && group.snapshot()["tree"]==retainedTree, "group recall preserves host geometry and tree");
+        group.dissolve(true);
+        check(!a.active()&&!b.active(),"explicit group docking still releases members");
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100, 700);
@@ -447,7 +452,10 @@ int main(int argc, char **argv)
         auto invalid = Unbound::splitGroupTree({{"panel", "Inspector"}}, {{"panel", "Inspector"}}, Qt::Horizontal); leaves.clear();
         check(!Unbound::groupTreeNames(invalid, leaves), "duplicate saved panel identities are rejected");
         restored.window()->close(); settle();
-        for (auto session : sessions) check(!session->active(), "closing nested group docks every remaining member");
+        check(restored.active()&&restored.windowHidden(),"closing nested group retains its tree");
+        for (auto session : remaining) check(session->active()&&session->grouped(), "closed nested group retains every remaining member");
+        restored.dissolve(true);
+        for (auto session : sessions) check(!session->active(), "explicit nested group docking releases every member");
     }
     {
         QWidget main; main.setObjectName("UiMainWindow"); main.resize(1100, 700);

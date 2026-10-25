@@ -371,7 +371,11 @@ int main(int argc, char **argv)
             check(surviving && left->isVisible(), "content survives host deletion");
         }
         check(session.undock(left, &page, "Panel").isEmpty(), "close setup");
-        check(session.window()->close() && !session.active() && left->parentWidget() == &page, "close docks panel");
+        auto retained=session.window();const auto retainedFrame=retained->geometry();
+        check(retained->close() && session.active() && session.hiddenByUser() && !retained->isVisible(), "close hides retained panel");
+        session.setHiddenByUser(false);
+        check(session.window()==retained && retained->geometry()==retainedFrame, "recall preserves closed panel host and frame");
+        check(session.dock().isEmpty() && left->parentWidget()==&page, "explicit dock restores original owner after close and recall");
         settle();
         left->hide();
         check(!session.undock(left, &page, "Panel").isEmpty() && left->parentWidget() == &page, "hidden panel rejected unchanged");
@@ -517,8 +521,9 @@ int main(int argc, char **argv)
         sourceDock->click(); settle();
         check(source->parentWidget() == stack && !sourceDock->isEnabled() && sourceUndock->isEnabled(), "source Dock button restores correct child");
         sourceUndock->click(); settle();
-        check(source->window()->close(), "source close-to-dock"); settle();
-        check(source->parentWidget() == stack && !sourceDock->isEnabled(), "closing host refreshes Dock button state");
+        auto retainedSource=source->window();
+        check(retainedSource->close(), "source Close is accepted"); settle();
+        check(source->window()==retainedSource && !retainedSource->isVisible() && sourceDock->isEnabled(), "closing host retains placement and explicit Dock availability");
         auto presetSelector = controls.findChild<QComboBox *>("arrangements");
         presetSelector->setCurrentIndex(presetSelector->findData(presetId));
         controls.findChild<QPushButton *>("restoreArrangement")->click(); settle();

@@ -7,12 +7,17 @@
 #include <QMessageBox>
 #include <QChildEvent>
 #include <atomic>
+#include <QScopedValueRollback>
 #include "panesettings.h"
 #include "windowintegration.h"
 #include "controller.h"
 #include "mainwindowplacement.h"
 #include "sidebarfloatsession.h"
 #include "panedecoration.h"
+#include "interactiondiagnostics.h"
+#include "crashsession.h"
+#include "surfacetrace.h"
+#include "panelcallers.h"
 
 namespace {
 QString audioToggle(const QString &name)
@@ -81,6 +86,14 @@ public:
     Controller() : QObject(qApp)
     {
         setObjectName(QStringLiteral("UnboundPaneController"));
+        auto journal = new Unbound::CrashSession(this);
+        new Unbound::InteractionDiagnostics(this);
+        new Unbound::SurfaceTrace(this);
+        auto windows = new Unbound::WindowDiagnostics(this);
+        qApp->installEventFilter(windows);
+        connect(qApp, &QCoreApplication::aboutToQuit, journal, [journal] { journal->markClean(); });
+        Unbound::logEvent("helper.start", {{"backend","windows-floating-pane"},
+            {"managed_workspace_parity",false},{"qt",qVersion()}});
         m_mainPlacement.error = [this](const QString &message) { settingsError(message); };
         m_names = {{"frameEditPageMediaPool", "Media Pool"}, {"frameEditPageSoundLibrary", "Sound Library"},
             {"frameEditPageKeyframeEditor", "Keyframe Editor"}, {"frameEditPageEffectsLibrary", "Effects"},
@@ -93,6 +106,14 @@ public:
             {"frameAudioPanelSoundLibraryContainer", "Sound Library"}, {"frameAudioPanelAdrContainer", "ADR"},
             {"frameTimelineMixerContainer", "Mixer"}, {"frameMetadataContainer", "Metadata"},
             {"frameInspectorContainer", "Inspector"}};
+        for(auto it=m_names.cbegin();it!=m_names.cend();++it) {
+            const auto name=it.key();const auto page=!audioToggle(name).isEmpty()?"fairlight":!colorToggle(name).isEmpty()?"color":"edit";
+            m_panelCallers.add({name,it.value(),page,[this,name]{return m_candidates.value(name).data();},
+                [this,name]{return m_sessions.value(name);},
+                [name](QAbstractButton *button){return matchesNativeToggle(name,button->objectName());},
+                [this,name](bool visible){auto pane=m_candidates.value(name);if(pane)if(auto toggle=nativeToggle(pane,name))if(toggle->isChecked()!=visible)toggle->click();},
+                [this,name](bool hidden){settingsError(m_settings.saveHidden(settingsKey(name),hidden));}});
+        }
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { delete this; }, Qt::DirectConnection);
         qApp->installEventFilter(this);
         // One initial inventory. Later work is restricted to newly added
@@ -125,6 +146,9 @@ protected:
         case QEvent::ParentChange:
             if (auto widget=qobject_cast<QWidget *>(object)) {
                 const auto name=widget->objectName();
+                if (m_names.contains(name)) Unbound::logEvent("panel.native.state", {
+                    {"reason",event->type()==QEvent::Show ? "show" : "parent-change"},
+                    {"panel",name},{"widget",Unbound::widgetState(widget,false)}});
                 if (name==QLatin1String("UiMainWindow") && widget!=m_window) queueBranch(widget);
                 else if (name==QLatin1String("frameEditPageWidgetsContainer")
                     || name==QLatin1String("WStackPage_Conform") || name==QLatin1String("WStackPage_Color")
@@ -140,7 +164,11 @@ protected:
             break;
         case QEvent::Hide:
             if (auto widget=qobject_cast<QWidget *>(object))
+            {
+                if (m_names.contains(widget->objectName())) Unbound::logEvent("panel.native.state", {
+                    {"reason","hide"},{"panel",widget->objectName()},{"widget",Unbound::widgetState(widget,false)}});
                 if (widget->isModal()) scheduleDiscovery(); // Resume deferred restoration.
+            }
             break;
         default: break; // No work on paint, input, timer or playback events.
         }
@@ -247,6 +275,7 @@ private:
     }
     void restoreColorToggles()
     {
+        const QScopedValueRollback<int> activation(Unbound::nativePanelActivationDepth,Unbound::nativePanelActivationDepth+1);
         if (m_pendingColorToggles.isEmpty()) return;
         for (const auto &name : m_pendingColorToggles) {
             auto decoration=m_decorations.value(name);
@@ -312,6 +341,9 @@ private:
             // native toggle when the user returns and its toolbar is available.
             if (!root || !root->isVisible()) continue;
             if (auto toggle = nativeToggle(pane, name)) {
+                if(toggle->isChecked() && !pane->isVisible()) {
+                    const QSignalBlocker blocked(toggle);toggle->setChecked(false);
+                }
                 if (!toggle->isChecked()) toggle->click();
                 settingsError(m_settings.saveToggle(settingsKey(name), toggle->isChecked()));
                 m_pendingDockToggles.remove(name);
@@ -320,6 +352,8 @@ private:
     }
     void undock(const QString &name, bool automatic = false)
     {
+        const QScopedValueRollback<int> activation(Unbound::nativePanelActivationDepth,Unbound::nativePanelActivationDepth+1);
+        Unbound::logEvent("panel.placement.request",{{"panel",name},{"automatic",automatic}});
         auto decoration = m_decorations.value(name);
         if (!decoration || !decoration->pane()) return;
         auto session = m_sessions.value(name);
@@ -346,6 +380,9 @@ private:
             // The title-bar Close handler calls this same docking operation.
             if (!automatic) session->dock();
             decoration->setFloating(session->active());
+            QTimer::singleShot(0,&m_panelCallers,[this]{m_panelCallers.sync();});
+            Unbound::logEvent("panel.dock.complete",{{"panel",name},{"active",session->active()},
+                {"widget",Unbound::widgetState(decoration->pane(),false)}});
             return;
         }
         m_pendingDockToggles.remove(name);
@@ -353,7 +390,8 @@ private:
         auto toggle = nativeToggle(pane,name);
         const bool preserveNativeLayout = !colorToggle(name).isEmpty();
         error(session->start(pane, m_names.value(name), panePage(pane),
-            name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout));
+            name == QStringLiteral("frameEditAudioMeter") || name == QStringLiteral("frameTimelineMixerContainer"), automatic, preserveNativeLayout,
+            automatic && m_settings.hidden(settingsKey(name)),qEnvironmentVariableIntValue("OPENGATE_WINDOWS_MANAGED_CALLERS")==1));
         if (session->active()) {
             // Manual detachment also resolves startup intent. Lifecycle events
             // must not interpret its newly saved floating state as a restore.
@@ -382,10 +420,14 @@ private:
             settingsError(m_settings.saveFloating(settingsKey(name), true));
         }
         decoration->setFloating(session->active());
+        QTimer::singleShot(0,&m_panelCallers,[this]{m_panelCallers.sync();});
+        Unbound::logEvent("panel.undock.complete",{{"panel",name},{"active",session->active()},
+            {"widget",Unbound::widgetState(pane,false)}});
     }
     void error(const QString &text)
     {
         if (text.isEmpty()) return;
+        Unbound::logEvent("helper.error",{{"message",text}});
         auto box = new QMessageBox(QMessageBox::Warning, QStringLiteral("Unbound"), text, QMessageBox::Ok);
         box->setAttribute(Qt::WA_DeleteOnClose);
         box->setAttribute(Qt::WA_QuitOnClose, false);
@@ -393,6 +435,7 @@ private:
     }
     void discover()
     {
+        m_panelCallers.refresh(m_window);
         for (auto it = m_decorations.begin(); it != m_decorations.end();) {
             if (!it.value()->pane()) {
                 m_activationRequested.remove(it.key());
@@ -410,6 +453,8 @@ private:
                 undock(name);
             });
             m_decorations.insert(name, decoration);
+            Unbound::logEvent("panel.registered",{{"panel",name},{"label",m_names.value(name)},
+                {"widget",Unbound::widgetState(pane,false)}});
         }
         // Project Manager/other pages can exist before Edit is ready. Keep
         // intent pending, without selecting a page or touching empty layouts.
@@ -448,6 +493,7 @@ private:
     Unbound::MainWindowPlacement m_mainPlacement{m_settings};
     Unbound::MainWindowSnap m_mainSnap;
     Unbound::WindowGroupActivation m_windowGroup;
+    Unbound::PlatformPanelCallers m_panelCallers{this};
     bool m_settingsErrorShown = false;
     bool m_restoringToggles = false;
     QSet<QAbstractButton *> m_watchedToggles;

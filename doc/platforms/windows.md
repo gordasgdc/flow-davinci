@@ -12,9 +12,12 @@ From the repository root, the existing entry point is unchanged:
 The public semantic version comes from the root `VERSION` file; override it with
 `-Version 0.2.0-dev.1`. `-QtPath` overrides the default
 `%USERPROFILE%\Qt\5.15.2\msvc2019_64`. The command configures the
-root CMake project, builds under `build/windows/unbound/<version>/`, runs launcher
-and pane fixtures, audits dependencies and publishes only `Unbound.exe` and
-`Unbound.dll` under `release/win/<version>/`. Existing releases are never overwritten.
+root CMake project, builds under `build/windows/unbound/<version>/`, runs launcher,
+shared policy, assembled workspace, production-DLL and native window fixtures,
+and audits dependencies. It writes the production binaries, generated workflow
+scripts and provenance under immutable `release/win/<version>/` directories.
+A failing fixture blocks packaging; every independent result is retained under
+`build/windows/fixtures/fixture-receipt.json`. Existing releases are never overwritten.
 Pane fixture builds use `build/windows/pane-tests/`.
 
 EXE and DLL file/product version strings contain the complete semantic version.
@@ -24,12 +27,20 @@ numeric component must also fit 0..65535. UTC build IDs remain in resource comme
 and `release-manifest.json`, alongside the version, revision, dependencies and hashes.
 Diagnostics use the same numeric version with a diagnostic suffix in the strings.
 
-ZIP creation is never automatic. After committing and tagging `v<version>`, run
-`infrastructure/windows/package-release.ps1` explicitly. It checks the clean tagged
-source, embedded versions and manifest hashes, then writes
-`release/packages/Unbound-<version>-windows-x64.zip` with one enclosing folder.
-The package contains the two binaries, MIT license and a short README recording
-the source tag and commit. Existing packages are never overwritten.
+The current prototype installer is `infrastructure/windows/prototype-installer.iss`.
+The GitHub Windows workflow supplies `BuildVersion=0.0.2` and `BuildRevision=4` to
+Inno Setup and produces a separate Windows x64 executable plus SHA-256 checksums.
+It never publishes a GitHub release. Standard administrator approval installs
+OpenGate runtime files and only OpenGate workflow scripts in Resolve's documented
+ProgramData workflow directory. It refuses installation while Resolve is running.
+Settings, presets and shortcuts remain in the user's profile across uninstall.
+The older ZIP packager remains available for historical two-binary builds; it is
+not the managed-workspace prototype distribution path.
+
+Start-menu support export produces a Desktop ZIP without stopping Resolve or
+modifying settings. It includes rotated events, launcher failures, bounded native
+structure inventories, session/incident records, provenance and checksums. It also
+records whether installed workflow targets exist. No automatic upload occurs.
 
 Source is in `src/platforms/windows/`; shared behavior is in `src/core/`.
 Build/release implementation is in `infrastructure/windows/`. Both root release
@@ -37,10 +48,13 @@ wrappers remain usable from other working directories.
 
 The Windows launcher still waits for Resolve, injects the adjacent DLL and exits.
 The exported `UnboundStart` calling convention and return values are unchanged.
-The export delegates to shared GUI-thread initialization. Floating hosts omit the
-Windows caption while retaining native dark resize borders and shell identity.
-The normal top frame is reduced to a one-physical-pixel outline, which is also
-the native top resize target; side and bottom resize margins remain native.
+The export delegates to the Windows managed service, which creates shared
+PanelControls on Resolve's GUI thread. `WorkspaceHostWindow` reuses the existing
+native window mechanisms with a normal caption for managed panel names.
+The original captionless pane implementation remains in an unshipped legacy
+fixture DLL; its frame and movement assertions are preserved. Its details follow
+for maintainers of those reused Windows mechanisms.
+
 Windows 11 uses DWM's visible border thickness without subtracting a pixel;
 side and bottom compensation stops at client content. Resolve's custom client
 rectangle includes the DWM top outline, so the top compensation uses DWM's

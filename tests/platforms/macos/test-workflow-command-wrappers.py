@@ -3,8 +3,12 @@ import json,os,runpy,subprocess,tempfile,sys
 from types import SimpleNamespace as Obj
 from pathlib import Path
 root=Path(__file__).resolve().parents[3]
-subprocess.run(['python3',str(root/'infrastructure/macos/build-workflow-commands.py')],check=True)
-output=root/'build/macos/workflow-commands'
+platform='windows' if '--windows' in sys.argv else 'macos'
+if platform=='windows':
+    subprocess.run([sys.executable,str(root/'infrastructure/shared/build-workflow-commands.py'),'--platform','windows'],check=True)
+else:
+    subprocess.run([sys.executable,str(root/'infrastructure/macos/build-workflow-commands.py')],check=True)
+output=root/('build/'+platform+'/workflow-commands')
 manifest=json.loads((output/'manifest.json').read_text())
 assert len({entry['command'] for entry in manifest})==len(manifest)==30
 with tempfile.TemporaryDirectory() as directory:
@@ -43,6 +47,16 @@ with tempfile.TemporaryDirectory() as directory:
         results=[json.loads(p.read_text()) for p in (Path(directory)/'command-results').glob('*.json')]
         assert len(results)==2 and any(r.get('reason')=='resolve-context-unavailable' for r in results)
         assert len(list((Path(directory)/'command-requests').glob('*.json')))==30
+        if platform=='windows':
+            runpy.run_path(str(output/'OpenGate.py'))
+            first=(Path(directory)/'show-controls.request').read_text()
+            runpy.run_path(str(output/'OpenGate.py'))
+            second=(Path(directory)/'show-controls.request').read_text()
+            assert first.startswith('workflow-') and second.startswith('workflow-') and first!=second
+            launches=[json.loads(line) for line in (Path(directory)/'launches.jsonl').read_text().splitlines()]
+            assert [item['request'] for item in launches]==[first,second]
+            assert all(item['component']=='OpenGate' and item['event']=='workflow.launch' for item in launches)
+            assert len(list(Path(directory).glob('*.request')))==1
     finally:
         if old is None: os.environ.pop('UNBOUND_LAUNCH_DIRECTORY',None)
         else: os.environ['UNBOUND_LAUNCH_DIRECTORY']=old

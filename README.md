@@ -71,8 +71,13 @@ Read the [release's testing status and checksums](https://github.com/jordantetew
 [equivalent Mac/Windows live checklists](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/prototype4-candidate-review.md)
 and [evidence ledger](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/windows-managed-workspace-progress.md).
 Builds and fixtures do not establish installation or live acceptance. No
-performance improvement is claimed. Main's production code remains the accepted
-Mac revision 3 checkpoint; prototype.4 source is identified by its release tag.
+performance improvement is claimed. Main now includes the shared workspace core,
+Source presentation checkpoint, retained Close repair and persistence extraction
+reviewed on October 25. The locally installed Mac candidate is `093c9de`; Jordan
+reported a positive live trial and requested this merge. Startup/reopen latency,
+ordinary-launch Source experiment dependency and Windows live acceptance remain
+open. Published installers are unchanged; prototype.4 source remains identified
+by its release tag.
 Repository identity migration is a separate, deferred task.
 
 New cross-platform features require one behavioral specification, deliberate

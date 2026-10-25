@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
 #include <QDataStream>
@@ -16,7 +17,7 @@ static QByteArray preset(const QList<QPair<QString,QList<QKeySequence>>> &rows,c
     return "<SmKeyboardPresetList><PresetListBA>"+outer.toHex()+"</PresetListBA></SmKeyboardPresetList>";
 }
 int main(int argc,char **argv){
- QApplication app(argc,argv);QTemporaryDir dir;
+ QApplication app(argc,argv);QTemporaryDir dir(OpenGateTest::evidenceTemplate("native-preset-bindings-tests"));OpenGateTest::retainEvidence(dir);
  const auto presetDirectory=dir.path()+"/presets",scriptDirectory=dir.path()+"/scripts";
  QDir().mkpath(presetDirectory);QDir().mkpath(scriptDirectory);
  qputenv("UNBOUND_DIAGNOSTICS_DIR",(dir.path()+"/logs").toUtf8());

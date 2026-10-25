@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdexcept>
 #include <cwchar>
+#include "launcherdiagnostics.h"
 
 struct Handle {
     HANDLE h = nullptr;
@@ -92,6 +93,7 @@ static BOOL CALLBACK findQtWindow(HWND window, LPARAM parameter)
 }
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
 {
+    Unbound::launcherDiagnostic("launcher.start");
     try {
         if (std::wstring(command) == L"--version") {
             MessageBoxW(nullptr, UNBOUND_VERSION, L"Unbound", MB_OK);
@@ -104,6 +106,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         require(waiter.h != nullptr, L"Cannot initialize Unbound's launcher guard.");
         if (mutexError == ERROR_ALREADY_EXISTS) return 0;
         DWORD pid = 0;
+        Unbound::launcherDiagnostic("launcher.waiting-for-resolve");
         std::vector<MODULEENTRY32W> loaded;
         for (;;) {
             pid = resolveProcess();
@@ -117,6 +120,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
             }
             Sleep(1000);
         }
+        Unbound::launcherDiagnostic("launcher.resolve.ready",{},pid);
         require(!findModule(loaded, L"gammaray_probe.dll").modBaseAddr, L"GammaRay is already attached. Restart Resolve before using standalone Unbound.");
         require(!findModule(loaded, L"Unbound.dll").modBaseAddr, L"Unbound is already loaded. Restart Resolve before loading another build.");
         auto qt = findModule(loaded, L"Qt5Core.dll");
@@ -164,9 +168,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         require(invoke(process.h, reinterpret_cast<LPTHREAD_START_ROUTINE>(injected.modBaseAddr + offset),
             nullptr) == 1,
             L"Unbound loaded, but could not queue startup on Resolve's GUI thread. Restart Resolve before retrying.");
+        Unbound::launcherDiagnostic("launcher.bootstrap.complete",{},pid);
         return 0;
     } catch (const std::wstring &error) {
-        MessageBoxW(nullptr, error.c_str(), L"Unbound", MB_OK | MB_ICONERROR);
+        Unbound::launcherDiagnostic("launcher.bootstrap.failed",error);
+        MessageBoxW(nullptr, error.c_str(), L"OpenGate", MB_OK | MB_ICONERROR);
         return 1;
     }
 }

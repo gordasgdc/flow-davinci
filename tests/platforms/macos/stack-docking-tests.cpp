@@ -44,7 +44,7 @@ int main(int argc,char **argv) {
  // Native mounting uses the same subtree target and keeps exact native owners.
  QWidget main;main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(1000,700);auto mainLayout=new QVBoxLayout(&main);auto page=new QWidget(&main);page->setObjectName("WStackPage_Conform");mainLayout->addWidget(page);auto original=new QHBoxLayout(page);
  QList<QWidget *> panes;for(const auto &id:{"source","program","mixer"}){auto pane=new QWidget(page);pane->setObjectName(id);auto body=new QVBoxLayout(pane);body->addWidget(new QLabel(id,pane));original->addWidget(pane);panes.append(pane);}main.show();app.processEvents();
- MacPanelSession a,b,c;check(a.undock(panes[0],page,"Source Monitor").isEmpty()&&b.undock(panes[1],page,"Program Monitor").isEmpty()&&c.undock(panes[2],page,"Mixer").isEmpty(),"native stack test acquires original panel content");
+ ManagedPanelSession a,b,c;check(a.undock(panes[0],page,"Source Monitor").isEmpty()&&b.undock(panes[1],page,"Program Monitor").isEmpty()&&c.undock(panes[2],page,"Mixer").isEmpty(),"native stack test acquires original panel content");
  NativeArrangement arrangement;check(arrangement.initialize(page,{{"source",&a},{"program",&b}},column).isEmpty(),"native stack mounts through the existing owner");
  check(arrangement.add({{"mixer",&c}},added,key,Qt::Horizontal,true).isEmpty(),"native stack accepts a whole-section split");
  check(arrangement.snapshot()["children"].toArray()[1].toObject()["orientation"]=="vertical","native section split preserves the original vertical stack");

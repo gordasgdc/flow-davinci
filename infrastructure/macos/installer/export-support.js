@@ -7,10 +7,11 @@ function run(argv) {
         const value=$.NSString.stringWithContentsOfFileEncodingError(path,$.NSUTF8StringEncoding,null);
         return ObjC.unwrap(value) || '';
     }
-    const allowed=['time','event','build','session','event_sequence','operation','success','ready','reason','phase','result','duration_ms','snapshot_ms','persist_ms','menu_ms','header_ms'];
+    const allowed=['time','event','component','vendor','module','build','session','event_sequence','operation','success','ready','reason','phase','result','duration_ms','snapshot_ms','persist_ms','menu_ms','header_ms'];
     const records=[];
-    for(const suffix of ['.2','.1','']) {
-        const text=read(home+'/Library/Logs/Unbound/events.jsonl'+suffix);
+    // Preserve rollback evidence: read old logs without moving or deleting them.
+    for(const directory of ['Unbound','OpenGate']) for(const suffix of ['.2','.1','']) {
+        const text=read(home+'/Library/Logs/'+directory+'/events.jsonl'+suffix);
         for(const line of text.split('\n')) {
             let event;try{event=JSON.parse(line);}catch(_){continue;}
             const record={};
@@ -36,6 +37,7 @@ function run(argv) {
         }
         if(events.length)installation.push({transaction:name,events:events});
     }
+    records.sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
     const result={schema:1,product:'OpenGate',generated:new Date().toISOString(),raw_logs_included:false,installation:installation,
         note:'Event fields are allowlisted; project names, paths, widget contents and arbitrary error text are excluded.',events:records.slice(-10000)};
     const output=$(JSON.stringify(result,null,2)+'\n');

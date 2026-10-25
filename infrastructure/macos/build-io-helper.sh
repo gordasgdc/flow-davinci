@@ -5,7 +5,7 @@ source "$root/infrastructure/macos/build-target.sh"
 sdk='/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer'
 out="$root/build/macos/io-helper"
 bundle="$out/Unbound.dvcp.bundle/Contents/MacOS"
-mkdir -p "$bundle" "$out/test-home/Library/Logs/Unbound"
+mkdir -p "$bundle" "$out/test-home/Library/Logs/OpenGate"
 xcrun clang "${opengate_macos_flags[@]}" -Wall -Wextra -Werror -fvisibility=hidden -c \
     -I "$sdk/OpenFX/OpenFX-1.4/include" "$root/tests/platforms/macos/ofx-loading-probe.c" -o "$out/bootstrap.o"
 xcrun clang++ "${opengate_macos_flags[@]}" -std=c++17 -Wall -Wextra -Werror -fvisibility=hidden -dynamiclib \

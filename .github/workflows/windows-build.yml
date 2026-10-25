@@ -2,7 +2,7 @@ name: Windows baseline and shared workspace checks
 on:
   workflow_dispatch:
   push:
-    branches: [release/0.0.2-prototype]
+    branches: [release/0.0.2-prototype, feature/windows-managed-workspace, feature/windows-retained-host-calls, feature/windows-managed-sessions, feature/windows-workspace-coordinator]
 permissions:
   contents: read
 jobs:
@@ -13,29 +13,37 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install build-only Qt dependencies
         shell: pwsh
+        working-directory: ${{ runner.temp }}
         run: |
           python -m pip install aqtinstall==3.3.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 --outputdir "$env:RUNNER_TEMP/Qt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify native command exit and diagnostic handling
+        shell: powershell
+        run: ./tests/platforms/windows/native-command-runner.ps1
       - name: Compile and exercise the Windows backend
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          & ./infrastructure/windows/build-release.ps1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath windows-build.log
+          New-Item -ItemType Directory -Force -Path build/windows | Out-Null
+          & ./infrastructure/windows/build-release.ps1 -BuildNumber 4 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath build/windows/windows-build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows prototype installer
         shell: pwsh
         run: |
           $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
           if (!(Test-Path $compiler)) { throw 'Inno Setup compiler is missing from the Windows runner.' }
-          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" infrastructure/windows/prototype-installer.iss
+          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" "/DBuildRevision=4" infrastructure/windows/prototype-installer.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash release/packages/*.exe -Algorithm SHA256 | Format-List | Out-File release/packages/SHA256SUMS.txt
+      - name: Verify support export without changing settings or stopping Resolve
+        shell: powershell
+        run: ./tests/platforms/windows/support-export.ps1
       - name: Retain Windows prototype installer
         uses: actions/upload-artifact@v4
         with:
-          name: OpenGate-0.0.2-Windows-prototype
+          name: OpenGate-0.0.2-prototype.4-Windows
           path: release/packages/*
           if-no-files-found: error
       - name: Retain build diagnostics
@@ -44,11 +52,13 @@ jobs:
         with:
           name: windows-build-evidence-${{ github.sha }}
           path: |
-            windows-build.log
+            build/windows/windows-build.log
             build/windows/**/release-manifest.json
             build/windows/**/CMakeFiles/CMakeConfigureLog.yaml
+            build/windows/fixtures/**
           if-no-files-found: warn
           retention-days: 14
-# Full managed-workspace integration and Resolve runtime parity remain open.
-# This workflow packages an explicitly limited prototype; it never publishes a release.
+# The shared managed production flow is exercised before packaging. Actual
+# Windows Resolve, GPU rendering and physical/remapped keys remain live gates.
+# This workflow never publishes a release.
 # Qt installer syntax: https://aqtinstall.readthedocs.io/en/v3.3.0/cli.html

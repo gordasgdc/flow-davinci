@@ -1,3 +1,4 @@
+#include "../../core/workspace-callers/fixtureevidence.h"
 #include "native-fixture-start.h"
 // SPDX-License-Identifier: MIT
 #include <QApplication>
@@ -19,7 +20,7 @@ class HiddenDialogs : public QObject {
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto value=dynamic_cast<T *>(child))return value;return nullptr;}
 int main(int argc,char **argv) {
  QApplication app(argc,argv);HiddenDialogs hiddenDialogs;app.installEventFilter(&hiddenDialogs);app.setQuitOnLastWindowClosed(false);qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
- const bool restart=app.arguments().contains("--restart-check");QTemporaryDir files;
+ const bool restart=app.arguments().contains("--restart-check");QTemporaryDir files(OpenGateTest::evidenceTemplate("native-entry-flow-tests"));OpenGateTest::retainEvidence(files);
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}
  int errors=0;auto check=[&](bool ok,const char *why){if(!ok){++errors;std::fprintf(stderr,"FAIL %s\n",why);}};
  QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);main.resize(1300,800);auto outer=new QVBoxLayout(&main);
@@ -75,7 +76,7 @@ int main(int argc,char **argv) {
  trigger("Workspace Toolbar");trigger("Page Navigation");check(!toolbar->isHidden()&&!footer->isHidden()&&page->height()==pageHeight,"Show restores original bands and content bounds");
  check(title->text()=="Project name retained"&&nativeButton->parentWidget()==left,"native header controls and title retained");
  if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(sourceDoor->mapToGlobal(QPoint()));settle(500);
- auto floating=dynamic_cast<Unbound::MacFloatingHost *>(source->window());check(floating&&floating!=&main,"native header drag callback detaches source directly");
+ auto floating=dynamic_cast<Unbound::WorkspaceFloatingHost *>(source->window());check(floating&&floating!=&main,"native header drag callback detaches source directly");
  if(floating&&floating->attachRequested)floating->attachRequested(timeline,Qt::RightEdge);settle(450);
  check(source->window()==&main&&page->findChild<QWidget *>("unboundNativePanelPosition_frameConformTimelines"),"native first drop creates a scoped arrangement");
  auto expand=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expand)expand->click();settle(500);
@@ -108,7 +109,7 @@ int main(int argc,char **argv) {
  if(sourceDoor&&sourceDoor->drag)sourceDoor->drag(QPoint());settle(450);
  if(programDoor&&programDoor->drag)programDoor->drag(QPoint());settle(450);
  if(timelineDoor&&timelineDoor->drag)timelineDoor->drag(QPoint());settle(450);
- auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::MacFloatingHost *>(program->window());
+ auto timelineHost=timeline->window();auto programHost=dynamic_cast<Unbound::WorkspaceFloatingHost *>(program->window());
  check(timelineHost!=&main&&toolbar->window()==&main&&footer->window()==&main,"fully rearranged panels never take primary workspace bands");
  const auto primaryFrame=main.geometry();
  auto expandTimeline=controls.findChild<QPushButton *>("expand_frameConformTimelines");if(expandTimeline)expandTimeline->click();settle(600);

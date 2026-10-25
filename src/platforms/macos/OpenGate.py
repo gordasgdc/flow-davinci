@@ -5,7 +5,7 @@ import os
 import pathlib
 import uuid
 
-directory = pathlib.Path.home() / "Library/Logs/Unbound"
+directory = pathlib.Path.home() / "Library/Logs/OpenGate"
 directory.mkdir(parents=True, exist_ok=True)
 token = "workflow-" + str(uuid.uuid4())
 temporary = directory / (token + ".request")

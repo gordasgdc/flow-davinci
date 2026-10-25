@@ -22,6 +22,17 @@ public:
         // Auxiliary taskbar windows must not keep Resolve alive.
         setAttribute(Qt::WA_QuitOnClose, false);
     }
+    // Shared managed hosts use an actual Windows title strip. The established
+    // captionless backend retains its default and existing native tests.
+    void setNativeTitleBarEnabled(bool enabled) {
+        m_nativeTitleBar=enabled;
+        if(testAttribute(Qt::WA_WState_Created)&&QGuiApplication::platformName()==QLatin1String("windows")) {
+            const auto handle=reinterpret_cast<HWND>(effectiveWinId());auto style=GetWindowLongPtr(handle,GWL_STYLE);
+            style=enabled ? style|WS_CAPTION : style&~LONG_PTR(WS_CAPTION);
+            SetWindowLongPtr(handle,GWL_STYLE,style);
+            SetWindowPos(handle,nullptr,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+        }
+    }
     bool restoreGeometry(const QByteArray &bytes)
     {
         const bool restored = QWidget::restoreGeometry(bytes);
@@ -129,7 +140,7 @@ protected:
             const auto style = GetWindowLongPtr(handle, GWL_STYLE);
             // Qt's minimize/maximize hints would also add a caption. Keep the
             // native commands and shell shortcuts without restoring a title bar.
-            const auto desired = (style & ~LONG_PTR(WS_CAPTION))
+            const auto desired = (m_nativeTitleBar ? style|WS_CAPTION : style & ~LONG_PTR(WS_CAPTION))
                 | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
             if (style != desired) SetWindowLongPtr(handle, GWL_STYLE, desired);
             // Also refresh Qt's measured margins after native creation or a
@@ -149,14 +160,14 @@ protected:
 #ifdef Q_OS_WIN
         const auto msg = static_cast<MSG *>(message);
         const auto handle = msg->hwnd;
-        if (msg->message == WM_NCACTIVATE && !IsIconic(handle)) {
+        if (!m_nativeTitleBar && msg->message == WM_NCACTIVATE && !IsIconic(handle)) {
             // The default activation repaint uses the full native top resize
             // band, overwriting client pixels reclaimed by WM_NCCALCSIZE.
             // Preserve activation processing but suppress that legacy repaint.
             *result = long(DefWindowProc(handle, msg->message, msg->wParam, -1));
             return true;
         }
-        if (msg->message == WM_NCCALCSIZE) {
+        if (!m_nativeTitleBar && msg->message == WM_NCCALCSIZE) {
             auto rect = reinterpret_cast<RECT *>(msg->lParam);
             const LONG top = rect->top;
             DefWindowProc(handle, msg->message, msg->wParam, msg->lParam);
@@ -213,6 +224,7 @@ protected:
         return QWidget::nativeEvent(type, message, result);
     }
 private:
+    bool m_nativeTitleBar=false;
     void beginInteractiveDrag(int hit, bool fromButton)
     {
         const auto handle = reinterpret_cast<HWND>(winId());
