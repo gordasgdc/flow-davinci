@@ -146,7 +146,9 @@ external-display arrangement when that display is available.
 Close/hide/recall has an isolated implementation and local checks. Installation
 and live acceptance remain pending. Workspace capture/save extraction is implemented locally;
 the seeded saved-output comparison and six affected hidden fixtures pass.
-Candidate build and displayed checks are tracked separately. Jordan does
+Clean universal candidate `093c9de` and all nine displayed suites pass.
+[Verification and remaining gaps](opengate-workspace-persistence-20261025.md)
+separate those results from installation and live acceptance. Jordan does
 not need to review the technical assessment line by line.
 
 Reference: [behavior review](https://chatgpt.com/space/page_23161bac62ac81918906bc4da65af2b5), Jordan’s annotated HTML, and the source assessment of build `ee078c2` on October 24, 2026. The source assessment is complete. First-repair implementation and local evidence are recorded in [retained window close](opengate-retained-window-close-20261025.md).

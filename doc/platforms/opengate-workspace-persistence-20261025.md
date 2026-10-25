@@ -60,3 +60,21 @@ Displayed window/drag checks require Resolve closed. Installation requires Jorda
 explicit authorization after candidate review. No merge, push or publication.
 The Source experiment flag dependency, blinking, floating disappearance, native
 painting and prior full-layout Dock rejection are not closed by this refactor.
+
+## Candidate verification result
+
+Clean implementation checkpoint: `093c9de7a4856fadd3c9538124873d795848f646`.
+Universal arm64/x86_64 helper built with `dirty: false`; binary hashes and
+architectures are in `build/macos/persistence-verification/build-receipt.json`.
+The nine-suite displayed matrix passed with clean, unchanged source:
+`build/macos/verification/093c9de7a4-displayed-20261025T150851Z/receipt.json`.
+This includes panel sessions/groups, native arrangements/workspace UI, reopen,
+reliability, hidden controls, viewer expansion and mounted Mixer fixtures.
+The six affected hidden suites passed separately; a full hidden matrix was not
+rerun. No Windows runtime test, installation or live acceptance occurred.
+
+Next live test, only after approved installation: close and recall a standalone
+panel, then a group; verify retained placement, size, pin and selected panel;
+restart with an unsaved arrangement and verify it returns. Native Source picture
+acceptance remains separate. Keep the existing experimental Source launch flags
+explicit; ordinary launch is not demonstrated equivalent.
