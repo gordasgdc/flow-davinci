@@ -524,16 +524,22 @@ public:
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
-        if (object == expandedHost && event->type() == QEvent::Close) {
-            if (expandedClosed) expandedClosed(); else endGroupedExpansion(); return true;
+        if (event->type() == QEvent::Close && (object == expandedHost ||
+            (object == host && host->property("unboundExpanded").toBool()))) {
+            // Temporary expansion returns to its previous placement, including
+            // the original native slot. It is not an ordinary visibility door.
+            if (expandedClosed) expandedClosed();
+            else if (expandedHost) endGroupedExpansion();
+            else static_cast<QCloseEvent *>(event)->setAccepted(dock().isEmpty());
+            return true;
         }
         if (object==host && event->type()==QEvent::DynamicPropertyChange &&
             static_cast<QDynamicPropertyChangeEvent *>(event)->propertyName()=="unboundPinned" && arrangementChanged)
             arrangementChanged();
         if (object == host && event->type() == QEvent::Close) {
-            const QString error = dock();
-            logEvent(QStringLiteral("panel.close.result"), {{"success", error.isEmpty()}, {"error", error}});
-            static_cast<QCloseEvent *>(event)->setAccepted(error.isEmpty());
+            setHiddenByUser(true);
+            logEvent(QStringLiteral("panel.close.result"), {{"success", true}, {"action", "hide"}});
+            static_cast<QCloseEvent *>(event)->accept();
             return true;
         }
         if ((object == host || object == groupContainer) && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) arrangeTimer.start();

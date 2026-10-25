@@ -55,7 +55,7 @@ function Invoke-Fixture([string]$Program, [string[]]$Arguments) {
         Write-Host ('FAIL fixture: '+$errorText)
     }
     $fixtureResults.Add(@{ program=(Split-Path -Leaf $Program); arguments=$Arguments; platform=$env:QT_QPA_PLATFORM;
-        variants=@{ outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER };
+        variants=@{ outer_inspector=$env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR; delayed_index=$env:OPENGATE_TEST_DELAYED_INDEX; stack_drop=$env:OPENGATE_TEST_STACK_DROP; displayed_mixer=$env:OPENGATE_TEST_DISPLAYED_MIXER; retained_close=$env:OPENGATE_TEST_RETAINED_CLOSE };
         status=$status; exit_code=$exitCode; error=$errorText; started_utc=$started.ToString('o');
         elapsed_seconds=((Get-Date).ToUniversalTime()-$started).TotalSeconds })
     Save-FixtureReceipt $false
@@ -146,6 +146,9 @@ try {
         $env:OPENGATE_TEST_STACK_DROP='1'
         try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
         finally { Remove-Item Env:OPENGATE_TEST_DISPLAYED_MIXER; Remove-Item Env:OPENGATE_TEST_STACK_DROP }
+        $env:OPENGATE_TEST_RETAINED_CLOSE='1'
+        try { Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll) }
+        finally { Remove-Item Env:OPENGATE_TEST_RETAINED_CLOSE }
         Invoke-Fixture $test @('--audition-taskbar-native')
         Invoke-Fixture $test @('--snap-native')
         Invoke-Fixture $test @('--captionless-native')

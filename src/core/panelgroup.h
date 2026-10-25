@@ -283,7 +283,9 @@ protected:
             }
             if (event->type() == QEvent::MouseButtonRelease || event->type()==QEvent::Hide || event->type()==QEvent::UngrabMouse) {headerPressed = false;pressedHeader=nullptr;}
         }
-        if (object == host && event->type() == QEvent::Close) { static_cast<QCloseEvent *>(event)->accept(); dissolve(true); return true; }
+        if (object == host && event->type() == QEvent::Close) {
+            setWindowHidden(true,false); static_cast<QCloseEvent *>(event)->accept(); return true;
+        }
         if (object==host && event->type()==QEvent::DynamicPropertyChange &&
             static_cast<QDynamicPropertyChangeEvent *>(event)->propertyName()=="unboundPinned") timer.start();
         if (object == host && (event->type() == QEvent::Move || event->type() == QEvent::Resize)) timer.start();

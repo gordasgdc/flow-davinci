@@ -15,6 +15,7 @@
 #endif
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
+#include "../../core/workspace-callers/retainedclosechecks.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
@@ -66,6 +67,10 @@ int main(int argc,char **argv){
  PanelControls controls;
 #endif
  settle(qEnvironmentVariableIntValue("OPENGATE_TEST_DELAYED_INDEX")?4500:2500);const auto frame=main.geometry();auto binding=component<Unbound::NativeWorkspaceBinding>(&controls);auto menu=bar->findChild<QMenu *>("unboundWorkspaceUI");
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_RETAINED_CLOSE")) {
+  checkRetainedClose(controls,main,*pageStack,page,fusion,check);
+  std::printf("retained close failures=%d\n",failures);return failures?1:0;
+ }
  if(restart){
   check(binding&&binding->active()&&!binding->contains("frameEditPageMediaPool"),"restart retains the unsaved detached panel instead of reloading Resolve Layout");
   auto header=component<Unbound::PinnedWorkspaceHeader>(&controls);check(header&&!header->shown(),"restart retains the unsaved hidden header");
