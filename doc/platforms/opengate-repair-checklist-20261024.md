@@ -198,6 +198,38 @@ OpenGate boundaries. Continue focused extractions with behavior checks; evaluate
 specific upstream mechanisms for reuse individually. This source comparison is
 not live acceptance of upstream or proof of the cause of our regressions.
 
+# Live review and reopening priority — October 25
+
+Jordan reported the installed `093c9de` trial positively and requested merge to
+main. Local merge `8c66201` preserves main's release README and incorporates the
+installed source history; no production changes were introduced by conflict
+resolution. No push or new release. This does not close every historical defect.
+
+Jordan's next priority is less latency and eliminating the visible sequence of
+individual panels opening before the saved arrangement appears. Both cold launch
+and in-session use matter; no specific in-session trigger was identified.
+
+Three captured Resolve processes ran `093c9de` (PIDs 18735, 18762, 18785). Edit
+resume to native-plan assembly request took approximately 4.44, 4.01 and 4.72
+seconds respectively. These intervals include readiness and other event-loop
+work; they are not isolated CPU measurements. Each session recorded 78–88 menu
+preparations. Evidence is retained under main-release/build/reopen-evidence.
+
+Code review: restoration acquires one requested panel at a time because native
+Media Pool/Index toggles can be mutually exclusive. Each pass also revisits UI
+wiring, including a full native menu scan. Individual sessions are presented
+before the final native arrangement/group mounts. SurfaceReadiness is already
+event-driven: its timeout is a deadline, not a mandatory delay to remove.
+
+Next optimization must distinguish required native initialization from repeated
+UI preparation. Measure and reduce repeated wiring first, then evaluate final
+presentation without intermediate floating hosts. Do not hide the native root
+or skip readiness as a cosmetic shortcut: prior Source-loading evidence depends
+on native visibility. Retained in-session recall must preserve host identity and
+must not unnecessarily replay startup acquisition. Evaluate real elapsed time,
+intermediate visibility and final layout/picture correctness separately. The
+accepted installation stays unchanged during this work. No speedup is yet claimed.
+
 # Remaining repair order
 
 **Next code-organization task:** give workspace capture and saving a focused owner outside `PanelControls`, reusing `WorkspaceSnapshot`, `WorkspaceSettings`, and `PageWorkspaceState`. Replace the coordinator's existing implementation rather than adding a parallel save path. Preserve file schemas, incomplete-restoration guards, native-return checkpoints and temporary-expansion snapshots. Verify production startup, named/unsaved restoration and restart before accepting the extraction. The local extraction is implemented; acceptance evidence is still being reviewed.
@@ -239,4 +271,3 @@ No further specification review is needed to start the first repair. Correct req
 After local work is complete, Jordan receives a short explanation, a reviewable change, and a narrowly defined live test. Installation requires explicit authorization. No new layout tour or reconstruction of previously reported failures is required.
 
 **Current status:** first repair implemented and locally checked on an isolated branch; installation, live Resolve acceptance, Windows execution and coordinator extraction remain pending. Installed software is unchanged.
-
