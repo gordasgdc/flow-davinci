@@ -16,6 +16,7 @@
 static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){QApplication::processEvents();QThread::msleep(1);}}
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 #include "../../core/workspace-callers/retainedclosechecks.h"
+#include "../../core/workspace-callers/persistencesnapshots.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
@@ -71,6 +72,7 @@ int main(int argc,char **argv){
   checkRetainedClose(controls,main,*pageStack,page,fusion,check);
   std::printf("retained close failures=%d\n",failures);return failures?1:0;
  }
+ recordPersistenceSnapshot(restart?"restart":"first-open");
  if(restart){
   check(binding&&binding->active()&&!binding->contains("frameEditPageMediaPool"),"restart retains the unsaved detached panel instead of reloading Resolve Layout");
   auto header=component<Unbound::PinnedWorkspaceHeader>(&controls);check(header&&!header->shown(),"restart retains the unsaved hidden header");
@@ -283,7 +285,9 @@ int main(int argc,char **argv){
  if(update)update->trigger();settle();Unbound::ArrangementStore afterUpdate;
  check(!afterUpdate.find(userId)["workspace"].toObject()["header"].toObject()["visible"].toBool(),"Update writes the current layout into only the selected user workspace");
  visibility("Workspace Toolbar");
+ recordPersistenceSnapshot("before-native-return");
  auto nativeAction=menu?menu->findChild<QAction *>("unboundRestoreNativeWorkspace"):nullptr;if(nativeAction)nativeAction->trigger();settle();
+ recordPersistenceSnapshot("after-native-return");
  check(binding&&!binding->active()&&page->layout()==native,"Native returns original native layout");
  check(mixerTitle->window()==&main&&mixerTitle->parentWidget()==mixerRow&&mixerRow->parentWidget()==mixer,"Native return preserves Mixer title and content owners");
  auto expandSource=controls.findChild<QPushButton *>("expand_widgetEditSourcePlayer");if(expandSource)expandSource->click();settle();
@@ -319,6 +323,7 @@ int main(int argc,char **argv){
  }
  }
  check(page->layout()==native,"shutdown returns exact native layout ownership");
+ recordPersistenceSnapshot("before-restart");
  QProcess child;child.setProgram(app.applicationFilePath());QStringList childArguments{"--restart-check"};
 #ifdef OPENGATE_TEST_PRODUCTION_BOOTSTRAP
  childArguments.append(app.arguments().last());

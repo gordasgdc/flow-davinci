@@ -1,3 +1,14 @@
+## Persistence extraction review — 2026-10-25
+
+Active worktree: `workspace-persistence-owner`, branch
+`refactor/workspace-persistence-owner`, based on retained-close `2ecb46e`.
+No installation changed. Last verified installed checkpoint remains `ee078c2`;
+this does not establish current loaded process identity. Details and numbered
+entry-flow coverage: [persistence extraction](opengate-workspace-persistence-20261025.md).
+Mixer is a neighbor of Timeline and follows the same Panel rules. Maximized
+contents must fill their available area without clipping. These clarified
+requirements are documented, not claimed repaired by this extraction.
+
 ## Bounded loading experiment — 2026-10-24
 
 Current installed payload remains 2642b15: all 54 files verified read-only.

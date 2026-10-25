@@ -46,8 +46,9 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
    Workspace or Floating Windows inventory subtrees. Header controls cannot overlap
    title/Inspector or become unreachable. Main title-bar Panels remains available
    with the toolbar hidden, in addition to menubar access. Timeline and its toolbar
-   remain one arranged element; use overflow when narrow. Mixer keeps its own
-   existing placement control/title drag even while nested in Timeline. Each panel
+   remain one arranged element; use overflow when narrow. Mixer sits next to Timeline and keeps its own
+   placement control/title drag. It follows the same independent float, neighbor
+   and tab rules as other panels. Each panel
    has one readable title; no internal widget identifiers or duplicate title rows.
    Explicit navigation commands reveal their destination using this same panel
    visibility model: Find in Media Pool reveals Media Pool, Match Frame reveals
@@ -56,7 +57,9 @@ in opengate-workspace-flow-v2.md and opengate-task-audit-20261020.md.
    to the destination. Resolve executes the native command once; OpenGate never
    replays it. Ordinary background updates do not reveal panels. Stabilize is an
    operation, not navigation: keep Inspector hidden and the selected tab unchanged.
-10. Native painting must remain correct throughout resize, stacked timelines,
+10. Maximized panel contents fill the available content area without clipping;
+    maximizing only the outer host is insufficient, including for Mixer.
+    Native painting must remain correct throughout resize, stacked timelines,
     docking and maximize. A blank timeline until a width threshold is a live bug;
     dummy-widget fixtures cannot prove this fixed. Preserve native minima or
     provide reachable overflow instead of breaking painting.

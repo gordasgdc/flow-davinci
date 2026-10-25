@@ -17,7 +17,7 @@
 #include <QWindow>
 #include "panelsession.h"
 #include "workspacesettings.h"
-#include "workspacesnapshot.h"
+#include "workspacepersistence.h"
 #include "workspacerestoration.h"
 #include "windowhierarchy.h"
 #include "arrangementstore.h"
@@ -829,7 +829,7 @@ private:
         }
         // Restore needs a current in-memory snapshot, not disk persistence or
         // menu rewiring before the first visible maximize result.
-        capturePanelStates();
+        persistence.capturePanels(persistenceSources());
         saveTimer.start();
         auto &panel=panels[i];
         Unbound::PanelExpansionController::Target target;
@@ -1184,74 +1184,29 @@ private:
         Unbound::logEvent(QStringLiteral("workspace.recover")); Unbound::keepOnDisplay(this);
         for (auto &p : panels) if (p.session->active()) p.session->centerOnCurrentDisplay();
     }
-    QJsonObject capturePanelStates()
+    Unbound::WorkspacePersistence::Sources persistenceSources()
     {
-        QJsonObject saved;
-        for (int i = 0; i < panels.size(); ++i) {
-            auto &p = panels[i];
-            auto value=Unbound::WorkspaceSnapshot::panel(p.saved,p.desired,p.session->active(),
-                p.session->active() ? p.session->floatingGeometry() : QRect(),p.session->hiddenByUser(),p.session->pinned());
-            if(!p.session->active() && nativeSurfaceDoors.contains(p.name)) {
-                if(nativeSurfaceDoors.modified(p.name))value["native_hidden"]=nativeSurfaceDoors.hidden(p.name);
-                else value.remove("native_hidden");
-            }
-            if(p.session->active()&&!p.session->grouped())value["maximized"]=p.session->windowMaximized();
-            value["interface_scale"]=p.session->interfaceScale();
-            if (p.name=="unboundWorkspaceToolbar" && p.session->active() && !p.session->grouped()) value["toolbar_float_pinned"]=p.session->pinned();
-            value=expansionController->panelSnapshot(i,value);
-            p.saved = value; saved[p.name] = value;
-        }
-        return saved;
+        Unbound::WorkspacePersistence::Sources source;
+        for (auto &panel:panels) source.panels.append({panel.name,panel.desired,panel.session,&panel.saved});
+        source.groups=groups; source.pendingGroups=pendingGroups;
+        source.nativeWorkspace=nativeWorkspace; source.nativeDoors=&nativeSurfaceDoors;
+        source.expansion=expansionController; source.footer=footer; source.header=workspaceHeader;
+        source.main=Unbound::resolveMainWindow(); source.mainPlacement=&mainPlacementRecord;
+        return source;
     }
     void save(bool retainSelection=false)
     {
         if (quitting) return;
-        if(workspaceRestore && workspaceRestore->savingBlocked()) {
-            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-restore-transaction"}});return;
-        }
-        // A partially acquired preset is a transition, not a working layout.
-        // Preserve the previous complete page checkpoint if native readiness fails.
-        if(!restoringNative && (!pendingGroups.isEmpty() || (nativeWorkspace && !nativeWorkspace->requiredPanels().isEmpty()))) {
-            Unbound::logEvent("workspace.save.deferred",{{"reason","workspace-assembly-pending"}});return;
-        }
-        Unbound::UiWorkTiming timing("workspace.save",this);
+        Unbound::WorkspaceSnapshot options;
+        options.pinControls=pin->isChecked(); options.hideBackground=background->isChecked();
+        options.selected=presets->currentData().toString(); options.chrome=style->currentIndex();
+        options.panelHierarchy=hierarchyOption->isChecked(); options.snapWindows=snap->isChecked();
+        options.keepOnScreen=constrain->isChecked(); options.controls=geometry();
+        const auto result=persistence.save({quitting,workspaceRestore && workspaceRestore->savingBlocked(),
+            restoringNative,retainSelection,layoutMode},persistenceSources(),options);
+        if (!result.performed) return;
+        if (!result.success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
         QElapsedTimer phases;phases.start();
-        const auto saved=capturePanelStates();
-        QJsonArray savedGroups = pendingGroups;
-        for (auto group : groups) if (group->active()) savedGroups.append(expansionController->groupSnapshot(group));
-        Unbound::WorkspaceSnapshot snapshot;
-        snapshot.panels=saved; snapshot.groups=savedGroups;
-        snapshot.nativeArrangement=expansionController->nativeSnapshot(nativeWorkspace ? nativeWorkspace->saved() : QJsonObject());
-        snapshot.footer=footer ? footer->snapshot() : QJsonObject();
-        snapshot.header=workspaceHeader ? workspaceHeader->snapshot() : QJsonObject();
-        snapshot.pinControls=pin->isChecked(); snapshot.hideBackground=background->isChecked();
-        snapshot.selected=retainSelection?settings.pageView("edit")["selected_arrangement"].toString():presets->currentData().toString(); snapshot.chrome=style->currentIndex();
-        snapshot.panelHierarchy=hierarchyOption->isChecked(); snapshot.snapWindows=snap->isChecked();
-        snapshot.keepOnScreen=constrain->isChecked(); snapshot.controls=geometry();
-        auto captured=snapshot.json();captured["page"]="edit";captured["layout_mode"]=layoutMode;
-        if(auto main=Unbound::resolveMainWindow()) {
-            auto placement=Unbound::WorkspaceSettings::displayRectangle(main->isMaximized()?main->normalGeometry():main->geometry(),mainPlacementRecord);
-            mainPlacementRecord=placement;placement["maximized"]=main->isMaximized();captured["main_window"]=placement;
-        }
-        const auto previousMode=Unbound::PageWorkspaceState::mode(settings.pageView("edit"));
-        QString pageError;
-        if(restoringNative) {
-            const auto pages=settings.data["page_workspaces"].toObject();
-            settings.data=captured;
-            if(!pages.isEmpty())settings.data["page_workspaces"]=pages;
-        } else pageError=settings.recordPage("edit",captured);
-        const auto snapshotMs=phases.nsecsElapsed()/1000000.;phases.restart();
-        const bool success = pageError.isEmpty() && settings.save();
-        const auto persistMs=phases.nsecsElapsed()/1000000.;phases.restart();
-        if(!pageError.isEmpty() || !settings.error().isEmpty())Unbound::logEvent("workspace.page-state.failed",{{"page","edit"},{"error",pageError.isEmpty()?settings.error():pageError}});
-        if(success && !restoringNative && previousMode!=Unbound::PageWorkspaceState::mode(captured))
-            Unbound::logEvent("workspace.mode.changed",{{"page","edit"},{"before",previousMode},
-                {"mode",Unbound::PageWorkspaceState::mode(captured)},{"preset_loaded",false},
-                {"layout_policy","retain-existing-native-and-managed-surfaces"}});
-        if (!success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
-        Unbound::logEvent(QStringLiteral("workspace.save"), {{"success", success},{"page","edit"},
-            {"layout_mode",Unbound::PageWorkspaceState::mode(captured)},{"selected",snapshot.selected},
-            {"page_state_checkpoint",!restoringNative}});
         updatePresetState();
         const auto menuMs=phases.nsecsElapsed()/1000000.;phases.restart();
         if (headers) headers->schedule();
@@ -1259,7 +1214,8 @@ private:
         if (toolbarDoors) toolbarDoors->wire(Unbound::panelSurface(page(),"unboundWorkspaceToolbar"));
         if(titleDrags)for(int i=0;i<panels.size();++i)if(panels[i].name!="unboundWorkspaceToolbar")
             titleDrags->wire(Unbound::panelSurface(page(),"unboundWorkspaceToolbar"),panels[i].name,panels[i].label,[this,i](QPoint){beginPanelDrag(i);});
-        Unbound::logEvent("workspace.save.phases",{{"snapshot_ms",snapshotMs},{"persist_ms",persistMs},{"menu_ms",menuMs},{"header_ms",phases.nsecsElapsed()/1000000.}});
+        Unbound::logEvent("workspace.save.phases",{{"snapshot_ms",result.snapshotMs},{"persist_ms",result.persistMs},
+            {"menu_ms",menuMs},{"header_ms",phases.nsecsElapsed()/1000000.}});
     }
     void updateNativeSizing()
     {
@@ -1306,6 +1262,7 @@ private:
     Unbound::NativePanelToggles *nativeToggles=nullptr;
     QSet<int> pendingNativeDoors,pendingPrimaryPanels;
     Unbound::WorkspaceSettings settings;
+    Unbound::WorkspacePersistence persistence{settings};
     Unbound::WorkspaceRestoration *workspaceRestore=nullptr;
     Unbound::ArrangementControls *presetsUi = nullptr;
     Unbound::PanelCommandCatalog *commands=nullptr;

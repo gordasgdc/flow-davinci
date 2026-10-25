@@ -1,5 +1,34 @@
 # OpenGate development
 
+## OpenGate code organization gate
+
+These are required before coding and before reporting a change complete.
+
+- Before editing, state the job of each affected production module in one sentence.
+  If the change adds a second independent responsibility, put that responsibility
+  in a focused module with an explicit interface. Coordinators wire components;
+  they must not accumulate their implementations.
+- Do not add unrelated responsibilities to an already oversized file. When the
+  requested change touches such a responsibility, extract the relevant boundary
+  in a bounded, separately reviewable change. Preserve behavior during extraction.
+  Do not turn a local repair into an unrelated architectural rewrite.
+- Reuse existing models and mechanisms. Move the production call sites and remove
+  the replaced implementation; do not leave parallel controllers, duplicate state
+  owners, or a new model used only by tests.
+- File length is a warning, not the definition of good design. Do not evade this
+  rule by compressing lines, moving code into arbitrary part files, or creating
+  tiny forwarding modules. Keep related behavior together; split independent jobs.
+- Keep shared behavior in shared core and OS behavior in platform adapters. Check
+  both callers when changing a shared interface and report platform verification
+  gaps explicitly.
+- Organize tests around behavior and reuse fixture setup. Do not grow a single
+  test file indefinitely or duplicate an entire harness for a narrow regression.
+- Before completion, review the actual diff for responsibility boundaries, new
+  state writers, duplicate logic, dependencies and file growth. Report which
+  responsibility moved, which old path was removed, and the relevant verification.
+  Passing tests alone do not satisfy this organization gate.
+
+
 ## Current platform status (2026-10-22)
 
 Mac revision 3 is the accepted behavioral baseline. The Windows parity branch
