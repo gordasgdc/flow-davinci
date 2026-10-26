@@ -49,6 +49,7 @@ inline QWidget *buildPanelLayoutSurfaceNode(const QJsonObject &node,QWidget *par
         auto tabs=new QTabWidget(parent); tabs->setObjectName("unboundPanelTabs");
         tabs->setProperty("openGateDockSection",groupSectionTarget(node));
         tabs->setDocumentMode(true); tabs->setMovable(false);
+        tabs->setElideMode(Qt::ElideRight);tabs->setUsesScrollButtons(true);
         for (const auto &child : children) {
             auto widget=buildPanelLayoutSurfaceNode(child.toObject(),parent,owner,callbacks,leaves,depth+1);
             if (!widget) { abandonPanelLayoutSurface(tabs,parent,leaves); return nullptr; }

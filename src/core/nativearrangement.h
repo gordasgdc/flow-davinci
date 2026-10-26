@@ -5,6 +5,7 @@
 #include "nativerootlayout.h"
 #include "panellayoutsnapshot.h"
 #include "panellayoutsurface.h"
+#include "panellayoutproportions.h"
 #include "panelsession.h"
 #include "nativedocksurfaces.h"
 #include "nativearrangementplan.h"
@@ -279,12 +280,7 @@ private:
         host->layout()->addWidget(root); root->show();
         syncCellVisibility();
         host->layout()->activate();
-        auto splitters=root->findChildren<QSplitter *>();
-        if (auto splitter=qobject_cast<QSplitter *>(root.data())) splitters.prepend(splitter);
-        for (auto splitter : splitters) {
-            QList<int> sizes; for (const auto &size : splitter->property("savedSizes").toList()) sizes.append(qMax(1,size.toInt()));
-            if (sizes.size()==splitter->count()) splitter->setSizes(sizes);
-        }
+        restorePanelLayoutProportions(root);
         QList<QWidget *> targets; for (auto cell : cells) if (cell) targets.append(cell);
         if (!registerNativeDockSurfaces(host->window(),host,targets)) return false;
         return true;
@@ -307,23 +303,18 @@ private:
         new PanelTitleGesture(header->label,header,[this,id](QPoint pointer){QTimer::singleShot(0,this,[this,id,pointer]{if(tearOff)tearOff(id,pointer);});});
         header->button->drag=[this,id](QPoint pointer){QTimer::singleShot(0,this,[this,id,pointer]{if(tearOff)tearOff(id,pointer);});};
         layout->insertWidget(0,header->bar);headers[id]=header;
-        for(auto child:cell->findChildren<QWidget *>())
-            if(child->objectName()=="unboundTimelineHeader" || child->objectName()=="unboundNativeUndock_"+id)child->hide();
+        header->borrowNativeHeader(cell,id);
         setNativeGroupSurfaceClipping(cell);
     }
     void removeHeader(const QString &id) {
         auto header=headers.take(id);if(!header)return;
-        header->park();auto bar=header->bar;delete bar.data();header->deleteLater();
+        header->releaseNativeHeader();header->park();auto bar=header->bar;delete bar.data();header->deleteLater();
     }
     void presentHeaders() {
         // Corner controls must leave the old tab before another header takes it.
         for(auto header:headers)if(header)header->park();
         for(auto it=headers.begin();it!=headers.end();++it)if(it.value()) {
-            auto cell=cells.value(it.key());QTabWidget *tabs=nullptr;
-            for(auto parent=cell?cell->parentWidget():nullptr;parent&&parent!=host;parent=parent->parentWidget())
-                if((tabs=qobject_cast<QTabWidget *>(parent)))break;
-            auto selected=tabs?tabs->currentWidget():nullptr;
-            it.value()->present(tabs,!tabs || selected==cell || (selected&&selected->isAncestorOf(cell)),false);
+            it.value()->presentFor(cells.value(it.key()));
         }
     }
     void retire() {

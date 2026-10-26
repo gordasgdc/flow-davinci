@@ -2,8 +2,10 @@
 #pragma once
 #include <QLabel>
 #include <QTabWidget>
+#include <QStackedWidget>
 #include "nativepaneldecoration.h"
 #include "panelscalecontrols.h"
+#include "nativepanelheaderlease.h"
 namespace Unbound {
 // One name row when untabbed; move only controls into the selected tab strip.
 class GroupPanelHeader : public QObject {
@@ -29,7 +31,16 @@ public:
             connect(target,&QWidget::customContextMenuRequested,this,[this,target](QPoint point) { menu->popup(target->mapToGlobal(point)); });
         }
     }
-    ~GroupPanelHeader() override { park(); }
+    ~GroupPanelHeader() override { nativeHeader.restore();park(); }
+    void borrowNativeHeader(QWidget *surface,const QString &id){nativeHeader.acquire(surface,id);}
+    void releaseNativeHeader(){nativeHeader.restore();}
+    void presentFor(QWidget *cell,bool toolbar=false) {
+        // Only a direct tab page trades its header for the tab's title. A
+        // split section inside a tab still contains independently named panels.
+        auto stack=cell?qobject_cast<QStackedWidget *>(cell->parentWidget()):nullptr;
+        auto owner=stack?qobject_cast<QTabWidget *>(stack->parentWidget()):nullptr;
+        present(owner,owner&&owner->currentWidget()==cell,toolbar);
+    }
     void park() {
         if (!controls || !bar) return;
         if (tabs && tabs->cornerWidget(Qt::TopRightCorner)==controls) tabs->setCornerWidget(nullptr,Qt::TopRightCorner);
@@ -42,6 +53,6 @@ public:
     }
     std::function<void()> detachAction,hideAction;std::function<void(QMenu *)> extrasAction;
     QPointer<QWidget> bar,controls;QPointer<QLabel> label;QPointer<NativeUndockButton> button;QPointer<QMenu> menu;
-private:QPointer<QTabWidget> tabs;
+private:QPointer<QTabWidget> tabs;NativePanelHeaderLease nativeHeader;
 };
 }

@@ -433,6 +433,10 @@ public:
             originalParent->setLayout(originalLayout);
             if (originalParent->layout() != originalLayout)
                 return QStringLiteral("Could not restore this panel's content layout.");
+            // This replacement no longer represents native content. Discovery
+            // can run again before deferred host deletion (nested Mixer is one
+            // such caller); only the restored native slot may keep its name.
+            transferredSurface->setObjectName(QString());
             originalLayout->activate();
             vacatedContents.restore();
             disconnect(parentDestroyed);

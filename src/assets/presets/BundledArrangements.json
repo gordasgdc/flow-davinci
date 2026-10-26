@@ -55,7 +55,19 @@
                     ]
                   },
                   {
-                    "panel": "frameConformTimelines"
+                    "orientation": "horizontal",
+                    "children": [
+                      {
+                        "panel": "frameConformTimelines"
+                      },
+                      {
+                        "panel": "frameEditAudioMeter"
+                      }
+                    ],
+                    "sizes": [
+                      4,
+                      1
+                    ]
                   }
                 ],
                 "sizes": [
@@ -90,6 +102,9 @@
               "hidden": false
             },
             "widgetEditInspector": {
+              "hidden": false
+            },
+            "frameEditAudioMeter": {
               "hidden": false
             }
           }
@@ -131,6 +146,12 @@
             "hidden": false,
             "pinned": false,
             "interface_scale": 1
+          },
+          "frameEditAudioMeter": {
+            "floating": true,
+            "hidden": false,
+            "pinned": true,
+            "interface_scale": 1
           }
         }
       }
@@ -169,7 +190,7 @@
               "hidden": true
             },
             "frameEditPageMediaPool": {
-              "hidden": true
+              "hidden": false
             },
             "widgetEditInspector": {
               "hidden": true
@@ -184,23 +205,38 @@
           "tree": {
             "children": [
               {
-                "children": [
-                  {
-                    "panel": "frameEditPageMediaPool"
-                  },
-                  {
-                    "panel": "frameEditPageEditIndex"
-                  }
-                ],
-                "orientation": "tabs",
-                "selected": 1
+                "panel": "frameEditPageEditIndex"
               },
               {
                 "children": [
                   {
                     "children": [
                       {
-                        "panel": "frameConformTimelines"
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "panel": "frameEditPageMediaPool"
+                              },
+                              {
+                                "panel": "widgetEditSourcePlayer"
+                              }
+                            ],
+                            "orientation": "vertical",
+                            "sizes": [
+                              641,
+                              338
+                            ]
+                          },
+                          {
+                            "panel": "frameConformTimelines"
+                          }
+                        ],
+                        "orientation": "horizontal",
+                        "sizes": [
+                          300,
+                          806
+                        ]
                       },
                       {
                         "panel": "widgetEditInspector"
@@ -215,39 +251,30 @@
                   {
                     "children": [
                       {
-                        "children": [
-                          {
-                            "panel": "widgetEditTimelinePlayer"
-                          },
-                          {
-                            "panel": "frameEditAudioMeter"
-                          }
-                        ],
-                        "orientation": "horizontal",
-                        "sizes": [
-                          847,
-                          240
-                        ]
+                        "panel": "widgetEditTimelinePlayer"
                       },
                       {
-                        "panel": "widgetEditSourcePlayer"
+                        "panel": "frameEditAudioMeter"
                       }
                     ],
-                    "orientation": "tabs",
-                    "selected": 0
+                    "orientation": "horizontal",
+                    "sizes": [
+                      847,
+                      240
+                    ]
                   }
                 ],
                 "orientation": "horizontal",
                 "sizes": [
-                  629,
-                  1093
+                  1112,
+                  610
                 ]
               }
             ],
             "orientation": "horizontal",
             "sizes": [
-              244,
-              1478
+              466,
+              1256
             ]
           },
           "version": 1
@@ -297,12 +324,12 @@
           "frameEditPageMediaPool": {
             "floating": true,
             "height": 1016,
-            "hidden": true,
+            "hidden": false,
             "interface_scale": 1,
             "pinned": false,
             "width": 447,
-            "x": 0,
-            "y": 57
+            "x": -326,
+            "y": 244
           },
           "frameEditPageMetadata": {
             "floating": false,
@@ -337,8 +364,8 @@
             "interface_scale": 1,
             "pinned": false,
             "width": 793,
-            "x": 1067,
-            "y": 565
+            "x": 29,
+            "y": 1069
           },
           "widgetEditTimelinePlayer": {
             "floating": true,
