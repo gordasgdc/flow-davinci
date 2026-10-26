@@ -98,23 +98,31 @@ merely unselected panels must remain distinct internally.
 "Window" is an OS implementation detail, not another product object Jordan must
 manage. Native window handling remains necessary underneath floating containers.
 
-## Deliberate free movement — proposed clarification
+## Assignable free-drag command — agreed requirement
 
-Jordan raised accidental docking while positioning a floating group. Recommended
-rule: hold Option on macOS / Alt on Windows to move freely, suppressing both
-docking/tab/group targets and magnetic snapping. This is momentary, not a saved
-setting. It applies to a single panel or a whole container. Pressing it during a
-drag clears the preview; holding it through release leaves the dragged item
-floating at the chosen position. Releasing it before mouse-up re-enables normal
-target evaluation. Moving a group must preserve its internal arrangement.
+Provide an assignable **Ignore docking and snapping while held** command. While a
+panel or container is being dragged, key-down suppresses docking, tabbing/grouping
+targets and magnetic snapping and immediately clears previews. Key-up restores
+target detection at the current pointer position within the same drag, without
+requiring another mouse movement. The user can alternate these states repeatedly.
+The command is hold/release, not a latched toggle or saved global setting.
 
-The shared floating-host preview and release paths already check this modifier;
-this is not a new shortcut implementation. Existing tests cover unsnapped Option
-release. All native title, panel-title, grab-zone and whole-container entry paths
-still need explicit acceptance, including pressing/releasing the modifier without
-moving the pointer. Shift already controls edge alignment; do not repurpose it.
-Record this as proposed UX clarification until Jordan agrees. Clear drag guidance
-should expose the rule so it is discoverable without remembering a shortcut.
+Holding the command through mouse-up leaves the dragged item floating at the
+chosen position. Releasing the command before mouse-up permits normal docking
+again. Whole-container movement preserves its internal panel arrangement. Drag
+cancellation, focus loss or a missed key-up must not leave bypass stuck on.
+
+Option on macOS / Alt on Windows is the existing hardcoded bypass and a suggested
+default, not a restriction on assignment. Shift already controls edge alignment.
+Integrate assignment into the shared command system with platform input adapters;
+do not add a competing shortcut listener. Show/hide and maximize commands must
+remain unaffected, and normal typing outside a drag must retain its native use.
+
+Current floating-host preview and release paths already check Option/Alt, and
+existing tests cover unsnapped Option release. That does not establish assignable
+hold/release or preview refresh without pointer movement. Verify native title,
+panel-title, grab-zone and whole-container drags on both platforms. Clear drag
+guidance should expose the command and its current assignment.
 
 ## Layout
 
