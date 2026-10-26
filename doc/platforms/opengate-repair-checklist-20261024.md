@@ -98,6 +98,24 @@ merely unselected panels must remain distinct internally.
 "Window" is an OS implementation detail, not another product object Jordan must
 manage. Native window handling remains necessary underneath floating containers.
 
+## Deliberate free movement — proposed clarification
+
+Jordan raised accidental docking while positioning a floating group. Recommended
+rule: hold Option on macOS / Alt on Windows to move freely, suppressing both
+docking/tab/group targets and magnetic snapping. This is momentary, not a saved
+setting. It applies to a single panel or a whole container. Pressing it during a
+drag clears the preview; holding it through release leaves the dragged item
+floating at the chosen position. Releasing it before mouse-up re-enables normal
+target evaluation. Moving a group must preserve its internal arrangement.
+
+The shared floating-host preview and release paths already check this modifier;
+this is not a new shortcut implementation. Existing tests cover unsnapped Option
+release. All native title, panel-title, grab-zone and whole-container entry paths
+still need explicit acceptance, including pressing/releasing the modifier without
+moving the pointer. Shift already controls edge alignment; do not repurpose it.
+Record this as proposed UX clarification until Jordan agrees. Clear drag guidance
+should expose the rule so it is discoverable without remembering a shortcut.
+
 ## Layout
 
 Consolidate "Layout" and "Workspace" into one product concept: **Layout** (working
