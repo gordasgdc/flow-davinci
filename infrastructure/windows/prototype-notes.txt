@@ -1,4 +1,4 @@
-OpenGate 0.0.2 prototype.4 — Windows x64 test candidate
+OpenGate 0.0.3 prototype.1 — Windows x64 test candidate
 
 Not live-tested inside DaVinci Resolve on Windows or macOS for this candidate.
 Windows uses the shared OpenGate managed workspace with Windows native window

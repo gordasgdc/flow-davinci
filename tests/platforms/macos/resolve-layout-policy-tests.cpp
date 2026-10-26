@@ -4,8 +4,20 @@
 #include "resolvelayout.h"
 #include "nativearrangementplan.h"
 #include "arrangementstore.h"
+#include "../../../src/core/bundledpresetseed.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);QTemporaryDir dir;qputenv("UNBOUND_ARRANGEMENTS_FILE",(dir.path()+"/arrangements.json").toUtf8());
+ const auto bundled=dir.path()+"/bundle.json",destination=dir.path()+"/arrangements.json";
+ QFile file(bundled);if(!file.open(QIODevice::WriteOnly))return 1;
+ file.write(R"({"arrangements":[{"id":"default","read_only":true},{"id":"jordan","name":"Jordan Tetewsky Preset","workspace":{"page":"edit"}}]})");file.close();
+ if(!Unbound::seedBundledPresets(destination,bundled).isEmpty())return 1;
+ QFile seeded(destination);if(!seeded.open(QIODevice::ReadOnly))return 1;
+ const auto records=QJsonDocument::fromJson(seeded.readAll()).object()["arrangements"].toArray();seeded.close();
+ if(records.size()!=1||records[0].toObject()["id"]!="jordan")return 1;
+ if(!seeded.open(QIODevice::WriteOnly|QIODevice::Truncate))return 1;
+ seeded.write("existing user bytes");seeded.close();
+ if(!Unbound::seedBundledPresets(destination,bundled).isEmpty()||!seeded.open(QIODevice::ReadOnly)||seeded.readAll()!="existing user bytes")return 1;
+ seeded.close();QFile::remove(destination);
  const auto entry=Unbound::resolveLayoutEntry("edit");const auto value=entry["workspace"].toObject();const auto plan=value["native_arrangement"].toObject();
  QSet<QString> available;for(const auto &id:plan["panels"].toObject().keys())available.insert(id);
  Unbound::NativeArrangementPlan parsed;const auto error=Unbound::NativeArrangementPlan::parse(plan,"edit",available,parsed);

@@ -27,14 +27,14 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path build/windows | Out-Null
-          & ./infrastructure/windows/build-release.ps1 -BuildNumber 4 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath build/windows/windows-build.log
+          & ./infrastructure/windows/build-release.ps1 -BuildNumber 1 -QtPath "$env:RUNNER_TEMP/Qt/5.15.2/msvc2019_64" *>&1 | Tee-Object -FilePath build/windows/windows-build.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build Windows prototype installer
         shell: pwsh
         run: |
           $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
           if (!(Test-Path $compiler)) { throw 'Inno Setup compiler is missing from the Windows runner.' }
-          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.2" "/DBuildRevision=4" infrastructure/windows/prototype-installer.iss
+          & $compiler "/DSourceRoot=$env:GITHUB_WORKSPACE" "/DBuildVersion=0.0.3" "/DBuildRevision=1" infrastructure/windows/prototype-installer.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash release/packages/*.exe -Algorithm SHA256 | Format-List | Out-File release/packages/SHA256SUMS.txt
       - name: Verify support export without changing settings or stopping Resolve
@@ -43,7 +43,7 @@ jobs:
       - name: Retain Windows prototype installer
         uses: actions/upload-artifact@v4
         with:
-          name: OpenGate-0.0.2-prototype.4-Windows
+          name: OpenGate-0.0.3-prototype.1-Windows
           path: release/packages/*
           if-no-files-found: error
       - name: Retain build diagnostics

@@ -11,6 +11,7 @@
 #include "../../core/workflowcommandbridge.h"
 #include "../../core/workflowcommandresults.h"
 #include "../../core/controllaunchrequests.h"
+#include "../../core/bundledpresetseed.h"
 namespace {
 // Windows bootstrap/lifetime only. The accepted shared PanelControls owns all
 // layout, panel commands, native return and persistence; no second controller.
@@ -32,6 +33,8 @@ public:
             controls->showNormal();Unbound::keepOnDisplay(controls);controls->raise();controls->activateWindow();
             Unbound::logEvent("controls.show");
         });
+        const auto seedError=Unbound::seedBundledPresets(Unbound::settingsProfilePath("Arrangements.json"),":/OpenGate/BundledArrangements.json");
+        if(!seedError.isEmpty())Unbound::logEvent("workspace.preset.seed.failed",{{"error",seedError}});
         controls=new PanelControls;
         Unbound::logEvent("controls.ready",{{"visible",controls->isVisible()},{"startup","managed-workspace"}});
         new Unbound::WorkflowCommandBridge(this,directory,[this](QString id) {

@@ -41,8 +41,8 @@ are source-behavior results, not exhaustive acceptance of a newly packaged binar
 Docking target discovery remains under investigation. Floating Source blink is
 deferred polish; its ineffective trial remains isolated and is excluded here.
 The earlier native GPU crash is not claimed conclusively eliminated. Windows
-runtime parity and the rest of the repair checklist remain open. This package is
-macOS-only; no Windows binary or parity claim is included.
+runtime parity and the rest of the repair checklist remain open. This release includes macOS and Windows installers using the shared managed
+workspace. Windows runner results and live acceptance are reported separately.
 
 Shared responsibility boundaries and detailed evidence are recorded in
 [the Mixer repair note](opengate-mixer-panel-repair-20261026.md). Release build and
