@@ -11,7 +11,7 @@ Jordan Tetewsky preset. See the release page for downloads, verification and ope
 
 ## See OpenGate in action
 
-On Open you should see something that looks like this:
+On Open you should see a layout that looks like your default view with extra grab handles per panel:
 <img width="1723" height="1088" alt="Screenshot 2026-10-26 at 3 34 57 AM" src="https://github.com/user-attachments/assets/c3a68115-2fb4-4f2c-a76e-a26b168026f8" />
 
 It matches close to what you would natively see in Resolve.... You may notice this menu at the top- it includes two workspace presets, and one that is pinned to match something close to the native Resolve preset that allows you to always return to something familiar:
