@@ -7,8 +7,11 @@
 #include <QToolButton>
 #include <QTimer>
 #include <QSet>
+#include <QHash>
+#include <QPointer>
 #include <functional>
 #include "diagnostics.h"
+#include "uiworktiming.h"
 
 namespace Unbound {
 class PanelMenus : public QObject
@@ -28,10 +31,16 @@ public:
     void add(Panel panel) { panels.append(std::move(panel)); }
     void wire()
     {
+        UiWorkTiming timing("panel.menus.wire",nullptr);
+        QList<QPointer<QMenu>> menus;
         for (auto widget : QApplication::allWidgets()) if (auto menu = qobject_cast<QMenu *>(widget)) {
             auto button = qobject_cast<QWidget *>(menu->parent());
-            if (optionsButton(button)) prepareMenu(menu);
+            if (optionsButton(button)) menus.append(menu);
         }
+        if (menus.isEmpty()) return;
+        // One synchronous inventory per pass, never a cache across native events.
+        const auto owners=attachedOwners();
+        for (auto menu:menus) if (menu) prepareMenu(menu,&owners);
     }
 protected:
     bool eventFilter(QObject *object, QEvent *event) override
@@ -43,14 +52,14 @@ protected:
         return false;
     }
 private:
-    void prepareMenu(QMenu *menu)
+    void prepareMenu(QMenu *menu,const QHash<QMenu *,int> *owners=nullptr)
     {
         if (!wiredMenus.contains(menu)) {
             wiredMenus.insert(menu);
             connect(menu, &QObject::destroyed, this, [this, menu] { wiredMenus.remove(menu); });
             connect(menu, &QMenu::aboutToShow, this, [this, menu] { prepareMenu(menu); });
         }
-        const int index = ownerOf(menu);
+        const int index = ownerOf(menu,owners ? *owners : attachedOwners());
         if (index < 0) {
             for (auto command : menu->actions()) if (command->objectName() == QLatin1String("unboundDockPanel") ||
                 command->objectName()==QLatin1String("unboundDockNativeWorkspace")) command->setVisible(false);
@@ -138,29 +147,36 @@ private:
             }
         return -1;
     }
-    int ownerOf(QMenu *menu) const
+    QHash<QMenu *,int> attachedOwners() const
     {
-        // Resolve's custom options buttons can parent a menu without exposing it
-        // through QPushButton::menu(). Prefer that explicit ownership relationship.
-        int result = -1;
-        for (auto parent = menu->parent(); parent; parent = parent->parent())
-            if (auto widget = qobject_cast<QWidget *>(parent))
-                if (optionsButton(widget)) { result = closestPanel(widget); break; }
-        // Only menus directly attached to a panel's known options button qualify.
+        QHash<QMenu *,int> owners;
+        // Keep every attached owner: a known parent does not excuse ambiguity.
         for (auto window : QApplication::topLevelWidgets()) {
             for (auto button : window->findChildren<QAbstractButton *>()) {
                 if (!optionsButton(button)) continue;
                 QMenu *attached = nullptr;
                 if (auto tool = qobject_cast<QToolButton *>(button)) attached = tool->menu();
                 if (auto push = qobject_cast<QPushButton *>(button)) attached = push->menu();
-                if (attached != menu) continue;
+                if (!attached) continue;
                 const int index = closestPanel(button);
                 if (index < 0) continue;
-                if (result >= 0 && result != index) return -1;
-                result = index;
+                const auto previous=owners.constFind(attached);
+                // -2 remains ambiguous even if a later button repeats an owner.
+                owners[attached]=previous!=owners.cend() && previous.value()!=index ? -2 : index;
             }
         }
-        return result;
+        return owners;
+    }
+    int ownerOf(QMenu *menu,const QHash<QMenu *,int> &owners) const
+    {
+        // Resolve custom menus may be parented without QPushButton::menu().
+        int result = -1;
+        for (auto parent = menu->parent(); parent; parent = parent->parent())
+            if (auto widget = qobject_cast<QWidget *>(parent))
+                if (optionsButton(widget)) { result = closestPanel(widget); break; }
+        const int attached=owners.value(menu,-1);
+        if (attached==-2 || (result>=0 && attached>=0 && result!=attached)) return -1;
+        return attached>=0 ? attached : result;
     }
     QList<Panel> panels;
     QSet<QAction *> wired;

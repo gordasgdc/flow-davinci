@@ -110,6 +110,7 @@ try {
     Invoke-Fixture (Join-Path $build 'Release\OpenGateKeyframesFlowTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateNativePresetTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelCommandTests.exe') @()
+    Invoke-Fixture (Join-Path $build 'Release\OpenGatePanelMenuPreparationTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGatePresetPolicyTests.exe') @()
     Invoke-Fixture (Join-Path $build 'Release\OpenGateProductionFlowTests.exe') @($dll)
     $env:OPENGATE_TEST_WINDOWS_OUTER_INSPECTOR='1'
