@@ -350,3 +350,36 @@ No further specification review is needed to start the first repair. Correct req
 After local work is complete, Jordan receives a short explanation, a reviewable change, and a narrowly defined live test. Installation requires explicit authorization. No new layout tour or reconstruction of previously reported failures is required.
 
 **Current status:** first repair implemented and locally checked on an isolated branch; installation, live Resolve acceptance, Windows execution and coordinator extraction remain pending. Installed software is unchanged.
+
+## Rollback after Source regression reports — October 26
+
+This status supersedes the earlier installed/accepted statements above. Jordan
+reported a possible Media Pool double-click → Source regression on `376b153`.
+That passive initial-presentation experiment was withdrawn and installation
+restored to `ffc7c98`. Jordan then reported double-click loading still failing
+on that build and requested a further rollback. Neither report establishes the
+causal change; prior fixture passes do not establish native clip-picture success.
+
+Installed software is now `093c9de7a4856fadd3c9538124873d795848f646`, before both
+reopening optimizations. Resolve was closed for recovery. All 54 payload hashes
+match its install plan; all 24 protected settings/preference hashes match the
+checkpoint captured immediately before this rollback. Current layouts were not
+reset. Rotated logs and the verification receipt are preserved in
+`reopen-title-preparation/build/macos/rollback-ffc7c98/` (sibling worktree).
+
+Live acceptance remains pending. The Source experiment still requires the test
+launcher with `OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH=1`; ordinary reopening
+is not equivalent. No source changes were reverted, merged or pushed during
+recovery. The menu optimization already on local main is now under regression
+review; the passive presentation experiment remains isolated. Suspend further
+speed changes until loading is confirmed on the restored checkpoint.
+
+### Installation update: one checkpoint forward — October 26
+
+At Jordan’s explicit correction, restored exactly `ffc7c98`, not `376b153`.
+All 54 installed payload files match its plan; all 24 protected files remain
+unchanged from the immediately preceding snapshot. Receipt and current logs:
+`reopen-title-preparation/build/macos/roll-forward-ffc7c98/`. Jordan reports
+Match Frame working and double-click loading failing on the older `093c9de`.
+Loading remains unresolved; this restoration is a version preference, not
+acceptance of Source behavior or proof of a performance-regression cause.
