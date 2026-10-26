@@ -11,7 +11,10 @@ int main(int argc,char **argv){
  Unbound::NativeArrangementPlan parsed;const auto error=Unbound::NativeArrangementPlan::parse(plan,"edit",available,parsed);
  if(!error.isEmpty()){std::fprintf(stderr,"FAIL: %s\n",qPrintable(error));return 1;}
  QStringList names;Unbound::groupTreeNames(parsed.tree,names);
- if(!parsed.managed||names.contains("unboundWorkspaceToolbar")||names.contains(Unbound::nativeRemainderId())||names.size()!=6)return 2;
+ if(!parsed.managed||names.contains("unboundWorkspaceToolbar")||names.contains(Unbound::nativeRemainderId())||
+    names.size()!=7||!names.contains("frameEditAudioMeter")) {
+  std::fprintf(stderr,"FAIL: Resolve Layout must contain seven independent panels including Mixer, without bands or a native remainder\n");return 1;
+ }
  Unbound::ArrangementStore store;const auto id=entry["id"].toString();
  if(store.update(id,value).isEmpty()||store.remove(id).isEmpty()||store.rename(id,"Changed").isEmpty())return 3;
  QString saved;if(!store.create("My workspace",value,saved).isEmpty()||!store.update(saved,value).isEmpty())return 4;
