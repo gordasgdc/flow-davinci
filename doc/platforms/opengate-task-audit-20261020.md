@@ -1806,3 +1806,45 @@ in Desktop/OpenGate Before Fresh Install 20261022-111757/Settings. Native Resolv
 preferences, projects/media and diagnostic logs were not reset. Recovery:
 /Library/Application Support/CineWaltz/OpenGate/Transactions/2FC8056B-A91C-4B67-9CD4-6E93BD92332A/Restore Previous OpenGate.command
 No revision 3 installation performed: Jordan will download and double-click it.
+
+## October 26 takeover reconciliation
+
+The latest runtime/launch evidence and current acceptance gaps are recorded in
+[the reconciliation](opengate-native-loading-reconciliation-20261026.md). It
+supersedes historical installed/pending statements: installed ffc7c98; isolated
+normal-launch candidate built and locally checked, not installed or live accepted.
+Native loading works in the flagged live session; hidden Source reveal and
+floating blink fail. Find is unresolved. Ordinary-launch shortcut and command
+submenu fixture checks pass; no new live remap/Fixed Playhead/Stabilize result.
+
+## Native command reveal candidate — October 26
+
+Installed ordinary-launch candidate remains unchanged. Its new live diagnostics
+prove Source recall rejects Resolve's custom clip view as not-abstract-item-view.
+The subsequent uninstalled behavior repair adapts native release-time Source Clip
+activation and actual Find/Match Frame QAction triggers to the existing retained
+panel doors. Custom-view and standard-view assembled suites pass; universal build
+and bootstrap checks pass. See [native navigation repair](opengate-native-navigation-reveal-20261026.md)
+for evidence, diff, organization review and exact live gaps. Floating blink is not
+claimed fixed. Native Find selection, matching frame/pictures and reveal require
+live acceptance; candidate-specific installation permission is still required.
+The rest of the product checklist remains open and speed optimization stays paused.
+
+### Find native shortcut path identified — October 26
+
+The latest three-command test accepts tested double-click and Match Frame, but
+Find fails. Native R dispatch maps to clipFindClipInMediaPool in the current saved
+preset and does not emit the QAction trigger our observer expected. A bounded
+uninstalled repair now observes the existing QShortcut activation and reuses the
+sole preset reader and panel door; it creates no custom Find command or mapping.
+Assembled remapped-key/ambiguity/reassignment checks and native-preset regression
+pass; universal compilation passes. See opengate-native-navigation-reveal-20261026.md.
+Keep checkpoint c7920d6 recoverable; no main merge or contract completion claimed.
+
+## Accepted navigation checkpoint; blink remains open — October 26
+
+Jordan reports the three tested native navigation paths working and authorizes
+merging/pushing their fixes, then investigating floating Source blinking. This
+supersedes the earlier pending Find result. No full contract acceptance is claimed.
+See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
+Installed payload and user settings remain unchanged by this source checkpoint.

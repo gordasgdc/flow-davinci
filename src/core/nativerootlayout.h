@@ -89,7 +89,7 @@ public:
         if (!active() || remainder || !container || container->layout() ||
             !contains(page,container) || container==surface || stash->isAncestorOf(container))
             return QStringLiteral("The remaining native workspace cannot be placed here.");
-        stopVisibilityExperiment();
+        releaseNativeVisibility();
         remainder=container;
         auto layout=new QVBoxLayout(container); layout->setContentsMargins(0,0,0,0); layout->setSpacing(0);
         layout->addWidget(stash);
@@ -101,14 +101,13 @@ public:
         logEvent("workspace.native-root.remainder",{{"page",page->objectName()},{"unmanaged_controls",visibility.size()}});
         return {};
     }
-    // Causal experiment only: change effective visibility of the parked tree,
-    // without giving it a layout leaf, pixels or pointer targets. Never force
-    // individually hidden native children open. No input/command is replayed.
-    void enableVisibilityExperiment() {
-        if (!active() || remainder || visibleStashExperiment ||
-            page->objectName()!="WStackPage_Conform" ||
-            qgetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH")!="1") return;
-        visibleStashExperiment=true;
+    // Resolve's Edit loading route needs the parked native tree effectively
+    // visible. Preserve that state without adding a layout leaf, pixels or
+    // pointer targets; individually hidden children stay hidden.
+    void preserveNativeVisibility() {
+        if (!active() || remainder || nativeVisibilityPreserved ||
+            page->objectName()!="WStackPage_Conform") return;
+        nativeVisibilityPreserved=true;
         stash->setAttribute(Qt::WA_TransparentForMouseEvents,true);
         stash->setAttribute(Qt::WA_ShowWithoutActivating,true);
         // An empty mask means 'no mask' in Qt. Use a nonempty region wholly
@@ -116,7 +115,7 @@ public:
         stash->setMask(QRegion(-1,-1,1,1));
         page->installEventFilter(this);
         stash->setVisible(page->isVisible());
-        logEvent("workspace.native-root.visibility-experiment",{{"enabled",true},
+        logEvent("workspace.native-root.visibility-preserved",{{"enabled",true},
             {"stash_visible",stash->isVisible()},{"mask_intersects_rect",stash->mask().intersects(stash->rect())}});
     }
     bool restore() {
@@ -125,7 +124,7 @@ public:
             logEvent("workspace.native-root.restore-rejected",{{"reason","native-or-custom-layout-replaced"}});
             return false;
         }
-        stopVisibilityExperiment();
+        releaseNativeVisibility();
         // Park our tree before returning the original layout. Never delete a
         // native control merely because its presentation container is retiring.
         auto parking=new QWidget(main); parking->hide(); parking->setLayout(customLayout);
@@ -169,26 +168,26 @@ public:
     }
 protected:
     bool eventFilter(QObject *object,QEvent *event) override {
-        if (visibleStashExperiment && object==page && stash) {
+        if (nativeVisibilityPreserved && object==page && stash) {
             if (event->type()==QEvent::Hide) stash->hide();
             else if (event->type()==QEvent::Show) stash->show();
         }
         return false;
     }
 private:
-    void stopVisibilityExperiment() {
-        if (!visibleStashExperiment) return;
+    void releaseNativeVisibility() {
+        if (!nativeVisibilityPreserved) return;
         if (page) page->removeEventFilter(this);
         if (stash) {
             stash->hide(); stash->clearMask();
             stash->setAttribute(Qt::WA_TransparentForMouseEvents,false);
             stash->setAttribute(Qt::WA_ShowWithoutActivating,false);
         }
-        visibleStashExperiment=false;
+        nativeVisibilityPreserved=false;
     }
     void clear() {
-        if (page && visibleStashExperiment) page->removeEventFilter(this);
-        visibleStashExperiment=false;
+        if (page && nativeVisibilityPreserved) page->removeEventFilter(this);
+        nativeVisibilityPreserved=false;
         disconnect(pageDestroyed); pageDestroyed={};
         page=nullptr; main=nullptr; surface=nullptr; stash=nullptr; remainder=nullptr; nativeLayout=nullptr; customLayout=nullptr;
         visibility.clear(); baselineVisibility.clear();
@@ -200,6 +199,6 @@ private:
     QMetaObject::Connection pageDestroyed;
     QSize minimum; QSizePolicy policy;
     QVariant rootProperty;
-    bool visibleStashExperiment=false;
+    bool nativeVisibilityPreserved=false;
 };
 }

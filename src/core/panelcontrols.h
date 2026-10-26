@@ -57,6 +57,7 @@
 #include "pagecontext.h"
 #include "editpagelifecycle.h"
 #include "workspaceheaders.h"
+#include "nativepanelnavigation.h"
 
 class PanelControls : public QWidget
 {
@@ -506,6 +507,27 @@ public:
         connect(&saveTimer, &QTimer::timeout, this, [this] { save(); });
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
         connect(&restoreTimer, &QTimer::timeout, this, [this] { restore(); });
+        nativeNavigation=new Unbound::NativePanelNavigation(this);
+        nativeNavigation->shortcutOwners=[this](const QKeySequence &key){return commands->nativeShortcutOwners(key);};
+        nativeNavigation->context=[this](const QString &id) {
+            Unbound::NativePanelNavigation::Context state;
+            state.page=page();state.version=bulkVersion;
+            if(quitting)state.blocked="quitting";
+            else if(layoutMode!="managed")state.blocked="native-mode";
+            else if(restoringNative)state.blocked="native-restoration";
+            else if(workspaceRestore->savingBlocked())state.blocked="workspace-checkpoint-blocked";
+            else if(!state.page || !state.page->isVisible())state.blocked="page-not-visible";
+            else if(Unbound::visibleCinemaViewer())state.blocked="cinema-viewer";
+            for(int i=0;i<panels.size();++i)if(panels[i].session->active()) {
+                if(panels[i].name==id){state.destination=panels[i].session;state.surface=panels[i].session->window();state.shown=panelShown(i);}
+                if(panels[i].name=="frameEditPageMediaPool")state.pool=panels[i].session->window();
+            }
+            return state;
+        };
+        nativeNavigation->reveal=[this](QObject *source) {
+            for(int i=0;i<panels.size();++i)if(panels[i].session==source){showPanel(i,true,false);save();break;}
+        };
+        nativeNavigation->scanActions(Unbound::resolveMainWindow());
         qApp->installEventFilter(this);
         installEventFilter(this);
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { shutdown(); });
@@ -537,7 +559,7 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (quitting) return false;
-        if (event->type()==QEvent::MouseButtonDblClick) queueSourceRecall(object,static_cast<QMouseEvent *>(event));
+        nativeNavigation->observe(object,event);
         if (expansionController->index() >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
@@ -563,32 +585,6 @@ protected:
         return false;
     }
 private:
-    void queueSourceRecall(QObject *object,QMouseEvent *event) {
-        if (layoutMode!="managed" || restoringNative || workspaceRestore->savingBlocked() ||
-            event->button()!=Qt::LeftButton || Unbound::visibleCinemaViewer() || !page() || !page()->isVisible()) return;
-        auto viewport=qobject_cast<QWidget *>(object);
-        auto view=viewport ? qobject_cast<QAbstractItemView *>(viewport->parentWidget()) : nullptr;
-        if (!view || view->viewport()!=viewport || view->objectName()!="mediaPoolClipView" ||
-            !view->indexAt(event->pos()).isValid()) return;
-        int source=-1;bool ownedPool=false;
-        for(int i=0;i<panels.size();++i) {
-            auto session=panels[i].session;
-            if(panels[i].name=="widgetEditSourcePlayer" && session->active())source=i;
-            if(panels[i].name=="frameEditPageMediaPool" && session->active() && session->window())
-                ownedPool=session->window()->isAncestorOf(view);
-        }
-        if(source<0 || !ownedPool || panelShown(source))return;
-        const auto version=bulkVersion;QPointer<QWidget> origin=page();
-        // Let Resolve receive the original event. This only recalls the retained
-        // destination after that dispatch; it never simulates a loading command.
-        QTimer::singleShot(0,this,[this,source,version,origin] {
-            if(quitting || restoringNative || version!=bulkVersion || !origin || origin!=page() ||
-                !origin->isVisible() || Unbound::visibleCinemaViewer() || layoutMode!="managed" || workspaceRestore->savingBlocked() ||
-                !panels[source].session->active() || panelShown(source))return;
-            showPanel(source,true,false);save();
-            Unbound::logEvent("source.navigation.recall",{{"reason","media-pool-double-click"}});
-        });
-    }
     int hoveredExpansionTarget() const {
         if (expansionController->index()>=0) return expansionController->index();
         QList<Unbound::PanelHoverSurface> surfaces;
@@ -1260,6 +1256,7 @@ private:
     QList<Panel> panels;
     Unbound::NativeSurfaceDoors nativeSurfaceDoors;
     Unbound::NativePanelToggles *nativeToggles=nullptr;
+    Unbound::NativePanelNavigation *nativeNavigation=nullptr;
     QSet<int> pendingNativeDoors,pendingPrimaryPanels;
     Unbound::WorkspaceSettings settings;
     Unbound::WorkspacePersistence persistence{settings};

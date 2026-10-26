@@ -383,3 +383,119 @@ unchanged from the immediately preceding snapshot. Receipt and current logs:
 Match Frame working and double-click loading failing on the older `093c9de`.
 Loading remains unresolved; this restoration is a version preference, not
 acceptance of Source behavior or proof of a performance-regression cause.
+
+## Native loading reconciliation — October 26, current takeover
+
+Installed payload remains ffc7c98, reverified 54/54. Its ordinary session lacked
+the experiment flags. Same-build launcher session 715f60a8 confirms experiment
+activation and Jordan reports double-click loading working, but hidden docked
+and floating Source fail to reveal, and visible floating Source blinks. Find
+remains separate and unresolved. Normal-launch candidate and recall diagnostics
+are isolated and uninstalled; no merge/push/publication. See
+[reconciliation and verification](opengate-native-loading-reconciliation-20261026.md).
+
+## Authorized installation — October 26
+
+Jordan authorized this candidate and Resolve was verified closed. Installed the
+reviewed helper bundle as 00e79a7-dirty (fix/native-loading-normal-launch), with
+source and binary hashes in build/macos/candidate-receipt.json. All four bundle
+files match; all 24 protected settings/preferences remain unchanged. Installation
+receipt: build/macos/authorized-install/receipt.json. Recoverable ffc7c98 checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/58DFCD25-F975-4934-A1A8-3EA914F357BD.
+No merge, push or publication. Ordinary-launch loading is expected to work without
+the experiment flag; hidden-Source recall is diagnostic only, and blink/Find are
+not claimed fixed. Next live test: ordinary launch, A/B pictures, then one hidden
+Source double-click to capture the rejection reason. Earlier uninstalled status
+in this document describes preparation and is superseded by this receipt.
+
+## Native command reveal candidate — October 26
+
+Installed ordinary-launch candidate remains unchanged. Its new live diagnostics
+prove Source recall rejects Resolve's custom clip view as not-abstract-item-view.
+The subsequent uninstalled behavior repair adapts native release-time Source Clip
+activation and actual Find/Match Frame QAction triggers to the existing retained
+panel doors. Custom-view and standard-view assembled suites pass; universal build
+and bootstrap checks pass. See [native navigation repair](opengate-native-navigation-reveal-20261026.md)
+for evidence, diff, organization review and exact live gaps. Floating blink is not
+claimed fixed. Native Find selection, matching frame/pictures and reveal require
+live acceptance; candidate-specific installation permission is still required.
+The rest of the product checklist remains open and speed optimization stays paused.
+
+## Authorized installation of navigation repair — October 26
+
+Jordan authorized and Resolve was verified closed. Installed 5ad307b-dirty; all
+four helper bundle files match and all 24 protected settings/preferences are
+unchanged. Receipt: build/macos/navigation-install/receipt.json. Recovery checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/6A12E319-D283-4241-AF67-72BCB94BFDB4.
+This supersedes the candidate-pending statements above. Live acceptance of native
+double-click/Match Frame/Find output and retained reveal remains pending; floating
+blink is not claimed fixed. No merge, push or publication.
+
+## Live review after installation — October 26
+
+Jordan reports: "find in media pool doesn't work. everything else does" in the
+requested three-command test. Treat this as positive live evidence for the tested
+double-click and Match Frame output/reveal, not blanket acceptance of all product
+requirements or an explicit withdrawal of every historical blink report.
+Session 69e2746a-3e4f-4e90-bd4d-07dc2c6ebc32 / PID 29588 / 5ad307b-dirty records
+clean shutdown. Evidence: build/macos/navigation-live-review/session.jsonl and
+user-results.json.
+
+Match Frame: native action 856 -> queued reveal 857 -> complete 872; second test
+1435 -> 1436 -> 1454. Custom Media Pool double-click: armed 1282 -> native source
+activation queues 1289 -> existing Source door completes 1307. These traces
+accompany Jordan's result, rather than substituting for correct native pictures.
+Find has no navigation.native-action observation. workspaceShowPanelMediapool at
+797/941/987/1046 is Show Media Pool, not proof Find executed or failed to select a
+clip. Do not blame Jordan's invocation or change mappings from this observation.
+The exact Find input/dispatch path remains to be identified; the QAction-based
+adapter is incomplete for the reported sequence.
+
+Architecture assessment: automatically preserving the parked native tree addresses
+the observed full-layout visibility dependency introduced by OpenGate hosting.
+It is an empirically supported compatibility technique, not proof of Resolve's
+internal implementation. Source reveal replaces a demonstrably invalid standard
+Qt-item-view assumption with a gesture-scoped native Source Clip activation
+adapter. That adapter depends on Resolve control identity and release-time
+behavior; both are evidenced for this runtime and remain compatibility risks for
+other Resolve versions. NativePanelNavigation identifies explicit intent and uses
+the existing single showPanel/save door; it neither loads clips nor owns a second
+visibility model. The large coordinator only wires state and callbacks. Existing
+standard-item fallback, Native return and ordinary-launch behavior are preserved.
+
+Contract 9 is partially met: tested Source navigation works, Find remains open,
+and Reverse Match Frame is a separate outstanding contract item. No contract
+completion or main merge is claimed. Keep this checkpoint recoverable on the
+feature branch; recommend identifying/fixing native Find before integrating the
+whole navigation change. A future explicitly authorized partial merge must state
+its exact accepted scope and leave Find open. No merge/push/publication performed.
+
+### Find native shortcut path identified — October 26
+
+The latest three-command test accepts tested double-click and Match Frame, but
+Find fails. Native R dispatch maps to clipFindClipInMediaPool in the current saved
+preset and does not emit the QAction trigger our observer expected. A bounded
+uninstalled repair now observes the existing QShortcut activation and reuses the
+sole preset reader and panel door; it creates no custom Find command or mapping.
+Assembled remapped-key/ambiguity/reassignment checks and native-preset regression
+pass; universal compilation passes. See opengate-native-navigation-reveal-20261026.md.
+Keep checkpoint c7920d6 recoverable; no main merge or contract completion claimed.
+
+## Authorized Find correction installation — October 26
+
+Jordan authorized c7920d6-dirty and Resolve was verified closed. All four installed
+helper bundle files match; all 24 protected settings/preferences are unchanged.
+Receipt: build/macos/find-shortcut-install/receipt.json. Recovery checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/EB9F2B5C-6230-4995-810E-5085AA7A010B.
+Earlier uninstalled statements describe preparation and are superseded here.
+Live native Find selection and retained reveal remain pending. No main merge,
+push or publication. Next test: ordinary launch, hidden Media Pool, Jordan’s
+existing R Find shortcut, correct selected clip and retained panel revealed.
+
+## Accepted navigation checkpoint; blink remains open — October 26
+
+Jordan reports the three tested native navigation paths working and authorizes
+merging/pushing their fixes, then investigating floating Source blinking. This
+supersedes the earlier pending Find result. No full contract acceptance is claimed.
+See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
+Installed payload and user settings remain unchanged by this source checkpoint.
