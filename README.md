@@ -3,12 +3,37 @@
 OpenGate by CineWaltz gives DaVinci Resolve movable panels, split/tab groups and
 saved workspaces while preserving Resolve's real native content.
 
-**[Download 0.0.2 prototype.4 — macOS and Windows tester preview](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.4)**
+**[OpenGate 0.0.3 prototype.1 — macOS and Windows tester release](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.3-prototype.1)**
 
-Prototype.4 brings the shared managed workspace to Windows and moves Mac logs to
-OpenGate's own log folder. Windows live Resolve acceptance is pending testers.
-The [accepted prototype.3 Mac installer](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.3)
-remains available unchanged for rollback.
+This tester checkpoint improves native clip navigation, independent Mixer placement,
+default layout proportions and panel headers, and includes the updated optional
+Jordan Tetewsky preset. See the release page for downloads, verification and open issues.
+
+## See OpenGate in action
+
+On Open you should see something that looks like this:
+<img width="1723" height="1088" alt="Screenshot 2026-10-26 at 3 34 57 AM" src="https://github.com/user-attachments/assets/c3a68115-2fb4-4f2c-a76e-a26b168026f8" />
+
+It matches close to what you would natively see in Resolve.... You may notice this menu at the top- it includes two workspace presets, and one that is pinned to match something close to the native Resolve preset that allows you to always return to something familiar:
+
+<img width="433" height="284" alt="Screenshot 2026-10-26 at 3 36 58 AM" src="https://github.com/user-attachments/assets/e6fe1587-47f1-440b-9bab-15b5b306c89f" />
+
+You can grab and float windows, dock them magnetically etc.... You'll find that you get a freedom you never have experienced with the Resolve UI
+
+<img width="1725" height="1091" alt="Screenshot 2026-10-26 at 3 38 37 AM" src="https://github.com/user-attachments/assets/28bfda09-60e0-49c2-b76e-b170db8dd0bf" />
+
+You'll also find additional commands, such as toggle maximum restore which allows you to temporarily maximize and restore any window, stabilize clip, and fixed playhead.
+
+<img width="426" height="125" alt="Screenshot 2026-10-26 at 3 40 04 AM" src="https://github.com/user-attachments/assets/243cacdd-7897-4204-9433-5a7b9d13d3e7" />
+<img width="431" height="47" alt="Screenshot 2026-10-26 at 3 40 16 AM" src="https://github.com/user-attachments/assets/8bf976b0-4ab7-456d-9f6a-496fea3554c6" />
+
+It's great being able to temporarily maximize windows and go back to your workspace with a hotkey.
+
+<img width="1728" height="1083" alt="Screenshot 2026-10-26 at 3 41 13 AM" src="https://github.com/user-attachments/assets/c9a12a96-3638-426a-b4e8-663e699307f4" />
+
+<img width="1728" height="1085" alt="Screenshot 2026-10-26 at 3 41 20 AM" src="https://github.com/user-attachments/assets/1c488919-b998-4620-a223-7c27366cec04" />
+
+<img width="1728" height="1095" alt="Screenshot 2026-10-26 at 3 41 27 AM" src="https://github.com/user-attachments/assets/f43668e9-51fc-4e21-a3ac-0b246253bb93" />
 
 ## Install and first launch
 
@@ -41,8 +66,8 @@ Reproduce the issue, note its time, then double-click the export entry:
 
 | Platform | Export entry | Raw log folder |
 | --- | --- | --- |
-| Mac prototype.4 | Applications → OpenGate Tools → Export OpenGate Support | `~/Library/Logs/OpenGate` |
-| Windows prototype.4 | Start → OpenGate → Export OpenGate Support Logs | `%LOCALAPPDATA%\OpenGate\Logs` |
+| macOS | Applications → OpenGate Tools → Export OpenGate Support | `~/Library/Logs/OpenGate` |
+| Windows | Start → OpenGate → Export OpenGate Support Logs | `%LOCALAPPDATA%\OpenGate\Logs` |
 
 Send Jordan the **OpenGate support ZIP created on your Desktop**, plus your local
 time/time zone, Resolve version and edition, OS version, page/panel, reproduction
@@ -67,18 +92,13 @@ Removing only the launcher does not remove the resident plugin.
 
 ## Verification and development
 
-Read the [release's testing status and checksums](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.2-prototype.4),
-[equivalent Mac/Windows live checklists](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/prototype4-candidate-review.md)
-and [evidence ledger](https://github.com/jordantetewsky/OpenGate/blob/v0.0.2-prototype.4/doc/platforms/windows-managed-workspace-progress.md).
-Builds and fixtures do not establish installation or live acceptance. No
-performance improvement is claimed. Main now includes the shared workspace core,
-Source presentation checkpoint, retained Close repair and persistence extraction
-reviewed on October 25. The locally installed Mac candidate is `093c9de`; Jordan
-reported a positive live trial and requested this merge. Startup/reopen latency,
-ordinary-launch Source experiment dependency and Windows live acceptance remain
-open. Published installers are unchanged; prototype.4 source remains identified
-by its release tag.
-Repository identity migration is a separate, deferred task.
+Read the [0.0.3 tester release and expected workflow](https://github.com/jordantetewsky/OpenGate/releases/tag/v0.0.3-prototype.1)
+and the [checkpoint notes](doc/platforms/prototype003-v1-checkpoint.md).
+Builds and fixtures do not establish installation or live acceptance. Jordan accepted
+the tested Mac behavior as a checkpoint; broader native rendering and input testing
+remains necessary on both platforms. Floating Source blink remains deferred polish;
+docking target discovery remains under investigation. No performance improvement is claimed.
+Prior releases remain available for recovery.
 
 New cross-platform features require one behavioral specification, deliberate
 shared-code/platform-adapter boundaries, equivalent coverage, Mac regressions,
