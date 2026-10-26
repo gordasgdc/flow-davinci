@@ -230,6 +230,36 @@ must not unnecessarily replay startup acquisition. Evaluate real elapsed time,
 intermediate visibility and final layout/picture correctness separately. The
 accepted installation stays unchanged during this work. No speedup is yet claimed.
 
+## First reopening optimization: native menu preparation
+
+Implemented separately on `perf/reopen-menu-preparation`. `PanelMenus` now
+inventories attached native menu owners once per synchronous `wire()` pass,
+instead of rescanning all window descendants for every menu. Parent ownership
+and conflicting attached owners are still checked. Opening a menu gets a fresh
+inventory; there is no persistent cache or second controller. A scoped
+`panel.menus.wire` timing span records the actual operation in future live logs.
+
+The 12-panel/1,800-extra-button hidden fixture measures five samples of ten passes.
+Baseline median: 4.443 ms/pass. Changed median including timing: 0.563 ms/pass
+(about 87% reduction for this operation only). Logs: `build/macos/menu-before.log`
+and `menu-after.log` in the optimization worktree. This does not establish a
+Resolve reopening speedup or removal of the visible assembly sequence.
+
+Ownership checks pass for ambiguous attachments despite a known parent, conflict
+removal, changes between wiring and menu opening, parent-only custom menus, late
+menu creation and exactly one command dispatch after repeated preparation.
+First-open and delayed-Index startup flows pass. All five complete saved-output
+checkpoints match the accepted fixture run with QT_HASH_SEED=0, normalizing only
+random preset IDs. The new fixture is registered for Mac and Windows; Windows
+execution remains pending. PanelControls is untouched; PanelMenus remains one
+responsibility at 185 lines. No panel visibility, readiness or persistence policy
+was changed. Candidate compilation and any live trial remain separate gates.
+
+Do not change the presentation sequence merely to claim progress. The next
+missing evidence is the optimized operation's real share of restoration time in
+Resolve; existing logs do not isolate that cost. Use the narrow timing span in a
+reviewed candidate before choosing a broader restoration/presentation change.
+
 # Remaining repair order
 
 **Next code-organization task:** give workspace capture and saving a focused owner outside `PanelControls`, reusing `WorkspaceSnapshot`, `WorkspaceSettings`, and `PageWorkspaceState`. Replace the coordinator's existing implementation rather than adding a parallel save path. Preserve file schemas, incomplete-restoration guards, native-return checkpoints and temporary-expansion snapshots. Verify production startup, named/unsaved restoration and restart before accepting the extraction. The local extraction is implemented; acceptance evidence is still being reviewed.
