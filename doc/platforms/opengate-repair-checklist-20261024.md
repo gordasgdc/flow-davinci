@@ -260,6 +260,29 @@ missing evidence is the optimized operation's real share of restoration time in
 Resolve; existing logs do not isolate that cost. Use the narrow timing span in a
 reviewed candidate before choosing a broader restoration/presentation change.
 
+## Menu optimization live review — October 26
+
+Installed `ffc7c98`: Jordan reports reopening is quicker, approves merge, and
+still sees individual panels loading. Merged to local main as `c543851`;
+no push/publication. Installation verified 54 payload files and 24 unchanged
+protected settings files. All 54 hidden suites passed before installation;
+this candidate's displayed matrix and Windows runtime remain unverified.
+
+Two recorded live sessions show eight menu wiring passes each: total 206.9 ms
+and 199.6 ms, median 28.4 ms and 26.4 ms per pass. Edit resume to native-plan
+assembly request measured 1.862 and 1.856 seconds. Previous captured runs measured
+roughly 4–5 seconds, but layouts and conditions were not controlled; do not turn
+that comparison into a precise speedup claim. Jordan's report supports a
+perceived improvement. Raw sessions are in `build/reopen-evidence/`.
+
+The visible loading sequence remains unresolved. This optimization changes menu
+preparation, not the sequence that acquires individual native panels, presents
+their temporary hosts and then assembles the saved arrangement. The next bounded
+work should target presentation during that existing restore transaction while
+preserving native visibility/readiness, exact saved layout and failure recovery.
+Do not simply hide native content: prior Source-loading failures make that an
+unsafe assumption. Accepted installed `ffc7c98` remains the rollback checkpoint.
+
 # Remaining repair order
 
 **Next code-organization task:** give workspace capture and saving a focused owner outside `PanelControls`, reusing `WorkspaceSnapshot`, `WorkspaceSettings`, and `PageWorkspaceState`. Replace the coordinator's existing implementation rather than adding a parallel save path. Preserve file schemas, incomplete-restoration guards, native-return checkpoints and temporary-expansion snapshots. Verify production startup, named/unsaved restoration and restart before accepting the extraction. The local extraction is implemented; acceptance evidence is still being reviewed.
