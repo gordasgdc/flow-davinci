@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "panelexpansion.h"
+#include "panelexpansionconstraints.h"
 #include "panelsession.h"
 #include "panelgroup.h"
 #include "surfacereadiness.h"
@@ -56,7 +57,7 @@ public:
         return true;
     }
     int index() const { return current; }
-    void sessionInactive(int index) { if (current==index) current=-1; }
+    void sessionInactive(int index) { if (current==index) {constraints.restore();priority.restore();current=-1;} }
     QJsonObject panelSnapshot(int index,const QJsonObject &value) const { return current==index ? target.saved : value; }
     QJsonObject groupSnapshot(PanelGroup *group) const
     { return current>=0 && group==originalGroup ? originalGroupState : group->snapshot(); }
@@ -83,6 +84,7 @@ public:
                     restore(); report(QStringLiteral("Could not expand the panel; its previous arrangement was restored."));
                     return;
                 }
+                constraints.acquire(target.name,window);
                 if(!refreshGeometry()){restore();return;}
                 target.session->setHiddenByUser(false); priority.foreground(window); update(target.index);
                 if(presentationChanged)presentationChanged();
@@ -93,7 +95,7 @@ public:
     void restore()
     {
         if (current<0) return;
-        const int index=current; priority.restore(); ++version; current=-1;
+        const int index=current; constraints.restore();priority.restore(); ++version; current=-1;
         target.cancelPending(); QString error;
         bool groupRebuilt=false;
         if (wasGrouped) {
@@ -132,5 +134,6 @@ private:
     QPointer<PanelGroup> originalGroup;
     QJsonObject originalGroupState;
     PanelExpansion priority;
+    PanelExpansionConstraints constraints;
 };
 }

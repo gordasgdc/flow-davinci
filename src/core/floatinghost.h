@@ -324,6 +324,10 @@ private:
         if (selection != lastDockSelection) {
             lastDockSelection = selection;
             logEvent(QStringLiteral("dock.target.selection"), {{"source", objectName()},
+                {"pointer_x",dragPointer.x()},{"pointer_y",dragPointer.y()},
+                {"candidate",surface?surface->objectName():QString()},
+                {"candidate_x",surfaceFrame.x()},{"candidate_y",surfaceFrame.y()},
+                {"candidate_width",surfaceFrame.width()},{"candidate_height",surfaceFrame.height()},
                 {"target", attachmentTarget ? attachmentTarget->objectName() : QString()}, {"active", bool(attachmentTarget)},
                 {"kind", !dockSectionKey(attachmentTarget).isEmpty()?"stack-split":chosen.edge == Qt::Edge(0) ? "tab" : attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? "group-split" : "panel-split"},
                 {"edge", int(chosen.edge)}});

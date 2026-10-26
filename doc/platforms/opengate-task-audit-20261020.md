@@ -1848,3 +1848,90 @@ merging/pushing their fixes, then investigating floating Source blinking. This
 supersedes the earlier pending Find result. No full contract acceptance is claimed.
 See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
 Installed payload and user settings remain unchanged by this source checkpoint.
+
+## Mixer panel candidate — October 26
+
+Native navigation checkpoint remains merged in main (`6833b68`). Jordan deferred
+the floating Source blink trial after reporting no improvement; it remains
+isolated and unmerged. Installed `0f092e3` was reverified read-only against all
+four staged bundle files. Mixer development is on `fix/mixer-panel-repair` from
+accepted main, excluding the blink trial. No Mixer installation or publication.
+
+See [Mixer repair and evidence](opengate-mixer-panel-repair-20261026.md) for the
+independent default leaf, reversible header/expansion constraints, reproduced
+retired-wrapper discovery fix, organization review and live gaps. The native GPU
+crash is not yet claimed fixed. Startup Timeline compression and the rest of this
+checklist remain open; changing the default recipe does not rewrite saved layouts.
+
+Default presentation follow-up: the Mixer-only candidate is superseded. Jordan's
+whole-preset clarification led to a reproduced small-weight/pixel-size allocation
+defect. The shared embedded/floating sizing repair passes before/after proportion
+and saved-position tests; see the Mixer repair note for final build/live status.
+
+## Authorized installation — October 26
+
+Jordan authorized installation of the Mixer/default-presentation candidate.
+Installed `6833b68-dirty` from `fix/mixer-panel-repair`, helper SHA-256
+`314fd16443c594bc1b296215b407bd33ca21f0d9de6bcb7918e2745ce10dd8f8`. All four installed bundle files
+match the staged candidate; Current metadata matches; all 24 protected settings
+and preference files are unchanged. Resolve was confirmed closed before install
+and checked again by the installer. Rollback checkpoint:
+`/Library/Application Support/CineWaltz/OpenGate/Transactions/7FB5D8FC-A564-4E7E-B3E0-1C0B03E4F486`.
+Receipt: `build/macos/mixer-default-presentation-candidate/receipt.json`.
+This supersedes earlier uninstalled statements. No merge, push or publication.
+Native live acceptance remains pending. Launch normally; preserve the current
+view with Save as New before selecting Resolve Layout to inspect the updated
+default. Check complete panel presentation, then Mixer maximize/restore and
+close/recall after Timeline expansion. No launch flags are required.
+
+## Live feedback and nested-section follow-up — October 26
+
+Jordan reports Mixer mostly working and the default's initial appearance mostly
+correct. Remaining problems begin during drags/rearrangement. Preserve the new
+default proportions; do not redesign the preset to avoid the failing structure.
+Evidence: `build/macos/live-mixer-source-20261026/`, including screenshots and all
+rotated logs captured at investigation start. Session
+`67755275-5c94-4e3d-be38-83f06721e8f8`, PID 34577, installed `6833b68-dirty`.
+
+Source below Media Pool becomes a split section inside the default's Media
+Pool/Index tab group. NativeArrangement looked for ANY ancestor tab and suppressed
+every descendant leaf header, competing for the section's corner controls. The
+other preset's ordinary neighbor structure does not enter that branch. This is
+a shared presentation inconsistency, not evidence of a Source loading failure.
+The new assembled regression fails all three header/corner assertions before the
+repair and passes afterward (`section-headers-before.log`, `section-headers-after.log`).
+
+GroupPanelHeader now determines direct tab-page membership for both embedded and
+floating callers. Descendants of a split section retain individual headers; only
+a direct tab leaf uses the tab title. Duplicate membership logic was removed from
+both coordinators. The shared layout builder specifies right-side text elision
+and scrolling for long tab titles. Native styling and real content are retained.
+
+Existing drag logs show active targets alternating with no target, but omit pointer
+and destination bounds. They do not establish a Mixer-specific target failure.
+Only one Mixer drag appears in the captured session and completes successfully;
+most recorded repeated target searches are Source drags. The existing
+`dock.target.selection` event now includes pointer and candidate bounds to separate
+missing destinations from neutral drop zones. No speculative target-selection
+behavior change, new controller, or timer was added.
+
+Jordan later could not readily reproduce after restart. Do not ask for repeated
+layout tours: the screenshot structure and deterministic local failure are already
+preserved. Exact restart-state differences remain unproven. The follow-up remains
+uninstalled; the mostly-working live installation is preserved. Windows runtime
+verification remains open.
+
+## Authorized header-repair installation — October 26
+
+Installed approved nested-section header repair at 06:58:58 UTC with Resolve closed.
+Helper SHA-256 `e260d08b8992b844b3957f29c752f3bed42fac8e64340d0e4621505d7b408d99`; all four installed payload files and
+Current metadata match. Rollback checkpoint: `/Library/Application Support/CineWaltz/OpenGate/Transactions/2EC009F8-CF62-4E57-8329-C39B34CB6333`.
+Receipt: `build/macos/section-header-candidate/receipt.json`.
+
+Resolve reopened at 06:59:06 UTC (session `ab819ac1-c778-46b4-a4dc-bac64c15332d`)
+during verification. Twenty-three protected files remain identical; Workspace.json
+changed with recorded successful runtime saves beginning 06:59:18 UTC, after
+installation completed. Its pre-install copy is preserved; the live workspace
+was not overwritten to force a checksum match. Earlier uninstalled statements
+are superseded. Live header/tab acceptance and docking-target investigation
+remain open. No merge, push or publication.

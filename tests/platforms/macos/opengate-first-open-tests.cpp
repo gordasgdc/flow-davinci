@@ -19,6 +19,8 @@ template<class T>T *component(QObject *owner){for(auto child:owner->children())i
 #include "../../core/workspace-callers/persistencesnapshots.h"
 #include "../../core/workspace-callers/nativenavigationchecks.h"
 #include "../../core/workspace-callers/nativepresetfixture.h"
+#include "../../core/workspace-callers/mixerpanelchecks.h"
+#include "../../core/workspace-callers/sectionheaderchecks.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
@@ -49,6 +51,9 @@ int main(int argc,char **argv){
  auto mixerLayout=new QVBoxLayout(mixer);auto mixerRow=new QWidget(mixer);mixerRow->setObjectName("frameMixerMeterTitle");auto mixerTools=new QHBoxLayout(mixerRow);
  // Resolve can paint an elided title without storing it in QLabel::text().
  auto mixerTitle=new QLabel(QString(),mixerRow);mixerTitle->setObjectName("lblMixerMeter");mixerTitle->setMinimumSize(70,24);mixerTools->addWidget(mixerTitle);auto mixerOptions=new QToolButton(mixerRow);mixerOptions->setObjectName("btnAudioMixerOptions");mixerTools->addWidget(mixerOptions);mixerLayout->addWidget(mixerRow);
+ auto mixerContent=new QWidget(mixer);mixerContent->setObjectName("frameEditAudioMixer");mixerContent->setMaximumWidth(864);
+ auto tracks=new QHBoxLayout(mixerContent);auto nativeFader=new QPushButton("Native fader",mixerContent);nativeFader->setMaximumWidth(70);tracks->addWidget(nativeFader);mixerLayout->addWidget(mixerContent);
+ int nativeMixerClicks=0;QObject::connect(nativeFader,&QPushButton::clicked,mixerContent,[&]{++nativeMixerClicks;});
  nativePanels["frameConformTimelines"]->layout()->addWidget(mixer);
  auto footer=new QWidget(&main);footer->setObjectName("m_PageSwitcherContainer");outer->addWidget(footer);auto footrow=new QHBoxLayout(footer);for(const auto &id:{"buttonConformPanel","buttonFusionPanel","buttonHome","buttonConfig"}){auto b=new QPushButton(id,footer);b->setObjectName(id);footrow->addWidget(b);}
  auto navigation=workspace->addAction("Show Page Navigation");navigation->setCheckable(true);navigation->setChecked(true);QObject::connect(navigation,&QAction::toggled,footer,&QWidget::setVisible);
@@ -134,6 +139,8 @@ int main(int argc,char **argv){
   checkNativePanelNavigation(controls,main,page,binding,clips,nativePanels,check,settle);
   auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
  }
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_SECTION_HEADERS"))
+  checkSectionHeaders(controls,main,nativePanels["widgetEditSourcePlayer"],check,settle);
  auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");
  auto timelineHeader=timelineCell?timelineCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
  check(timelineHeader&&timelineHeader->isVisible(),"embedded Timeline reuses the visible draggable group title");
@@ -144,74 +151,7 @@ int main(int argc,char **argv){
  check(mediaHeader&&mediaHeader->isHidden(),"tabbed Media Pool has a tab title without a repeated panel title row");
  for(auto tabs:page->findChildren<QTabWidget *>("unboundPanelTabs"))for(int index=0;index<tabs->count();++index)
   check(!tabs->tabText(index).startsWith("widget")&&!tabs->tabText(index).startsWith("frame"),"tab titles never expose internal widget identifiers");
- auto dragMixerTitle=[&]{const QPoint p(25,15);QMouseEvent down(QEvent::MouseButtonPress,p,mixerTitle->mapToGlobal(p),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&down);QMouseEvent move(QEvent::MouseMove,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&move);QMouseEvent up(QEvent::MouseButtonRelease,p+QPoint(90,0),mixerTitle->mapToGlobal(p+QPoint(90,0)),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(mixerTitle,&up);settle(300);};
- QList<Unbound::PanelHoverSurface> hoverSurfaces{{1,"frameConformTimelines",timelineCell},{8,"frameEditAudioMeter",mixer}};
- check(Unbound::panelHoverTarget(mixerTitle,hoverSurfaces)==8,"nested Mixer title takes pointer maximize priority over Timeline");
- check(Unbound::panelHoverTarget(mixerRow,hoverSurfaces)==8,"nested Mixer header targets Mixer");
- check(Unbound::panelHoverTarget(timelineHeader,hoverSurfaces)==1,"Timeline header still targets Timeline");
- if(displayed) {
-  main.raise();main.activateWindow();QApplication::setActiveWindow(&main);settle(200);
-  const auto cursor=QCursor::pos();QCursor::setPos(mixerTitle->mapToGlobal(QPoint(25,15)));settle(100);
-  check(QApplication::widgetAt(QCursor::pos())==mixerTitle,"displayed pointer is over the actual native Mixer title");
-  check(controls.invokeWorkflowCommand("panel.expand.hovered"),"pointer maximize dispatches before Mixer is detached");settle(300);
-  auto expandedMixer=mixerTitle->window();
-  check(expandedMixer!=&main && nativePanels["frameConformTimelines"]->window()==&main,"pointer maximize expands nested Mixer alone");
-  QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
-  check(mixerTitle->window()==&main && mixer->isAncestorOf(mixerTitle),"pointer maximize restores Mixer to its original nested owner");
-  QCursor::setPos(cursor);
- }
- dragMixerTitle();
- check(mixerTitle->window()!=&main,"first-open Mixer title drags before any placement-button initialization");
- auto initialDockMixer=controls.findChild<QPushButton *>("dock_frameEditAudioMeter");if(initialDockMixer)initialDockMixer->click();settle();
- check(mixerTitle->toolTip().contains("drag"),"native Mixer title exposes its own drag affordance");
- auto mixerGlyph=mixer->findChild<QToolButton *>("unboundNativeUndock_frameEditAudioMeter");
- check(mixerGlyph&&mixerGlyph->isVisible(),"Mixer nested inside managed Timeline retains its own native placement control");
- if(mixerGlyph)mixerGlyph->click();settle();
- check(mixerTitle->window()!=&main,"Mixer placement control floats its content independently of Timeline");
- auto dockMixer=controls.findChild<QPushButton *>("dock_frameEditAudioMeter");if(dockMixer)dockMixer->click();settle();
- check(mixerTitle->window()==&main,"Mixer docks back without changing Timeline ownership");
- dragMixerTitle();
- check(mixerTitle->window()!=&main,"custom native Mixer title drags its existing session independently of Timeline");
- auto mixerHost=mixerTitle->window();mixerHost->setGeometry(180,140,420,360);settle(150);const auto mixerFrame=mixerHost->geometry();
- QApplication::setActiveWindow(&main);
- check(controls.invokeWorkflowCommand("panel.toggle.frameEditAudioMeter"),"Mixer hotkey command dispatches with an active Resolve window");settle(200);
- check(!mixerTitle->isVisible(),"Mixer hotkey hides its retained floating panel");
- auto mixerCallers=component<Unbound::PanelCallerMenu>(&controls);QMenu mixerMenu;mixerCallers->populateFlat(&mixerMenu);
- for(auto action:mixerMenu.actions())if(action->text()=="Mixer")action->trigger();settle(250);
- check(mixerTitle->isVisible()&&mixerTitle->window()==mixerHost&&mixerHost->geometry()==mixerFrame,"Panels recalls Mixer in the same floating host and remembered position");
- QApplication::setActiveWindow(&main);controls.invokeWorkflowCommand("panel.expand.frameEditAudioMeter");settle(250);
- check(mixerHost->geometry()!=mixerFrame,"Mixer participates in ordinary panel maximize");
- QApplication::setActiveWindow(&main);controls.invokeWorkflowCommand("panel.expand.frameEditAudioMeter");settle(250);
- check(mixerTitle->window()==mixerHost&&mixerHost->geometry()==mixerFrame,"Mixer maximize restores exact floating placement");
-
- auto sourceCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
- auto movedMixer=dynamic_cast<Unbound::WorkspaceFloatingHost *>(mixerTitle->window());
- check(sourceCell&&movedMixer&&movedMixer->attachRequested,"Mixer can mount beside another workspace panel");
- if(sourceCell&&movedMixer&&movedMixer->attachRequested)movedMixer->attachRequested(sourceCell,Qt::LeftEdge);settle(350);
- auto mixerCell=main.findChild<QWidget *>("unboundGroupCell_frameEditAudioMeter");
- auto mountedTitle=mixerCell?mixerCell->findChild<QLabel *>("unboundGroupHeader"):nullptr;
- check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"Mixer mounts in the visible workspace outside Timeline");
- check(mountedTitle&&mountedTitle->isVisible()&&mountedTitle->text()=="Mixer","repositioned Mixer has the existing readable panel title");
- if(displayed) {
-  // This command requires a foreground workspace. Qt-only activation can be
-  // cleared by queued Cocoa activation events (retained run 20261023T044902Z
-  // reports no-active-window). Establish the real native focus as in the
-  // assembled docking flow above; do not change command or outcome assertions.
-  Unbound::activateNativeWindowForTest(&main);settle(150);
-  const auto cursor=QCursor::pos();const auto requested=mixerTitle->mapToGlobal(QPoint(25,15));QCursor::setPos(requested);settle(100);
-  std::fprintf(stderr,"MIXER focus=%s requested=%d,%d actual=%d,%d\n",QApplication::activeWindow()?qPrintable(QApplication::activeWindow()->objectName()):"null",requested.x(),requested.y(),QCursor::pos().x(),QCursor::pos().y());
-  check(QApplication::activeWindow()==&main,"repositioned Mixer command has an active native workspace");
-  check(controls.invokeWorkflowCommand("panel.expand.hovered"),"repositioned Mixer pointer maximize dispatches");settle(300);
-  auto expandedMixer=mixerTitle->window();check(expandedMixer!=&main,"repositioned Mixer alone maximizes");
-  QApplication::setActiveWindow(expandedMixer);controls.invokeWorkflowCommand("panel.expand.hovered");settle(300);
-  check(mixerTitle->window()==&main&&binding->contains("frameEditAudioMeter"),"repositioned Mixer maximize restores its workspace placement");
-  QCursor::setPos(cursor);
- }
- dragMixerTitle();
- check(mixerTitle->window()!=&main&&!binding->contains("frameEditAudioMeter"),"repositioned Mixer native title detaches without its placement button");
-
- if(dockMixer)dockMixer->click();settle(300);
- check(mixerTitle->window()==&main,"Mixer title drag restores exact content ownership on dock");
+ checkMixerPanel(controls,main,binding,nativePanels["frameConformTimelines"],mixerTitle,mixerContent,nativeFader,nativeMixerClicks,displayed,check,settle);
 
  auto primary=component<Unbound::FooterPanel>(&controls);check(primary&&primary->primarySurface()==&main,"primary band owner is the main workspace");
  check(toolbar->window()==&main&&footer->window()==&main,"native header and footer stay in primary window");
@@ -282,7 +222,7 @@ int main(int argc,char **argv){
  if(choices&&!choices->actions().isEmpty())choices->actions().first()->trigger();settle(1800);
  check(binding&&binding->active(),"choosing Resolve Layout re-enters OpenGate through existing restoration");
  QPointer<QWidget> retainedToolbar=toolbar;
- for(const auto &id:{"frameEditPageMediaPool","frameEditPageEditIndex","widgetEditSourcePlayer","widgetEditTimelinePlayer","widgetEditInspector","frameConformTimelines"}){
+ for(const auto &id:{"frameEditPageMediaPool","frameEditPageEditIndex","widgetEditSourcePlayer","widgetEditTimelinePlayer","widgetEditInspector","frameConformTimelines","frameEditAudioMeter"}){
   auto command=controls.findChild<QPushButton *>(QString("undock_")+id);if(command)command->click();settle(200);
  }
  check(retainedToolbar&&retainedToolbar->window()==&main&&retainedToolbar->isVisible(),"detaching the last panel releases the toolbar lease before retiring the embedded page layout");

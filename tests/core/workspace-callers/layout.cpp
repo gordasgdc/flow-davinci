@@ -3,6 +3,7 @@
 #include <QVBoxLayout>
 #include <cstdio>
 #include "../../../src/core/panellayoutsurface.h"
+#include "../../../src/core/panellayoutproportions.h"
 #include "../../../src/core/panellayoutsnapshot.h"
 #include "../../../src/core/nativearrangementplan.h"
 #include "../../../src/core/dockscopetargets.h"
@@ -13,6 +14,24 @@ int main(int argc,char **argv) {
     QApplication app(argc,argv);int failures=0;
     auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
     using namespace Unbound;
+    {
+        QWidget area;area.setAttribute(Qt::WA_DontShowOnScreen);area.resize(600,800);
+        auto layout=new QVBoxLayout(&area);layout->setContentsMargins(0,0,0,0);
+        auto split=new QSplitter(Qt::Vertical,&area);split->setHandleWidth(6);split->setChildrenCollapsible(false);layout->addWidget(split);
+        auto viewers=new QWidget;viewers->setMinimumHeight(300);split->addWidget(viewers);
+        auto tracks=new QWidget;tracks->setMinimumHeight(40);split->addWidget(tracks);
+        split->setProperty("savedSizes",QVariantList{3,2});area.show();layout->activate();
+        restorePanelLayoutProportions(split);
+        auto sizes=split->sizes();
+        check(qAbs(sizes[1]*5-(sizes[0]+sizes[1])*2)<=5,"recipe proportions survive unequal native content minima");
+        split->setProperty("savedSizes",QVariantList{sizes[0],sizes[1]});
+        restorePanelLayoutProportions(split);
+        check(split->sizes()==sizes,"saved pixel divider positions restore exactly at the same extent");
+        area.resize(600,1000);layout->activate();restorePanelLayoutProportions(split);sizes=split->sizes();
+        check(qAbs(sizes[1]*5-(sizes[0]+sizes[1])*2)<=10,"saved layout proportions adapt to a different available height");
+        viewers->setMinimumHeight(850);restorePanelLayoutProportions(split);
+        check(viewers->height()>=850&&tracks->height()>=40,"proportional layout preserves real native content minimum sizes");
+    }
     const QJsonObject source{{"panel","source"}},program{{"panel","program"}},mixer{{"panel","mixer"}},timeline{{"panel","timeline"}};
     const auto column=splitGroupTree(program,mixer,Qt::Vertical);
     auto tree=splitGroupTree(splitGroupTree(column,source,Qt::Orientation(0)),timeline,Qt::Horizontal);

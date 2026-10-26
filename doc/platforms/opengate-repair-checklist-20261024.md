@@ -499,3 +499,58 @@ merging/pushing their fixes, then investigating floating Source blinking. This
 supersedes the earlier pending Find result. No full contract acceptance is claimed.
 See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
 Installed payload and user settings remain unchanged by this source checkpoint.
+
+## Mixer panel candidate — October 26
+
+Native navigation checkpoint remains merged in main (`6833b68`). Jordan deferred
+the floating Source blink trial after reporting no improvement; it remains
+isolated and unmerged. Installed `0f092e3` was reverified read-only against all
+four staged bundle files. Mixer development is on `fix/mixer-panel-repair` from
+accepted main, excluding the blink trial. No Mixer installation or publication.
+
+See [Mixer repair and evidence](opengate-mixer-panel-repair-20261026.md) for the
+independent default leaf, reversible header/expansion constraints, reproduced
+retired-wrapper discovery fix, organization review and live gaps. The native GPU
+crash is not yet claimed fixed. Startup Timeline compression and the rest of this
+checklist remain open; changing the default recipe does not rewrite saved layouts.
+
+### Default must present the complete layout correctly
+
+Jordan clarified that Resolve Layout must look correct as a complete preset,
+including usable Timeline height, viewers above, independent fitted Mixer, intact
+native toolbars/tabs and readable headers. Correct membership alone is insufficient.
+The 3:2 center split failed an assembled proportion assertion because small recipe
+weights were passed directly to Qt as pixel sizes. Shared proportional sizing now
+passes that assertion, saved-divider and native-minimum checks. Live rendering
+acceptance remains open; the new default never overwrites a retained last view.
+
+## Authorized installation — October 26
+
+Jordan authorized installation of the Mixer/default-presentation candidate.
+Installed `6833b68-dirty` from `fix/mixer-panel-repair`, helper SHA-256
+`314fd16443c594bc1b296215b407bd33ca21f0d9de6bcb7918e2745ce10dd8f8`. All four installed bundle files
+match the staged candidate; Current metadata matches; all 24 protected settings
+and preference files are unchanged. Resolve was confirmed closed before install
+and checked again by the installer. Rollback checkpoint:
+`/Library/Application Support/CineWaltz/OpenGate/Transactions/7FB5D8FC-A564-4E7E-B3E0-1C0B03E4F486`.
+Receipt: `build/macos/mixer-default-presentation-candidate/receipt.json`.
+This supersedes earlier uninstalled statements. No merge, push or publication.
+Native live acceptance remains pending. Launch normally; preserve the current
+view with Save as New before selecting Resolve Layout to inspect the updated
+default. Check complete panel presentation, then Mixer maximize/restore and
+close/recall after Timeline expansion. No launch flags are required.
+
+## Authorized header-repair installation — October 26
+
+Installed approved nested-section header repair at 06:58:58 UTC with Resolve closed.
+Helper SHA-256 `e260d08b8992b844b3957f29c752f3bed42fac8e64340d0e4621505d7b408d99`; all four installed payload files and
+Current metadata match. Rollback checkpoint: `/Library/Application Support/CineWaltz/OpenGate/Transactions/2EC009F8-CF62-4E57-8329-C39B34CB6333`.
+Receipt: `build/macos/section-header-candidate/receipt.json`.
+
+Resolve reopened at 06:59:06 UTC (session `ab819ac1-c778-46b4-a4dc-bac64c15332d`)
+during verification. Twenty-three protected files remain identical; Workspace.json
+changed with recorded successful runtime saves beginning 06:59:18 UTC, after
+installation completed. Its pre-install copy is preserved; the live workspace
+was not overwritten to force a checksum match. Earlier uninstalled statements
+are superseded. Live header/tab acceptance and docking-target investigation
+remain open. No merge, push or publication.

@@ -9,6 +9,7 @@
 #include <QTabWidget>
 #include "grouplayout.h"
 #include "panellayoutsurface.h"
+#include "panellayoutproportions.h"
 #include "panellayoutsnapshot.h"
 #include "panelsession.h"
 #include "workspacesettings.h"
@@ -147,6 +148,7 @@ public:
         QScopedValueRollback<bool> guard(releasing, true);
         QList<ManagedPanelSession *> current;
         for (auto member : members) if (member) {
+            if(auto header=headers.value(member))header->releaseNativeHeader();
             current.append(member); member->releaseGroup = {};
             if (member->window()) member->window()->removeEventFilter(this);
             member->detachFromGroup(dockMembers || deferMemberShow);
@@ -250,9 +252,11 @@ public:
         const auto tree = removeGroupLeaf(treeSnapshot(root), panelName(member));
         member->releaseGroup = {}; member->window()->removeEventFilter(this);
         QObject::disconnect(member->window(), nullptr, this, nullptr);
+        if(auto header=headers.value(member))header->releaseNativeHeader();
         member->detachFromGroup(deferHostShow); members.removeAll(member); leaves.remove(member); headers.remove(member); wrapper->hide(); wrapper->deleteLater();
         if (members.size() == 1) {
             auto remaining = members.first(); remaining->releaseGroup = {}; remaining->window()->removeEventFilter(this);
+            if(auto header=headers.value(remaining))header->releaseNativeHeader();
             remaining->detachFromGroup(); place(remaining, groupFrame); members.clear(); leaves.clear(); retireHost();
         } else if (members.isEmpty()) retireHost(); else rebuild(tree);
         place(member, detachedFrame);
@@ -318,7 +322,7 @@ private:
         // Keep old hosts until the destination is ready. Hiding the active host
         // earlier makes the window system activate another window in the middle of transfer.
         const auto error = member->attachToGroup(content,true); if (!error.isEmpty()) { delete wrapper; return error; }
-        for (auto child:content->findChildren<QWidget *>()) if (child->objectName()=="unboundTimelineHeader" || child->objectName()=="unboundNativeUndock_"+name || child->objectName().startsWith("unboundNativeKeyboard_")) child->hide();
+        header->borrowNativeHeader(content,name);
         if (name=="unboundWorkspaceToolbar") new CompactToolbar(wrapper,content->findChild<QStackedWidget *>() ? content->findChild<QStackedWidget *>() : content);
         members.append(member); leaves[member] = wrapper; wireMember(member); return {};
     }
@@ -340,9 +344,7 @@ private:
     void syncHeaders() {
         parkHeaders();
         for (auto member:members) if (member && headers.value(member)) {
-            auto wrapper=leaves.value(member);auto stack=wrapper ? qobject_cast<QStackedWidget *>(wrapper->parentWidget()) : nullptr;
-            auto tabs=stack ? qobject_cast<QTabWidget *>(stack->parentWidget()) : nullptr;
-            headers.value(member)->present(tabs,tabs && tabs->currentWidget()==wrapper,panelName(member)=="unboundWorkspaceToolbar");
+            headers.value(member)->presentFor(leaves.value(member),panelName(member)=="unboundWorkspaceToolbar");
         }
     }
     QJsonObject treeSnapshot(QWidget *widget) const
@@ -400,11 +402,7 @@ private:
             member->window()->setVisible(visible);
         }
         root->show();syncHeaders(); host->layout()->activate();
-        auto splitters = root->findChildren<QSplitter *>(); if (auto splitter = qobject_cast<QSplitter *>(root.data())) splitters.prepend(splitter);
-        for (auto splitter : splitters) {
-            QList<int> sizes; for (auto size : splitter->property("savedSizes").toList()) sizes.append(qMax(1, size.toInt()));
-            if (sizes.size() == splitter->count()) splitter->setSizes(sizes);
-        }
+        restorePanelLayoutProportions(root);
         applyPanelLayoutVisibility(root,visibility,[this](const QString &id) {
             for (auto member:members) if (member && panelName(member)==id) return !member->hiddenByUser();
             return false;
