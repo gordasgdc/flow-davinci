@@ -14,7 +14,7 @@ int main(int argc,char **argv) {
     qputenv("UNBOUND_DIAGNOSTICS_DIR",logs.path().toUtf8());int failures=0;
     auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
     using namespace Unbound;
-    // Test the experimental variable and its reversibility, not native clip
+    // Test ordinary-launch visibility and its reversibility, not native clip
     // loading: QPushButton signals cannot stand in for Resolve's player.
     for (int mode=0;mode<3;++mode) {
         if (mode==0) qunsetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH");
@@ -33,9 +33,9 @@ int main(int argc,char **argv) {
         auto focus=QApplication::focusWidget();
         const auto pixels=main.grab().toImage();
         auto stash=main.findChild<QWidget *>("unboundNativeLayoutStash");
-        lease.enableVisibilityExperiment();QApplication::processEvents();
-        const bool enabled=mode==1;
-        check(stash&&stash->isVisible()==enabled&&visible->isVisible()==enabled,"only opted-in Edit parked ancestry becomes effectively visible");
+        lease.preserveNativeVisibility();QApplication::processEvents();
+        const bool enabled=mode!=2;
+        check(stash&&stash->isVisible()==enabled&&visible->isVisible()==enabled,"Edit parked ancestry stays visible with or without the legacy launch flag");
         check(hidden->isHidden(),"experiment does not force explicitly hidden native children open");
         check(managed->geometry()==geometry&&main.geometry()==mainGeometry&&QApplication::focusWidget()==focus,"experiment leaves managed geometry and focus unchanged");
         check(main.grab().toImage()==pixels,"clipped parked widgets do not change rendered workspace pixels");
@@ -44,6 +44,14 @@ int main(int argc,char **argv) {
             check(stash->testAttribute(Qt::WA_TransparentForMouseEvents),"shown stash cannot intercept pointer input");
             page->hide();QApplication::processEvents();check(!stash->isVisible(),"parked experiment follows page departure");
             page->show();QApplication::processEvents();check(stash->isVisible(),"parked experiment follows page return");
+        }
+        if(mode==0) {
+            auto remainder=new QWidget(managed);
+            check(lease.retainNativeRemainder(remainder).isEmpty(),"visible native remainder can adopt the preserved tree");
+            check(stash->mask().isEmpty()&&!stash->testAttribute(Qt::WA_TransparentForMouseEvents)&&
+                  !stash->testAttribute(Qt::WA_ShowWithoutActivating),"remainder adoption removes masking and input suppression");
+            lease.preserveNativeVisibility();
+            check(stash->mask().isEmpty(),"retained remainder cannot be masked by repeated preservation");
         }
         check(lease.restore()&&page->layout()==native&&controller->parentWidget()==page,"experiment Native return restores exact ownership");
         QApplication::processEvents();check(visible->isVisible()&&hidden->isHidden(),"experiment Native return preserves native child visibility");

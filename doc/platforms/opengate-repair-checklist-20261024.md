@@ -350,3 +350,27 @@ No further specification review is needed to start the first repair. Correct req
 After local work is complete, Jordan receives a short explanation, a reviewable change, and a narrowly defined live test. Installation requires explicit authorization. No new layout tour or reconstruction of previously reported failures is required.
 
 **Current status:** first repair implemented and locally checked on an isolated branch; installation, live Resolve acceptance, Windows execution and coordinator extraction remain pending. Installed software is unchanged.
+
+## Native loading reconciliation — October 26, current takeover
+
+Installed payload remains ffc7c98, reverified 54/54. Its ordinary session lacked
+the experiment flags. Same-build launcher session 715f60a8 confirms experiment
+activation and Jordan reports double-click loading working, but hidden docked
+and floating Source fail to reveal, and visible floating Source blinks. Find
+remains separate and unresolved. Normal-launch candidate and recall diagnostics
+are isolated and uninstalled; no merge/push/publication. See
+[reconciliation and verification](opengate-native-loading-reconciliation-20261026.md).
+
+## Authorized installation — October 26
+
+Jordan authorized this candidate and Resolve was verified closed. Installed the
+reviewed helper bundle as 00e79a7-dirty (fix/native-loading-normal-launch), with
+source and binary hashes in build/macos/candidate-receipt.json. All four bundle
+files match; all 24 protected settings/preferences remain unchanged. Installation
+receipt: build/macos/authorized-install/receipt.json. Recoverable ffc7c98 checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/58DFCD25-F975-4934-A1A8-3EA914F357BD.
+No merge, push or publication. Ordinary-launch loading is expected to work without
+the experiment flag; hidden-Source recall is diagnostic only, and blink/Find are
+not claimed fixed. Next live test: ordinary launch, A/B pictures, then one hidden
+Source double-click to capture the rejection reason. Earlier uninstalled status
+in this document describes preparation and is superseded by this receipt.

@@ -1806,3 +1806,13 @@ in Desktop/OpenGate Before Fresh Install 20261022-111757/Settings. Native Resolv
 preferences, projects/media and diagnostic logs were not reset. Recovery:
 /Library/Application Support/CineWaltz/OpenGate/Transactions/2FC8056B-A91C-4B67-9CD4-6E93BD92332A/Restore Previous OpenGate.command
 No revision 3 installation performed: Jordan will download and double-click it.
+
+## October 26 takeover reconciliation
+
+The latest runtime/launch evidence and current acceptance gaps are recorded in
+[the reconciliation](opengate-native-loading-reconciliation-20261026.md). It
+supersedes historical installed/pending statements: installed ffc7c98; isolated
+normal-launch candidate built and locally checked, not installed or live accepted.
+Native loading works in the flagged live session; hidden Source reveal and
+floating blink fail. Find is unresolved. Ordinary-launch shortcut and command
+submenu fixture checks pass; no new live remap/Fixed Playhead/Stabilize result.

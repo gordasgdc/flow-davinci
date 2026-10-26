@@ -79,9 +79,9 @@ int main(int argc,char **argv){
   return failures?1:0;
  }
  check(binding&&binding->active(),"first open mounts existing panel tree in the primary workspace");
- if(qgetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH")=="1") {
+ {
   auto stash=main.findChild<QWidget *>("unboundNativeLayoutStash");
-  check(stash&&stash->isVisible()&&!stash->mask().intersects(stash->rect()),"assembled full workspace enables the clipped native visibility experiment");
+  check(stash&&stash->isVisible()&&!stash->mask().intersects(stash->rect()),"assembled full workspace preserves clipped native visibility without launch flags");
  }
  check(indexActivations==1,"startup acquires native Index once without a repeated toggle loop");
  if(!binding||!binding->active()){files.setAutoRemove(false);std::fprintf(stderr,"Startup logs retained: %s\n",qPrintable(files.path()));return 1;}

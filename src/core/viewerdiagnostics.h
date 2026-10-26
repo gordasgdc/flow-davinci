@@ -122,16 +122,15 @@ public:
             viewers.append(state);
         }
         QJsonArray controllers;
-        if (qgetenv("OPENGATE_EXPERIMENT_VISIBLE_NATIVE_STASH")=="1")
-            for (auto widget:observed) if (widget->inherits("UiConformerPanelImp") && controllers.size()<8) {
-                QJsonArray ancestry;
-                for (auto parent=widget->parentWidget();parent&&ancestry.size()<10;parent=parent->parentWidget())
-                    ancestry.append(widgetState(parent,false));
-                controllers.append(QJsonObject{{"controller",widgetState(widget,false)},{"ancestry",ancestry}});
-            }
+        for (auto widget:observed) if (widget->inherits("UiConformerPanelImp") && controllers.size()<8) {
+            QJsonArray ancestry;
+            for (auto parent=widget->parentWidget();parent&&ancestry.size()<10;parent=parent->parentWidget())
+                ancestry.append(widgetState(parent,false));
+            controllers.append(QJsonObject{{"controller",widgetState(widget,false)},{"ancestry",ancestry}});
+        }
         // Bounded observed-player snapshots, no allWidgets scan, layout hints,
         // payload reads or forced disk flush on the loading input path.
-        logEvent("viewer.loading.context",{{"phase",phase},{"origin",origin},{"players",viewers},{"experiment_controllers",controllers},
+        logEvent("viewer.loading.context",{{"phase",phase},{"origin",origin},{"players",viewers},{"native_controllers",controllers},
             {"relationship","temporal-observation-not-proof-of-causality"}});
     }
     void capture(const QString &phase, const QString &command)
