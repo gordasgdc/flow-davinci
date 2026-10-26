@@ -6,6 +6,8 @@
 #include <QMouseEvent>
 #include <QPointer>
 #include <QSet>
+#include <QShortcut>
+#include <QShortcutEvent>
 #include <QTimer>
 #include <functional>
 #include "nativeeditmenutarget.h"
@@ -26,6 +28,7 @@ public:
     explicit NativePanelNavigation(QObject *owner):QObject(owner) {}
     std::function<Context(const QString &)> context;
     std::function<void(QObject *)> reveal;
+    std::function<QStringList(const QKeySequence &)> shortcutOwners;
     void scanActions(QWidget *root) {
         if(!root)return;
         for(auto action:root->actions())wire(action);
@@ -33,6 +36,12 @@ public:
     }
     void observe(QObject *object,QEvent *event) {
         const auto type=event->type();
+        if(type==QEvent::Shortcut) {
+            auto shortcut=qobject_cast<QShortcut *>(object);
+            auto dispatch=static_cast<QShortcutEvent *>(event);
+            if(shortcut && !dispatch->isAmbiguous() && shortcut->isEnabled() &&
+               shortcut->id()==dispatch->shortcutId() && shortcut->key()==dispatch->key())wireShortcut(shortcut);
+        }
         if(type==QEvent::ActionAdded)wire(static_cast<QActionEvent *>(event)->action());
         if(type==QEvent::Show) {
             auto widget=qobject_cast<QWidget *>(object);
@@ -126,7 +135,36 @@ private:
             if(eligible(before,action->objectName()))request(id,before,action->objectName());
         });
     }
+    bool isFindShortcut(const QKeySequence &key) const {
+        if(!shortcutOwners)return false;
+        bool find=false;
+        for(const auto &owner:shortcutOwners(key)) {
+            if(owner=="clipFindClipInMediaPool" || owner=="MediaPool.clipFindClipInMediaPool")find=true;
+            // These preset entries belong to other pages; the context below
+            // must still be the visible Edit page. Unknown conflicts fail closed.
+            else if(!owner.startsWith("FusionWidget.") && !owner.startsWith("FairlightTimeline."))return false;
+        }
+        return find;
+    }
+    void wireShortcut(QShortcut *shortcut) {
+        if(shortcuts.contains(shortcut) || !isFindShortcut(shortcut->key()))return;
+        shortcuts.insert(shortcut);
+        connect(shortcut,&QObject::destroyed,this,[this,shortcut]{shortcuts.remove(shortcut);});
+        connect(shortcut,&QShortcut::activated,this,[this,shortcut] {
+            // Observe actual native activation; never intercept/replay the key.
+            // Re-read current assignment so a preset/key change cannot retain
+            // a stale Find association on an existing native QShortcut.
+            if(!isFindShortcut(shortcut->key()))return;
+            const QString id="frameEditPageMediaPool";
+            const auto before=context(id);
+            if(!before.page || before.page->objectName()!="WStackPage_Conform")return;
+            logEvent("navigation.native-shortcut",{{"command","clipFindClipInMediaPool"},
+                {"key",shortcut->key().toString(QKeySequence::PortableText)}});
+            if(eligible(before,"clipFindClipInMediaPool"))request(id,before,"clipFindClipInMediaPool");
+        });
+    }
     QSet<QAction *> actions;
+    QSet<QShortcut *> shortcuts;
     QList<QMetaObject::Connection> gestureConnections;
     bool gestureAccepted=false;
     unsigned gestureGeneration=0;

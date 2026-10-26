@@ -146,3 +146,79 @@ completion or main merge is claimed. Keep this checkpoint recoverable on the
 feature branch; recommend identifying/fixing native Find before integrating the
 whole navigation change. A future explicitly authorized partial merge must state
 its exact accepted scope and leave Find open. No merge/push/publication performed.
+
+## Find shortcut follow-up — implementation and local verification
+
+Read-only persisted-preset audit confirms Jordan's active preset maps R to
+clipFindClipInMediaPool. The captured native QShortcut events at 907, 931, 978
+and 1011 have R and Timeline focus. There is no corresponding Find QAction
+trigger. This identifies a dispatch path missed by the earlier QAction observer;
+it does not mean Jordan used Show Media Pool instead of Find.
+
+The new uninstalled c7920d6-dirty candidate observes QShortcut::activated on the
+existing native shortcut, after receiving its actual nonambiguous Shortcut event.
+It never creates a production QShortcut, registers a Find command, consumes a key,
+changes preferences, calls Find or replays its event. PanelCommandCatalog exposes
+a read-only owner lookup from its existing NativePresetBindings instance; no
+second decoder/watcher is added. The existing NativePanelNavigation adapter uses
+that identity to request the same retained Media Pool door.
+
+Assignment is rechecked at activation, not hardcoded to R. Unknown conflicts fail
+closed; known FusionWidget/FairlightTimeline entries are excluded only within the
+visible Edit-page context. The current preset contains a FusionWidget R assignment
+as well. Missing/unsupported/unpersisted preset identity remains a limitation;
+built-in-preset shortcut identification is not claimed solved by this path. Menu
+Find observation remains supported independently. Actual correct clip selection
+and reveal still require live acceptance for this new candidate.
+
+Hidden assembled custom-view suite passes with Find remapped to Alt+G, native
+activation exactly once, destination recall, ambiguous dispatch excluded and a
+wired shortcut changed to an unrelated R assignment no longer treated as Find.
+Existing double-click, Match Frame, saved placement, first-open/restart and Native
+return checks also pass. Native preset regression passes with the read-only lookup;
+production universal helper and bootstrap checks pass. Logs: find-shortcut-assembled.log,
+find-shortcut-presets.log, find-shortcut-build.log, find-shortcut-io.log.
+
+Responsibility review: NativePanelNavigation adds native dispatch observation;
+PanelCommandCatalog retains ownership of the sole preset reader; PanelControls
+adds one wiring callback. No second panel state writer or visibility controller.
+Tests reuse an extracted native-preset serializer rather than duplicate it.
+Shared macOS callers compile; Windows execution remains unverified. Candidate
+receipt and review patch are in build/macos/find-shortcut-candidate. No installation,
+main merge, push or publication. Contract 9 remains open until native Find is
+accepted, with the wider checklist and Reverse Match Frame still tracked.
+
+## Authorized Find correction installation — October 26
+
+Jordan authorized c7920d6-dirty and Resolve was verified closed. All four installed
+helper bundle files match; all 24 protected settings/preferences are unchanged.
+Receipt: build/macos/find-shortcut-install/receipt.json. Recovery checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/EB9F2B5C-6230-4995-810E-5085AA7A010B.
+Earlier uninstalled statements describe preparation and are superseded here.
+Live native Find selection and retained reveal remain pending. No main merge,
+push or publication. Next test: ordinary launch, hidden Media Pool, Jordan’s
+existing R Find shortcut, correct selected clip and retained panel revealed.
+
+## Live result and remaining floating Source blink — October 26
+
+Jordan reports “now everything seems to work” for the requested navigation tests,
+then clarifies that loading into floating Source still appears to turn the panel
+off and on briefly, approximately one frame. This qualifies the earlier result:
+loading and destination recall are reported working; continuous floating Source
+presentation is NOT accepted. Do not close the no-blink requirement or treat this
+as whole-product acceptance. No merge authorized or performed.
+
+Captured session 5de8867e-2df3-495b-86fd-2a2b6f9d0b31, build c7920d6-dirty,
+records actual R native-shortcut activation and retained Media Pool reveal (for
+example 1247 -> 1248 -> 1263), Source native activation/reveal (845 -> 864), and
+Match Frame/reveal (2598 -> 2617). Evidence snapshot: build/macos/find-live-accepted.
+
+Read-only blink review: NativePanelNavigation excludes destinations already shown
+and does not hide widgets. ManagedPanelSession still observes native content Hide
+and ParentChange and queues recovery; this is a candidate mechanism, not a proven
+cause. Current window Hide/Show records alone cannot identify the reported blink:
+they also include deliberate closes, placement changes and requested recalls. A
+content repaint/stack transition can appear similar without a top-level Hide.
+Do not label one such event as the blink without gesture-correlated evidence.
+Next diagnostic boundary is content/stack versus floating host presentation during
+a visible-Source load; preserve existing native loading and explicit hidden state.

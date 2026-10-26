@@ -18,10 +18,19 @@ template<class T>T *component(QObject *owner){for(auto child:owner->children())i
 #include "../../core/workspace-callers/retainedclosechecks.h"
 #include "../../core/workspace-callers/persistencesnapshots.h"
 #include "../../core/workspace-callers/nativenavigationchecks.h"
+#include "../../core/workspace-callers/nativepresetfixture.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
  if(!restart){qputenv("UNBOUND_DIAGNOSTICS_DIR",files.path().toUtf8());qputenv("UNBOUND_WORKSPACE_FILE",(files.path()+"/Workspace.json").toUtf8());qputenv("UNBOUND_ARRANGEMENTS_FILE",(files.path()+"/Arrangements.json").toUtf8());}qputenv("UNBOUND_TEST_HIDDEN_HOSTS","1");
+ if(qEnvironmentVariableIntValue("OPENGATE_TEST_SOURCE_RECALL") && !restart) {
+  const auto directory=files.path()+"/presets";QDir().mkpath(directory);qputenv("OPENGATE_PRESET_DIRECTORY",directory.toUtf8());
+  QSaveFile config(directory+"/config.user.xml");config.open(QIODevice::WriteOnly);
+  config.write("<Config><CustomKeyboardPreset>Active</CustomKeyboardPreset></Config>");config.commit();
+  QSaveFile presetFile(directory+"/keyboard.preset.xml");presetFile.open(QIODevice::WriteOnly);
+  presetFile.write(nativePresetFixture({{"clipFindClipInMediaPool",{QKeySequence("Alt+G")}},
+    {"FusionWidget.fixture",{QKeySequence("Alt+G")}}, {"unrelatedEditCommand",{QKeySequence("R")}}}));presetFile.commit();
+ }
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL: %s\n",why);}};
  const bool displayed=qEnvironmentVariableIntValue("OPENGATE_TEST_DISPLAYED_MIXER");
  if(displayed)qputenv("UNBOUND_TEST_HIDDEN_HOSTS","0");

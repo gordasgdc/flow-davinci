@@ -69,6 +69,17 @@ void checkNativePanelNavigation(PanelControls &controls,QWidget &main,QWidget *p
   check(binding->selected("frameEditPageMediaPool"),"native Find recalls and selects Media Pool");
   check(navigationPlacement(binding->saved()["tree"].toObject())==navigationPlacement(findTree.toObject()),"native Find retains placement while selecting the destination tab");
   binding->setVisible("frameEditPageMediaPool",false);settle(50);
+  int nativeFinds=0;
+  QShortcut shortcut(QKeySequence("Alt+G"),&main);
+  QObject::connect(&shortcut,&QShortcut::activated,&main,[&]{++nativeFinds;});
+  auto sendShortcut=[&](bool ambiguous=false) {
+   QShortcutEvent event(shortcut.key(),shortcut.id(),ambiguous);QApplication::sendEvent(&shortcut,&event);settle(100);
+  };
+  sendShortcut();check(nativeFinds==1&&binding->selected("frameEditPageMediaPool"),"remapped native Find shortcut executes once and recalls Media Pool");
+  binding->setVisible("frameEditPageMediaPool",false);settle(50);
+  sendShortcut(true);check(nativeFinds==1&&!binding->selected("frameEditPageMediaPool"),"ambiguous native shortcut cannot recall Media Pool");
+  shortcut.setKey(QKeySequence("R"));sendShortcut();
+  check(nativeFinds==2&&!binding->selected("frameEditPageMediaPool"),"changing a wired shortcut to an unrelated assignment removes Find association");
   auto showOnly=new QAction("Media Pool",&main);main.addAction(showOnly);showOnly->trigger();settle(50);
   check(!binding->selected("frameEditPageMediaPool"),"Show Media Pool is not treated as a Find command");
   binding->setVisible("frameEditPageMediaPool",true);

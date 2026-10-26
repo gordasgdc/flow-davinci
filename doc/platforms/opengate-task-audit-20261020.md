@@ -1829,3 +1829,22 @@ for evidence, diff, organization review and exact live gaps. Floating blink is n
 claimed fixed. Native Find selection, matching frame/pictures and reveal require
 live acceptance; candidate-specific installation permission is still required.
 The rest of the product checklist remains open and speed optimization stays paused.
+
+### Find native shortcut path identified — October 26
+
+The latest three-command test accepts tested double-click and Match Frame, but
+Find fails. Native R dispatch maps to clipFindClipInMediaPool in the current saved
+preset and does not emit the QAction trigger our observer expected. A bounded
+uninstalled repair now observes the existing QShortcut activation and reuses the
+sole preset reader and panel door; it creates no custom Find command or mapping.
+Assembled remapped-key/ambiguity/reassignment checks and native-preset regression
+pass; universal compilation passes. See opengate-native-navigation-reveal-20261026.md.
+Keep checkpoint c7920d6 recoverable; no main merge or contract completion claimed.
+
+## Accepted navigation checkpoint; blink remains open — October 26
+
+Jordan reports the three tested native navigation paths working and authorizes
+merging/pushing their fixes, then investigating floating Source blinking. This
+supersedes the earlier pending Find result. No full contract acceptance is claimed.
+See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
+Installed payload and user settings remain unchanged by this source checkpoint.

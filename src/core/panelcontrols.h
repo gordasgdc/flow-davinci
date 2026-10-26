@@ -508,6 +508,7 @@ public:
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
         connect(&restoreTimer, &QTimer::timeout, this, [this] { restore(); });
         nativeNavigation=new Unbound::NativePanelNavigation(this);
+        nativeNavigation->shortcutOwners=[this](const QKeySequence &key){return commands->nativeShortcutOwners(key);};
         nativeNavigation->context=[this](const QString &id) {
             Unbound::NativePanelNavigation::Context state;
             state.page=page();state.version=bulkVersion;

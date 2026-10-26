@@ -436,3 +436,33 @@ completion or main merge is claimed. Keep this checkpoint recoverable on the
 feature branch; recommend identifying/fixing native Find before integrating the
 whole navigation change. A future explicitly authorized partial merge must state
 its exact accepted scope and leave Find open. No merge/push/publication performed.
+
+### Find native shortcut path identified — October 26
+
+The latest three-command test accepts tested double-click and Match Frame, but
+Find fails. Native R dispatch maps to clipFindClipInMediaPool in the current saved
+preset and does not emit the QAction trigger our observer expected. A bounded
+uninstalled repair now observes the existing QShortcut activation and reuses the
+sole preset reader and panel door; it creates no custom Find command or mapping.
+Assembled remapped-key/ambiguity/reassignment checks and native-preset regression
+pass; universal compilation passes. See opengate-native-navigation-reveal-20261026.md.
+Keep checkpoint c7920d6 recoverable; no main merge or contract completion claimed.
+
+## Authorized Find correction installation — October 26
+
+Jordan authorized c7920d6-dirty and Resolve was verified closed. All four installed
+helper bundle files match; all 24 protected settings/preferences are unchanged.
+Receipt: build/macos/find-shortcut-install/receipt.json. Recovery checkpoint:
+/Library/Application Support/CineWaltz/OpenGate/Transactions/EB9F2B5C-6230-4995-810E-5085AA7A010B.
+Earlier uninstalled statements describe preparation and are superseded here.
+Live native Find selection and retained reveal remain pending. No main merge,
+push or publication. Next test: ordinary launch, hidden Media Pool, Jordan’s
+existing R Find shortcut, correct selected clip and retained panel revealed.
+
+## Accepted navigation checkpoint; blink remains open — October 26
+
+Jordan reports the three tested native navigation paths working and authorizes
+merging/pushing their fixes, then investigating floating Source blinking. This
+supersedes the earlier pending Find result. No full contract acceptance is claimed.
+See [checkpoint scope and evidence](opengate-native-navigation-checkpoint-20261026.md).
+Installed payload and user settings remain unchanged by this source checkpoint.

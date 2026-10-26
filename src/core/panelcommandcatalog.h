@@ -56,6 +56,11 @@ public:
         if (!nativeEditor.open("OpenGate"))
             logEvent("keyboard.native.unavailable",{{"origin","opengate-command-menu"},{"duplicate_editor_opened",false}});
     }
+    QStringList nativeShortcutOwners(const QKeySequence &sequence) const {
+        if(!preset || currentWorkspacePage(resolveMainWindow())!="edit" ||
+           !preset->snapshot().error.isEmpty() || !preset->snapshot().present)return {};
+        return preset->snapshot().owners.value(sequence.toString(QKeySequence::PortableText));
+    }
 private:
     NativeMatch matchPreset(const QKeySequence &pressed) const {
         if(!preset || currentWorkspacePage(resolveMainWindow())!="edit" || !preset->snapshot().error.isEmpty())return {};
