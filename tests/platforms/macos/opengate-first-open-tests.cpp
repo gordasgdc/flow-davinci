@@ -17,6 +17,7 @@ static void settle(int ms=600){QElapsedTimer t;t.start();while(t.elapsed()<ms){Q
 template<class T>T *component(QObject *owner){for(auto child:owner->children())if(auto v=dynamic_cast<T *>(child))return v;return nullptr;}
 #include "../../core/workspace-callers/retainedclosechecks.h"
 #include "../../core/workspace-callers/persistencesnapshots.h"
+#include "../../core/workspace-callers/nativenavigationchecks.h"
 int main(int argc,char **argv){
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QTemporaryDir files(OpenGateTest::evidenceTemplate("opengate-first-open-tests"));OpenGateTest::retainEvidence(files);
  const bool restart=app.arguments().contains("--restart-check");
@@ -121,35 +122,7 @@ int main(int argc,char **argv){
   check(binding->active()&&binding->contains("frameEditPageMediaPool"),"ordinary workspace selection restores the built-in after the stack drop");
  }
  if(qEnvironmentVariableIntValue("OPENGATE_TEST_SOURCE_RECALL")) {
-  auto dispatch=[&](QPoint point,Qt::MouseButton button=Qt::LeftButton){
-   QMouseEvent event(QEvent::MouseButtonDblClick,point,clips->viewport()->mapToGlobal(point),button,button,Qt::NoModifier);
-   QApplication::sendEvent(clips->viewport(),&event);settle(100);
-  };
-  auto cell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");
-  QPointer<QWidget> retained=cell;const QJsonValue tree=binding->saved()["tree"];
-  binding->setVisible("widgetEditSourcePlayer",false);settle(100);
-  dispatch(QPoint(-2,-2));check(!binding->selected("widgetEditSourcePlayer"),"blank Media Pool input does not recall Source");
-  auto point=clips->visualItemRect(clips->item(0)).center();
-  dispatch(point,Qt::RightButton);check(!binding->selected("widgetEditSourcePlayer"),"right double-click does not recall Source");
-  dispatch(point);
-  check(binding->selected("widgetEditSourcePlayer")&&retained==main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer"),"clip double-click recalls the existing hidden Source cell");
-  check(tree==binding->saved()["tree"],"Source recall preserves the managed tree");
-  auto placement=controls.findChild<QPushButton *>("undock_widgetEditSourcePlayer");if(placement)placement->click();settle(300);
-  Unbound::ManagedPanelSession *source=nullptr;
-  for(auto child:controls.children())if(auto session=dynamic_cast<Unbound::ManagedPanelSession *>(child))
-   if(session->active()&&session->window()&&session->window()->objectName()=="unboundFloating_widgetEditSourcePlayer")source=session;
-  check(source,"Source recall fixture finds retained floating session");
-  if(source){auto host=source->window();auto geometry=host->geometry();source->setHiddenByUser(true);settle(100);dispatch(point);
-   check(source->window()==host&&host->isVisible()&&host->geometry()==geometry,"clip double-click recalls floating Source without replacing or moving it");}
-  check(binding->dockSelection(page,"widgetEditSourcePlayer",nullptr,"widgetEditTimelinePlayer",Qt::Orientation(0),false).isEmpty(),"fixture places Source in a retained viewer tab group");settle(200);
-  binding->setVisible("widgetEditTimelinePlayer",true);settle(100);
-  auto tabCell=main.findChild<QWidget *>("unboundGroupCell_widgetEditSourcePlayer");QPointer<QWidget> tabOwner=tabCell?tabCell->parentWidget():nullptr;
-  auto program=nativePanels["widgetEditTimelinePlayer"];auto programFrame=program->geometry();
-  check(!binding->selected("widgetEditSourcePlayer"),"Source starts behind Program tab");dispatch(point);
-  check(binding->selected("widgetEditSourcePlayer")&&tabCell&&tabCell->parentWidget()==tabOwner,"clip double-click selects the existing Source tab");
-  check(program->geometry()==programFrame,"tab recall retains the Program viewer geometry");
-  const auto recalledPlan=binding->saved();dispatch(point);
-  check(binding->saved()==recalledPlan,"repeated double-click on already selected Source does not change layout state");
+  checkNativePanelNavigation(controls,main,page,binding,clips,nativePanels,check,settle);
   auto workspaces=component<Unbound::WorkspaceArrangements>(&controls);if(workspaces&&workspaces->invoke)workspaces->invoke("Restore","opengate.resolve-layout.edit");settle(1800);
  }
  auto timelineCell=main.findChild<QWidget *>("unboundGroupCell_frameConformTimelines");

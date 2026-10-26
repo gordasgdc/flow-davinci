@@ -57,7 +57,7 @@
 #include "pagecontext.h"
 #include "editpagelifecycle.h"
 #include "workspaceheaders.h"
-#include "sourcenavigationrecall.h"
+#include "nativepanelnavigation.h"
 
 class PanelControls : public QWidget
 {
@@ -507,9 +507,9 @@ public:
         connect(&saveTimer, &QTimer::timeout, this, [this] { save(); });
         restoreTimer.setSingleShot(true); restoreTimer.setInterval(250);
         connect(&restoreTimer, &QTimer::timeout, this, [this] { restore(); });
-        sourceRecall=new Unbound::SourceNavigationRecall(this);
-        sourceRecall->context=[this] {
-            Unbound::SourceNavigationRecall::Context state;
+        nativeNavigation=new Unbound::NativePanelNavigation(this);
+        nativeNavigation->context=[this](const QString &id) {
+            Unbound::NativePanelNavigation::Context state;
             state.page=page();state.version=bulkVersion;
             if(quitting)state.blocked="quitting";
             else if(layoutMode!="managed")state.blocked="native-mode";
@@ -518,14 +518,15 @@ public:
             else if(!state.page || !state.page->isVisible())state.blocked="page-not-visible";
             else if(Unbound::visibleCinemaViewer())state.blocked="cinema-viewer";
             for(int i=0;i<panels.size();++i)if(panels[i].session->active()) {
-                if(panels[i].name=="widgetEditSourcePlayer"){state.source=panels[i].session;state.shown=panelShown(i);}
+                if(panels[i].name==id){state.destination=panels[i].session;state.surface=panels[i].session->window();state.shown=panelShown(i);}
                 if(panels[i].name=="frameEditPageMediaPool")state.pool=panels[i].session->window();
             }
             return state;
         };
-        sourceRecall->reveal=[this](QObject *source) {
+        nativeNavigation->reveal=[this](QObject *source) {
             for(int i=0;i<panels.size();++i)if(panels[i].session==source){showPanel(i,true,false);save();break;}
         };
+        nativeNavigation->scanActions(Unbound::resolveMainWindow());
         qApp->installEventFilter(this);
         installEventFilter(this);
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this] { shutdown(); });
@@ -557,7 +558,7 @@ protected:
     bool eventFilter(QObject *object, QEvent *event) override
     {
         if (quitting) return false;
-        if (event->type()==QEvent::MouseButtonDblClick) sourceRecall->observe(object,static_cast<QMouseEvent *>(event));
+        nativeNavigation->observe(object,event);
         if (expansionController->index() >= 0 && event->type() == QEvent::Hide && object == page()) restoreExpanded();
         if (object == this && (event->type() == QEvent::Show || event->type() == QEvent::Resize || event->type() == QEvent::WindowTitleChange)) QTimer::singleShot(0, this, [this] {
             QPointer<PanelControls> alive(this);
@@ -1254,7 +1255,7 @@ private:
     QList<Panel> panels;
     Unbound::NativeSurfaceDoors nativeSurfaceDoors;
     Unbound::NativePanelToggles *nativeToggles=nullptr;
-    Unbound::SourceNavigationRecall *sourceRecall=nullptr;
+    Unbound::NativePanelNavigation *nativeNavigation=nullptr;
     QSet<int> pendingNativeDoors,pendingPrimaryPanels;
     Unbound::WorkspaceSettings settings;
     Unbound::WorkspacePersistence persistence{settings};

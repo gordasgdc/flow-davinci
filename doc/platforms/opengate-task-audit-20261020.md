@@ -1816,3 +1816,16 @@ normal-launch candidate built and locally checked, not installed or live accepte
 Native loading works in the flagged live session; hidden Source reveal and
 floating blink fail. Find is unresolved. Ordinary-launch shortcut and command
 submenu fixture checks pass; no new live remap/Fixed Playhead/Stabilize result.
+
+## Native command reveal candidate — October 26
+
+Installed ordinary-launch candidate remains unchanged. Its new live diagnostics
+prove Source recall rejects Resolve's custom clip view as not-abstract-item-view.
+The subsequent uninstalled behavior repair adapts native release-time Source Clip
+activation and actual Find/Match Frame QAction triggers to the existing retained
+panel doors. Custom-view and standard-view assembled suites pass; universal build
+and bootstrap checks pass. See [native navigation repair](opengate-native-navigation-reveal-20261026.md)
+for evidence, diff, organization review and exact live gaps. Floating blink is not
+claimed fixed. Native Find selection, matching frame/pictures and reveal require
+live acceptance; candidate-specific installation permission is still required.
+The rest of the product checklist remains open and speed optimization stays paused.
