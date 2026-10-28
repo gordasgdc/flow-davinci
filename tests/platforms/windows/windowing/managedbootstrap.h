@@ -55,7 +55,7 @@ private:
         if(!object||!value)return IOPlugin::errInvalidParam;
         if((!std::strcmp(key,"uuid")&&type==IOPlugin::propTypeUInt8&&count==16)||
            (!std::strcmp(key,"name")&&type==IOPlugin::propTypeString&&count>0&&
-            !std::strncmp(static_cast<const char *>(value),"OpenGate by CineWaltz",20)))++properties;
+            !std::strncmp(static_cast<const char *>(value),"Flow DaVinci",12)))++properties;
         else return IOPlugin::errInvalidParam;
         return IOPlugin::errNone;
     }

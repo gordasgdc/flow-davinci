@@ -4,6 +4,8 @@ param(
     [string]$QtPath = "$env:USERPROFILE\Qt\5.15.2\msvc2019_64"
 )
 $ErrorActionPreference = 'Stop'
+# Fixturile upstream compară textele englezești; interfața Flow DaVinci este în română implicit.
+$env:FLOW_DAVINCI_LANG = 'en'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'version.ps1')

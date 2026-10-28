@@ -253,7 +253,7 @@ int main(int argc, char **argv)
         QTemporaryDir dir;
         const auto oldLocal=qgetenv("LOCALAPPDATA"), oldOverride=qgetenv("UNBOUND_SETTINGS_FILE");
         qputenv("LOCALAPPDATA",dir.path().toUtf8()); qunsetenv("UNBOUND_SETTINGS_FILE");
-        QDir().mkpath(dir.filePath("Unbound"));
+        QDir().mkpath(dir.filePath("FlowDaVinci"));
         QFile oldFile(dir.filePath("FlowDaVinci/settings.json"));
         check(oldFile.open(QIODevice::WriteOnly),"Cannot create version 4 settings");
         oldFile.write(R"({"version":4,"pages":{"color":{"panes":{"luts":{"floating":true,"toolbarButtonChecked":false}}},"edit":{"panes":{"mediaPool":{"floating":true}}}}})"); oldFile.close();
