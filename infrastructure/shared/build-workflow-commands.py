@@ -51,7 +51,7 @@ except (ImportError,AttributeError,OSError):
     post=user32.PostMessageW
     post.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_size_t,ctypes.c_ssize_t]
     post.restype=ctypes.c_int
-    message=register("OpenGate.WorkflowCommandReady.v1")
+    message=register("FlowDaVinci.WorkflowCommandReady.v1")
     if message: post(0xffff,message,0,0)
 '''+source[end:]
     if command=='edit.inspector.stabilize':

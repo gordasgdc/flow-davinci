@@ -428,7 +428,7 @@ private:
     {
         if (text.isEmpty()) return;
         Unbound::logEvent("helper.error",{{"message",text}});
-        auto box = new QMessageBox(QMessageBox::Warning, QStringLiteral("Unbound"), text, QMessageBox::Ok);
+        auto box = new QMessageBox(QMessageBox::Warning, QStringLiteral("Flow DaVinci"), text, QMessageBox::Ok);
         box->setAttribute(Qt::WA_DeleteOnClose);
         box->setAttribute(Qt::WA_QuitOnClose, false);
         box->show();

@@ -43,7 +43,7 @@ DWORD WINAPI startWhenReady(void *pinnedModule) {
                 const auto loadedLength=GetModuleFileNameW(helper,loaded,32768);
                 const auto expectedLength=GetFullPathNameW(file.c_str(),32768,expected,nullptr);
                 if(!loadedLength||loadedLength>=32768||!expectedLength||expectedLength>=32768||_wcsicmp(loaded,expected)!=0) {
-                    Unbound::launcherDiagnostic("bootstrap.io.other-helper-loaded",L"A different OpenGate or Unbound helper is already loaded. Restart Resolve before using this installation.",GetCurrentProcessId());break;
+                    Unbound::launcherDiagnostic("bootstrap.io.other-helper-loaded",L"Este deja încărcat un alt asistent (Flow DaVinci, OpenGate sau Unbound). Repornește Resolve înainte de a folosi această instalare; nimic nu a fost modificat.",GetCurrentProcessId());break;
                 }
             }
             if(!helper) {

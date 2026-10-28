@@ -40,7 +40,7 @@ function Save-FixtureReceipt([bool]$Complete) {
     $directory = Join-Path $repoRoot 'build\windows\fixtures'
     $null = New-Item -ItemType Directory -Force -Path $directory
     $failed = @($fixtureResults | Where-Object { $_.status -eq 'FAIL' })
-    @{ schema=1; product='OpenGate'; source_commit=$sourceCommit; source_dirty=$sourceDirty;
+    @{ schema=1; product='Flow DaVinci'; source_commit=$sourceCommit; source_dirty=$sourceDirty;
        complete=$Complete; all_passed=($Complete -and $fixtureResults.Count -gt 0 -and $failed.Count -eq 0);
        scope='Compiled fixtures; no installation, live Resolve, GPU or physical keyboard acceptance'; tests=@($fixtureResults.ToArray()) } |
         ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $directory 'fixture-receipt.json') -Encoding UTF8
@@ -79,7 +79,7 @@ try {
     $ioPlugin = Join-Path $build 'Release\FlowDaVinci.dvcp'
     foreach ($file in @($exe, $dll)) {
         $info = (Get-Item -LiteralPath $file).VersionInfo
-        if ($info.ProductName -ne 'OpenGate' -or $info.CompanyName -ne 'CineWaltz' -or $info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
+        if ($info.ProductName -ne 'Flow DaVinci' -or $info.CompanyName -ne 'Cristi Gordas (GDC)' -or $info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
             $info.FileMajorPart -ne $releaseVersion.Major -or $info.FileMinorPart -ne $releaseVersion.Minor -or
             $info.FileBuildPart -ne $releaseVersion.Patch -or $info.FilePrivatePart -ne $BuildNumber) {
             throw "Version resource mismatch: $file"
@@ -170,7 +170,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
     $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'), (Join-Path $destination 'FlowDaVinci.dvcp'))
     $workflowHashes = @(Get-ChildItem -LiteralPath (Join-Path $destination 'workflow-commands') -File | Get-FileHash -Algorithm SHA256)
-    @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; Startup='native-io-plugin'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
+    @{ Product='Flow DaVinci'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; Startup='native-io-plugin'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')
     Copy-Item -LiteralPath (Join-Path $build 'release-manifest.json') -Destination $destination
     Write-Host "Unbound $version ready: $destination"

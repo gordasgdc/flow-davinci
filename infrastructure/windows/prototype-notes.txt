@@ -1,36 +1,30 @@
-OpenGate 0.0.3 prototype.1 — Windows x64 test candidate
+﻿Flow DaVinci 0.1.0 — candidat de test pentru Windows x64 (NETESTAT pe Windows real)
 
-Not live-tested inside DaVinci Resolve on Windows or macOS for this candidate.
-Windows uses the shared OpenGate managed workspace with Windows native window
-adapters. Synthetic fixtures do not establish live Resolve, GPU rendering or
-physical/remapped keyboard acceptance. Send diagnostic evidence for missing
-panels, title controls, ownership/painting errors or inconsistent actions.
+Acest candidat nu a fost testat live în DaVinci Resolve pe Windows. Compilarea și testele sintetice nu dovedesc
+randarea GPU, descoperirea efectivă a pluginului de către Resolve sau acceptarea tastelor fizice/remapate.
+Trimite dovezi de diagnostic pentru panouri lipsă, controale de titlu, erori de proprietate/desenare sau acțiuni inconsistente.
 
-Requires Resolve Studio 21.1 and Windows x64; free-edition startup is unverified. Save and quit Resolve before installing,
-upgrading, downgrading or uninstalling. Open Resolve normally: its native IO plugin starts OpenGate automatically.
-Start > OpenGate remains a recovery launcher if automatic loading fails.
-The installer requests standard administrator approval for Resolve's Workflow
-Integration menu/shortcut scripts in ProgramData. Runtime settings and logs stay
-in each user's profile. The helper remains loaded until Resolve exits. Uninstall and reopen Resolve to
-return to native Resolve. The installer does not modify Resolve, projects or media.
+Necesită Resolve Studio 21.1 și Windows x64; pornirea în ediția gratuită nu este verificată. Salvează și închide Resolve
+înainte de instalare, actualizare, revenire la o versiune anterioară sau dezinstalare. Deschide Resolve normal: pluginul
+IO nativ pornește Flow DaVinci automat. Start > Flow DaVinci rămâne un lansator de recuperare dacă încărcarea automată eșuează.
+Instalatorul cere aprobarea standard de administrator pentru scripturile din meniul Workflow Integration/scurtături ale
+Resolve, din ProgramData. Setările și jurnalele rămân în profilul fiecărui utilizator. Asistentul rămâne încărcat până la
+închiderea Resolve. Dezinstalează și redeschide Resolve pentru a reveni la Resolve nativ. Instalatorul nu modifică Resolve, proiectele sau media.
 
-Managed settings and user workspaces are retained in %LOCALAPPDATA%\Unbound
-(managedWorkspace.json and Arrangements.json). Legacy Unbound.json remains
-untouched. Installation and uninstallation do not clear these files or shortcuts.
-Keep a copy of this folder before trying an older build; older versions may not
-understand newer settings. No fresh-user reset is part of installation.
+Coexistență: Flow DaVinci are căi, setări (%LOCALAPPDATA%\FlowDaVinci) și jurnale proprii; nu suprascrie OpenGate sau Unbound.
+Dacă în Resolve este deja încărcat un asistent OpenGate/Unbound/Flow DaVinci, al doilea nu pornește și afișează un mesaj; repornește Resolve.
 
-This Windows installer is unsigned and may trigger Windows SmartScreen prompts.
-Installer diagnostics are written by Inno Setup to the user's temporary directory
-as Setup Log files. Keep the exact build and describe the steps when reporting.
-Prototype releases may be withdrawn and replaced after testing.
+Setările gestionate și spațiile de lucru ale utilizatorului se păstrează în %LOCALAPPDATA%\FlowDaVinci. Instalarea și dezinstalarea
+nu șterg aceste fișiere sau scurtături. Păstrează o copie a dosarului înainte de a încerca o versiune mai veche.
 
-OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT). See LICENSE.
+Acest instalator Windows nu este semnat și poate declanșa avertismente Windows SmartScreen. Jurnalele de instalare sunt
+scrise de Inno Setup în dosarul temporar al utilizatorului (fișiere Setup Log). Păstrează versiunea exactă și descrie pașii la raportare.
+Versiunile prototip pot fi retrase și înlocuite după testare.
 
-After reproducing a problem, open Start > OpenGate > Export OpenGate Support Logs.
-Send the Desktop ZIP to Jordan with the approximate time, page, panel and steps.
-OpenGate events use the same component/session/sequence format as Mac, including
-input clicks, observed button/action signals, focus/page changes and panel state.
-Logs: %LOCALAPPDATA%\OpenGate\Logs. Exports include build provenance and checksums.
-No project, media, Resolve preferences or typed editor contents are collected.
-Nothing is uploaded automatically; export leaves settings and Resolve running.
+Flow DaVinci: adaptare în limba română inițiată de Cristi Gordas (GDC), bazată pe OpenGate de CineWaltz, la rândul său bazat pe Unbound de Wolfgang Woehl (MIT). Vezi LICENSE.
+
+După ce reproduci o problemă, deschide Start > Flow DaVinci > Exportă jurnale de suport Flow DaVinci.
+Trimite ZIP-ul de pe Desktop cu ora aproximativă, pagina, panoul și pașii.
+Jurnale: %LOCALAPPDATA%\FlowDaVinci\Logs. Exporturile includ proveniența build-ului și sume de control.
+Nu se colectează proiecte, media, preferințele Resolve sau conținut tastat în editoare.
+Nimic nu se încarcă automat; exportul lasă setările neschimbate și Resolve pornit.

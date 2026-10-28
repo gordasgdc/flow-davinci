@@ -254,14 +254,14 @@ int main(int argc, char **argv)
         const auto oldLocal=qgetenv("LOCALAPPDATA"), oldOverride=qgetenv("UNBOUND_SETTINGS_FILE");
         qputenv("LOCALAPPDATA",dir.path().toUtf8()); qunsetenv("UNBOUND_SETTINGS_FILE");
         QDir().mkpath(dir.filePath("Unbound"));
-        QFile oldFile(dir.filePath("Unbound/settings.json"));
+        QFile oldFile(dir.filePath("FlowDaVinci/settings.json"));
         check(oldFile.open(QIODevice::WriteOnly),"Cannot create version 4 settings");
         oldFile.write(R"({"version":4,"pages":{"color":{"panes":{"luts":{"floating":true,"toolbarButtonChecked":false}}},"edit":{"panes":{"mediaPool":{"floating":true}}}}})"); oldFile.close();
         Unbound::PaneSettings renamed;
         check(renamed.floating("Color/m_pWidgetLutBrowser") && renamed.hasToggle("Color/m_pWidgetLutBrowser")
             && !renamed.toggle("Color/m_pWidgetLutBrowser") && renamed.floating("frameEditPageMediaPool"),"Version 4 migration lost settings");
         check(!oldFile.exists(),"Old filename retained after migration");
-        QFile newFile(dir.filePath("Unbound/Unbound.json"));
+        QFile newFile(dir.filePath("FlowDaVinci/Unbound.json"));
         check(newFile.open(QIODevice::ReadOnly),"New settings filename missing");
         const auto migrated=newFile.readAll(); newFile.close();
         check(migrated.contains("WStackPage_Color") && migrated.contains("m_pWidgetLutBrowser")

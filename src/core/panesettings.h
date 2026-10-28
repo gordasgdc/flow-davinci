@@ -21,8 +21,8 @@ public:
         if (m_path.isEmpty()) {
             auto base=qEnvironmentVariable("LOCALAPPDATA");
             if(base.isEmpty()) base=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-            m_path=QDir(base).filePath(QStringLiteral("Unbound/Unbound.json"));
-            if(!QFile::exists(m_path)) previousPath=QDir(base).filePath(QStringLiteral("Unbound/settings.json"));
+            m_path=QDir(base).filePath(QStringLiteral("FlowDaVinci/Unbound.json"));
+            if(!QFile::exists(m_path)) previousPath=QDir(base).filePath(QStringLiteral("FlowDaVinci/settings.json"));
         }
         QFile file(previousPath.isEmpty() ? m_path : previousPath);
         if(!file.exists()) return;

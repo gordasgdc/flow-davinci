@@ -1,4 +1,4 @@
-; OpenGate prototype: keep runtime files together; never modify Resolve or user settings.
+﻿; Flow DaVinci (prototip): fișierele de rulare rămân împreună; Resolve și setările utilizatorului nu se modifică. Netestat pe Windows real.
 #ifndef SourceRoot
   #error SourceRoot is required
 #endif
@@ -10,12 +10,12 @@
 #endif
 [Setup]
 AppId=FlowDaVinci-GDC
-AppName=OpenGate
+AppName=Flow DaVinci
 AppVersion={#BuildVersion}
-AppVerName=OpenGate {#BuildVersion} prototype.{#BuildRevision}
-AppPublisher=CineWaltz; based on Unbound by Wolfgang Woehl
-DefaultDirName={autopf}\OpenGate
-DefaultGroupName=OpenGate
+AppVerName=Flow DaVinci {#BuildVersion} prototip.{#BuildRevision}
+AppPublisher=Cristi Gordas (GDC); bazat pe OpenGate de CineWaltz și Unbound de Wolfgang Woehl
+DefaultDirName={autopf}\FlowDaVinci
+DefaultGroupName=Flow DaVinci
 ; Resolve discovers native workflow shortcut targets in the shared ProgramData
 ; directory. Standard installer elevation writes only OpenGate-owned files there.
 PrivilegesRequired=admin
@@ -23,7 +23,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir={#SourceRoot}\release\packages
-OutputBaseFilename=OpenGate-{#BuildVersion}-Prototype.{#BuildRevision}-Windows-x64
+OutputBaseFilename=FlowDaVinci-{#BuildVersion}-Prototype.{#BuildRevision}-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 SetupLogging=yes
@@ -40,12 +40,12 @@ Source: "{#SourceRoot}\release\win\{#BuildVersion}\release-manifest.json"; DestD
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\workflow-commands\*.py"; DestDir: "{commonappdata}\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\workflow-commands\manifest.json"; DestDir: "{app}"; DestName: "workflow-commands-manifest.json"; Flags: ignoreversion
 Source: "{#SourceRoot}\infrastructure\windows\export-support.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceRoot}\infrastructure\windows\export-support.cmd"; DestDir: "{app}"; DestName: "Export OpenGate Support Logs.cmd"; Flags: ignoreversion
+Source: "{#SourceRoot}\infrastructure\windows\export-support.cmd"; DestDir: "{app}"; DestName: "Exporta jurnale suport Flow DaVinci.cmd"; Flags: ignoreversion
 [Icons]
-Name: "{group}\OpenGate"; Filename: "{app}\Unbound.exe"
-Name: "{group}\Export OpenGate Support Logs"; Filename: "{app}\Export OpenGate Support Logs.cmd"
-Name: "{group}\Prototype limitations"; Filename: "{app}\README.txt"
-Name: "{group}\Uninstall OpenGate"; Filename: "{uninstallexe}"
+Name: "{group}\Flow DaVinci"; Filename: "{app}\Unbound.exe"
+Name: "{group}\Exportă jurnale de suport Flow DaVinci"; Filename: "{app}\Exporta jurnale suport Flow DaVinci.cmd"
+Name: "{group}\Limitări ale prototipului"; Filename: "{app}\README.txt"
+Name: "{group}\Dezinstalează Flow DaVinci"; Filename: "{uninstallexe}"
 [Code]
 function ResolveStopReason(): String;
 var Locator, Services, Processes: Variant;
@@ -56,9 +56,9 @@ begin
     Services := Locator.ConnectServer('', 'root\CIMV2');
     Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name="Resolve.exe"');
     if Processes.Count > 0 then
-      Result := 'Save your work and quit DaVinci Resolve before installing or uninstalling OpenGate.';
+      Result := 'Salvează lucrul și închide DaVinci Resolve înainte de a instala sau dezinstala Flow DaVinci.';
   except
-    Result := 'Could not check whether Resolve is closed. Close Resolve and retry.';
+    Result := 'Nu s-a putut verifica dacă Resolve este închis. Închide Resolve și reîncearcă.';
   end;
 end;
 

@@ -72,12 +72,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
     Unbound::launcherDiagnostic("launcher.start");
     try {
         if (std::wstring(command) == L"--version") {
-            MessageBoxW(nullptr, UNBOUND_VERSION, L"OpenGate", MB_OK);
+            MessageBoxW(nullptr, UNBOUND_VERSION, L"Flow DaVinci", MB_OK);
             return 0;
         }
-        require(std::wstring(command).empty(), L"Unknown argument. Run OpenGate without arguments, or use --version.");
+        require(std::wstring(command).empty(), L"Argument necunoscut. Rulează Flow DaVinci fără argumente sau cu --version.");
         // Keep repeated launches from accumulating invisible waiting helpers.
-        Handle waiter(CreateMutexW(nullptr, FALSE, L"Local\\Unbound.Launcher.Wait"));
+        Handle waiter(CreateMutexW(nullptr, FALSE, L"Local\\FlowDaVinci.Launcher.Wait"));
         const DWORD mutexError = GetLastError();
         require(waiter.h != nullptr, L"Cannot initialize OpenGate's launcher guard.");
         if (mutexError == ERROR_ALREADY_EXISTS) return 0;
@@ -98,7 +98,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         }
         Unbound::launcherDiagnostic("launcher.resolve.ready",{},pid);
         require(!findModule(loaded, L"gammaray_probe.dll").modBaseAddr, L"GammaRay is already attached. Restart Resolve before using OpenGate.");
-        require(!findModule(loaded, L"Unbound.dll").modBaseAddr, L"OpenGate is already loaded. Restart Resolve before loading another build.");
+        require(!findModule(loaded, L"Unbound.dll").modBaseAddr, L"În Resolve este deja încărcat un asistent Flow DaVinci, OpenGate sau Unbound. Repornește Resolve înainte de a încărca altă versiune; nimic nu a fost modificat.");
         auto qt = findModule(loaded, L"Qt5Core.dll");
         require(qt.modBaseAddr && qtCompatible(qt.szExePath) && findModule(loaded, L"Qt5Widgets.dll").modBaseAddr,
             L"This build requires Resolve with Qt 5.15.2 x64. Its required Qt libraries are not loaded or are incompatible.");
@@ -143,12 +143,12 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command, int)
         require(injected.modBaseAddr != nullptr, L"Resolve could not load Unbound.dll. Its existing Qt/MSVC runtime must satisfy the helper dependencies.");
         require(invoke(process.h, reinterpret_cast<LPTHREAD_START_ROUTINE>(injected.modBaseAddr + offset),
             nullptr) == 1,
-            L"OpenGate loaded, but could not queue startup on Resolve's GUI thread. Restart Resolve before retrying.");
+            L"Flow DaVinci a fost încărcat, dar pornirea nu a putut fi programată pe firul grafic al Resolve. Repornește Resolve înainte de a reîncerca.");
         Unbound::launcherDiagnostic("launcher.bootstrap.complete",{},pid);
         return 0;
     } catch (const std::wstring &error) {
         Unbound::launcherDiagnostic("launcher.bootstrap.failed",error);
-        MessageBoxW(nullptr, error.c_str(), L"OpenGate", MB_OK | MB_ICONERROR);
+        MessageBoxW(nullptr, error.c_str(), L"Flow DaVinci", MB_OK | MB_ICONERROR);
         return 1;
     }
 }

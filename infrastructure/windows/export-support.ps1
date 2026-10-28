@@ -1,4 +1,4 @@
-# OpenGate support export. Read only: never stop Resolve or change settings.
+﻿# Export suport Flow DaVinci. Read only: never stop Resolve or change settings.
 param(
     [string]$InstallDirectory = $PSScriptRoot,
     [string]$LogDirectory = $(if ($env:UNBOUND_DIAGNOSTICS_DIR) { $env:UNBOUND_DIAGNOSTICS_DIR } else { Join-Path $env:LOCALAPPDATA 'OpenGate\Logs' }),
@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
-$name = 'OpenGate-Windows-Support-' + $stamp + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
+$name = 'FlowDaVinci-Windows-Suport-' + $stamp + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
 $stage = Join-Path $OutputDirectory $name
 $null = New-Item -ItemType Directory -Path $stage
 $copied = [Collections.Generic.List[object]]::new()
@@ -41,7 +41,7 @@ if(Test-Path -LiteralPath $workflowManifest -PathType Leaf) {
         $entries = @(Get-Content -LiteralPath $workflowManifest -Raw | ConvertFrom-Json)
         $names = @('FlowDaVinci.py') + @($entries | ForEach-Object { $_.file })
         foreach($file in $names) {
-            if([IO.Path]::GetFileName($file) -ne $file -or $file -notmatch '^OpenGate(?: - .+)?\.py$'){continue}
+            if([IO.Path]::GetFileName($file) -ne $file -or $file -notmatch '^(?:FlowDaVinci|Flow DaVinci - .+)\.py$'){continue}
             $path = Join-Path $WorkflowDirectory $file
             $present = Test-Path -LiteralPath $path -PathType Leaf
             $hash = if($present){(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash}else{$null}
@@ -73,7 +73,7 @@ $resolve = @(Get-Process -Name Resolve -ErrorAction SilentlyContinue | ForEach-O
 $startupPresent = Test-Path -LiteralPath $StartupPlugin -PathType Leaf
 $startupHash = if($startupPresent){(Get-FileHash -LiteralPath $StartupPlugin -Algorithm SHA256).Hash}else{$null}
 $receipt = @{
-    schema=1; product='OpenGate'; platform='windows'; captured_utc=(Get-Date).ToUniversalTime().ToString('o')
+    schema=1; product='Flow DaVinci'; platform='windows'; captured_utc=(Get-Date).ToUniversalTime().ToString('o')
     os_version=[Environment]::OSVersion.VersionString; architecture=$env:PROCESSOR_ARCHITECTURE
     powershell=$PSVersionTable.PSVersion.ToString(); resolve=$resolve; binaries=$binaries; workflow=$workflow
     startup_plugin=@{present=$startupPresent;sha256=$startupHash}; files=@($copied.ToArray()); errors=@($failures.ToArray())
@@ -81,18 +81,18 @@ $receipt = @{
 }
 $receipt | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $stage 'support-manifest.json') -Encoding UTF8
 @'
-OpenGate Windows diagnostic export
+Export de diagnostic Flow DaVinci pentru Windows
 
-Send the ZIP to Jordan, with the approximate time and steps that caused the problem.
-Describe the page, panel and expected result; screenshots are useful for painting issues.
-events.jsonl uses the same event names and envelope as Mac: OpenGate component,
-module, build, session, event_sequence, UTC time, input and observed signals.
-An observed click is evidence of input, not proof that a command succeeded.
-No project, media, Resolve database or native preference files are copied, and
-typed editor contents are excluded. Settings are left in place. Nothing is uploaded automatically.
-Keep the folder if ZIP creation fails. Export again after reproducing a problem.
+Trimite ZIP-ul dezvoltatorului Flow DaVinci (vezi README-ul depozitului), cu ora aproximativă și pașii care au dus la problemă.
+Descrie pagina, panoul și rezultatul așteptat; capturile de ecran ajută la problemele de desenare.
+events.jsonl folosește aceleași nume de evenimente și același format ca pe Mac: componentă, modul, build,
+sesiune, event_sequence, timp UTC, intrări și semnale observate.
+Un clic observat dovedește o intrare, nu că o comandă a reușit.
+Nu se copiază proiecte, media, baza de date Resolve sau preferințe native, iar conținutul tastat în editoare este exclus.
+Setările rămân pe loc. Nimic nu se încarcă automat.
+Dacă crearea ZIP eșuează, păstrează dosarul. Exportă din nou după ce reproduci problema.
 '@ | Set-Content -LiteralPath (Join-Path $stage 'READ-ME.txt') -Encoding UTF8
 $zip = $stage + '.zip'
 Compress-Archive -LiteralPath $stage -DestinationPath $zip -CompressionLevel Optimal
-Write-Host "OpenGate support ZIP: $zip"
-Write-Host 'Send this file with your reproduction steps. No files were uploaded.'
+Write-Host "ZIP de suport Flow DaVinci: $zip"
+Write-Host 'Trimite acest fișier împreună cu pașii de reproducere. Nu s-a încărcat niciun fișier.'

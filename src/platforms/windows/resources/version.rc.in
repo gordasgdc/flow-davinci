@@ -11,12 +11,12 @@ BEGIN
  BEGIN
   BLOCK "040904B0"
   BEGIN
-   VALUE "CompanyName", "CineWaltz\0"
-   VALUE "FileDescription", "Flow DaVinci - Managed workspace for DaVinci Resolve\0"
+   VALUE "CompanyName", "Cristi Gordas (GDC)\0"
+   VALUE "FileDescription", "Flow DaVinci - spatiu de lucru gestionat pentru DaVinci Resolve\0"
    VALUE "FileVersion", "@UNBOUND_VERSION@\0"
-   VALUE "ProductName", "OpenGate\0"
+   VALUE "ProductName", "Flow DaVinci\0"
    VALUE "ProductVersion", "@UNBOUND_VERSION@\0"
-   VALUE "LegalCopyright", "Copyright (c) 2026 Wolfgang Woehl\0"
+   VALUE "LegalCopyright", "Copyright (c) 2026 Wolfgang Woehl; adaptare Flow DaVinci: Cristi Gordas (MIT)\0"
    VALUE "Comments", "Build @UNBOUND_BUILD_ID@\0"
    VALUE "OriginalFilename", "@UNBOUND_FILENAME@\0"
   END

@@ -9,6 +9,6 @@ inline QString workspaceProfileDirectory() {
     // remains untouched for the existing backend and downgrade recovery.
     auto base=qEnvironmentVariable("LOCALAPPDATA");
     if(base.isEmpty())base=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    return QDir(base).filePath("Unbound");
+    return QDir(base).filePath("FlowDaVinci");
 }
 }

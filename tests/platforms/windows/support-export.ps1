@@ -15,7 +15,7 @@ if($zip.Count -ne 1){throw 'Expected one support ZIP'}
 $expanded=Join-Path $root 'expanded';Expand-Archive -LiteralPath $zip[0].FullName -DestinationPath $expanded
 $manifest=Get-ChildItem $expanded -Filter 'support-manifest.json' -Recurse
 $data=Get-Content -LiteralPath $manifest.FullName -Raw | ConvertFrom-Json
-if($data.product -ne 'OpenGate' -or $data.errors.Count -ne 0 -or $data.files.Count -ne 3){throw 'Incomplete export receipt'}
+if($data.product -ne 'Flow DaVinci' -or $data.errors.Count -ne 0 -or $data.files.Count -ne 3){throw 'Incomplete export receipt'}
 if((Get-FileHash (Join-Path $logs 'events.jsonl')).Hash -ne $before){throw 'Export altered live logs'}
 if(Get-ChildItem $expanded -Filter 'do-not-export.txt' -Recurse){throw 'Unrecognized content exported'}
 foreach($file in $data.files){

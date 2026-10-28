@@ -15,7 +15,7 @@ QJsonObject rectangle(const RECT &r) {return {{"x",int(r.left)},{"y",int(r.top)}
 constexpr UINT pinCommand=0x1f10;
 class CommandRequestWatch : public QObject,public QAbstractNativeEventFilter {
 public:
-    CommandRequestWatch(QObject *owner,std::function<void()> ready):QObject(owner),ready(std::move(ready)),messageId(RegisterWindowMessageW(L"OpenGate.WorkflowCommandReady.v1")){
+    CommandRequestWatch(QObject *owner,std::function<void()> ready):QObject(owner),ready(std::move(ready)),messageId(RegisterWindowMessageW(L"FlowDaVinci.WorkflowCommandReady.v1")){
         setProperty("openGateNativeWakeReady",messageId!=0);qApp->installNativeEventFilter(this);
     }
     ~CommandRequestWatch() override {if(qApp)qApp->removeNativeEventFilter(this);}

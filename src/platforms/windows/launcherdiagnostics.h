@@ -32,7 +32,7 @@ inline void launcherDiagnostic(const char *event,const std::wstring &message={},
         wchar_t local[32768]{};DWORD size=GetEnvironmentVariableW(L"UNBOUND_DIAGNOSTICS_DIR",local,32768);
         std::filesystem::path directory;
         if(size&&size<32768)directory=local;
-        else {size=GetEnvironmentVariableW(L"LOCALAPPDATA",local,32768);if(!size||size>=32768)return;directory=std::filesystem::path(local)/L"OpenGate"/L"Logs";}
+        else {size=GetEnvironmentVariableW(L"LOCALAPPDATA",local,32768);if(!size||size>=32768)return;directory=std::filesystem::path(local)/L"FlowDaVinci"/L"Logs";}
         std::filesystem::create_directories(directory);
         const auto file=directory/L"launcher.jsonl";
         if(std::filesystem::exists(file)&&std::filesystem::file_size(file)>2*1024*1024) {
