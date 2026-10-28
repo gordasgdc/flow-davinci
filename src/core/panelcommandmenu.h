@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QMenu>
 #include <QPointer>
 #include <QElapsedTimer>
@@ -14,9 +15,9 @@ public:
     QMenu *menu(QMenu *root) {
         if(!root || !commands)return nullptr;
         for(auto menu:menus)if(menu && menu->parentWidget()==root)return menu;
-        auto menu=new QMenu("Commands",root);menu->setObjectName("openGateCommands");menu->setProperty("unboundOwnMenu",true);menus.append(menu);
-        auto expand=new QMenu("Maximize / Restore",menu);expand->setProperty("unboundOwnMenu",true);
-        auto visibility=new QMenu("Show / Hide",menu);visibility->setProperty("unboundOwnMenu",true);
+        auto menu=new QMenu(FD("Commands"),root);menu->setObjectName("openGateCommands");menu->setProperty("unboundOwnMenu",true);menus.append(menu);
+        auto expand=new QMenu(FD("Maximize / Restore"),menu);expand->setProperty("unboundOwnMenu",true);
+        auto visibility=new QMenu(FD("Show / Hide"),menu);visibility->setProperty("unboundOwnMenu",true);
         for(const auto &command:commands->entries()) {
             QMenu *target=nullptr;QString label;
             if(command.id=="edit.inspector.stabilize"){target=menu;label="Stabilize Selected Clips";}

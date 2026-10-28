@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QApplication>
 #include <QBoxLayout>
 #include <QPointer>
@@ -40,7 +41,7 @@ public:
         area->setWidget(bar);bar->setAutoFillBackground(oldFill);bar->setUsesScrollButtons(false);bar->setExpanding(false);bar->setElideMode(Qt::ElideNone);
         band=new QWidget(bandOwner);band->setObjectName("openGateTimelineTabScrollBand");band->setProperty("openGateChrome",true);
         auto padding=new QVBoxLayout(band);padding->setContentsMargins(0,3,0,2);padding->setSpacing(0);
-        scroll=new QScrollBar(Qt::Horizontal,band);scroll->setObjectName("openGateTimelineTabScroll");scroll->setFixedHeight(7);scroll->setFocusPolicy(Qt::NoFocus);scroll->setToolTip("Scroll timeline tabs");padding->addWidget(scroll);
+        scroll=new QScrollBar(Qt::Horizontal,band);scroll->setObjectName("openGateTimelineTabScroll");scroll->setFixedHeight(7);scroll->setFocusPolicy(Qt::NoFocus);scroll->setToolTip(FD("Scroll timeline tabs"));padding->addWidget(scroll);
         vertical->insertWidget(rowIndex+1,band);
         auto model=area->horizontalScrollBar();
         connect(scroll,&QScrollBar::valueChanged,this,[model](int value){model->setValue(value);});

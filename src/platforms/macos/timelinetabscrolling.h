@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../../core/flowlocale.h"
 #include <QAbstractScrollArea>
 #include <QApplication>
 #include <QMetaMethod>
@@ -34,8 +35,8 @@ public:
         }
         if((!qtTabs || !left || !right)&&!native){inspect();return;}
         scroll=new QScrollBar(Qt::Horizontal,tabs);scroll->setObjectName("openGateTimelineTabScroll");
-        scroll->setFocusPolicy(Qt::NoFocus);scroll->setToolTip("Scroll timeline tabs without changing the selected timeline");
-        scroll->setAccessibleName("Timeline tabs horizontal scroll");scroll->setFixedHeight(7);
+        scroll->setFocusPolicy(Qt::NoFocus);scroll->setToolTip(FD("Scroll timeline tabs without changing the selected timeline"));
+        scroll->setAccessibleName(FD("Timeline tabs horizontal scroll"));scroll->setFixedHeight(7);
         refresh.setSingleShot(true);refresh.setInterval(0);
         connect(&refresh,&QTimer::timeout,this,[this]{sync();});
         connect(scroll,&QScrollBar::valueChanged,this,[this](int target){if(!writingWheel)wheelTracking=false;requested=target;if(!dispatch.isActive())dispatch.start();});

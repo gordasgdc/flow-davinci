@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QMouseEvent>
@@ -70,7 +71,7 @@ public:
         setAutoFillBackground(true);
         pinButton = new PinLight(this); pinButton->setObjectName("unboundPinWindow");
         pinButton->setCheckable(true); pinButton->setAutoRaise(true);
-        pinButton->setFocusPolicy(Qt::NoFocus); pinButton->setToolTip("Keep this window above the Resolve workspace");
+        pinButton->setFocusPolicy(Qt::NoFocus); pinButton->setToolTip(FD("Keep this window above the Resolve workspace"));
         connect(pinButton, &QToolButton::toggled, this, [this](bool pinned) {
             setProperty("unboundPinned", pinned); pinButton->update(); updatePin();
             logEvent(QStringLiteral("window.pin"), {{"window", objectName()}, {"pinned", pinned},

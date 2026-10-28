@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QComboBox>
 #include <QHash>
 #include <QInputDialog>
@@ -23,8 +24,8 @@ public:
         auto row = new QHBoxLayout;
         presets = new QComboBox(owner); presets->setObjectName("arrangements"); presets->setMinimumWidth(0);
         presets->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon); row->addWidget(presets,1);
-        auto restore = new QPushButton("Restore", owner); restore->setObjectName("restoreArrangement"); row->addWidget(restore);
-        auto manage = new QPushButton("Manage", owner); auto menu = new QMenu(manage); manage->setMenu(menu); row->addWidget(manage);
+        auto restore = new QPushButton(FD("Restore"), owner); restore->setObjectName("restoreArrangement"); row->addWidget(restore);
+        auto manage = new QPushButton(FD("Manage"), owner); auto menu = new QMenu(manage); manage->setMenu(menu); row->addWidget(manage);
         for (const auto &operation : {"Save As…", "Update", "Rename…", "Duplicate…", "Delete", "Reorder"})
             connect(menu->addAction(QString::fromUtf8(operation)), &QAction::triggered, this,
                 [this, operation] { manageArrangement(QString::fromUtf8(operation)); });

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QAbstractButton>
 #include <QHBoxLayout>
 #include <QPainter>
@@ -23,7 +24,7 @@ public:
         content=new QWidget;row=new QHBoxLayout(content);row->setContentsMargins(0,0,0,0);row->setSpacing(0);setWidget(content);
         timer.setSingleShot(true);connect(&timer,&QTimer::timeout,this,[this]{fit();});
         connect(horizontalScrollBar(),&QScrollBar::rangeChanged,this,[this]{schedule();});
-        setToolTip("Page Navigation — scroll horizontally if all pages do not fit");
+        setToolTip(FD("Page Navigation — scroll horizontally if all pages do not fit"));
     }
     std::function<void(QString)> activate;
     void updatePages(const QList<NavigationPage> &pages) {

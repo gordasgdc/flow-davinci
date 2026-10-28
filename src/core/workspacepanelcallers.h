@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QMenu>
 #include <QPointer>
 #include <QTimer>
@@ -38,7 +39,7 @@ public:
         const auto page=currentPage();
         auto menu=root->findChild<QMenu *>("openGateShowPanel",Qt::FindDirectChildrenOnly);
         if(!menu) {
-            menu=new QMenu("Panels",root);menu->setObjectName("openGateShowPanel");menu->setProperty("unboundOwnMenu",true);root->addMenu(menu);
+            menu=new QMenu(FD("Panels"),root);menu->setObjectName("openGateShowPanel");menu->setProperty("unboundOwnMenu",true);root->addMenu(menu);
         }
         for(int i=0;i<panels.size();++i) {
             const auto &panel=panels[i];
@@ -58,7 +59,7 @@ private:
         action->setText(label(panel));action->setCheckable(true);action->setVisible(pageAvailable);
         action->setEnabled(pageAvailable && panel.available && panel.available());
         action->setChecked(panel.visible && panel.visible());
-        action->setToolTip("Show or hide "+label(panel)+" in its remembered location");
+        action->setToolTip(FD("Show or hide ")+label(panel)+" in its remembered location");
     }
     void record(const QString &event,const QJsonObject &details) {if(report)report(event,details);}
     void bind(QAction *action,int index) {

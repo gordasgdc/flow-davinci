@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QLabel>
 #include <QTabWidget>
 #include <QStackedWidget>
@@ -22,7 +23,7 @@ public:
         connect(button,&QToolButton::clicked,this,[this] { QTimer::singleShot(0,this,[this] { if (detachAction) detachAction(); }); });
         menu=new QMenu(button);menu->setProperty("unboundOwnMenu",true);button->setMenu(menu);button->setPopupMode(QToolButton::MenuButtonPopup);
         connect(menu,&QMenu::aboutToShow,this,[this] {
-            menu->clear();auto action=menu->addAction("Hide Panel");action->setObjectName("openGateHidePanel");
+            menu->clear();auto action=menu->addAction(FD("Hide Panel"));action->setObjectName("openGateHidePanel");
             connect(action,&QAction::triggered,this,[this] { QTimer::singleShot(0,this,[this] { if (hideAction) hideAction(); }); });
             if (extrasAction) extrasAction(menu);
         });

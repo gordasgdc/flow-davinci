@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QMenu>
 #include <QScopedValueRollback>
 #include "panelaccessorylease.h"
@@ -30,8 +31,8 @@ public:
     void setShown(bool value){if(visible==value){schedule();return;}logEvent("header.pinned.visibility.request",{{"visible",value}});visible=value;schedule();if(changed)changed();}
     void schedule(){if(!stopped && !timer.isActive())timer.start();}
     void populateMenu(QMenu *menu) {
-        auto action=menu->addAction("Workspace Toolbar");action->setObjectName("openGateShowWorkspaceHeader");
-        action->setToolTip("Show or hide the pinned workspace controls; Panels remains available");
+        auto action=menu->addAction(FD("Workspace Toolbar"));action->setObjectName("openGateShowWorkspaceHeader");
+        action->setToolTip(FD("Show or hide the pinned workspace controls; Panels remains available"));
         action->setCheckable(true);action->setChecked(visible);
         connect(action,&QAction::triggered,this,[this](bool value){QTimer::singleShot(0,this,[this,value]{setShown(value);});});
     }

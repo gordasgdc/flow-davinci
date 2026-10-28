@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QAction>
@@ -67,7 +68,7 @@ public:
     void setPinned(QWidget *,bool enabled) {requestVisibility(enabled);}
     void populatePlacementMenu(QMenu *,QWidget *) {}
     void populateSurfaceMenu(QMenu *menu,QWidget *) {
-        auto visibility=menu->addAction("Footer");visibility->setProperty("openGateNavigationProxy",true);
+        auto visibility=menu->addAction(FD("Footer"));visibility->setProperty("openGateNavigationProxy",true);
         visibility->setCheckable(true);visibility->setChecked(shown);
         connect(visibility,&QAction::triggered,this,[this](bool value){defer([this,value]{requestVisibility(value);});});
     }
@@ -190,7 +191,7 @@ private:
     void wireCaller(QMenu *menu) {
         auto entry=menu->findChild<QAction *>("unboundPageNavigation",Qt::FindDirectChildrenOnly);
         if(!entry) {
-            entry=menu->addAction("Page Navigation");entry->setObjectName("unboundPageNavigation");entry->setProperty("openGateNavigationProxy",true);entry->setCheckable(true);
+            entry=menu->addAction(FD("Page Navigation"));entry->setObjectName("unboundPageNavigation");entry->setProperty("openGateNavigationProxy",true);entry->setCheckable(true);
             connect(entry,&QAction::triggered,this,[this](bool value){defer([this,value]{requestVisibility(value);});});
             connect(menu,&QMenu::aboutToShow,this,[this]{refresh();});
         }

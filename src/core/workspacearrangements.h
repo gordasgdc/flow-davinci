@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include "productidentity.h"
 #include <QApplication>
 #include <QJsonArray>
@@ -55,11 +56,11 @@ public:
                 if (index < 0) continue;
                 auto menu = bar->findChild<QMenu *>("unboundWorkspaceUI",Qt::FindDirectChildrenOnly);
                 if (!menu) {
-                    menu = new QMenu("OpenGate UI",bar); menu->setObjectName("unboundWorkspaceUI");
+                    menu = new QMenu(FD("OpenGate UI"),bar); menu->setObjectName("unboundWorkspaceUI");
                     menu->setProperty("unboundOwnMenu",true); menu->menuAction()->setMenuRole(QAction::NoRole);
                     logEvent("workspace.menu.attached",{{"placement","menubar"},{"label","OpenGate UI"},{"page",currentPage()}});
                 }
-                menu->setTitle("OpenGate UI");
+                menu->setTitle(FD("OpenGate UI"));
                 const auto current = bar->actions();
                 if (current.indexOf(menu->menuAction()) != current.indexOf(workspace->menuAction())+1)
                     bar->insertMenu(index+1 < actions.size() ? actions[index+1] : nullptr,menu);
@@ -101,7 +102,7 @@ private:
                         invoke(operation,{});wire();return;
                     }
                     if (operation == "PanelShortcuts") { if (showPanelShortcuts) showPanelShortcuts(); return; }
-                    if (operation == "About") { QMessageBox::about(nullptr,"About OpenGate",productCredit()); return; }
+                    if (operation == "About") { QMessageBox::about(nullptr,FD("About OpenGate"),productCredit()); return; }
                     if (operation == "Keyboard") { openNativeKeyboardCustomization(); return; }
                     if (operation == "PanelManager") {
                         logEvent("workspace.menu.command",{{"operation",operation},{"page",currentPage()}});
@@ -132,21 +133,21 @@ private:
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto commands=commandsMenu ? commandsMenu(root) : nullptr;
         auto native = action(root, "unboundRestoreNativeWorkspace",QStringLiteral("Use Original Resolve UI"), "Native");
-        native->setToolTip("Restore Resolve’s standard interface without OpenGate layout management");
-        auto about=action(root,"openGateAbout","About OpenGate…","About");
-        auto shortcuts=action(root,"unboundPanelShortcuts",QString::fromUtf8(commands?"Keyboard Shortcuts…":"OpenGate Panel Shortcuts…"),"PanelShortcuts",{},!commands);
+        native->setToolTip(FD("Restore Resolve’s standard interface without OpenGate layout management"));
+        auto about=action(root,"openGateAbout",FD("About OpenGate…"),"About");
+        auto shortcuts=action(root,"unboundPanelShortcuts",FD(commands?"Keyboard Shortcuts…":"OpenGate Panel Shortcuts…"),"PanelShortcuts",{},!commands);
         if(commands && !commands->actions().contains(shortcuts))commands->addAction(shortcuts);
         shortcuts->setEnabled(bool(showPanelShortcuts));
-        shortcuts->setToolTip("Open Resolve’s native Keyboard Customization, filtered to OpenGate commands; native presets and assignments are authoritative");
-        auto manager = action(root,"unboundShowPanelManager",QString::fromUtf8("OpenGate Panel Manager…"),"PanelManager");
+        shortcuts->setToolTip(FD("Open Resolve’s native Keyboard Customization, filtered to OpenGate commands; native presets and assignments are authoritative"));
+        auto manager = action(root,"unboundShowPanelManager",FD("OpenGate Panel Manager…"),"PanelManager");
         manager->setEnabled(bool(showPanelManager));
         const bool nativeSelected = nativeActive(); native->setCheckable(true); native->setChecked(nativeSelected);
         auto menu = root->findChild<QMenu *>("unboundWorkspaceArrangements", Qt::FindDirectChildrenOnly);
         bool created = !menu;
         if (!menu) {
-            menu = new QMenu("Manage Saved Workspaces", root); menu->setObjectName("unboundWorkspaceArrangements"); root->addMenu(menu);
+            menu = new QMenu(FD("Manage Saved Workspaces"), root); menu->setObjectName("unboundWorkspaceArrangements"); root->addMenu(menu);
         }
-        menu->setTitle("Manage Saved Workspaces");
+        menu->setTitle(FD("Manage Saved Workspaces"));
         menu->setProperty("unboundOwnMenu", true);
         watch(root, root); watch(menu, root);
         const auto all = entries(); QJsonArray saved; QSet<QString> allIds;
@@ -159,7 +160,7 @@ private:
         }
         const bool hidden=hiddenArrangements();
         auto advanced=root->findChild<QMenu *>("openGateAdvanced",Qt::FindDirectChildrenOnly);
-        if(!advanced){advanced=new QMenu("Advanced",root);advanced->setObjectName("openGateAdvanced");advanced->setProperty("unboundOwnMenu",true);}
+        if(!advanced){advanced=new QMenu(FD("Advanced"),root);advanced->setObjectName("openGateAdvanced");advanced->setProperty("unboundOwnMenu",true);}
         advanced->menuAction()->setVisible(true);
         action(advanced,"openGateShowHiddenArrangements","Show Hidden Arrangements","Show Hidden Arrangements")->setEnabled(hidden);
         const QJsonObject model{{"hidden_arrangements",hidden},{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
@@ -172,7 +173,7 @@ private:
         auto update=action(root, "unboundUpdateWorkspace", "Update Current Workspace", "Update", current);update->setEnabled(supported && currentExists && !nativeSelected);
         action(menu, "unboundReorderWorkspaces", QString::fromUtf8("Reorder Presets…"), "Reorder")->setEnabled(supported);
         auto browser=root->findChild<QMenu *>("openGateWorkspaces",Qt::FindDirectChildrenOnly);
-        if(!browser){browser=new QMenu("OpenGate Workspaces",root);browser->setObjectName("openGateWorkspaces");browser->setProperty("unboundOwnMenu",true);}
+        if(!browser){browser=new QMenu(FD("OpenGate Workspaces"),root);browser->setObjectName("openGateWorkspaces");browser->setProperty("unboundOwnMenu",true);}
         watch(browser,root);
         QList<QAction *> ordered, quick;
         for (const auto &value : saved) {

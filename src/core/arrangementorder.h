@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QListWidget>
@@ -11,9 +12,9 @@ class ArrangementOrder : public QListWidget
 public:
     explicit ArrangementOrder(QWidget *owner) : QListWidget(owner)
     {
-        setObjectName("arrangementOrder"); setAccessibleName("Workspace preset order");
+        setObjectName("arrangementOrder"); setAccessibleName(FD("Workspace preset order"));
         setDragDropMode(QAbstractItemView::InternalMove); setDefaultDropAction(Qt::MoveAction);
-        setMinimumHeight(80); setMaximumHeight(180); setToolTip("Drag a grip to change the order in Workspace UI");
+        setMinimumHeight(80); setMaximumHeight(180); setToolTip(FD("Drag a grip to change the order in Workspace UI"));
         timer.setSingleShot(true);
         connect(model(), &QAbstractItemModel::rowsMoved, this, [this] { timer.start(0); });
         connect(&timer, &QTimer::timeout, this, [this] {

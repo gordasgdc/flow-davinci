@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../../core/flowlocale.h"
 #include <QMenuBar>
 #include <QSet>
 #include "../../core/workspacepanelcallers.h"
@@ -56,7 +57,7 @@ public:
         auto bars=window->findChildren<QMenuBar *>();
         if(bars.size()!=1)return;
         auto bar=bars.first();if(menus.contains(bar))return;menus.insert(bar);
-        auto menu=bar->addMenu("Panels");menu->setObjectName("openGatePanels");menu->setProperty("unboundOwnMenu",true);
+        auto menu=bar->addMenu(FD("Panels"));menu->setObjectName("openGatePanels");menu->setProperty("unboundOwnMenu",true);
         connect(menu,&QMenu::aboutToShow,this,[this,menu]{menu->clear();callers.populateFlat(menu);});
         connect(bar,&QObject::destroyed,this,[this,bar]{menus.remove(bar);});
     }

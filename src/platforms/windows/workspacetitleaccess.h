@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../../core/flowlocale.h"
 #include <QBoxLayout>
 #include <QPointer>
 #include <QToolButton>
@@ -38,7 +39,7 @@ public:
         if(button&&button->parentWidget()!=strip) { delete button.data();button=nullptr; }
         if(!button) {
             button=new QToolButton(strip);button->setObjectName("openGateTitlePanels");
-            button->setText("Panels");button->setAccessibleName("OpenGate Panels");
+            button->setText(FD("Panels"));button->setAccessibleName(FD("OpenGate Panels"));
             button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);
             layout->addWidget(button,0);
             connect(button,&QToolButton::clicked,this,[this] {

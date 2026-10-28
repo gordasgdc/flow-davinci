@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QLayout>
 #include <QPointer>
 #include <QScrollArea>
@@ -18,9 +19,9 @@ public:
         left->setObjectName("openGateScrollLeft");right->setObjectName("openGateScrollRight");
         left->setText(QString::fromUtf8("‹"));right->setText(QString::fromUtf8("›"));
         for(auto button:{left,right}) {button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);button->setFixedSize(18,24);}
-        left->setToolTip("More controls to the left. Scroll horizontally or widen this panel.");
-        right->setToolTip("More controls to the right. Scroll horizontally or widen this panel.");
-        left->setAccessibleName("Scroll panel left");right->setAccessibleName("Scroll panel right");
+        left->setToolTip(FD("More controls to the left. Scroll horizontally or widen this panel."));
+        right->setToolTip(FD("More controls to the right. Scroll horizontally or widen this panel."));
+        left->setAccessibleName(FD("Scroll panel left"));right->setAccessibleName(FD("Scroll panel right"));
         auto bar=area->horizontalScrollBar();
         connect(left,&QToolButton::clicked,this,[bar]{bar->setValue(bar->value()-qMax(32,bar->pageStep()/2));});
         connect(right,&QToolButton::clicked,this,[bar]{bar->setValue(bar->value()+qMax(32,bar->pageStep()/2));});

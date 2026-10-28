@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QToolButton>
@@ -32,7 +33,7 @@ public:
         auto row=new QHBoxLayout(this); row->setContentsMargins(0,0,0,0); row->setSpacing(0);
         auto button=new QToolButton(this);button->setObjectName("openGatePanelScaleButton");
         button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);button->setPopupMode(QToolButton::InstantPopup);
-        button->setToolTip("Panel interface size; custom-painted timeline tracks are not scaled");row->addWidget(button);
+        button->setToolTip(FD("Panel interface size; custom-painted timeline tracks are not scaled"));row->addWidget(button);
         auto update=[button,value] { button->setText(QString::number(qRound(value()*100))+"%"); };update();
         auto menu=new QMenu(button);menu->setProperty("unboundOwnMenu",true);button->setMenu(menu);
         connect(menu,&QMenu::aboutToShow,this,[menu,this,value,set,available,update] {

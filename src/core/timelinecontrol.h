@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QLabel>
 #include "nativepaneldecoration.h"
 namespace Unbound {
@@ -25,11 +26,11 @@ public:
             if (layout->direction()!=QBoxLayout::TopToBottom) layout->setDirection(QBoxLayout::TopToBottom);
             row=new QWidget(timeline); row->setObjectName("unboundTimelineHeader");
             auto tools=new QHBoxLayout(row); tools->setContentsMargins(4,0,4,0); tools->setSpacing(4);
-            tools->addWidget(new QLabel("Timeline",row)); tools->addStretch();
+            tools->addWidget(new QLabel(FD("Timeline"),row)); tools->addStretch();
             button=new NativeUndockButton(row); button->setObjectName("unboundTimelineUndock");
             button->setIcon(QIcon(new PanelUndockGlyph)); button->setIconSize(QSize(18,18));
             button->setFixedSize(24,24); button->setAutoRaise(true); button->setFocusPolicy(Qt::NoFocus);
-            button->setToolTip("Undock Timeline; drag to detach and move"); button->setAccessibleName(button->toolTip());
+            button->setToolTip(FD("Undock Timeline; drag to detach and move")); button->setAccessibleName(button->toolTip());
             tools->addWidget(button); layout->insertWidget(0,row);
             connect(button,&QToolButton::clicked,this,[this] {
                 logEvent("timeline.header.undock",{{"origin","timeline-header"}});

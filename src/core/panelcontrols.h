@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QElapsedTimer>
 #include "panelmanagerview.h"
 #include <QApplication>
@@ -73,7 +74,7 @@ public:
     PanelControls() : QWidget(nullptr, Qt::Window)
     {
         setObjectName(QStringLiteral("unboundPanelTest"));
-        setWindowTitle(QStringLiteral("OpenGate Panel Manager"));
+        setWindowTitle(FD("OpenGate Panel Manager"));
         setAttribute(Qt::WA_QuitOnClose, false);
         Unbound::logEvent(QStringLiteral("controls.create"));
         if(!settings.hasSavedWorkspace() && settings.error().isEmpty()) {
@@ -165,7 +166,7 @@ public:
                 action(QStringLiteral("bulk-%1").arg(i));
                 const unsigned command = ++bulkVersion;
                 if (i == 0) {
-                    if (nativeWorkspace && !nativeWorkspace->release()) { status->setText("Could not release the native arrangement safely."); return; }
+                    if (nativeWorkspace && !nativeWorkspace->release()) { status->setText(FD("Could not release the native arrangement safely.")); return; }
                     for (int j = 0; j < panels.size(); ++j)
                         QTimer::singleShot(j * 80, this, [this, j, command] { if (command == bulkVersion) requestUndock(j); });
                     QTimer::singleShot(panels.size() * 80 + 200, this, [this, command] {
@@ -175,7 +176,7 @@ public:
                             if (panel.session->active()) ++count;
                             else missing.append(panel.label);
                         }
-                        status->setText(QStringLiteral("%1 of %2 panels floating.").arg(count).arg(panels.size()) +
+                        status->setText(FD("%1 of %2 panels floating.").arg(count).arg(panels.size()) +
                             (missing.isEmpty() ? QString() : QStringLiteral(" Not available: ") + missing.join(", ")));
                         Unbound::logEvent(QStringLiteral("bulk.undock.complete"), {{"floating", count}, {"total", panels.size()},
                             {"unavailable", missing.join(", ")}});
@@ -239,7 +240,7 @@ public:
                 action(QStringLiteral("group-%1").arg(i));
                 if (i == 2) { releaseGroups(); save(); return; }
                 const int a = firstPanel->currentIndex(), b = secondPanel->currentIndex();
-                if (a == b) { status->setText(QStringLiteral("Choose two different panels.")); return; }
+                if (a == b) { status->setText(FD("Choose two different panels.")); return; }
                 restoreExpanded();
                 requestUndock(a, true); requestUndock(b, true);
                 const unsigned request = ++groupVersion;
@@ -622,7 +623,7 @@ private:
                 } else {target->hide();handled=true;}
             }
             Unbound::logEvent("panel.visibility.native-request",{{"panel",panels[i].name},{"requested",visible},{"handled",handled}});
-            if(!handled)status->setText(QStringLiteral("Native panel is not available: ")+panels[i].label);
+            if(!handled)status->setText(FD("Native panel is not available: ")+panels[i].label);
             return;
         }
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
@@ -651,7 +652,7 @@ private:
         if (panels[1].session->active()) {
             status->setText(combinePanels(i,1,Qt::Vertical,true));save();
             Unbound::logEvent("toolbar.placement",{{"state","attached"},{"panel",panels[i].name}});
-        } else status->setText("Show Timeline before attaching the Workspace Toolbar, or drag it onto another window.");
+        } else status->setText(FD("Show Timeline before attaching the Workspace Toolbar, or drag it onto another window."));
     }
     void enterManagedFromGesture(const QString &panel) {
         if(layoutMode=="managed")return;
@@ -816,12 +817,12 @@ private:
     }
     void toggleExpanded(int i)
     {
-        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){status->setText("Workspace Toolbar is pinned; use Show or Hide.");return;}
+        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar"){status->setText(FD("Workspace Toolbar is pinned; use Show or Hide."));return;}
         action(QStringLiteral("expand-toggle"),panels[i].label);
         if (expansionController->index()==i) { restoreExpanded(); return; }
         restoreExpanded();
         if (!page() || !page()->isVisible() || QApplication::activeModalWidget()) {
-            status->setText(QStringLiteral("Open the Edit page and close dialogs before expanding a panel.")); return;
+            status->setText(FD("Open the Edit page and close dialogs before expanding a panel.")); return;
         }
         // Restore needs a current in-memory snapshot, not disk persistence or
         // menu rewiring before the first visible maximize result.
@@ -973,7 +974,7 @@ private:
     }
     void dockOne(int i)
     {
-        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar" && !workspaceHeader->release()){status->setText("Could not restore the workspace header.");return;}
+        if(workspaceHeader && panels[i].name=="unboundWorkspaceToolbar" && !workspaceHeader->release()){status->setText(FD("Could not restore the workspace header."));return;}
         if (expansionController->index() == i) restoreExpanded();
         auto &p = panels[i];
         ++p.requestVersion; p.pending = false;
@@ -1018,10 +1019,10 @@ private:
         auto root = page(); if (!root) return !hidden;
         QList<QWidget *> floating;
         for (auto widget : QApplication::topLevelWidgets()) if (widget->isVisible() && widget->objectName().startsWith("unboundFloating_")) floating.append(widget);
-        if (hidden && floating.isEmpty()) { status->setText(QStringLiteral("Undock a panel before hiding the background.")); return false; }
+        if (hidden && floating.isEmpty()) { status->setText(FD("Undock a panel before hiding the background.")); return false; }
         const bool success = Unbound::setNativeBackgroundHidden(root->window(), floating, hidden);
         Unbound::logEvent(QStringLiteral("background.visibility"), {{"hidden", hidden}, {"success", success}});
-        if (!success) status->setText(QStringLiteral("Could not hide the background independently; it remains visible."));
+        if (!success) status->setText(FD("Could not hide the background independently; it remains visible."));
         return success;
     }
     QString createGroup(int a, int b, Qt::Orientation orientation, const QJsonObject &saved = {}, const QRect &destination = {})
@@ -1084,7 +1085,7 @@ private:
     void releaseGroups()
     {
         ++groupVersion; pendingGroups = {};
-        if(workspaceHeader && !workspaceHeader->release()){status->setText("Could not restore the workspace header.");return;}
+        if(workspaceHeader && !workspaceHeader->release()){status->setText(FD("Could not restore the workspace header."));return;}
         if (nativeWorkspace) nativeWorkspace->release();
         for (auto group : groups) group->dissolve();
     }
@@ -1095,7 +1096,7 @@ private:
         for (int index = pendingGroups.size() - 1; index >= 0; --index) {
             const auto saved = pendingGroups[index].toObject();
             const auto tree = Unbound::PanelGroup::savedTree(saved); QStringList names;
-            if (!Unbound::groupTreeNames(tree, names)) { status->setText(QStringLiteral("Invalid saved group layout; left unchanged.")); continue; }
+            if (!Unbound::groupTreeNames(tree, names)) { status->setText(FD("Invalid saved group layout; left unchanged.")); continue; }
             QList<Unbound::ManagedPanelSession *> available;
             for (const auto &name : names) for (const auto &panel : panels)
                 if (panel.name == name && panel.session->active() && !panel.session->grouped()) available.append(panel.session);
@@ -1117,11 +1118,11 @@ private:
             if ((text.trimmed().compare(QStringLiteral("Quick Export"), Qt::CaseInsensitive) == 0 ||
                 item->objectName().compare(QStringLiteral("actionQuickExport"), Qt::CaseInsensitive) == 0) && item->isEnabled()) {
                 Unbound::logEvent(QStringLiteral("quick-export.open.request"), {{"action", item->objectName()}});
-                status->setText(QStringLiteral("Opening Resolve's Quick Export window."));
+                status->setText(FD("Opening Resolve's Quick Export window."));
                 item->trigger(); return;
             }
         }
-        status->setText(QStringLiteral("Quick Export is not available. Open a timeline first."));
+        status->setText(FD("Quick Export is not available. Open a timeline first."));
         Unbound::logEvent(QStringLiteral("quick-export.unavailable"));
     }
     void restore()
@@ -1201,7 +1202,7 @@ private:
         const auto result=persistence.save({quitting,workspaceRestore && workspaceRestore->savingBlocked(),
             restoringNative,retainSelection,layoutMode},persistenceSources(),options);
         if (!result.performed) return;
-        if (!result.success) status->setText(QStringLiteral("Could not save the workspace. Check the diagnostic log."));
+        if (!result.success) status->setText(FD("Could not save the workspace. Check the diagnostic log."));
         QElapsedTimer phases;phases.start();
         updatePresetState();
         const auto menuMs=phases.nsecsElapsed()/1000000.;phases.restart();

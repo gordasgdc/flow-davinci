@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QMenu>
 #include <QPointer>
 #include <QToolButton>
@@ -34,7 +35,7 @@ public:
     }
     void populate(QMenu *menu) {
         if (hidden.isEmpty()) return;
-        auto group=menu->addMenu("Show Hidden Panels");group->setProperty("unboundOwnMenu",true);
+        auto group=menu->addMenu(FD("Show Hidden Panels"));group->setProperty("unboundOwnMenu",true);
         for (const auto &entry:hidden) { auto action=group->addAction(entry.title);action->setProperty("unboundPanelId",entry.id);
             connect(action,&QAction::triggered,this,[this,entry] { QTimer::singleShot(0,this,[entry] { if (entry.reveal) entry.reveal(); }); }); }
     }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include "../platform/workspaceuiconventions.h"
 #include <QCheckBox>
 #include <QGridLayout>
@@ -19,26 +20,26 @@ public:
     PanelManagerView(QWidget *owner,const QJsonObject &saved) : QObject(owner),owner(owner)
     {
         auto layout=new QVBoxLayout(owner);
-        status=new QLabel("Open a project on the Edit page. Source Monitor can float with no clip loaded.",owner);
+        status=new QLabel(FD("Open a project on the Edit page. Source Monitor can float with no clip loaded."),owner);
         status->setWordWrap(true); layout->addWidget(status);
         presets=new ArrangementControls(owner,layout,saved["selected_arrangement"].toString());
         scroll=new ControlScroll(owner); scroll->setObjectName("panelOptionsScroll"); scroll->setWidgetResizable(true);
         body=new QWidget(scroll); bodyLayout=new QVBoxLayout(body); auto options=new QVBoxLayout;
-        pin=new QCheckBox("Keep controls on top",owner); pin->setObjectName("pinControls"); pin->setChecked(saved["pin_controls"].toBool());
-        constrain=new QCheckBox("Keep a window grip reachable",owner); constrain->setChecked(saved["keep_on_screen"].toBool(true));
+        pin=new QCheckBox(FD("Keep controls on top"),owner); pin->setObjectName("pinControls"); pin->setChecked(saved["pin_controls"].toBool());
+        constrain=new QCheckBox(FD("Keep a window grip reachable"),owner); constrain->setChecked(saved["keep_on_screen"].toBool(true));
         options->addWidget(pin); options->addWidget(constrain); bodyLayout->addLayout(options);
         snap=new QCheckBox(nativeWorkspaceSnapLabel(),owner); snap->setObjectName("snapWindows");
         snap->setChecked(saved["snap_windows"].toBool(true)); options->addWidget(snap);
         // Ordinary arrangements use automatic shell visibility. Historical
         // hide_background/native_workspace_mode values describe the old flow;
         // only an explicit current policy restores a manual override.
-        auto advanced=new QToolButton(owner);advanced->setText("Advanced");advanced->setCheckable(true);
+        auto advanced=new QToolButton(owner);advanced->setText(FD("Advanced"));advanced->setCheckable(true);
         advanced->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);advanced->setArrowType(Qt::RightArrow);
         options->addWidget(advanced);
         auto advancedBody=new QWidget(owner);auto advancedLayout=new QVBoxLayout(advancedBody);
         advancedLayout->setContentsMargins(0,0,0,0);
-        background=new QCheckBox("Hide native shell (manual override)",advancedBody);background->setObjectName("hideResolveBackground");
-        background->setToolTip("Normally OpenGate handles the native background automatically. Use this override only for a fully floating workspace.");
+        background=new QCheckBox(FD("Hide native shell (manual override)"),advancedBody);background->setObjectName("hideResolveBackground");
+        background->setToolTip(FD("Normally OpenGate handles the native background automatically. Use this override only for a fully floating workspace."));
         background->setChecked(saved["background_policy"]=="manual-hidden");advancedLayout->addWidget(background);
         options->addWidget(advancedBody);advancedBody->hide();
         // Retain recovery state and wiring, but do not expose the old shell
@@ -47,9 +48,9 @@ public:
         connect(advanced,&QToolButton::toggled,advancedBody,[advanced,advancedBody](bool expanded) {
             advanced->setArrowType(expanded?Qt::DownArrow:Qt::RightArrow);advancedBody->setVisible(expanded);
         });
-        hierarchy=new QCheckBox("Use panel hierarchy",owner); hierarchy->setObjectName("panelHierarchy");
+        hierarchy=new QCheckBox(FD("Use panel hierarchy"),owner); hierarchy->setObjectName("panelHierarchy");
         hierarchy->setChecked(saved["panel_hierarchy"].toBool(true)); bodyLayout->addWidget(hierarchy);
-        auto styleRow=new QHBoxLayout; styleRow->addWidget(new QLabel("Panel title bars",owner));
+        auto styleRow=new QHBoxLayout; styleRow->addWidget(new QLabel(FD("Panel title bars"),owner));
         style=new QComboBox(owner); style->setObjectName("windowChrome");
         style->addItems({"Standard","Compact traffic lights","Hidden — drag grip and resize edges"});
         style->setCurrentIndex(qBound(0,saved["window_chrome"].toInt(),2)); styleRow->addWidget(style); bodyLayout->addLayout(styleRow);
@@ -77,8 +78,8 @@ public:
     }
     PanelRow addPanel(int index,const QString &name,const QString &label)
     {
-        PanelRow row{new QPushButton("Undock",owner),new QPushButton("Dock",owner),new QPushButton("Show",owner),
-            new QPushButton("Hide",owner),new QPushButton("Expand",owner),new QPushButton("Center",owner)};
+        PanelRow row{new QPushButton(FD("Undock"),owner),new QPushButton(FD("Dock"),owner),new QPushButton(FD("Show"),owner),
+            new QPushButton(FD("Hide"),owner),new QPushButton(FD("Expand"),owner),new QPushButton(FD("Center"),owner)};
         const QList<QPushButton *> buttons{row.undock,row.dock,row.show,row.hide,row.expand,row.center};
         const QStringList ids{"undock_","dock_","show_","hide_","expand_","center_"};
         panelGrid->addWidget(new QLabel(label,owner),index,0);
@@ -88,10 +89,10 @@ public:
     void addScale(int row,QWidget *control) { panelGrid->addWidget(control,row,7); }
     void addFooter()
     {
-        const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel("Page Navigation",body),row,0);
-        showFooter=new QPushButton("Show",body);showFooter->setObjectName("showPageNavigation");panelGrid->addWidget(showFooter,row,1);
-        hideFooter=new QPushButton("Hide",body);hideFooter->setObjectName("hidePageNavigation");panelGrid->addWidget(hideFooter,row,2);
-        pinFooter=new QPushButton("Pin to Main Surface",body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip("Reserve or remove the Page Navigation band on the main surface");pinFooter->hide(); // Compatibility object only; Footer uses Show/Hide, never optional pinning.
+        const int row=panelGrid->rowCount(); panelGrid->addWidget(new QLabel(FD("Page Navigation"),body),row,0);
+        showFooter=new QPushButton(FD("Show"),body);showFooter->setObjectName("showPageNavigation");panelGrid->addWidget(showFooter,row,1);
+        hideFooter=new QPushButton(FD("Hide"),body);hideFooter->setObjectName("hidePageNavigation");panelGrid->addWidget(hideFooter,row,2);
+        pinFooter=new QPushButton(FD("Pin to Main Surface"),body);pinFooter->setObjectName("pinPageNavigation");pinFooter->setCheckable(true);pinFooter->setToolTip(FD("Reserve or remove the Page Navigation band on the main surface"));pinFooter->hide(); // Compatibility object only; Footer uses Show/Hide, never optional pinning.
         auto credit=new QLabel(productCredit(),body); credit->setWordWrap(true); credit->setObjectName("openGateFoundationCredit");
         bodyLayout->addWidget(credit); bodyLayout->addStretch();
     }

@@ -149,7 +149,7 @@ public:
         if(!floating) refresh();
         for(auto b:m_buttons) if(b) {
             b->setChecked(floating);
-            b->setToolTip(floating ? "Click to dock; drag to move" : "Undock");
+            b->setToolTip(floating ? FD("Click to dock; drag to move") : "Undock");
             b->setAccessibleName(floating ? "Dock" : "Undock");
             b->show();
         }
@@ -206,7 +206,7 @@ private:
         b->setIcon(QIcon(new UndockIconEngine)); b->setIconSize(QSize(20,20));
         b->setCheckable(true); b->setChecked(m_floating);
         b->setToolButtonStyle(Qt::ToolButtonIconOnly); b->setAccessibleName(m_floating ? "Dock" : "Undock");
-        b->setToolTip(m_floating ? "Click to dock; drag to move" : "Undock"); b->setFocusPolicy(Qt::NoFocus);
+        b->setToolTip(m_floating ? FD("Click to dock; drag to move") : "Undock"); b->setFocusPolicy(Qt::NoFocus);
         b->setFixedSize(20,20);
         b->setStyleSheet("QToolButton { background: transparent; border: none; padding: 0px; }");
         connect(b,&QToolButton::clicked,this,[this] {m_action();});

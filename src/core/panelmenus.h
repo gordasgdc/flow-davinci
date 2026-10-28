@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include "panelscalecontrols.h"
 #include <QMenu>
 #include <QJsonArray>
@@ -116,7 +117,7 @@ private:
         QMenu *scaleMenu=nullptr;
         for (auto action:menu->actions()) if (action->objectName()=="openGateScaleMenu") scaleMenu=action->menu();
         if (panel.interfaceScale && panel.setInterfaceScale && !scaleMenu) {
-            scaleMenu=menu->addMenu("Panel Interface Size (Experimental)"); scaleMenu->menuAction()->setObjectName("openGateScaleMenu");
+            scaleMenu=menu->addMenu(FD("Panel Interface Size (Experimental)")); scaleMenu->menuAction()->setObjectName("openGateScaleMenu");
             scaleMenu->setProperty("unboundOwnMenu",true);
         }
         if (scaleMenu) {

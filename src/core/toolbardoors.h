@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QAbstractButton>
 #include <QHBoxLayout>
 #include <QMenu>
@@ -57,10 +58,10 @@ public:
                 for(const auto &door:doors){
                     auto button=new NativeUndockButton(controls);button->drag=door.drag;button->setObjectName("openGateToolbarDoor_"+door.id);button->setText(door.title);
                     button->setIcon(QIcon(new DoorGlyph(door.id)));button->setIconSize(QSize(18,18));button->setAutoRaise(true);button->setCheckable(true);button->setFocusPolicy(Qt::NoFocus);
-                    button->setToolTip("Show or hide "+door.title+" in its remembered location"+(door.drag?QStringLiteral("; drag to move"):QString()));button->setAccessibleName(door.title);layout->addWidget(button);
+                    button->setToolTip(FD("Show or hide ")+door.title+" in its remembered location"+(door.drag?QStringLiteral("; drag to move"):QString()));button->setAccessibleName(door.title);layout->addWidget(button);
                     connect(button,&QToolButton::clicked,this,[this,door]{QTimer::singleShot(0,this,[door]{logEvent("toolbar.panel-door",{{"panel",door.id}});if(door.toggle)door.toggle();});});
                 }
-                auto more=new QToolButton(controls);more->setObjectName("openGateToolbarOverflow");more->setText(QString::fromUtf8("⋯"));more->setToolTip("More OpenGate panels");more->setAccessibleName(more->toolTip());more->setAutoRaise(true);more->setPopupMode(QToolButton::InstantPopup);
+                auto more=new QToolButton(controls);more->setObjectName("openGateToolbarOverflow");more->setText(QString::fromUtf8("⋯"));more->setToolTip(FD("More OpenGate panels"));more->setAccessibleName(more->toolTip());more->setAutoRaise(true);more->setPopupMode(QToolButton::InstantPopup);
                 auto menu=new QMenu(more);menu->setProperty("unboundOwnMenu",true);more->setMenu(menu);
                 for(const auto &door:doors){auto action=menu->addAction(door.title);action->setCheckable(true);connect(action,&QAction::triggered,this,[this,door]{QTimer::singleShot(0,this,[door]{if(door.toggle)door.toggle();});});}
                 layout->addWidget(more);
