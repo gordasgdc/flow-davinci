@@ -7,6 +7,8 @@ static void check(bool ok, const char *what) { if (!ok) { ++failures; std::fprin
 int main() {
     unsetenv("FLOW_DAVINCI_LANG"); // testul verifica traducerea RO; matricea upstream ruleaza cu LANG=en
     check(FD("Undock") == QString::fromUtf8("Detașează"), "RO translation");
+    for (const char *k : {"Use Original Resolve UI", "Save as New Workspace…", "Update Current Workspace", "Show Hidden Arrangements", "Reorder Presets…", "Restore Workspace", "Update from Current Layout", "Rename…", "Duplicate…", "Delete", "Arrangement saved."})
+        check(FD(k) != QString::fromUtf8(k), QString("arrangement menu entry translated: %1").arg(k).toUtf8().constData());
     check(FD("Not in catalog") == QStringLiteral("Not in catalog"), "missing key falls back to source");
     QSet<QByteArray> seen; bool dup = false, empty = false, brand = false;
     for (const auto &e : Flow::kRomanianCatalog) {

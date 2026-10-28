@@ -134,7 +134,7 @@ private:
         const auto page = currentPage();
         auto callers=panelMenu ? panelMenu(root) : nullptr;
         auto commands=commandsMenu ? commandsMenu(root) : nullptr;
-        auto native = action(root, "unboundRestoreNativeWorkspace",QStringLiteral("Use Original Resolve UI"), "Native");
+        auto native = action(root, "unboundRestoreNativeWorkspace",FD("Use Original Resolve UI"), "Native");
         native->setToolTip(FD("Restore Resolve’s standard interface without OpenGate layout management"));
         auto about=action(root,"openGateAbout",FD("About OpenGate…"),"About");
         QAction *updates=updatesSupported() ? action(root,"flowCheckUpdates",FD("Check for Updates…"),"CheckUpdates") : nullptr;
@@ -165,16 +165,16 @@ private:
         auto advanced=root->findChild<QMenu *>("openGateAdvanced",Qt::FindDirectChildrenOnly);
         if(!advanced){advanced=new QMenu(FD("Advanced"),root);advanced->setObjectName("openGateAdvanced");advanced->setProperty("unboundOwnMenu",true);}
         advanced->menuAction()->setVisible(true);
-        action(advanced,"openGateShowHiddenArrangements","Show Hidden Arrangements","Show Hidden Arrangements")->setEnabled(hidden);
+        action(advanced,"openGateShowHiddenArrangements",FD("Show Hidden Arrangements"),"Show Hidden Arrangements")->setEnabled(hidden);
         const QJsonObject model{{"hidden_arrangements",hidden},{"page",page},{"native",nativeSelected},{"supported",supported},{"selected",current},{"entries",labels}};
         if (!created && rendered.value(root) == model && (!callers || root->actions().contains(callers->menuAction())) &&
             (!commands || root->actions().contains(commands->menuAction()))) return;
-        auto saveAs=action(menu, "unboundSaveWorkspaceAs", QString::fromUtf8("Save as New Workspace…"), QString::fromUtf8("Save As…"),{},false);saveAs->setEnabled(supported);
+        auto saveAs=action(menu, "unboundSaveWorkspaceAs", FD("Save as New Workspace…"), QString::fromUtf8("Save As…"),{},false);saveAs->setEnabled(supported);
         menu->removeAction(saveAs);menu->menuAction()->setVisible(!saved.isEmpty());
         bool currentExists = false; QSet<QString> ids;
         for (const auto &value : saved) if (value.toObject()["id"].toString() == current && !value.toObject()["read_only"].toBool() && WorkspacePresetPolicy::writable(current)) currentExists = true;
-        auto update=action(root, "unboundUpdateWorkspace", "Update Current Workspace", "Update", current);update->setEnabled(supported && currentExists && !nativeSelected);
-        action(menu, "unboundReorderWorkspaces", QString::fromUtf8("Reorder Presets…"), "Reorder")->setEnabled(supported);
+        auto update=action(root, "unboundUpdateWorkspace", FD("Update Current Workspace"), "Update", current);update->setEnabled(supported && currentExists && !nativeSelected);
+        action(menu, "unboundReorderWorkspaces", FD("Reorder Presets…"), "Reorder")->setEnabled(supported);
         auto browser=root->findChild<QMenu *>("openGateWorkspaces",Qt::FindDirectChildrenOnly);
         if(!browser){browser=new QMenu(FD("OpenGate Workspaces"),root);browser->setObjectName("openGateWorkspaces");browser->setProperty("unboundOwnMenu",true);}
         watch(browser,root);
@@ -195,10 +195,10 @@ private:
             preset->menuAction()->setCheckable(true); preset->menuAction()->setChecked(!nativeSelected && id == current);
             ordered.append(preset->menuAction());
             watch(preset, root);
-            action(preset, "unboundRestoreArrangement", "Restore Workspace", "Restore", id);
-            action(preset, "unboundUpdateArrangement", "Update from Current Layout", "Update", id);
+            action(preset, "unboundRestoreArrangement", FD("Restore Workspace"), "Restore", id);
+            action(preset, "unboundUpdateArrangement", FD("Update from Current Layout"), "Update", id);
             for (const auto &operation : {QString::fromUtf8("Rename…"), QString::fromUtf8("Duplicate…"), QStringLiteral("Delete")})
-                action(preset, "unboundArrangement_" + operation, operation, operation, id);
+                action(preset, "unboundArrangement_" + operation, Flow::label(operation), operation, id);
         }
         for (auto preset : menu->findChildren<QMenu *>(QString(), Qt::FindDirectChildrenOnly))
             if (!ids.contains(preset->property("unboundArrangementId").toString())) {

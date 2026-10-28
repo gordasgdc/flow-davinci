@@ -65,11 +65,11 @@ public:
             row->installEventFilter(this); position(row, button); button->show(); button->raise();
             const bool floating = surface->window()->objectName().startsWith("unboundFloating_");
             button->setText(floating ? QStringLiteral("↙") : QStringLiteral("↗"));
-            button->setToolTip(floating ? (panel == "frameEditToolbarTop" ? "Attach tools to Timeline" : "Attach toolbar above Timeline; drag to place elsewhere") : "Float this toolbar");
+            button->setToolTip(floating ? (panel == "frameEditToolbarTop" ? FD("Attach tools to Timeline") : FD("Attach toolbar above Timeline; drag to place elsewhere")) : FD("Float this toolbar"));
             if (panel=="unboundWorkspaceToolbar") {
                 const bool standalone=surface->window()->property("unboundToolbarStrip").toBool();
                 button->setText(standalone ? QStringLiteral("↙") : QStringLiteral("↗"));
-                button->setToolTip(standalone ? FD("Attach toolbar above Timeline; drag to place elsewhere") : "Float toolbar separately");
+                button->setToolTip(standalone ? FD(FD("Attach toolbar above Timeline; drag to place elsewhere")) : "Float toolbar separately");
             }
             setPlacementControl(button,panel=="unboundWorkspaceToolbar" ? surface->window()->property("unboundToolbarStrip").toBool() : floating,button->toolTip());
             if (wired.contains(button)) continue;

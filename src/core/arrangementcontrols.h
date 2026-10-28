@@ -27,7 +27,7 @@ public:
         auto restore = new QPushButton(FD("Restore"), owner); restore->setObjectName("restoreArrangement"); row->addWidget(restore);
         auto manage = new QPushButton(FD("Manage"), owner); auto menu = new QMenu(manage); manage->setMenu(menu); row->addWidget(manage);
         for (const auto &operation : {"Save As…", "Update", "Rename…", "Duplicate…", "Delete", "Reorder"})
-            connect(menu->addAction(QString::fromUtf8(operation)), &QAction::triggered, this,
+            connect(menu->addAction(Flow::label(QString::fromUtf8(operation))), &QAction::triggered, this,
                 [this, operation] { manageArrangement(QString::fromUtf8(operation)); });
         layout->addLayout(row);
         state = new QLabel(owner); state->setObjectName("arrangementState"); state->setWordWrap(true); layout->addWidget(state);
@@ -36,7 +36,7 @@ public:
             const auto id = presets->currentData().toString();
             const auto error = arrangements.reorderPage(activePage,ids); reloadPresets(id);
             if (changed) changed();
-            if (report) report(error.isEmpty() ? QStringLiteral("Workspace preset order saved.") : error);
+            if (report) report(error.isEmpty() ? Flow::label(QStringLiteral("Workspace preset order saved.")) : error);
             logEvent("arrangement.reorder", {{"success", error.isEmpty()}, {"error", error}});
         };
         reloadPresets(selected);
@@ -60,12 +60,12 @@ public:
         if(operation=="Show Hidden Arrangements") {
             const auto selected=presets->currentData().toString();const auto error=arrangements.revealHidden();
             if(error.isEmpty()){reloadPresets(selected);if(changed)changed();}
-            if(report)report(error.isEmpty()?QStringLiteral("Hidden arrangements are visible again; the current layout was not changed."):error);
+            if(report)report(error.isEmpty()?Flow::label(QStringLiteral("Hidden arrangements are visible again; the current layout was not changed.")):error);
             logEvent("arrangement.hidden.reveal",{{"success",error.isEmpty()},{"error",error}});return;
         }
         if (!id.isEmpty()) {
             const int index = presets->findData(id);
-            if (index < 0 || workspacePage(find(id)) != activePage || find(id).isEmpty()) { if (report) report("Arrangement no longer exists."); return; }
+            if (index < 0 || workspacePage(find(id)) != activePage || find(id).isEmpty()) { if (report) report(FD("Arrangement no longer exists.")); return; }
             if (operation == "Restore") { const QSignalBlocker blocked(presets);presets->setCurrentIndex(index); }
         }
         if (operation == "Restore") { if (restoreRequested) restoreRequested(); }
@@ -78,9 +78,9 @@ public:
     {
         const auto saved = find(presets->currentData().toString());
         state->setText(!arrangements.error().isEmpty() ? arrangements.error() : saved.isEmpty() ?
-            QStringLiteral("Current layout is not saved as a preset.") :
+            Flow::label(QStringLiteral("Current layout is not saved as a preset.")) :
             normalizedArrangement(saved["workspace"].toObject()) == normalizedArrangement(current) ?
-            QStringLiteral("Matches saved arrangement") : QStringLiteral("Modified — use Update to save changes"));
+            Flow::label(QStringLiteral("Matches saved arrangement")) : Flow::label(QStringLiteral("Modified — use Update to save changes")));
     }
 private:
     static QJsonObject normalizedArrangement(QJsonObject value)
@@ -111,7 +111,7 @@ private:
     void reloadPresets(const QString &selected = {})
     {
         const QSignalBlocker blocker(presets);
-        presets->clear(); presets->addItem(QStringLiteral("Unsaved arrangement"), QString());
+        presets->clear(); presets->addItem(Flow::label(QStringLiteral("Unsaved arrangement")), QString());
         const auto builtin=resolveLayoutEntry(activePage);if(!builtin.isEmpty())presets->addItem(builtin["name"].toString(),builtin["id"].toString());
         for (const auto &value : arrangements.visibleList(activePage)) {
             const auto entry = value.toObject();
@@ -129,9 +129,9 @@ private:
         const auto previous = presets->currentData().toString();
         QString id = target.isEmpty() ? previous : target, error;
         const auto entry = find(id);
-        if (WorkspacePresetPolicy::builtIn(id) && operation != QString::fromUtf8("Save As…") && operation != QString::fromUtf8("Duplicate…")) { if(report)report("Resolve Layout is read-only. Save as a new workspace instead.");return; }
+        if (WorkspacePresetPolicy::builtIn(id) && operation != QString::fromUtf8("Save As…") && operation != QString::fromUtf8("Duplicate…")) { if(report)report(FD("Resolve Layout is read-only. Save as a new workspace instead."));return; }
         if (operation != QString::fromUtf8("Save As…") && (entry.isEmpty() || workspacePage(entry) != operationPage)) {
-            report(QStringLiteral("Select a saved arrangement first.")); return;
+            report(Flow::label(QStringLiteral("Select a saved arrangement first."))); return;
         }
         const auto capture = [this, operationPage]() {
             const auto value = workspace ? workspace() : QJsonObject{};
@@ -139,31 +139,31 @@ private:
         };
         if (operation == "Update") {
             const auto value = capture();
-            error = value.isEmpty() ? "Workspace page changed; no preset was updated." : arrangements.update(id, value);
+            error = value.isEmpty() ? FD("Workspace page changed; no preset was updated.") : arrangements.update(id, value);
         }
         else if (operation == "Delete") {
-            if (QMessageBox::question(owner, QStringLiteral("Delete arrangement"),
-                QStringLiteral("Delete “%1”? Your current windows will stay in place.").arg(entry["name"].toString())) != QMessageBox::Yes) return;
-            if (activePage != operationPage) { if (report) report("Workspace page changed; no preset was deleted."); return; }
+            if (QMessageBox::question(owner, Flow::label(QStringLiteral("Delete arrangement")),
+                Flow::label(QStringLiteral("Delete “%1”? Your current windows will stay in place.")).arg(entry["name"].toString())) != QMessageBox::Yes) return;
+            if (activePage != operationPage) { if (report) report(FD("Workspace page changed; no preset was deleted.")); return; }
             error = arrangements.remove(id); if (error.isEmpty()) id.clear();
         } else {
             bool accepted = false;
             QString initial = entry["name"].toString();
-            if (operation == QString::fromUtf8("Duplicate…")) initial += QStringLiteral(" copy");
-            const auto name = QInputDialog::getText(owner, operation, QStringLiteral("Arrangement name"), QLineEdit::Normal, initial, &accepted);
+            if (operation == QString::fromUtf8("Duplicate…")) initial += Flow::label(QStringLiteral(" copy"));
+            const auto name = QInputDialog::getText(owner, Flow::label(operation), Flow::label(QStringLiteral("Arrangement name")), QLineEdit::Normal, initial, &accepted);
             if (!accepted) return;
-            if (activePage != operationPage) { if (report) report("Workspace page changed; no preset was saved."); return; }
+            if (activePage != operationPage) { if (report) report(FD("Workspace page changed; no preset was saved.")); return; }
             if (operation == QString::fromUtf8("Rename…")) error = arrangements.rename(id, name);
             else {
                 const auto value = operation == QString::fromUtf8("Duplicate…") ? entry["workspace"].toObject() : capture();
-                error = value.isEmpty() ? "Workspace page changed; no preset was saved." : arrangements.create(name, value, id);
+                error = value.isEmpty() ? FD("Workspace page changed; no preset was saved.") : arrangements.create(name, value, id);
             }
         }
         const auto operatedId = entry.isEmpty() ? id : entry["id"].toString();
         if ((operation == QString::fromUtf8("Rename…") || operation == "Delete") && !target.isEmpty() && previous != target)
             id = previous;
         reloadPresets(id); if (changed) changed();
-        report(error.isEmpty() ? QStringLiteral("Arrangement saved.") : error);
+        report(error.isEmpty() ? Flow::label(QStringLiteral("Arrangement saved.")) : error);
         Unbound::logEvent(QStringLiteral("arrangement.result"), {{"operation", operation}, {"id", operatedId}, {"selected", id}, {"success", error.isEmpty()}, {"error", error}});
     }
     QWidget *owner;
