@@ -7,11 +7,14 @@ Actualizat: 2026-10-28. Adaptare în limba română a OpenGate (MIT), bazat pe U
 - Unbound `main` @ 4ea56989db06194cdcbedd8bc74a31ee74414129 (urmărit prin remote `unbound`).
 - Depozit: https://github.com/gordasgdc/flow-davinci (fork public al OpenGate, redenumit). Ramură de lucru: `flow-davinci-ro`.
 
-## Stare
-- Inventar făcut; fork creat; nimic din cod modificat; nimic instalat în Resolve; nimic publicat (release).
-- Fără instalare existentă OpenGate/Unbound pe acest Mac (verificat). Qt 5.15.2 și Inno Setup absente local.
+## Stare (2026-10-28, după lotul de localizare)
+- Antete Qt 5.15.2 și build de bază macOS pe extern: /Volumes/CristiGordas/TESTE/GDC_PROJECTS/FLOW_DAVINCI/builds (symlink explicit `build` în repo, ignorat de git).
+- Localizare: src/core/flowlocale.h + flowlocale_ro.h (catalog, FD("...") la ~75 de puncte UI). FLOW_DAVINCI_LANG=en dezactivează traducerea (testele upstream compară engleza).
+- Verificat: build-io-helper, build-launcher, test-layout-plans, test-diagnostics, test-flow-locale (PASS); fixturile cu ferestre native doar compilate (Resolve era deschis).
+- Nepachetat, neinstalat, nepublicat. Neacoperit încă: jurnale/mesaje non-UI, textele scripturilor de instalare/dezinstalare/suport, etichetele integration-features.json, Windows (rc/Inno), README RO.
+
+## Poartă deschisă: identitate și coexistență la instalare
+Pachetul actual folosește aceleași căi ca OpenGate (Unbound.dvcp.bundle, OpenGate.py, /Applications/OpenGate*, com.cinewaltz.opengate). Vezi mesajul către Cristi.
 
 ## Următoarea acțiune exactă
-1. Antete Qt 5.15.2 pe extern (rețeta din tests/platforms/macos/README.md, în /Volumes/CristiGordas/TESTE/GDC_PROJECTS/FLOW_DAVINCI/builds).
-2. Catalog central de traduceri RO + puncte de apel minime (vezi DECISIONS.md D-1..D-3).
-3. Build macOS pe extern, teste țintite, apoi coordonare cu Cristi pentru instalare în Resolve.
+Decizia de identitate (mai sus) → redenumire pachet/instalator → README RO → build candidat + rollback → coordonare instalare în Resolve.
