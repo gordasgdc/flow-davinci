@@ -3,6 +3,7 @@
 namespace Flow {
 struct CatalogEntry { const char *source; const char *target; };
 inline constexpr CatalogEntry kRomanianCatalog[] = {
+    {"Float toolbar separately", "Detașează bara de unelte separat"},
     {"Rename…", "Redenumește…"},
     {"Duplicate…", "Duplică…"},
     {"Delete", "Șterge"},
