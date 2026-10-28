@@ -16,7 +16,7 @@ inline QString productCredit() {
 struct ProductVersion { QString version; int buildNumber = 0; QString build; bool known = false; };
 inline QString installedManifestPath() {
 #ifdef Q_OS_MACOS
-    return qEnvironmentVariable("FLOW_DAVINCI_TEST_MANIFEST", QStringLiteral("/Library/Application Support/GDC/FlowDaVinci/release-manifest.json"));
+    return qEnvironmentVariable("FLOW_DAVINCI_TEST_MANIFEST", QStringLiteral("/Library/Application Support/GDC/FlowDaVinci/Current/release-manifest.json"));
 #else
     return qEnvironmentVariable("FLOW_DAVINCI_TEST_MANIFEST");
 #endif

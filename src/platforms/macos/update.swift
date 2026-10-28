@@ -19,7 +19,7 @@ let testing = true
 #else
 let publicKeyBase64 = "StnroDRQYwQTvPHHfon+u/x/daxaK0/6vCmL9FhFlE4="
 let manifestURLString = "https://gordas.dev/flow-davinci/update-manifest.json"
-let installedInfoPath = "/Library/Application Support/GDC/FlowDaVinci/release-manifest.json"
+let installedInfoPath = "/Library/Application Support/GDC/FlowDaVinci/Current/release-manifest.json"
 let stateDirectory = homeDirectory + "/Library/Application Support/GDC/FlowDaVinci"
 let allowedArtifactPrefix = "https://gordas.dev/flow-davinci/downloads/"
 let testing = false
