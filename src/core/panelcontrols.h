@@ -623,7 +623,7 @@ private:
                 } else {target->hide();handled=true;}
             }
             Unbound::logEvent("panel.visibility.native-request",{{"panel",panels[i].name},{"requested",visible},{"handled",handled}});
-            if(!handled)status->setText(FD("Native panel is not available: ")+panels[i].label);
+            if(!handled)status->setText(FD("Native panel is not available: ")+Flow::label(panels[i].label));
             return;
         }
         if (nativeWorkspace->contains(panels[i].name)) nativeWorkspace->setVisible(panels[i].name,visible);
@@ -848,9 +848,9 @@ private:
     {
         Unbound::logEvent(QStringLiteral("button.result"), {{"action", operation}, {"panel", panels[i].label},
             {"success", error.isEmpty()}, {"error", error}});
-        status->setText(error.isEmpty() ? panels[i].label + (operation == "dock" ?
-            (panels[i].session->dockPending() ? " will dock when Edit returns." : " returned to Resolve.") : " is floating.")
-            : panels[i].label + ": " + error);
+        status->setText(error.isEmpty() ? (operation == "dock" ?
+            (panels[i].session->dockPending() ? FD("%1 will dock when Edit returns.") : FD("%1 returned to Resolve.")) : FD("%1 is floating."))
+            .arg(Flow::label(panels[i].label)) : Flow::label(panels[i].label) + ": " + error);
     }
     void requestUndock(int i, bool restoring = false)
     {

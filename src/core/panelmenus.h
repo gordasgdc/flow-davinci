@@ -93,11 +93,11 @@ private:
         }
         command->setProperty("unboundPanelIndex", index);
         command->setVisible(true);
-        command->setText(panel.floating() ? QStringLiteral("Dock Panel") : QStringLiteral("Undock Panel"));
+        command->setText(panel.floating() ? FD("Dock Panel") : FD("Undock Panel"));
         QAction *native=nullptr;
         for (auto action : menu->actions()) if (action->objectName()==QLatin1String("unboundDockNativeWorkspace")) native=action;
         if (panel.dockNative && !native) {
-            native=menu->addAction(QStringLiteral("Dock in Native Workspace")); native->setObjectName("unboundDockNativeWorkspace");
+            native=menu->addAction(FD("Dock in Native Workspace")); native->setObjectName("unboundDockNativeWorkspace");
         }
         if (native && !wired.contains(native)) {
             wired.insert(native);

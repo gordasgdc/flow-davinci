@@ -271,7 +271,7 @@ public:
         relaxedWidth = true;
         host->setProperty("unboundRelaxedWidth",true);
         placeholderLayout = new QVBoxLayout(slot);
-        auto marker = new QLabel(title + QStringLiteral(" is floating."), slot);
+        auto marker = new QLabel(FD("%1 is floating.").arg(Flow::label(title)), slot);
         marker->setAlignment(Qt::AlignCenter);
         placeholder = marker;
         placeholderLayout->addWidget(marker);

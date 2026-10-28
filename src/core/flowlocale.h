@@ -27,4 +27,8 @@ inline QString translate(const char *source) {
     return QString::fromUtf8(source);
 }
 }
+namespace Flow {
+// Eticheta dinamica (nume de panou etc.): cheia = textul englezesc exact; lipsa cheii -> textul original.
+inline QString label(const QString &source) { return translate(source.toUtf8().constData()); }
+}
 inline QString FD(const char *source) { return Flow::translate(source); }

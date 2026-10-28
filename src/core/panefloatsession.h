@@ -62,7 +62,7 @@ public:
         m_flags = content->windowFlags();
         m_geometry = content->geometry();
         m_wasHidden = content->isHidden();
-        auto placeholder = new QLabel(QStringLiteral("Media Pool is floating.\nClose its window to restore it."), parent);
+        auto placeholder = new QLabel(FD("Media Pool is floating.\nClose its window to restore it."), parent);
         placeholder->setObjectName(QStringLiteral("unboundMediaPoolPlaceholder"));
         placeholder->setAlignment(Qt::AlignCenter);
         placeholder->setSizePolicy(content->sizePolicy());
@@ -79,7 +79,7 @@ public:
         auto host = new QWidget(parent->window(), Qt::Window);
         host->setAttribute(Qt::WA_QuitOnClose, false);
         host->setObjectName(QStringLiteral("unboundFloatingEditMediaPool"));
-        host->setWindowTitle(QStringLiteral("Media Pool"));
+        host->setWindowTitle(FD("Media Pool"));
         host->resize(content->size().expandedTo(QSize(360, 300)));
         m_host = host;
         auto hostLayout = new QVBoxLayout(host);

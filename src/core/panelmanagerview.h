@@ -82,7 +82,7 @@ public:
             new QPushButton(FD("Hide"),owner),new QPushButton(FD("Expand"),owner),new QPushButton(FD("Center"),owner)};
         const QList<QPushButton *> buttons{row.undock,row.dock,row.show,row.hide,row.expand,row.center};
         const QStringList ids{"undock_","dock_","show_","hide_","expand_","center_"};
-        panelGrid->addWidget(new QLabel(label,owner),index,0);
+        panelGrid->addWidget(new QLabel(Flow::label(label),owner),index,0);
         for (int i=0;i<buttons.size();++i) { buttons[i]->setObjectName(ids[i]+name); panelGrid->addWidget(buttons[i],index,i+1); }
         return row;
     }

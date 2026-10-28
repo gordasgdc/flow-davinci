@@ -180,7 +180,7 @@ public:
             hostLayout->addWidget(m_content);
             m_content->show();
             m_hostLayout = hostLayout;
-            auto placeholder = new QLabel(QStringLiteral("%1 is floating.").arg(label), slot);
+            auto placeholder = new QLabel(FD("%1 is floating.").arg(Flow::label(label)), slot);
             placeholder->setObjectName(QStringLiteral("unboundSidebarPlaceholder"));
             placeholder->setAlignment(Qt::AlignCenter);
             m_placeholder = placeholder;
@@ -199,7 +199,7 @@ public:
         }
         auto placeholderLayout = new QVBoxLayout(slot);
         m_placeholderLayout = placeholderLayout;
-        auto placeholder = new QLabel(QStringLiteral("%1 is floating.").arg(label), slot);
+        auto placeholder = new QLabel(FD("%1 is floating.").arg(Flow::label(label)), slot);
         m_placeholder = placeholder;
         placeholder->setObjectName(QStringLiteral("unboundSidebarPlaceholder"));
         placeholder->setAlignment(Qt::AlignCenter);

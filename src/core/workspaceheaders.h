@@ -41,7 +41,7 @@ public:
         menu->clear();
         if(panelEntries)panelEntries(menu);
         else for(const auto &panel:panels) {
-            auto action=menu->addAction(panel.title);action->setCheckable(true);action->setChecked(panel.shown && panel.shown());
+            auto action=menu->addAction(Flow::label(panel.title));action->setCheckable(true);action->setChecked(panel.shown && panel.shown());
             connect(action,&QAction::triggered,this,[this,panel](bool shown){QTimer::singleShot(0,this,[panel,shown]{if(panel.setShown)panel.setShown(shown);});});
         }
         if(surfaceControls)surfaceControls(menu,host);

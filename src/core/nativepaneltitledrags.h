@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "flowlocale.h"
 #include <QLabel>
 #include <QSet>
 #include "paneltitlegesture.h"
@@ -32,7 +33,7 @@ public:
             new PanelTitleGesture(widget,this,[id,move](QPoint point){
                 logEvent("panel.title.drag",{{"panel",id},{"x",point.x()},{"y",point.y()}});if(move)move(point);
             },mixerTitle?title:QString());
-            if(mixerTitle)widget->setToolTip(title+"; drag to move or detach");
+            if(mixerTitle)widget->setToolTip(FD("%1; drag to move or detach").arg(Flow::label(title)));
             logEvent("panel.title.wired",{{"panel",id},{"title",widget->objectName()},{"surface",surface->objectName()}});
         }
     }

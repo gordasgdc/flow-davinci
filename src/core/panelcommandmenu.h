@@ -20,12 +20,12 @@ public:
         auto visibility=new QMenu(FD("Show / Hide"),menu);visibility->setProperty("unboundOwnMenu",true);
         for(const auto &command:commands->entries()) {
             QMenu *target=nullptr;QString label;
-            if(command.id=="edit.inspector.stabilize"){target=menu;label="Stabilize Selected Clips";}
-            else if(command.id=="edit.timeline.fixed-playhead"){target=menu;label="Toggle Fixed Playhead";}
+            if(command.id=="edit.inspector.stabilize"){target=menu;label=FD("Stabilize Selected Clips");}
+            else if(command.id=="edit.timeline.fixed-playhead"){target=menu;label=FD("Toggle Fixed Playhead");}
             else if(command.id.startsWith("panel.expand.") && command.id!="panel.expand.hovered"){
-                target=expand;label=command.label;label.remove("Maximize / Restore ");
+                target=expand;label=command.label;label.remove("Maximize / Restore ");label=Flow::label(label);
             } else if(command.id.startsWith("panel.toggle.")){
-                target=visibility;label=command.label;label.remove("Show / Hide ");
+                target=visibility;label=command.label;label.remove("Show / Hide ");label=Flow::label(label);
             }
             if(!target)continue;
             auto action=target->addAction(label);action->setProperty("openGateCommandId",command.id);

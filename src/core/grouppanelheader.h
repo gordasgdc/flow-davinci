@@ -15,7 +15,7 @@ public:
         std::function<void()> detach,std::function<void()> hide,std::function<void(QMenu *)> extras):QObject(wrapper),detachAction(std::move(detach)),hideAction(std::move(hide)),extrasAction(std::move(extras)) {
         bar=new QWidget(wrapper);bar->setObjectName("openGateGroupHeaderBar");auto row=new QHBoxLayout(bar);row->setContentsMargins(6,1,4,1);
         label=new QLabel(title,bar);label->setObjectName("unboundGroupHeader");label->setMinimumWidth(0);label->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
-        label->setToolTip(title+"; drag to move or detach");row->addWidget(label,1);
+        label->setToolTip(FD("%1; drag to move or detach").arg(Flow::label(title)));row->addWidget(label,1);
         controls=new QWidget(bar);controls->setProperty("openGateChrome",true);auto tools=new QHBoxLayout(controls);tools->setContentsMargins(0,0,0,0);tools->setSpacing(2);
         tools->addWidget(new PanelScaleControls(controls,std::move(scale),std::move(setScale)));
         button=new NativeUndockButton(controls);button->setObjectName("unboundDetachPanel");button->setAutoRaise(true);button->setFocusPolicy(Qt::NoFocus);

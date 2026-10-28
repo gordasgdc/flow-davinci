@@ -341,9 +341,9 @@ private:
                 label->setStyleSheet(QStringLiteral("background:#34475b; color:white; border:1px solid #80a5c9; border-radius:4px;"));
                 dropMarker = label;
             }
-            dropMarker->setToolTip(chosen.edge == Qt::Edge(0) ? QStringLiteral("Add as tab") :
-                attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? QStringLiteral("Split group") : QStringLiteral("Split panel"));
-            const auto caption = dropCaption(drop.placement, !dockSectionKey(surface).isEmpty()?QStringLiteral("entire stack"):surface ? surface->windowTitle() : QString(),
+            dropMarker->setToolTip(chosen.edge == Qt::Edge(0) ? FD("Add as tab") :
+                attachmentTarget && attachmentTarget->isWindow() && surfacesAreGrouped(attachmentTarget) ? FD("Split group") : FD("Split panel"));
+            const auto caption = dropCaption(drop.placement, !dockSectionKey(surface).isEmpty()?FD("entire stack"):surface ? surface->windowTitle() : QString(),
                 surface && surface->isWindow() && surfacesAreGrouped(surface));
             auto label = static_cast<QLabel *>(dropMarker);
             label->setText(caption); label->setToolTip(caption);

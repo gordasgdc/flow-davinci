@@ -56,14 +56,14 @@ public:
                 auto controls=new QWidget(strip);controls->setObjectName("openGateDoorControls");controls->setMinimumWidth(0);controls->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
                 auto layout=new QHBoxLayout(controls);layout->setContentsMargins(0,0,0,0);layout->setSpacing(2);slot->addWidget(controls);slot->addStretch();
                 for(const auto &door:doors){
-                    auto button=new NativeUndockButton(controls);button->drag=door.drag;button->setObjectName("openGateToolbarDoor_"+door.id);button->setText(door.title);
+                    auto button=new NativeUndockButton(controls);button->drag=door.drag;button->setObjectName("openGateToolbarDoor_"+door.id);button->setText(Flow::label(door.title));
                     button->setIcon(QIcon(new DoorGlyph(door.id)));button->setIconSize(QSize(18,18));button->setAutoRaise(true);button->setCheckable(true);button->setFocusPolicy(Qt::NoFocus);
-                    button->setToolTip(FD("Show or hide ")+door.title+" in its remembered location"+(door.drag?QStringLiteral("; drag to move"):QString()));button->setAccessibleName(door.title);layout->addWidget(button);
+                    button->setToolTip(FD("Show or hide %1 in its remembered location").arg(Flow::label(door.title))+(door.drag?FD("; drag to move"):QString()));button->setAccessibleName(door.title);layout->addWidget(button);
                     connect(button,&QToolButton::clicked,this,[this,door]{QTimer::singleShot(0,this,[door]{logEvent("toolbar.panel-door",{{"panel",door.id}});if(door.toggle)door.toggle();});});
                 }
                 auto more=new QToolButton(controls);more->setObjectName("openGateToolbarOverflow");more->setText(QString::fromUtf8("⋯"));more->setToolTip(FD("More OpenGate panels"));more->setAccessibleName(more->toolTip());more->setAutoRaise(true);more->setPopupMode(QToolButton::InstantPopup);
                 auto menu=new QMenu(more);menu->setProperty("unboundOwnMenu",true);more->setMenu(menu);
-                for(const auto &door:doors){auto action=menu->addAction(door.title);action->setCheckable(true);connect(action,&QAction::triggered,this,[this,door]{QTimer::singleShot(0,this,[door]{if(door.toggle)door.toggle();});});}
+                for(const auto &door:doors){auto action=menu->addAction(Flow::label(door.title));action->setCheckable(true);connect(action,&QAction::triggered,this,[this,door]{QTimer::singleShot(0,this,[door]{if(door.toggle)door.toggle();});});}
                 layout->addWidget(more);
                 // Resolve bounds its native left button row to the native buttons.
                 // Reuse the adjacent slot in that same toolbar's box layout;
