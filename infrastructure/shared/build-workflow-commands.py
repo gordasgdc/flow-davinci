@@ -22,7 +22,7 @@ commands += [('panel.expand.hovered','Maximize-Restore Hovered Panel'),('panel.t
 manifest=[]
 for command,label in commands:
     filename='Flow DaVinci - '+label+'.py'
-    source='''# OpenGate by CineWaltz; native Workflow Integration command bridge.
+    source='''# Flow DaVinci (adaptare a OpenGate by CineWaltz, MIT); native Workflow Integration command bridge.
 import json, os, pathlib, time, uuid
 base=pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path.home()/"Library/Logs/FlowDaVinci")))
 directory=base/"command-requests"
@@ -59,7 +59,7 @@ except (ImportError,AttributeError,OSError):
         # Both menu and native-preset hotkey enter this one operation. Never post
         # another stabilization request to the Qt registry (which would recurse).
         operation=(root/'infrastructure/macos/selected-clip-stabilization.py').read_text()
-        source='''# OpenGate by CineWaltz.
+        source='''# Flow DaVinci (adaptare a OpenGate by CineWaltz, MIT).
 # opengate-command-route: selected-timeline-api-v1
 import json, os, pathlib, time, uuid
 '''+operation+'''
@@ -98,4 +98,4 @@ if args.platform=='windows':
     entry=entry.replace('directory = pathlib.Path.home() / "Library/Logs/FlowDaVinci"',
         'directory = pathlib.Path(os.environ.get("UNBOUND_LAUNCH_DIRECTORY",str(pathlib.Path(os.environ.get("LOCALAPPDATA",str(pathlib.Path.home()/"AppData/Local")))/"FlowDaVinci/Logs")))')
     (output/'FlowDaVinci.py').write_text(entry)
-print('Built',len(manifest),'individual OpenGate workflow command targets:',output)
+print('Built',len(manifest),'individual Flow DaVinci workflow command targets:',output)

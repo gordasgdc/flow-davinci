@@ -55,7 +55,7 @@ with tempfile.TemporaryDirectory() as directory:
             assert first.startswith('workflow-') and second.startswith('workflow-') and first!=second
             launches=[json.loads(line) for line in (Path(directory)/'launches.jsonl').read_text().splitlines()]
             assert [item['request'] for item in launches]==[first,second]
-            assert all(item['component']=='OpenGate' and item['event']=='workflow.launch' for item in launches)
+            assert all(item['component']=='Flow DaVinci' and item['event']=='workflow.launch' for item in launches)
             assert len(list(Path(directory).glob('*.request')))==1
     finally:
         if old is None: os.environ.pop('UNBOUND_LAUNCH_DIRECTORY',None)
