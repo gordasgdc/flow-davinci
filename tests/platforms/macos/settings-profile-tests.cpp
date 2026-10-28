@@ -12,7 +12,7 @@ int main(int argc,char **argv) {
     const auto normal=Unbound::settingsProfilePath("Workspace.json");put("first-install-preview");
     bool ok=Unbound::settingsProfilePath("Workspace.json").contains("/Profiles/first-install-preview/");
     put("../../outside");ok &= Unbound::settingsProfilePath("Workspace.json")==normal;
-    put("");ok &= Unbound::settingsProfilePath("Arrangements.json").endsWith("/Unbound/Arrangements.json");
+    put("");ok &= Unbound::settingsProfilePath("Arrangements.json").endsWith("/Flow DaVinci/Arrangements.json");
     auto value=Unbound::fitStarterWorkspace({{"fit_first_display",true},{"groups",QJsonArray{QJsonObject{{"x",99999},{"width",99999}}}}});
     auto group=value["groups"].toArray().first().toObject();auto frame=QGuiApplication::primaryScreen()->availableGeometry();
     ok &= group["x"].toInt()==frame.x() && group["width"].toInt()==frame.width();

@@ -5,6 +5,7 @@
 static int failures = 0;
 static void check(bool ok, const char *what) { if (!ok) { ++failures; std::fprintf(stderr, "FAIL: %s\n", what); } }
 int main() {
+    unsetenv("FLOW_DAVINCI_LANG"); // testul verifica traducerea RO; matricea upstream ruleaza cu LANG=en
     check(FD("Undock") == QString::fromUtf8("Detașează"), "RO translation");
     check(FD("Not in catalog") == QStringLiteral("Not in catalog"), "missing key falls back to source");
     QSet<QByteArray> seen; bool dup = false, empty = false, brand = false;
