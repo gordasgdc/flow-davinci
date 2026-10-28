@@ -8,7 +8,7 @@ import subprocess
 from packageinputs import sha
 from packagesigning import sign_code
 
-SUPPORT = pathlib.Path('Library/Application Support/CineWaltz/OpenGate/Current')
+SUPPORT = pathlib.Path('Library/Application Support/GDC/FlowDaVinci/Current')
 RESOLVE = pathlib.Path('Library/Application Support/Blackmagic Design/DaVinci Resolve')
 
 
@@ -24,7 +24,7 @@ def prepare(root, artifacts, inputs, payload, scripts):
     build_number = subprocess.check_output(['git', '-C', str(root), 'rev-list', '--count', inputs['commit']], text=True).strip()
     minimum = max((runtime['macos_deployment_target'], runtime['resolve_build_host']['minimum_macos']),
                   key=lambda s: tuple(map(int, s.split('.'))))
-    metadata = {'schema': 1, 'product': 'OpenGate', 'vendor': 'CineWaltz', 'version': version,
+    metadata = {'schema': 1, 'product': 'Flow DaVinci', 'vendor': 'GDC (Cristi Gordas)', 'version': version,
                 'build': build, 'packaging_commit': packaging_commit, 'package_build': build + '-pkg' + packaging_commit[:7], 'build_number': int(build_number), 'runtime_commit': inputs['commit'], 'platform': 'macos',
                 'architecture': runtime['macos_architectures'], 'minimum_macos': minimum,
                 'tested_resolve': runtime['resolve_build_host']['version'], 'settings_schema_written': 1,
@@ -33,16 +33,16 @@ def prepare(root, artifacts, inputs, payload, scripts):
                 'validation': 'Local candidate; runtime acceptance pending on both platforms.' if inputs.get('candidate') else 'Hidden and displayed fixtures; actual Resolve acceptance remains separate.',
                 'displayed_verification': 'pending' if inputs.get('candidate') else 'passed',
                 'live_macos_verified': False, 'live_windows_verified': False, 'windows_artifact_built': False,
-                'foundation': 'Unbound by Wolfgang Woehl (MIT)'}
-    copy(inputs['bundle'], payload / RESOLVE / 'IOPlugins/Unbound.dvcp.bundle')
-    copy(artifacts / 'OpenGate.app', payload / 'Applications/OpenGate.app')
-    info = payload / 'Applications/OpenGate.app/Contents/Info.plist'
+                'foundation': 'OpenGate by CineWaltz (MIT), based on Unbound by Wolfgang Woehl (MIT)'}
+    copy(inputs['bundle'], payload / RESOLVE / 'IOPlugins/FlowDaVinci.dvcp.bundle')
+    copy(artifacts / 'Flow DaVinci.app', payload / 'Applications/Flow DaVinci.app')
+    info = payload / 'Applications/Flow DaVinci.app/Contents/Info.plist'
     app_info = plistlib.loads(info.read_bytes())
     app_info.update(CFBundleShortVersionString=version, CFBundleVersion=build_number, LSMinimumSystemVersion=minimum)
     info.write_bytes(plistlib.dumps(app_info))
     subprocess.run(['/usr/bin/codesign', '--force', '--sign', '-', str(info.parents[1])], check=True)
     workflow = payload / RESOLVE / 'Workflow Integration Plugins'
-    copy(root / 'src/platforms/macos/OpenGate.py', workflow / 'OpenGate.py')
+    copy(root / 'src/platforms/macos/FlowDaVinci.py', workflow / 'FlowDaVinci.py')
     commands = json.loads((artifacts / 'workflow-commands/manifest.json').read_text())
     for entry in commands:
         name = entry['file']
@@ -54,21 +54,21 @@ def prepare(root, artifacts, inputs, payload, scripts):
     copy(inputs['bundle'] / 'Contents/Resources/build-manifest.json', support / 'runtime-build-manifest.json')
     (support / 'release-manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
     (support / 'README.txt').write_text(
-        'OpenGate ' + version + ' prototype candidate (' + build + ')\n\n'
-        'This candidate has not been live-tested inside Resolve on macOS or Windows.\n'
-        'This package contains macOS binaries only; no Windows parity claim.\n'
-        'Compilation and synthetic fixtures do not establish native GPU rendering or real input acceptance.\n'
-        'Displayed fixture status: ' + metadata['displayed_verification'] + '.\n\n'
-        'Save and quit Resolve before installation, removal or recovery.\n'
-        'Fresh profiles start in Resolve Layout. Jordan Tetewsky Preset is optional.\n'
-        'Existing profiles and user presets are preserved; installing a version does not reset them.\n'
-        'Applications/OpenGate Tools contains double-click uninstall and support export.\n'
-        'Recovery copies and install diagnostics: /Library/Application Support/CineWaltz/OpenGate/Transactions/.\n'
-        'A failed/interrupted install leaves a Restore Previous OpenGate.command in its transaction directory.\n'
+        'Flow DaVinci ' + version + ' candidat prototip (' + build + ')\n\n'
+        'Acest candidat nu a fost testat live în Resolve pe macOS sau Windows.\n'
+        'Acest pachet conține doar binare macOS; nu se susține paritatea cu Windows.\n'
+        'Compilarea și testele sintetice nu dovedesc randarea GPU nativă sau acceptarea intrărilor reale.\n'
+        'Starea testelor cu ferestre: ' + metadata['displayed_verification'] + '.\n\n'
+        'Salvează și închide Resolve înainte de instalare, eliminare sau recuperare.\n'
+        'Profilurile noi pornesc în Resolve Layout. Presetul Jordan Tetewsky (din OpenGate) este opțional.\n'
+        'Profilurile și presetările existente sunt păstrate; instalarea unei versiuni nu le resetează.\n'
+        'Applications/Flow DaVinci Tools conține dezinstalarea, exportul de suport și alegerea produsului activ (dublu clic).\n'
+        'Copii de recuperare și diagnostic de instalare: /Library/Application Support/GDC/FlowDaVinci/Transactions/.\n'
+        'O instalare eșuată sau întreruptă lasă „Restaureaza versiunea anterioara Flow DaVinci.command” în directorul tranzacției.\n'
         'Support export includes selected event fields and install phases, not raw logs, project/media contents or arbitrary error text. Review before sharing. Nothing is uploaded automatically.\n\n'
         'Remaining live checks include Mixer custom-title dragging/control lifetime, Index acquisition readiness, native painting, physical/remapped keys and full Native/OpenGate transitions.\n'
         + ('Code and installer use Developer ID signing. Check the accompanying release manifest for notarization acceptance.\n' if inputs.get('signing') else 'The package is ad-hoc signed, unsigned as an installer, and not notarized. Downloaded copies may receive macOS security prompts.\n')
-        + 'OpenGate by CineWaltz, based on Unbound by Wolfgang Woehl (MIT); see LICENSE.\n')
+        + 'Flow DaVinci: adaptare în limba română inițiată de Cristi Gordas (GDC), bazată pe OpenGate de CineWaltz, la rândul său bazat pe Unbound de Wolfgang Woehl (MIT); vezi LICENSE. Nu este afiliat cu Blackmagic Design.\n')
 
     bundle = json.loads((root / 'src/assets/presets/BundledArrangements.json').read_text())
     chosen = next(e for e in bundle['arrangements'] if e['id'] == bundle['default'])
@@ -86,24 +86,25 @@ def prepare(root, artifacts, inputs, payload, scripts):
         target = scripts / path.name; target.write_text(text); target.chmod(0o755)
         if path.name not in ('preinstall', 'postinstall'):
             copy(target, support / path.name)
-    tools = payload / 'Applications/OpenGate Tools'; tools.mkdir(parents=True)
-    for label, command in [('Export OpenGate Support.command', 'export-support.command'),
-                           ('Uninstall OpenGate.command', 'uninstall.command')]:
+    tools = payload / 'Applications/Flow DaVinci Tools'; tools.mkdir(parents=True)
+    for label, command in [('Exporta suport Flow DaVinci.command', 'export-support.command'),
+                           ('Dezinstaleaza Flow DaVinci.command', 'uninstall.command'),
+                           ('Alege produsul activ.command', 'choose-active-product.command')]:
         wrapper = tools / label
         wrapper.write_text('#!/bin/bash\nexec /bin/bash "/' + str(SUPPORT / command) + '"\n')
         wrapper.chmod(0o755)
     # One inventory for replacement, uninstall and recovery. No user settings.
-    paths = ['/Applications/OpenGate.app', '/' + str(RESOLVE / 'IOPlugins/Unbound.dvcp.bundle'), '/' + str(SUPPORT)]
-    paths += ['/Applications/OpenGate Tools/Export OpenGate Support.command', '/Applications/OpenGate Tools/Uninstall OpenGate.command']
-    paths += ['/' + str(RESOLVE / 'Workflow Integration Plugins' / name) for name in ['OpenGate.py'] + [e['file'] for e in commands]]
+    paths = ['/Applications/Flow DaVinci.app', '/' + str(RESOLVE / 'IOPlugins/FlowDaVinci.dvcp.bundle'), '/' + str(SUPPORT)]
+    paths += ['/Applications/Flow DaVinci Tools/Exporta suport Flow DaVinci.command', '/Applications/Flow DaVinci Tools/Dezinstaleaza Flow DaVinci.command', '/Applications/Flow DaVinci Tools/Alege produsul activ.command']
+    paths += ['/' + str(RESOLVE / 'Workflow Integration Plugins' / name) for name in ['FlowDaVinci.py'] + [e['file'] for e in commands]]
     inventory = '\n'.join(paths) + '\n'
     (scripts / 'paths.txt').write_text(inventory); (support / 'paths.txt').write_text(inventory)
     if inputs.get('signing'):
         sign_code(payload, inputs['signing'])
         metadata['signing_team'] = inputs['signing']['application']['team']
-    helper = payload / RESOLVE / 'IOPlugins/Unbound.dvcp.bundle/Contents/MacOS'
+    helper = payload / RESOLVE / 'IOPlugins/FlowDaVinci.dvcp.bundle/Contents/MacOS'
     metadata['source_runtime_sha256'] = inputs.get('sha256', {})
-    metadata['distributed_runtime_sha256'] = {name: sha(helper / name) for name in ('Unbound.dvcp', 'UnboundWidgetProbe.dylib')}
+    metadata['distributed_runtime_sha256'] = {name: sha(helper / name) for name in ('FlowDaVinci.dvcp', 'FlowDaVinciWorkspace.dylib')}
     (support / 'release-manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
     # Hash every regular payload file, including metadata and maintenance tools.
     hashes = ''.join(sha(path) + '\t/' + str(path.relative_to(payload)) + '\n'

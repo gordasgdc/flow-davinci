@@ -5,31 +5,31 @@ scripts="$(cd "$(dirname "$0")" && pwd)"
 source "$scripts/transaction.sh"
 new_transaction
 log 'preflight started version=@VERSION@ build=@BUILD@'
-[[ "${3:-/}" == / ]] || fail 'Install on the running startup disk'
+[[ "${3:-/}" == / ]] || fail 'Instalează pe discul de pornire activ'
 if [[ -z "${OPENGATE_TEST_ROOT:-}" ]]; then
  architecture=$(/usr/bin/uname -m)
- [[ "$architecture" == arm64 || "$architecture" == x86_64 ]] || fail 'Unsupported processor architecture'
+ [[ "$architecture" == arm64 || "$architecture" == x86_64 ]] || fail 'Arhitectură de procesor nesuportată'
  os=$(/usr/bin/sw_vers -productVersion); major=${os%%.*}
- [[ "$major" -ge @MIN_MAJOR@ ]] || fail 'This package requires macOS @MIN_MACOS@ or later'
- if /usr/bin/pgrep -x Resolve >/dev/null; then fail 'Save and quit DaVinci Resolve, then run this installer again'; else code=$?; [[ "$code" == 1 ]] || fail 'Could not verify whether Resolve is running'; fi
+ [[ "$major" -ge @MIN_MAJOR@ ]] || fail 'Acest pachet necesită macOS @MIN_MACOS@ sau mai nou'
+ if /usr/bin/pgrep -x Resolve >/dev/null; then fail 'Salvează și închide DaVinci Resolve, apoi rulează din nou instalatorul'; else code=$?; [[ "$code" == 1 ]] || fail 'Nu s-a putut verifica dacă Resolve rulează'; fi
  app='/Applications/DaVinci Resolve/DaVinci Resolve.app'
- [[ -d "$app" ]] || fail 'DaVinci Resolve was not found at its supported installation location'
+ [[ -d "$app" ]] || fail 'DaVinci Resolve nu a fost găsit în locația de instalare suportată'
  version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
- [[ "$version" == 21.* ]] || fail 'This prototype requires Resolve 21; tested with @RESOLVE_VERSION@'
+ [[ "$version" == 21.* ]] || fail 'Acest prototip necesită Resolve 21; testat cu @RESOLVE_VERSION@'
 fi
 # All current releases preserve schema 1 in place. Refuse a newer writer;
 # never let an older installer silently rewrite data it cannot understand.
 previous="$product/Current/release-manifest.json"
 if [[ -f "$previous" ]]; then
- schema=$(/usr/bin/plutil -extract settings_schema_written raw -o - "$previous") || fail 'Cannot read installed settings compatibility metadata'
- [[ "$schema" == 1 ]] || fail 'Installed OpenGate uses a newer data schema; use its recovery or compatible installer'
- installed=$(/usr/bin/plutil -extract version raw -o - "$previous") || fail 'Cannot read installed OpenGate version'
- [[ "$installed" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Installed version metadata is invalid'
+ schema=$(/usr/bin/plutil -extract settings_schema_written raw -o - "$previous") || fail 'Nu pot citi metadatele de compatibilitate ale setărilor instalate'
+ [[ "$schema" == 1 ]] || fail 'Flow DaVinci instalat folosește o schemă de date mai nouă; folosește recuperarea sau un instalator compatibil'
+ installed=$(/usr/bin/plutil -extract version raw -o - "$previous") || fail 'Nu pot citi versiunea Flow DaVinci instalată'
+ [[ "$installed" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Metadatele versiunii instalate sunt nevalide'
  relation=$(version_relation "$installed" '@VERSION@')
  log "detected installed=$installed target=@VERSION@ action=$relation"
 fi
 # Serialize replacements; never overwrite another pending transaction pointer.
-if ! mkdir "$product/install.lock" 2>/dev/null; then fail 'Another install or recovery is pending; use the recorded recovery action first'; fi
+if ! mkdir "$product/install.lock" 2>/dev/null; then fail 'O altă instalare sau recuperare este în curs; folosește mai întâi acțiunea de recuperare înregistrată'; fi
 trap 'rmdir "$product/install.lock" 2>/dev/null || true' EXIT
 source "$scripts/legacy-loaders.sh"
 legacy_loaders > "$transaction/legacy-paths.txt"
@@ -46,9 +46,9 @@ else
 fi
 checkpoint "$transaction/all-paths.txt"
 printf '%s\n' "$transaction" > "$product/install.lock/transaction"
-cp "$scripts/rollback.command" "$transaction/Restore Previous OpenGate.command"
+cp "$scripts/rollback.command" "$transaction/Restaureaza versiunea anterioara Flow DaVinci.command"
 cp "$scripts/transaction.sh" "$transaction/transaction.sh"
-chmod 755 "$transaction/Restore Previous OpenGate.command"
+chmod 755 "$transaction/Restaureaza versiunea anterioara Flow DaVinci.command"
 log 'prepared; waiting for Installer payload commit'
 # Keep the transaction lock for postinstall or explicit recovery.
 trap - EXIT

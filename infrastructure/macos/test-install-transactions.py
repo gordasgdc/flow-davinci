@@ -20,22 +20,22 @@ with tempfile.TemporaryDirectory(prefix='opengate-install-') as temporary:
             for key,value in {'VERSION':version,'BUILD':'fixture','MIN_MAJOR':'15','MIN_MACOS':'15.0','RESOLVE_VERSION':'21.1.1'}.items():text=text.replace('@'+key+'@',value)
             path.write_text(text)
     render('0.1.0')
-    app='/Applications/OpenGate.app';current='/Library/Application Support/CineWaltz/OpenGate/Current'
+    app='/Applications/Flow DaVinci.app';current='/Library/Application Support/GDC/FlowDaVinci/Current'
     inventory=[app,current];(scripts/'paths.txt').write_text('\n'.join(inventory)+'\n')
-    binary=machine/(app.lstrip('/')+'/Contents/MacOS/OpenGate');binary.parent.mkdir(parents=True);binary.write_bytes(b'old executable')
-    settings=machine/'Users/fixture/Library/Application Support/Unbound/Arrangements.json';settings.parent.mkdir(parents=True);settings.write_text('{"private":"user preset"}')
+    binary=machine/(app.lstrip('/')+'/Contents/MacOS/FlowDaVinci');binary.parent.mkdir(parents=True);binary.write_bytes(b'old executable')
+    settings=machine/'Users/fixture/Library/Application Support/Flow DaVinci/Arrangements.json';settings.parent.mkdir(parents=True);settings.write_text('{"private":"user preset"}')
     before=settings.read_bytes()
     old=machine/current.lstrip('/');old.mkdir(parents=True);(old/'release-manifest.json').write_text('{"version":"0.0.1","settings_schema_written":1}')
-    obsolete='/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/OpenGate - Obsolete.py'
+    obsolete='/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/Flow DaVinci - Obsolete.py'
     retired=machine/obsolete.lstrip('/');retired.parent.mkdir(parents=True);retired.write_bytes(b'old owned command')
     unrelated=retired.parent/'User Tool.py';unrelated.write_bytes(b'user owned command')
     (old/'paths.txt').write_text('\n'.join(inventory+[obsolete])+'\n')
-    legacy=machine/'Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/Unbound-retired-20261021T004855Z.backup'
+    legacy=machine/'Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/FlowDaVinci-retired-20261021T004855Z.backup'
     (legacy/'Contents/Resources').mkdir(parents=True);(legacy/'Contents/MacOS').mkdir()
-    (legacy/'Contents/Resources/build-manifest.json').write_text('{"product":"OpenGate"}')
-    for name in ['Unbound.dvcp','UnboundWidgetProbe.dylib']:(legacy/'Contents/MacOS'/name).write_bytes(b'old loader')
+    (legacy/'Contents/Resources/build-manifest.json').write_text('{"product":"Flow DaVinci"}')
+    for name in ['FlowDaVinci.dvcp','FlowDaVinciWorkspace.dylib']:(legacy/'Contents/MacOS'/name).write_bytes(b'old loader')
     env=dict(os.environ,OPENGATE_TEST_ROOT=str(machine))
-    product=machine/'Library/Application Support/CineWaltz/OpenGate'
+    product=machine/'Library/Application Support/GDC/FlowDaVinci'
     def run(name,ok=True):
         result=subprocess.run(['/bin/bash',str(scripts/name)],env=env,text=True,capture_output=True)
         assert (result.returncode==0)==ok,(name,result.stdout,result.stderr)
@@ -48,7 +48,7 @@ with tempfile.TemporaryDirectory(prefix='opengate-install-') as temporary:
         binary.write_bytes(data)
         (old/'release-manifest.json').write_text(json.dumps({'version':version,'settings_schema_written':1}))
         (old/'paths.txt').write_text('\n'.join(inventory)+'\n')
-        (scripts/'hashes.tsv').write_text(hashlib.sha256(data).hexdigest()+'\t'+app+'/Contents/MacOS/OpenGate\n')
+        (scripts/'hashes.tsv').write_text(hashlib.sha256(data).hexdigest()+'\t'+app+'/Contents/MacOS/FlowDaVinci\n')
     # Upgrade, same-version reinstall and downgrade use exactly the same transaction.
     for version,relation in [('0.1.0','upgrade'),('0.1.0','reinstall'),('0.0.1','downgrade')]:
         render(version)
@@ -64,7 +64,7 @@ with tempfile.TemporaryDirectory(prefix='opengate-install-') as temporary:
     assert not (product/'install.lock').exists()
     # Interrupted replacement leaves a double-click recovery action, not a lost backup.
     transaction=prepare();payload(b'interrupted')
-    result=subprocess.run(['/bin/bash',str(transaction/'Restore Previous OpenGate.command')],env=env,capture_output=True,text=True)
+    result=subprocess.run(['/bin/bash',str(transaction/'Restaureaza versiunea anterioara Flow DaVinci.command')],env=env,capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     assert binary.read_bytes()==expected and not (product/'install.lock').exists()
     # A newer data writer blocks before replacement.
@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='opengate-install-') as temporary:
     assert result.returncode==0,result.stderr
     assert not binary.exists() and not old.exists() and settings.read_bytes()==before
     transactions=sorted((product/'Transactions').iterdir(),key=lambda p:p.stat().st_mtime_ns)
-    recovery=transactions[-1]/'Restore Previous OpenGate.command'
+    recovery=transactions[-1]/'Restaureaza versiunea anterioara Flow DaVinci.command'
     result=subprocess.run(['/bin/bash',str(recovery)],env=env,capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     assert binary.read_bytes()==expected and settings.read_bytes()==before

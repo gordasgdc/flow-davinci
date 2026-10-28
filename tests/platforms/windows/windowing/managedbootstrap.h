@@ -9,7 +9,7 @@
 // shipped DLL's real launcher entry. No fixture-only production export is used.
 class ManagedBootstrapFixture {
 public:
-    explicit ManagedBootstrapFixture(const QString &path):library(qEnvironmentVariableIntValue("OPENGATE_TEST_IO_BOOTSTRAP")?QFileInfo(path).dir().filePath("OpenGate.dvcp"):path) {
+    explicit ManagedBootstrapFixture(const QString &path):library(qEnvironmentVariableIntValue("OPENGATE_TEST_IO_BOOTSTRAP")?QFileInfo(path).dir().filePath("FlowDaVinci.dvcp"):path) {
         library.setLoadHints(QLibrary::PreventUnloadHint);
         if(!library.load()){error=library.errorString();return;}
         if(qEnvironmentVariableIntValue("OPENGATE_TEST_IO_BOOTSTRAP")) {

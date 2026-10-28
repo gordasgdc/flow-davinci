@@ -62,10 +62,10 @@ int main(int argc,char **argv) {
         qputenv("UNBOUND_SHORTCUTS_FILE",(directory+"/Shortcuts.json").toUtf8());
         QWidget main;main.setObjectName("UiMainWindow");main.setAttribute(Qt::WA_DontShowOnScreen);
         QMenu native,root(&main);
-        auto action=native.addAction("OpenGate - Show-Hide Source Monitor");action->setObjectName("workspaceWIPlugins_fixture");
+        auto action=native.addAction("Flow DaVinci - Show-Hide Source Monitor");action->setObjectName("workspaceWIPlugins_fixture");
         // Menu activation tests the wrapper bridge; it does not prove native key dispatch.
         int nativeCalls=0,registryCalls=0;
-        const auto wrapper=QFileInfo(QStringLiteral(__FILE__)).dir().absoluteFilePath("../../../build/macos/workflow-commands/OpenGate - Show-Hide Source Monitor.py");
+        const auto wrapper=QFileInfo(QStringLiteral(__FILE__)).dir().absoluteFilePath("../../../build/macos/workflow-commands/Flow DaVinci - Show-Hide Source Monitor.py");
         QObject::connect(action,&QAction::triggered,[&] {
             ++nativeCalls;check(QProcess::execute("python3",{wrapper})==0,"native workflow handler runs the actual generated command script");
         });

@@ -15,7 +15,7 @@ int main(int argc,char **argv){
     registry.add({"edit.timeline.fixed-playhead","Edit Timeline / Toggle Fixed Playhead",[&]{return available;},[&]{++fixed;}});
     registry.add({"panel.expand.source","Maximize / Restore Source Monitor",[&]{return available;},[&]{++expanded;}});
     registry.add({"panel.toggle.source","Show / Hide Source Monitor",[&]{return available;},[&]{++shown;}});
-    QMenu native;auto original=native.addAction("OpenGate - Edit - Stabilize");original->setObjectName("workspaceWIPlugins_0");
+    QMenu native;auto original=native.addAction("Flow DaVinci - Edit - Stabilize");original->setObjectName("workspaceWIPlugins_0");
     const auto originalActions=native.actions();const auto hosts=original->associatedWidgets();
     QMenu root;QPointer<QMenu> retained;
     {

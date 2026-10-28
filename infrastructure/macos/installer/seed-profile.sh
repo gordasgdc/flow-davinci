@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 home=$1; user=$2; resources=$3
-base="$home/Library/Application Support/Unbound"
+base="$home/Library/Application Support/Flow DaVinci"
 if [[ ! -e "$base/Workspace.json" && ! -e "$base/Arrangements.json" && ! -e "$base/Profile.json" ]]; then
  /bin/mkdir -p "$base"
  /bin/cp "$resources/Presets/Workspace.json" "$base/Workspace.json"

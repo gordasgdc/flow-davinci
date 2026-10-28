@@ -27,7 +27,7 @@ def seed(directory, bundle):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode',choices=['preview','normal','seed'])
-    parser.add_argument('--base',type=Path,default=Path.home()/'Library/Application Support/Unbound')
+    parser.add_argument('--base',type=Path,default=Path.home()/'Library/Application Support/Flow DaVinci')
     parser.add_argument('--bundle',type=Path,default=Path(__file__).resolve().parents[2]/'src/assets/presets/BundledArrangements.json')
     args=parser.parse_args()
     process=subprocess.run(['pgrep','-x','Resolve'],capture_output=True)

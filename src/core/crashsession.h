@@ -22,7 +22,7 @@ public:
         if (selected.isEmpty()) return evidence;
         QJsonArray frames;bool helper=false;
         for (const auto &line:selected.split('\n')) if (QRegularExpression("^\\d+\\s+").match(line).hasMatch()) {
-            helper |= line.contains("UnboundWidgetProbe") || line.contains("Unbound.dvcp");if (frames.size()<50) frames.append(line);
+            helper |= line.contains("FlowDaVinciWorkspace") || line.contains("FlowDaVinci.dvcp");if (frames.size()<50) frames.append(line);
         }
         evidence["native_report_time_match"]=true;evidence["native_crash_time"]=newest.toUTC().toString(Qt::ISODateWithMs);
         evidence["helper_frame_present"]=helper;evidence["frames"]=frames;

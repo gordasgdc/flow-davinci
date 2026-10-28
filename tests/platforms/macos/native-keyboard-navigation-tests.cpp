@@ -22,9 +22,9 @@ int main(int argc,char **argv) {
     QWidget commands;commands.setAttribute(Qt::WA_DontShowOnScreen);commands.resize(360,260);
     auto commandLayout=new QVBoxLayout(&commands);auto tree=new QTreeView(&commands);commandLayout->addWidget(tree);
     QStandardItemModel model;model.setHorizontalHeaderLabels({"Command","Keystroke"});
-    const QString fullName="OpenGate - Maximize-Restore Workspace Toolbar and the selected grouped panel";
+    const QString fullName="Flow DaVinci - Maximize-Restore Workspace Toolbar and the selected grouped panel";
     model.appendRow({new QStandardItem(fullName),new QStandardItem("Alt+Shift+S, Alt+Shift+H")});
-    model.appendRow({new QStandardItem("OpenGate - Edit - Stabilize"),new QStandardItem("Alt+Shift+S")});
+    model.appendRow({new QStandardItem("Flow DaVinci - Edit - Stabilize"),new QStandardItem("Alt+Shift+S")});
     tree->setModel(&model);tree->header()->setStretchLastSection(false);tree->setColumnWidth(0,190);tree->setColumnWidth(1,130);
     tree->setWordWrap(false);tree->setUniformRowHeights(true);tree->setTextElideMode(Qt::ElideRight);
     commands.show();auto settle=[] {QElapsedTimer timer;timer.start();while(timer.elapsed()<80){QApplication::processEvents();QThread::msleep(1);}};settle();

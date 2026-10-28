@@ -4,9 +4,9 @@
 #include "nativechrome.h"
 namespace Unbound {
 inline QString diagnosticDirectory() {
-    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR", QDir::homePath()+"/Library/Logs/OpenGate");
+    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR", QDir::homePath()+"/Library/Logs/FlowDaVinci");
 }
-inline QString diagnosticModule() { return QStringLiteral("UnboundWidgetProbe.dylib"); }
+inline QString diagnosticModule() { return QStringLiteral("FlowDaVinciWorkspace.dylib"); }
 inline QString diagnosticResolveCrashArchive() {
     return qEnvironmentVariable("UNBOUND_RESOLVE_CRASH_ARCHIVE",QDir::homePath()+"/Library/Application Support/Blackmagic Design/DaVinci Resolve/crash_archive.txt");
 }

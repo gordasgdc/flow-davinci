@@ -2,7 +2,7 @@
 set -eu
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 app="${1:-/Applications/DaVinci Resolve/DaVinci Resolve.app}"
-helper="$root/build/macos/loading-probe/UnboundLoadingProbe.dylib"
+helper="$root/build/macos/loading-probe/FlowDaVinciLoadingProbe.dylib"
 if [[ ! -f "$helper" || ! -x "$app/Contents/MacOS/Resolve" ]]; then
     echo 'Build the loading probe and provide a valid Resolve app path first.' >&2
     exit 1

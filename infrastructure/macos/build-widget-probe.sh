@@ -4,7 +4,7 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 source "$root/infrastructure/macos/build-target.sh"
 qt="${1:-$root/build/macos/qtbase-source}"
 app="${2:-/Applications/DaVinci Resolve/DaVinci Resolve.app}"
-out="$root/build/macos/ofx-probe/UnboundLoadingProbe.ofx.bundle/Contents/MacOS"
+out="$root/build/macos/ofx-probe/FlowDaVinciLoadingProbe.ofx.bundle/Contents/MacOS"
 if [[ ! -f "$qt/src/corelib/global/qconfig.h" || ! -f "$qt/include/QtWidgets/QApplication" || ! -d "$out" ]]; then
     echo 'Configure Qt 5.15.2 headers and build the OpenFX probe first.' >&2
     exit 1
@@ -30,9 +30,9 @@ for source in "$root/tests/platforms/macos/qt-widget-probe.cpp" "$root/src/platf
 done
 xcrun clang++ "${opengate_macos_flags[@]}" -dynamiclib "$objects/qt-widget-probe.cpp.o" "$objects/nativechrome.mm.o" -framework AppKit -framework CoreGraphics \
     -L "$app/Contents/Frameworks" -lQt5Widgets.5 -lQt5Gui.5 -lQt5Core.5 \
-    -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/UnboundWidgetProbe.dylib"
-xcrun dsymutil "$out/UnboundWidgetProbe.dylib" -o "$out/UnboundWidgetProbe.dylib.dSYM"
-/usr/bin/codesign --force --sign - "$out/UnboundWidgetProbe.dylib"
+    -Wl,-rpath,"$app/Contents/Frameworks" -o "$out/FlowDaVinciWorkspace.dylib"
+xcrun dsymutil "$out/FlowDaVinciWorkspace.dylib" -o "$out/FlowDaVinciWorkspace.dylib.dSYM"
+/usr/bin/codesign --force --sign - "$out/FlowDaVinciWorkspace.dylib"
 # Resolve's scan cache tracks the OFX binary rather than its companion library.
-touch "$out/UnboundLoadingProbe.ofx"
+touch "$out/FlowDaVinciLoadingProbe.ofx"
 echo 'Built the read-only widget probe against Resolve’s Qt libraries.'

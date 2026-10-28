@@ -40,24 +40,24 @@ def main():
     build = inputs['commit'][:7] + '-pkg' + packaging[:7]
     output = (root / 'build/macos/candidates' if args.candidate else root / 'release/mac') / (args.version + '-prototype-' + build)
     if output.exists(): raise SystemExit('Refusing to overwrite immutable release: ' + str(output))
-    filename = 'OpenGate-' + args.version + ('-Candidate' if args.candidate else '-Prototype') + '-macOS-' + build + '.pkg'
+    filename = 'FlowDaVinci-' + args.version + ('-Candidate' if args.candidate else '-Prototype') + '-macOS-' + build + '.pkg'
     (root / 'build/macos').mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='package-', dir=root / 'build/macos') as temporary:
         work = pathlib.Path(temporary); payload = work / 'payload'; scripts = work / 'scripts'
         metadata = prepare(root, args.artifacts, inputs, payload, scripts)
         resources = work / 'resources'; resources.mkdir()
-        title = 'OpenGate ' + args.version + (' Local Candidate' if args.candidate else ' Prototype')
-        (resources / 'welcome.html').write_text('<html><body><h1>' + html.escape(title) + '</h1><p>Save and quit Resolve before installing. Requires macOS ' + metadata['minimum_macos'] + '+ and Resolve 21 at its standard location. Includes Apple Silicon and Intel binaries; live validation for this candidate is pending.</p><p>This candidate has not been tested inside Resolve on macOS or Windows. Displayed fixture status is recorded in the manifest; do not infer runtime acceptance from compilation.</p><p>Existing presets and arrangements are preserved. Signing and notarization status are recorded in the accompanying release manifest. Based on Unbound by Wolfgang Woehl (MIT).</p></body></html>')
-        (resources / 'conclusion.html').write_text('<html><body><h1>OpenGate installed</h1><p>Open Resolve. New users begin in Resolve Layout; Jordan Tetewsky Preset is optional. Existing users retain their last working state.</p><p>Double-click uninstall and support export in Applications/OpenGate Tools. Recovery records: /Library/Application Support/CineWaltz/OpenGate/Transactions/. Projects and media are not installation targets.</p></body></html>')
+        title = 'Flow DaVinci ' + args.version + (' — candidat local' if args.candidate else ' — prototip')
+        (resources / 'welcome.html').write_text('<html><body><h1>' + html.escape(title) + '</h1><p>Salvează și închide Resolve înainte de instalare. Necesită macOS ' + metadata['minimum_macos'] + '+ și Resolve 21 în locația standard. Include binare Apple Silicon și Intel; validarea live a acestui candidat este în așteptare.</p><p>Acest candidat nu a fost testat în Resolve pe macOS sau Windows. Starea testelor este înregistrată în manifest; nu deduce acceptarea la rulare din compilare.</p><p>Presetările și aranjamentele existente sunt păstrate. OpenGate și Unbound nu sunt șterse sau dezactivate. Starea semnării și a notarizării este în manifestul de lansare. Flow DaVinci este o adaptare în limba română, bazată pe OpenGate de CineWaltz și pe Unbound de Wolfgang Woehl (MIT).</p></body></html>')
+        (resources / 'conclusion.html').write_text('<html><body><h1>Flow DaVinci a fost instalat</h1><p>Deschide Resolve. Utilizatorii noi încep în Resolve Layout; presetul Jordan Tetewsky (din OpenGate) este opțional. Utilizatorii existenți își păstrează ultima stare de lucru.</p><p>Dezinstalarea, exportul de suport și alegerea produsului activ (dublu clic) sunt în Applications/Flow DaVinci Tools. Înregistrări de recuperare: /Library/Application Support/GDC/FlowDaVinci/Transactions/. Proiectele și media nu sunt ținte de instalare.</p></body></html>')
         copy(root / 'LICENSE', resources / 'LICENSE.txt')
         component = work / 'component.plist'
         # The payload has exactly one known app component. Explicit replacement
         # policy avoids inference over helpers and executable maintenance scripts.
         component.write_bytes(plistlib.dumps([{
-            'RootRelativeBundlePath': 'Applications/OpenGate.app',
+            'RootRelativeBundlePath': 'Applications/Flow DaVinci.app',
             'BundleHasStrictIdentifier': True, 'BundleIsRelocatable': False,
             'BundleIsVersionChecked': False, 'BundleOverwriteAction': 'upgrade'}]))
-        run('/usr/bin/pkgbuild', '--root', str(payload), '--component-plist', str(component), '--scripts', str(scripts), '--ownership', 'recommended', '--identifier', 'com.cinewaltz.opengate.prototype', '--version', args.version, '--install-location', '/', str(work / 'component.pkg'))
+        run('/usr/bin/pkgbuild', '--root', str(payload), '--component-plist', str(component), '--scripts', str(scripts), '--ownership', 'recommended', '--identifier', 'dev.gordas.flowdavinci.prototype', '--version', args.version, '--install-location', '/', str(work / 'component.pkg'))
         distribution = work / 'distribution.xml'
         distribution.write_text('''<?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1"><title>''' + html.escape(title) + '''</title>
@@ -65,8 +65,8 @@ def main():
 <domains enable_localSystem="true" enable_currentUserHome="false" enable_anywhere="false"/>
 <welcome file="welcome.html"/><license file="LICENSE.txt"/><conclusion file="conclusion.html"/>
 <volume-check><allowed-os-versions><os-version min="''' + metadata['minimum_macos'] + '''"/></allowed-os-versions></volume-check>
-<choices-outline><line choice="default"/></choices-outline><choice id="default" visible="false"><pkg-ref id="com.cinewaltz.opengate.prototype"/></choice>
-<pkg-ref id="com.cinewaltz.opengate.prototype" version="''' + args.version + '''" auth="Root">component.pkg</pkg-ref></installer-gui-script>''')
+<choices-outline><line choice="default"/></choices-outline><choice id="default" visible="false"><pkg-ref id="dev.gordas.flowdavinci.prototype"/></choice>
+<pkg-ref id="dev.gordas.flowdavinci.prototype" version="''' + args.version + '''" auth="Root">component.pkg</pkg-ref></installer-gui-script>''')
         signing_args = ['--sign', inputs['signing']['installer']['name'], '--timestamp'] if args.sign else []
         run('/usr/bin/productbuild', '--distribution', str(distribution), '--package-path', str(work), '--resources', str(resources), *signing_args, str(work / filename))
         metadata['notarized'] = False

@@ -14,7 +14,7 @@ def inner(records,trailer=True):
 def outer(names):return u(1)+u(len(names))+b''.join(text(name)+blob(data) for name,data in names)
 class AuditTests(unittest.TestCase):
  def test_alternates_and_sequence(self):
-  records=[('OpenGate - Edit - Stabilize',[(0x0a000053,),(0x04000053,),(0x0400004b,0x04000053,0,0)])]
+  records=[('Flow DaVinci - Edit - Stabilize',[(0x0a000053,),(0x04000053,),(0x0400004b,0x04000053,0,0)])]
   actual,base=m.parse_inner(inner(records));self.assertEqual(actual[records[0][0]],[tuple(s for s in sequence if s) for sequence in records[0][1]]);self.assertEqual(base,'DaVinci Resolve')
  def test_empty_sentinel_and_legacy_trailer(self):
   records,base=m.parse_inner(inner([('Native',[(0,)])],False));self.assertEqual(records,{'Native':[]});self.assertIsNone(base)

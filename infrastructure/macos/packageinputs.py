@@ -16,7 +16,7 @@ def load_inputs(root, artifacts, receipts, version, candidate=False):
         raise ValueError('Version must be MAJOR.MINOR.PATCH.')
     if subprocess.check_output(['git', '-C', str(root), 'status', '--porcelain'], text=True).strip():
         raise ValueError('Commit packaging changes before constructing an immutable installer.')
-    bundle = artifacts / 'io-helper/Unbound.dvcp.bundle'
+    bundle = artifacts / 'io-helper/FlowDaVinci.dvcp.bundle'
     manifest = json.loads((bundle / 'Contents/Resources/build-manifest.json').read_text())
     commit = manifest['commit']
     if manifest.get('dirty') or not re.fullmatch(r'[0-9a-f]{40}', commit):
@@ -41,7 +41,7 @@ def load_inputs(root, artifacts, receipts, version, candidate=False):
     if not candidate and not any(r.get('matrix') in ('displayed', 'functional', 'full') for r in evidence):
         raise ValueError('A passing matching displayed/native-window receipt is required.')
     files = {name: sha(bundle / 'Contents/MacOS' / name)
-             for name in ('Unbound.dvcp', 'UnboundWidgetProbe.dylib')}
+             for name in ('FlowDaVinci.dvcp', 'FlowDaVinciWorkspace.dylib')}
     for name in files:
         subprocess.run(['/usr/bin/codesign', '--verify', '--strict', str(bundle / 'Contents/MacOS' / name)], check=True)
     return {'commit': commit, 'bundle': bundle, 'sha256': files, 'verification': evidence,

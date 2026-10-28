@@ -72,14 +72,14 @@ public:
         directory=qEnvironmentVariable("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",directory);
 #endif
         if(directory.isEmpty())return unavailable("stabilize",0,"Resolve's Workflow Integration directory is unavailable.");
-        QFile script(directory+"/OpenGate - Edit - Stabilize.py");
+        QFile script(directory+"/Flow DaVinci - Edit - Stabilize.py");
         if(!script.open(QIODevice::ReadOnly) || !script.read(8192).contains("# opengate-command-route: selected-timeline-api-v1"))
             return unavailable("stabilize",0,"The matching selected-clip Stabilize script must be installed with this helper; no legacy button fallback was used.");
         QSet<QAction *> matches;
         for(auto widget:QApplication::allWidgets()) {
             auto actions=widget->actions();actions.append(widget->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly));
             for(auto action:actions)
-                if(action->objectName().startsWith("workspaceWIPlugins_") && label(action->text())=="OpenGate - Edit - Stabilize")matches.insert(action);
+                if(action->objectName().startsWith("workspaceWIPlugins_") && label(action->text())=="Flow DaVinci - Edit - Stabilize")matches.insert(action);
         }
         if(matches.size()!=1 || !(*matches.begin())->isEnabled())
             return unavailable("stabilize",matches.size(),"Resolve's native OpenGate Stabilize workflow command is unavailable or ambiguous.");

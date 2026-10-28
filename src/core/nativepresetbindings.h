@@ -84,7 +84,7 @@ public:
                     keys.append(sequence);out.owners[sequence.toString(QKeySequence::PortableText)].append(label);
                 }
             }
-            if(label.startsWith("OpenGate - "))out.commands[label]=keys;
+            if(label.startsWith("Flow DaVinci - "))out.commands[label]=keys;
         }
         if(inner.ok && inner.offset<inner.bytes.size())inner.string(); // Optional base-preset name.
         if(!inner.finished()){out.error="invalid-binding-records";out.commands.clear();out.owners.clear();}

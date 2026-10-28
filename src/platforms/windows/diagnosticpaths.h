@@ -7,7 +7,7 @@
 namespace Unbound {
 inline QString diagnosticDirectory() {
     const auto local=qEnvironmentVariable("LOCALAPPDATA",QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation));
-    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",QDir(local).filePath("OpenGate/Logs"));
+    return qEnvironmentVariable("UNBOUND_DIAGNOSTICS_DIR",QDir(local).filePath("FlowDaVinci/Logs"));
 }
 inline QString diagnosticModule() { return QStringLiteral("Unbound.dll"); }
 // Native crash-report discovery is separate from OpenGate's session journal.

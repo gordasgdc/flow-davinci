@@ -2,5 +2,5 @@
 #pragma once
 #include <QDir>
 namespace Unbound {
-inline QString workspaceProfileDirectory() { return QDir::homePath()+"/Library/Application Support/Unbound"; }
+inline QString workspaceProfileDirectory() { return QDir::homePath()+"/Library/Application Support/Flow DaVinci"; }
 }

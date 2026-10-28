@@ -29,7 +29,7 @@ static void captureWidgets(int capture)
             {"x", geometry.x()}, {"y", geometry.y()},
             {"width", geometry.width()}, {"height", geometry.height()}});
     }
-    const QString directory = QDir::homePath() + QStringLiteral("/Library/Logs/OpenGate");
+    const QString directory = QDir::homePath() + QStringLiteral("/Library/Logs/FlowDaVinci");
     if (!QDir().mkpath(directory)) return;
     QSaveFile file(directory + QStringLiteral("/widgets-%1.json").arg(capture));
     if (!file.open(QIODevice::WriteOnly)) return;

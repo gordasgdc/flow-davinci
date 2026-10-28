@@ -8,7 +8,7 @@ import tempfile
 root = pathlib.Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix='opengate-support-') as temporary:
     home=pathlib.Path(temporary)
-    logs=home/'Library/Logs/Unbound'; logs.mkdir(parents=True)
+    logs=home/'Library/Logs/FlowDaVinci'; logs.mkdir(parents=True)
     event={'time':'2026-10-22T00:00:00Z','event':'panel.undock.result','build':'fixture','success':False,
            'error':'Private Project at /Users/private/media.mov','project':'Private Project',
            'widget':{'label':'Private Project'},'path':'/Users/private/media.mov'}
@@ -23,10 +23,10 @@ with tempfile.TemporaryDirectory(prefix='opengate-support-') as temporary:
     assert data['events'][0]['success'] is False
     assert 'Private Project' not in output.read_text() and '/Users/private' not in output.read_text()
     assert not any(key in data['events'][0] for key in ('error','project','widget','path'))
-    # New OpenGate logs and pre-upgrade Unbound logs must both survive export.
-    current=home/'Library/Logs/OpenGate'; current.mkdir(parents=True)
+    # Rotated and current logs must both survive export.
+    current=logs
     current_event=dict(event,time='2026-10-23T00:00:00Z',component='OpenGate',module='fixture',event_sequence=2)
-    (current/'events.jsonl').write_text(json.dumps(current_event)+'\n')
+    (current/'events.jsonl.1').write_text(json.dumps(current_event)+'\n')
     original=(logs/'events.jsonl').read_bytes()
     subprocess.run(['/usr/bin/osascript','-l','JavaScript',str(root/'infrastructure/macos/installer/export-support.js'),str(home),str(output),str(transactions)],check=True)
     data=json.loads(output.read_text())

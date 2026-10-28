@@ -27,10 +27,10 @@ static StatusCode handleMessage(MessageID message, ...)
         ObjectRef properties = va_arg(args, ObjectRef);
         va_end(args);
         if (!properties) return errInvalidParam;
-        static const uint8_t uuid[] = {0x34,0x9e,0xb2,0xa0,0x68,0x29,0x4f,0x45,0xaf,0x6d,0xba,0xf9,0x93,0x7e,0x11,0x2c};
+        static const uint8_t uuid[] = {0x6d,0x41,0x0a,0x7e,0x52,0x9c,0x4b,0x13,0x9f,0x80,0xd4,0x3b,0x61,0xe7,0x2a,0xc5};
         StatusCode status = hostAPI.pHandleMessage(msgPropSet, properties, pIOPropUUID, propTypeUInt8, uuid, 16);
         if (status != errNone) return status;
-        const char *name = "OpenGate by CineWaltz — experimental panel helper";
+        const char *name = "Flow DaVinci — asistent pentru panouri (adaptare OpenGate)";
         return hostAPI.pHandleMessage(msgPropSet, properties, pIOPropName, propTypeString, name, int(std::strlen(name)));
     }
     default:

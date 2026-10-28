@@ -10,7 +10,7 @@ function run(argv) {
     const allowed=['time','event','component','vendor','module','build','session','event_sequence','operation','success','ready','reason','phase','result','duration_ms','snapshot_ms','persist_ms','menu_ms','header_ms'];
     const records=[];
     // Preserve rollback evidence: read old logs without moving or deleting them.
-    for(const directory of ['Unbound','OpenGate']) for(const suffix of ['.2','.1','']) {
+    for(const directory of ['FlowDaVinci']) for(const suffix of ['.2','.1','']) {
         const text=read(home+'/Library/Logs/'+directory+'/events.jsonl'+suffix);
         for(const line of text.split('\n')) {
             let event;try{event=JSON.parse(line);}catch(_){continue;}
@@ -21,7 +21,7 @@ function run(argv) {
         }
     }
     const installation=[];
-    const transactions=argv[2] || '/Library/Application Support/CineWaltz/OpenGate/Transactions';
+    const transactions=argv[2] || '/Library/Application Support/GDC/FlowDaVinci/Transactions';
     const names=ObjC.deepUnwrap($.NSFileManager.defaultManager.contentsOfDirectoryAtPathError(transactions,null)) || [];
     for(const name of names.sort().slice(-30)) {
         // Only installer-generated UUID directories; no arbitrary path traversal.
@@ -38,8 +38,8 @@ function run(argv) {
         if(events.length)installation.push({transaction:name,events:events});
     }
     records.sort((a,b)=>String(a.time||'').localeCompare(String(b.time||'')));
-    const result={schema:1,product:'OpenGate',generated:new Date().toISOString(),raw_logs_included:false,installation:installation,
+    const result={schema:1,product:'Flow DaVinci',generated:new Date().toISOString(),raw_logs_included:false,installation:installation,
         note:'Event fields are allowlisted; project names, paths, widget contents and arbitrary error text are excluded.',events:records.slice(-10000)};
     const output=$(JSON.stringify(result,null,2)+'\n');
-    if(!output.writeToFileAtomicallyEncodingError(destination,true,$.NSUTF8StringEncoding,null))throw Error('Could not save support summary.');
+    if(!output.writeToFileAtomicallyEncodingError(destination,true,$.NSUTF8StringEncoding,null))throw Error('Rezumatul de suport nu a putut fi salvat.');
 }

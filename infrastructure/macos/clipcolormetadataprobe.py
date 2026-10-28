@@ -2,7 +2,7 @@
 """Namespaced metadata experiment; caller must own a disposable project."""
 import json
 
-KEY = 'com.cinewaltz.opengate.clip-color-probe.v1'
+KEY = 'dev.gordas.flowdavinci.clip-color-probe.v1'
 
 def write_probe(item):
     media = item.GetMediaPoolItem()

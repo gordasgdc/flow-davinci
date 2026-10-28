@@ -9,7 +9,7 @@
   #error BuildRevision is required
 #endif
 [Setup]
-AppId=OpenGate-CineWaltz-Prototype
+AppId=FlowDaVinci-GDC
 AppName=OpenGate
 AppVersion={#BuildVersion}
 AppVerName=OpenGate {#BuildVersion} prototype.{#BuildRevision}
@@ -31,7 +31,7 @@ CloseApplications=yes
 RestartApplications=no
 UninstallDisplayIcon={app}\Unbound.exe
 [Files]
-Source: "{#SourceRoot}\release\win\{#BuildVersion}\OpenGate.dvcp"; DestDir: "{commonappdata}\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\OpenGate.dvcp.bundle\Contents\Win64"; Flags: ignoreversion
+Source: "{#SourceRoot}\release\win\{#BuildVersion}\FlowDaVinci.dvcp"; DestDir: "{commonappdata}\Blackmagic Design\DaVinci Resolve\Support\IOPlugins\FlowDaVinci.dvcp.bundle\Contents\Win64"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\release\win\{#BuildVersion}\Unbound.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion

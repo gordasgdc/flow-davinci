@@ -4,7 +4,7 @@
 #include <string>
 #include "iopluginabi.h"
 #include "resolvereadiness.h"
-#define OPENGATE_DIAGNOSTIC_MODULE "OpenGate.dvcp"
+#define OPENGATE_DIAGNOSTIC_MODULE "FlowDaVinci.dvcp"
 #include "launcherdiagnostics.h"
 #include "../../core/iopluginentry.h"
 namespace {
@@ -14,7 +14,7 @@ std::atomic<bool> scheduled{false};
 std::wstring helperPath() {
     wchar_t directory[32768]{};DWORD bytes=sizeof(directory);
     const auto error=RegGetValueW(HKEY_LOCAL_MACHINE,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenGate-CineWaltz-Prototype_is1",
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\FlowDaVinci-GDC_is1",
         L"InstallLocation",RRF_RT_REG_SZ|RRF_SUBKEY_WOW6464KEY,nullptr,directory,&bytes);
     if(error!=ERROR_SUCCESS||!directory[0])return {};
     std::wstring path=directory;

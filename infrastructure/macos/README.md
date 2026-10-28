@@ -25,7 +25,7 @@ bash infrastructure/macos/build-launcher.sh
 bash infrastructure/macos/test-panel-sessions.sh
 ```
 
-The native startup bundle is `build/macos/io-helper/Unbound.dvcp.bundle` and the
+The native startup bundle is `build/macos/io-helper/FlowDaVinci.dvcp.bundle` and the
 launcher is `build/macos/Unbound.app`. Installation and current limitations are
 in the platform status document. Resolve must be closed before replacing helpers.
 

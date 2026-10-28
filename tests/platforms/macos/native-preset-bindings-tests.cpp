@@ -19,7 +19,7 @@ int main(int argc,char **argv){
  qputenv("UNBOUND_SHORTCUTS_FILE",(dir.path()+"/Shortcuts.json").toUtf8());
  int failures=0;auto check=[&](bool ok,const char *why){if(!ok){++failures;std::fprintf(stderr,"FAIL %s\n",why);}};
  const QByteArray config="<Config><CustomKeyboardPreset>Active</CustomKeyboardPreset></Config>";
- const QString stabilize="OpenGate - Edit - Stabilize";
+ const QString stabilize="Flow DaVinci - Edit - Stabilize";
  const QKeySequence s("Alt+Shift+S"),t("Alt+Shift+T");
  auto xml=nativePresetFixture({{stabilize,{s,t}},{"Other",{QKeySequence("F18")}}});
  auto snapshot=Unbound::NativePresetBindings::decode(config,xml);
@@ -37,7 +37,7 @@ int main(int argc,char **argv){
  int calls=0;Unbound::PanelCommandCatalog commands(&main,[]{return true;});
  check(commands.nativeShortcutOwners(s).contains(stabilize),"navigation lookup reuses the current native preset snapshot");
  qputenv("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",scriptDirectory.toUtf8());
- save("OpenGate - Edit - Stabilize.py","# opengate-command-route: selected-timeline-api-v1\n");
+ save("Flow DaVinci - Edit - Stabilize.py","# opengate-command-route: selected-timeline-api-v1\n");
  QMenu workflow(&main);auto nativeAction=workflow.addAction(stabilize);nativeAction->setObjectName("workspaceWIPlugins_fixture");
  QObject::connect(nativeAction,&QAction::triggered,[&] {++calls;});
  Unbound::NativeEditCommands editCommands(&main,[&] {return &edit;});editCommands.addTo(&commands);
@@ -72,7 +72,7 @@ int main(int argc,char **argv){
  save("keyboard.preset.xml",nativePresetFixture({{stabilize,{t}}}));settle();
  check(watched.snapshot().error.isEmpty()&&watched.snapshot().commands.value(stabilize)==QList<QKeySequence>{t},"watch survives atomic replacements and parse recovery");
  press(&floating,Qt::Key_T,Qt::AltModifier|Qt::ShiftModifier,5,1);check(calls==5,"restored preset dispatches native API route exactly once after recovery");
- const QString hovered="OpenGate - Maximize-Restore Hovered Panel";
+ const QString hovered="Flow DaVinci - Maximize-Restore Hovered Panel";
  save("keyboard.preset.xml",nativePresetFixture({{stabilize,{t}},{hovered,{QKeySequence("F18")}}}));settle();
  press(&floating,Qt::Key_QuoteLeft,Qt::NoModifier,5,1);check(expanded==1,"native maximize assignment suppresses legacy backtick");
  press(&floating,Qt::Key_F18,Qt::NoModifier,5,2);check(expanded==2,"native maximize assignment reaches shared expansion command");

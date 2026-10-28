@@ -3,10 +3,10 @@
 # Shared by install, rollback and uninstall. Settings are never a removal target.
 set -eu
 physical() { printf '%s%s' "${OPENGATE_TEST_ROOT:-}" "$1"; }
-product=$(physical '/Library/Application Support/CineWaltz/OpenGate')
+product=$(physical '/Library/Application Support/GDC/FlowDaVinci')
 mkdir -p "$product/Transactions"
 log() { printf '%s %s\n' "$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$transaction/events.log"; }
-fail() { log "failed $*"; echo "OpenGate: $*. Diagnostic record: $transaction/events.log" >&2; exit 1; }
+fail() { log "failed $*"; echo "Flow DaVinci: $*. Înregistrare de diagnostic: $transaction/events.log" >&2; exit 1; }
 new_transaction() {
  transaction="$product/Transactions/$(/usr/bin/uuidgen)"
  mkdir -m 755 "$transaction"
@@ -25,13 +25,13 @@ version_relation() {
 }
 validate_path() {
  case "$1" in
-  '/Applications/OpenGate Tools/Export OpenGate Support.command'|'/Applications/OpenGate Tools/Uninstall OpenGate.command'|'/Applications/OpenGate.app'|'/Library/Application Support/CineWaltz/OpenGate/Current'|'/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/Unbound.dvcp.bundle') ;;
-  '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/'OpenGate*.py) ;;
-  '/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/'Unbound-retired-*.backup)
-   [[ "${1##*/}" =~ ^Unbound-retired-[0-9]{8}T[0-9]{6}Z\.backup$ ]] || fail 'Invalid retired loader identity' ;;
-  *) fail 'Inventory contains a path outside OpenGate managed files' ;;
+  '/Applications/Flow DaVinci Tools/Exporta suport Flow DaVinci.command'|'/Applications/Flow DaVinci Tools/Dezinstaleaza Flow DaVinci.command'|'/Applications/Flow DaVinci Tools/Alege produsul activ.command'|'/Applications/Flow DaVinci.app'|'/Library/Application Support/GDC/FlowDaVinci/Current'|'/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/FlowDaVinci.dvcp.bundle') ;;
+  '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/'FlowDaVinci*.py|'/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/'Flow\ DaVinci\ -\ *.py) ;;
+  '/Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/'FlowDaVinci-retired-*.backup)
+   [[ "${1##*/}" =~ ^FlowDaVinci-retired-[0-9]{8}T[0-9]{6}Z\.backup$ ]] || fail 'Identitate nevalidă a încărcătorului retras' ;;
+  *) fail 'Inventarul conține o cale în afara fișierelor gestionate de Flow DaVinci' ;;
  esac
- [[ "$1" != *'/../'* ]] || fail 'Invalid package inventory'
+ [[ "$1" != *'/../'* ]] || fail 'Inventar de pachet nevalid'
 }
 checkpoint() {
  local inventory=$1 index=0 path target
@@ -39,7 +39,7 @@ checkpoint() {
  mkdir "$transaction/files"
  : > "$transaction/present.txt"
  while IFS= read -r path; do
-  [[ -n "$path" && "$path" == /* && "$path" != *'/../'* ]] || fail 'Invalid package inventory'
+  [[ -n "$path" && "$path" == /* && "$path" != *'/../'* ]] || fail 'Inventar de pachet nevalid'
   validate_path "$path"
   target=$(physical "$path")
   if [[ -e "$target" || -L "$target" ]]; then

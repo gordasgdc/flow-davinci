@@ -22,11 +22,11 @@ int main(int argc,char **argv) {
     auto row=new QVBoxLayout(inspector); auto stabilize=new QPushButton("Stabilize",inspector); row->addWidget(stabilize);
     int clicks=0; QObject::connect(stabilize,&QPushButton::clicked,[&] { ++clicks; });
     Unbound::NativeEditCommands commands(nullptr,[&] { return &page; });
-    QMenu workflow(&page);auto nativeStabilize=workflow.addAction("OpenGate - Edit - Stabilize");
+    QMenu workflow(&page);auto nativeStabilize=workflow.addAction("Flow DaVinci - Edit - Stabilize");
     nativeStabilize->setObjectName("workspaceWIPlugins_17");int nativeStabilizations=0;
     QObject::connect(nativeStabilize,&QAction::triggered,[&] {++nativeStabilizations;});
     QTemporaryDir scripts;qputenv("OPENGATE_WORKFLOW_SCRIPT_DIRECTORY",scripts.path().toUtf8());
-    const auto scriptPath=scripts.path()+"/OpenGate - Edit - Stabilize.py";
+    const auto scriptPath=scripts.path()+"/Flow DaVinci - Edit - Stabilize.py";
     auto writeScript=[&](QByteArray data) {QFile script(scriptPath);script.open(QIODevice::WriteOnly);script.write(data);};
     writeScript("# opengate-command-route: selected-timeline-api-v1\n");
     check(!commands.stabilize()&&nativeStabilizations==0,"inactive page cannot trigger analysis");
@@ -37,7 +37,7 @@ int main(int argc,char **argv) {
     nativeStabilize->setEnabled(false);
     check(!commands.stabilize()&&nativeStabilizations==2,"disabled native workflow command is respected");
     nativeStabilize->setEnabled(true);
-    auto duplicate=workflow.addAction("OpenGate - Edit - Stabilize");duplicate->setObjectName("workspaceWIPlugins_duplicate");
+    auto duplicate=workflow.addAction("Flow DaVinci - Edit - Stabilize");duplicate->setObjectName("workspaceWIPlugins_duplicate");
     check(!commands.stabilize()&&nativeStabilizations==2,"ambiguous workflow actions are refused");delete duplicate;
     writeScript("# legacy wrapper posts registry requests\n");
     check(!commands.stabilize()&&nativeStabilizations==2,"legacy wrapper cannot create recursive stabilization requests");

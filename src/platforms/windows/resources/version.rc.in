@@ -12,7 +12,7 @@ BEGIN
   BLOCK "040904B0"
   BEGIN
    VALUE "CompanyName", "CineWaltz\0"
-   VALUE "FileDescription", "OpenGate - Managed workspace for DaVinci Resolve\0"
+   VALUE "FileDescription", "Flow DaVinci - Managed workspace for DaVinci Resolve\0"
    VALUE "FileVersion", "@UNBOUND_VERSION@\0"
    VALUE "ProductName", "OpenGate\0"
    VALUE "ProductVersion", "@UNBOUND_VERSION@\0"

@@ -10,7 +10,7 @@ import tempfile
 from packagepayload import prepare, SUPPORT
 root=pathlib.Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser();parser.add_argument('--artifacts',required=True,type=pathlib.Path);args=parser.parse_args()
-bundle=args.artifacts/'io-helper/Unbound.dvcp.bundle'
+bundle=args.artifacts/'io-helper/FlowDaVinci.dvcp.bundle'
 runtime=json.loads((bundle/'Contents/Resources/build-manifest.json').read_text())
 inputs={'version':(root/'VERSION').read_text().strip(),'commit':runtime['commit'],'runtime_manifest':runtime,'bundle':bundle}
 with tempfile.TemporaryDirectory(prefix='opengate-payload-') as temporary:
@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='opengate-payload-') as temporary:
     metadata=prepare(root,args.artifacts,inputs,payload,scripts)
     paths=(scripts/'paths.txt').read_text().splitlines()
     assert metadata['version']==inputs['version'] and metadata['architecture']=='universal'
-    assert all('/Users/' not in path and '/Library/Application Support/Unbound' not in path for path in paths)
+    assert all('/Users/' not in path and '/Library/Application Support/Flow DaVinci' not in path for path in paths)
     assert not any('@VERSION@' in p.read_text() for p in scripts.iterdir())
     count=0
     for line in (scripts/'hashes.tsv').read_text().splitlines():

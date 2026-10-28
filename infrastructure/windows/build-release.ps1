@@ -76,7 +76,7 @@ try {
     & (Join-Path $repoRoot 'tests\platforms\windows\version\main.ps1')
     $exe = Join-Path $build 'Release\Unbound.exe'
     $dll = Join-Path $build 'Release\Unbound.dll'
-    $ioPlugin = Join-Path $build 'Release\OpenGate.dvcp'
+    $ioPlugin = Join-Path $build 'Release\FlowDaVinci.dvcp'
     foreach ($file in @($exe, $dll)) {
         $info = (Get-Item -LiteralPath $file).VersionInfo
         if ($info.ProductName -ne 'OpenGate' -or $info.CompanyName -ne 'CineWaltz' -or $info.ProductVersion -ne $version -or $info.FileVersion -ne $version -or
@@ -168,7 +168,7 @@ try {
     New-Item -ItemType Directory -Path $destination | Out-Null
     Copy-Item -LiteralPath $exe, $dll, $ioPlugin -Destination $destination
     Copy-Item -LiteralPath (Join-Path $repoRoot 'build\windows\workflow-commands') -Destination $destination -Recurse
-    $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'), (Join-Path $destination 'OpenGate.dvcp'))
+    $hashes = @(Get-FileHash -LiteralPath (Join-Path $destination 'Unbound.exe'), (Join-Path $destination 'Unbound.dll'), (Join-Path $destination 'FlowDaVinci.dvcp'))
     $workflowHashes = @(Get-ChildItem -LiteralPath (Join-Path $destination 'workflow-commands') -File | Get-FileHash -Algorithm SHA256)
     @{ Product='OpenGate'; Version=$version; ReleaseLabel="$version-prototype.$BuildNumber"; BuildId=$buildId; SourceCommit=$sourceCommit; SourceDirty=$sourceDirty; SourceStatus=$sourceStatus; Revision=$BuildNumber; BuiltAt=(Get-Date).ToString('o'); Qt=$QtPath; Files=$hashes; WorkflowFiles=$workflowHashes; Dependencies=$dependencyReport; Backend='shared-managed-workspace'; Startup='native-io-plugin'; ManagedWorkspaceParity=$false; LiveAccepted=$false } |
         ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $build 'release-manifest.json')

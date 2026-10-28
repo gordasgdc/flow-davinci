@@ -3,7 +3,7 @@ param(
     [string]$InstallDirectory = $PSScriptRoot,
     [string]$LogDirectory = $(if ($env:UNBOUND_DIAGNOSTICS_DIR) { $env:UNBOUND_DIAGNOSTICS_DIR } else { Join-Path $env:LOCALAPPDATA 'OpenGate\Logs' }),
     [string]$OutputDirectory = [Environment]::GetFolderPath('Desktop'),
-    [string]$StartupPlugin = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\IOPlugins\OpenGate.dvcp.bundle\Contents\Win64\OpenGate.dvcp'),
+    [string]$StartupPlugin = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\IOPlugins\FlowDaVinci.dvcp.bundle\Contents\Win64\FlowDaVinci.dvcp'),
     [string]$WorkflowDirectory = (Join-Path $env:PROGRAMDATA 'Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins')
 )
 $ErrorActionPreference = 'Stop'
@@ -39,7 +39,7 @@ $workflowManifest = Join-Path $InstallDirectory 'workflow-commands-manifest.json
 if(Test-Path -LiteralPath $workflowManifest -PathType Leaf) {
     try {
         $entries = @(Get-Content -LiteralPath $workflowManifest -Raw | ConvertFrom-Json)
-        $names = @('OpenGate.py') + @($entries | ForEach-Object { $_.file })
+        $names = @('FlowDaVinci.py') + @($entries | ForEach-Object { $_.file })
         foreach($file in $names) {
             if([IO.Path]::GetFileName($file) -ne $file -or $file -notmatch '^OpenGate(?: - .+)?\.py$'){continue}
             $path = Join-Path $WorkflowDirectory $file

@@ -76,7 +76,7 @@ def audit(preset_path,config_path):
     owners=collections.defaultdict(list)
     for label,sequences in records.items():
         for sequence in sequences:owners[sequence].append(label)
-    selected={k:v for k,v in records.items() if k.startswith('OpenGate - ')}
+    selected={k:v for k,v in records.items() if k.startswith('Flow DaVinci - ')}
     collisions={k:[owners[s] for s in sequences if len(owners[s])>1] for k,sequences in selected.items()}
     return dict(active_preset=active,active_present=active in presets,preset_count=len(presets),base=base,
         opengate_commands=len(selected),assigned={k:v for k,v in selected.items() if v},

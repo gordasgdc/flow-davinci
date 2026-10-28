@@ -263,7 +263,7 @@ int main(int argc, char **argv)
         if (record["event"] == "input.button.clicked" && record["button"].toObject()["name"] == "diagnosticActivation") buttonObserved = true;
         if (record["event"] == "input.action.triggered" && record["action"] == "diagnosticMenuAction") actionObserved = true;
         if (record["event"] == "viewer.cinema.context" && record["command"] == "workspaceViewerModeCinemaViewer" && record["phase"] == "command-triggered") cinemaObserved = true;
-        check(record["component"] == "OpenGate" && record["module"] == "UnboundWidgetProbe.dylib", "logs identify OpenGate and its actual binary module");
+        check(record["component"] == "OpenGate" && record["module"] == "FlowDaVinciWorkspace.dylib", "logs identify OpenGate and its actual binary module");
         if (record["event"] == "input.shortcut") shortcutObserved = true;
         if (record["event"] == "panel.native-change") pageMoveObserved = true;
         if (record["event"] == "input.key.observed" && record["text_editing"].toBool()) {

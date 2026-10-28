@@ -32,7 +32,7 @@ def prepare(base):
     (backup/'receipt.json').write_text(json.dumps(receipt,indent=2)+'\n');return receipt
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--base',type=Path,default=Path.home()/'Library/Application Support/Unbound');args=parser.parse_args()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--base',type=Path,default=Path.home()/'Library/Application Support/Flow DaVinci');args=parser.parse_args()
     if subprocess.run(['pgrep','-x','Resolve'],capture_output=True).returncode!=1:raise SystemExit('Resolve must be closed and its state verifiable.')
     print(json.dumps(prepare(args.base),indent=2))
 if __name__=='__main__':main()

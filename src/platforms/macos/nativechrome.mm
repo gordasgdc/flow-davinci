@@ -49,7 +49,7 @@ class NativeCommandWatch : public QObject {
 public:
     NativeCommandWatch(QObject *owner,std::function<void()> ready) : QObject(owner) {
         QPointer<NativeCommandWatch> alive(this);
-        const auto status=notify_register_dispatch("com.cinewaltz.opengate.command-request",&token,dispatch_get_main_queue(),^(int) {
+        const auto status=notify_register_dispatch("dev.gordas.flowdavinci.command-request",&token,dispatch_get_main_queue(),^(int) {
             if (alive && ready) ready();
         });
         setProperty("openGateNativeWakeReady",status==NOTIFY_STATUS_OK);
@@ -60,7 +60,7 @@ private:
 };
 QObject *watchNativeCommandRequests(QObject *owner,std::function<void()> ready) { return new NativeCommandWatch(owner,std::move(ready)); }
 #ifdef UNBOUND_NATIVE_TESTS
-void postNativeCommandRequestForTest() { notify_post("com.cinewaltz.opengate.command-request"); }
+void postNativeCommandRequestForTest() { notify_post("dev.gordas.flowdavinci.command-request"); }
 #endif
 
 double nativeInputAgeMilliseconds(quint64 timestamp)

@@ -11,7 +11,7 @@ int main(int argc,char **argv) {
     QWidget floating; floating.setObjectName("unboundFloating_fixture");
     QMenu native,root(&main);
     auto before=native.addAction("Before");
-    auto action=native.addAction("OpenGate - Edit - Stabilize");action->setObjectName("workspaceWIPlugins_0");
+    auto action=native.addAction("Flow DaVinci - Edit - Stabilize");action->setObjectName("workspaceWIPlugins_0");
     auto after=native.addAction("After");
     const auto original=native.actions();const auto hosts=action->associatedWidgets();
     int calls=0;QObject::connect(action,&QAction::triggered,[&] { ++calls; });
@@ -39,7 +39,7 @@ int main(int argc,char **argv) {
         auto keyboard=native.addAction("Keyboard Customization...");keyboard->setObjectName("resolveCustomizedActions");
         ok &= Unbound::openNativeKeyboardCustomization();
         ok &= native.actions().mid(0,3)==original;
-        auto ephemeral=native.addAction("OpenGate - Temporary");ephemeral->setObjectName("workspaceWIPlugins_temp");
+        auto ephemeral=native.addAction("Flow DaVinci - Temporary");ephemeral->setObjectName("workspaceWIPlugins_temp");
         observer.wire(&root);ephemeral->trigger();
         Unbound::flushDiagnostics();QFile late(logs.path()+"/events.jsonl");late.open(QIODevice::ReadOnly);
         ok &= late.readAll().contains("workspaceWIPlugins_temp");

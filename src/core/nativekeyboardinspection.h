@@ -16,7 +16,7 @@ inline void inspectNativeKeyboardCommands(QWidget *dialog) {
             if (++visited>30000) { truncated=true; return; }
             const auto index=model->index(row,0,parent); if (!index.isValid()) continue;
             const auto name=index.data(Qt::DisplayRole).toString();
-            if (name.startsWith("OpenGate - ")) names.insert(name);
+            if (name.startsWith("Flow DaVinci - ")) names.insert(name);
             walk(model,index,depth+1);
         }
     };

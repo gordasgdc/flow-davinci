@@ -48,9 +48,9 @@ with tempfile.TemporaryDirectory() as directory:
         assert len(results)==2 and any(r.get('reason')=='resolve-context-unavailable' for r in results)
         assert len(list((Path(directory)/'command-requests').glob('*.json')))==30
         if platform=='windows':
-            runpy.run_path(str(output/'OpenGate.py'))
+            runpy.run_path(str(output/'FlowDaVinci.py'))
             first=(Path(directory)/'show-controls.request').read_text()
-            runpy.run_path(str(output/'OpenGate.py'))
+            runpy.run_path(str(output/'FlowDaVinci.py'))
             second=(Path(directory)/'show-controls.request').read_text()
             assert first.startswith('workflow-') and second.startswith('workflow-') and first!=second
             launches=[json.loads(line) for line in (Path(directory)/'launches.jsonl').read_text().splitlines()]

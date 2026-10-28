@@ -81,7 +81,7 @@ private:
             {"context",int(action->shortcutContext())},{"binding_store","resolve-native"}});
     }
     static bool isCommand(QAction *action) {
-        return action->objectName().startsWith("workspaceWIPlugins_") && action->text().startsWith("OpenGate - ");
+        return action->objectName().startsWith("workspaceWIPlugins_") && action->text().startsWith("Flow DaVinci - ");
     }
     QSet<QAction *> observed;
     QHash<QAction *,QString> bindingStates;

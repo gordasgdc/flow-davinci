@@ -22,12 +22,12 @@ def identities():
 
 
 def sign_code(payload, signing):
-    helper = payload / 'Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/Unbound.dvcp.bundle/Contents/MacOS'
+    helper = payload / 'Library/Application Support/Blackmagic Design/DaVinci Resolve/IOPlugins/FlowDaVinci.dvcp.bundle/Contents/MacOS'
     # Sign nested code before sealing its containing bundle. Signing the main
     # executable first seals the bundle, then changing the dylib invalidates it.
-    targets = [(helper / 'UnboundWidgetProbe.dylib', 'com.cinewaltz.opengate.resolve-workspace'),
-               (helper.parents[1], 'com.cinewaltz.opengate.resolve-bootstrap'),
-               (payload / 'Applications/OpenGate.app', 'com.cinewaltz.opengate')]
+    targets = [(helper / 'FlowDaVinciWorkspace.dylib', 'dev.gordas.flowdavinci.resolve-workspace'),
+               (helper.parents[1], 'dev.gordas.flowdavinci.resolve-bootstrap'),
+               (payload / 'Applications/Flow DaVinci.app', 'dev.gordas.flowdavinci')]
     for path, identifier in targets:
         subprocess.run(['/usr/bin/codesign', '--force', '--sign', signing['application']['name'],
                         '--options', 'runtime', '--timestamp', '--identifier', identifier, str(path)], check=True)

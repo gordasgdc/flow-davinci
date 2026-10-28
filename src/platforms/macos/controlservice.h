@@ -36,7 +36,7 @@ public:
         new BoundaryDiagnostics(this);
         new PagePanelInventory(this);
         directory = qEnvironmentVariable("UNBOUND_LAUNCH_DIRECTORY",
-            QDir::homePath() + QStringLiteral("/Library/Logs/OpenGate"));
+            QDir::homePath() + QStringLiteral("/Library/Logs/FlowDaVinci"));
         launches=new ControlLaunchRequests(this,directory,[this]{showControls();});
         #ifdef UNBOUND_FEATURE_MANIFEST
         logEvent("helper.feature-manifest", {{"manifest", QJsonDocument::fromJson(QByteArray(UNBOUND_FEATURE_MANIFEST)).object()}});

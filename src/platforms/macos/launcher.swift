@@ -2,7 +2,7 @@
 import AppKit
 
 let directory = ProcessInfo.processInfo.environment["UNBOUND_LAUNCH_DIRECTORY"].map { URL(fileURLWithPath: $0) }
-    ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/OpenGate")
+    ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/FlowDaVinci")
 
 func record(_ event: String, details: [String: Any] = [:]) {
     do {

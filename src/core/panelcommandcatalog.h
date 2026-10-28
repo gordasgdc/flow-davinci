@@ -29,7 +29,7 @@ public:
                 // An explicitly present native command row is authoritative,
                 // including an empty assignment. Clearing it cannot resurrect
                 // a different binding from the legacy settings file.
-                return snapshot.error.isEmpty() && !snapshot.commands.contains("OpenGate - Maximize-Restore Hovered Panel");
+                return snapshot.error.isEmpty() && !snapshot.commands.contains("Flow DaVinci - Maximize-Restore Hovered Panel");
             };
         }
         context=[owner,running] {
@@ -72,7 +72,7 @@ private:
             else if(command.id=="edit.timeline.fixed-playhead")nativeLabel="Edit - Toggle Fixed Playhead";
             else if(command.id=="panel.expand.hovered")nativeLabel="Maximize-Restore Hovered Panel";
             else nativeLabel.replace(" / ","-");
-            nativeLabel="OpenGate - "+nativeLabel;
+            nativeLabel="Flow DaVinci - "+nativeLabel;
             if(!snapshot.commands.value(nativeLabel).contains(pressed) || !command.available || !command.available())continue;
             if(!id.isEmpty() && id!=command.id)return {{},"ambiguous-opengate-assignment"};
             id=command.id;label=nativeLabel;

@@ -42,7 +42,7 @@ int main(int argc,char **argv)
         const auto data = read(path+(part ? QString(".%1").arg(part) : QString()));
         for (const auto &line : data.split('\n')) if (!line.isEmpty()) {
             const auto entry = QJsonDocument::fromJson(line).object();
-            check(entry["component"] == "OpenGate" && entry["module"] == "UnboundWidgetProbe.dylib","each rotated record retains plugin identity");
+            check(entry["component"] == "OpenGate" && entry["module"] == "FlowDaVinciWorkspace.dylib","each rotated record retains plugin identity");
             if (entry["event"] == "rotation.fixture") sequences.insert(entry["sequence"].toInt());
         }
     }

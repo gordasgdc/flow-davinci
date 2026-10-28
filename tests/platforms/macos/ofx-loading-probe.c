@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <dispatch/dispatch.h>
 #include <mach-o/dyld.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,7 @@ static void record_state(const char *phase, int inspect_windows)
     const char *home = getenv("HOME");
     if (!home) return;
     char path[4096];
-    int length = snprintf(path, sizeof(path), "%s/Library/Logs/OpenGate/ofx-loading-probe.log", home);
+    int length = snprintf(path, sizeof(path), "%s/Library/Logs/FlowDaVinci/ofx-loading-probe.log", home);
     if (length < 0 || (size_t)length >= sizeof(path)) return;
     FILE *log = fopen(path, "a");
     if (!log) return;
@@ -38,6 +39,33 @@ static void record_state(const char *phase, int inspect_windows)
     fclose(log);
 }
 
+
+/* Flow DaVinci nu porneste alaturi de OpenGate/Unbound in aceeasi instanta Resolve: ambele ar gestiona aceleasi widgeturi Qt.
+   Detectam imaginile lor deja incarcate; nu modificam si nu dezactivam nimic. */
+static const char *other_product_image(void)
+{
+    static const char *markers[] = {"/Unbound.dvcp.bundle/", "UnboundWidgetProbe.dylib", "UnboundLoadingProbe.ofx", "/OpenGate.dvcp.bundle/"};
+    for (uint32_t i = 0; i < _dyld_image_count(); ++i) {
+        const char *name = _dyld_get_image_name(i);
+        if (!name) continue;
+        for (size_t m = 0; m < sizeof(markers) / sizeof(markers[0]); ++m)
+            if (strstr(name, markers[m])) return name;
+    }
+    return NULL;
+}
+
+static void show_conflict_notice(void *context)
+{
+    (void)context;
+    CFStringRef title = CFStringCreateWithCString(NULL, "Flow DaVinci nu a pornit", kCFStringEncodingUTF8);
+    CFStringRef text = CFStringCreateWithCString(NULL,
+        "În această instanță DaVinci Resolve este deja încărcat OpenGate sau Unbound. Două produse nu pot gestiona simultan aceeași interfață.\n\n"
+        "Nimic nu a fost șters sau modificat. Pentru a folosi Flow DaVinci: închide Resolve și rulează «Flow DaVinci Tools → Alege produsul activ» (reversibil).",
+        kCFStringEncodingUTF8);
+    CFUserNotificationDisplayNotice(0, kCFUserNotificationCautionAlertLevel, NULL, NULL, NULL, title, text, CFSTR("OK"));
+    CFRelease(title); CFRelease(text);
+}
+
 static void inspect_on_main(void *context)
 {
     void **application = (void **)dlsym(RTLD_DEFAULT, "_ZN16QCoreApplication4selfE");
@@ -54,13 +82,18 @@ static void inspect_on_main(void *context)
     record_state("main-queue", 1);
     Dl_info info;
     if (!dladdr((const void *)&inspect_on_main, &info)) return;
+    if (other_product_image()) {
+        record_state("other-product-loaded", 0);
+        dispatch_async_f(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), NULL, show_conflict_notice);
+        return;
+    }
     char path[4096];
     int length = snprintf(path, sizeof(path), "%s", info.dli_fname);
     if (length < 0 || (size_t)length >= sizeof(path)) return;
     char *name = strrchr(path, '/');
     if (!name) return;
     *name = '\0';
-    const char *suffix = "/UnboundWidgetProbe.dylib";
+    const char *suffix = "/FlowDaVinciWorkspace.dylib";
     if (strlen(path) + strlen(suffix) >= sizeof(path)) return;
     strcat(path, suffix);
     if (access(path, R_OK) != 0) return;

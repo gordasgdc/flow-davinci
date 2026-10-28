@@ -8,10 +8,10 @@ from unittest.mock import patch
 from packageinputs import load_inputs
 commit='1'*40
 with tempfile.TemporaryDirectory(prefix='opengate-evidence-') as temporary:
-    base=pathlib.Path(temporary);bundle=base/'io-helper/Unbound.dvcp.bundle'
+    base=pathlib.Path(temporary);bundle=base/'io-helper/FlowDaVinci.dvcp.bundle'
     resources=bundle/'Contents/Resources';resources.mkdir(parents=True)
     binaries=bundle/'Contents/MacOS';binaries.mkdir()
-    for name in ['Unbound.dvcp','UnboundWidgetProbe.dylib']:(binaries/name).write_bytes(b'fixture')
+    for name in ['FlowDaVinci.dvcp','FlowDaVinciWorkspace.dylib']:(binaries/name).write_bytes(b'fixture')
     (resources/'build-manifest.json').write_text(json.dumps({'commit':commit,'dirty':False}))
     def receipt(name,matrix,**overrides):
         data={'commit':commit,'matrix':matrix,'all_passed':True,'source_unchanged':True,'dirty_at_start':False,
