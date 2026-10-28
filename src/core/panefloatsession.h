@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #ifndef UNBOUND_PANEFLOATSESSION_H
 #define UNBOUND_PANEFLOATSESSION_H
+#include "flowlocale.h"
 
 #include <QBoxLayout>
 #include <QCloseEvent>

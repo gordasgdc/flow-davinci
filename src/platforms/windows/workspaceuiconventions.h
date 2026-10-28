@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "../../core/flowlocale.h"
 #include <QLayout>
 #include <QStyle>
 #include <QWidget>

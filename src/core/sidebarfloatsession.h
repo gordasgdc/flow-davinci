@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #ifndef UNBOUND_SIDEBARFLOATSESSION_H
 #define UNBOUND_SIDEBARFLOATSESSION_H
+#include "flowlocale.h"
 
 #include <QBoxLayout>
 #include <QAbstractButton>

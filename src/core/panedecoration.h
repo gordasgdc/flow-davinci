@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 #ifndef UNBOUND_PANEDECORATION_H
 #define UNBOUND_PANEDECORATION_H
+#include "flowlocale.h"
 #include <QWidget>
 #include <QToolButton>
 #include <QAbstractButton>
