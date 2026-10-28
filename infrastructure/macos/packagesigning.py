@@ -27,6 +27,7 @@ def sign_code(payload, signing):
     # executable first seals the bundle, then changing the dylib invalidates it.
     targets = [(helper / 'FlowDaVinciWorkspace.dylib', 'dev.gordas.flowdavinci.resolve-workspace'),
                (helper.parents[1], 'dev.gordas.flowdavinci.resolve-bootstrap'),
+               (payload / 'Applications/Flow DaVinci.app/Contents/MacOS/flow-update', 'dev.gordas.flowdavinci.update'),
                (payload / 'Applications/Flow DaVinci.app', 'dev.gordas.flowdavinci')]
     for path, identifier in targets:
         subprocess.run(['/usr/bin/codesign', '--force', '--sign', signing['application']['name'],

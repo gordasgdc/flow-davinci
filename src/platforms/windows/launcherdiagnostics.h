@@ -42,7 +42,7 @@ inline void launcherDiagnostic(const char *event,const std::wstring &message={},
         static unsigned sequence=0;SYSTEMTIME time{};GetSystemTime(&time);char timestamp[40]{};
         std::snprintf(timestamp,sizeof(timestamp),"%04u-%02u-%02uT%02u:%02u:%02u.%03uZ",unsigned(time.wYear),unsigned(time.wMonth),unsigned(time.wDay),unsigned(time.wHour),unsigned(time.wMinute),unsigned(time.wSecond),unsigned(time.wMilliseconds));
         std::ofstream output(file,std::ios::app|std::ios::binary);
-        output << "{\"component\":\"OpenGate\",\"vendor\":\"CineWaltz\",\"module\":\"" OPENGATE_DIAGNOSTIC_MODULE "\",\"build\":\"" UNBOUND_BUILD_ID "\",\"session\":\"" << session
+        output << "{\"component\":\"Flow DaVinci\",\"vendor\":\"Cristi Gordas (GDC)\",\"module\":\"" OPENGATE_DIAGNOSTIC_MODULE "\",\"build\":\"" UNBOUND_BUILD_ID "\",\"session\":\"" << session
             << "\",\"event_sequence\":" << ++sequence << ",\"pid\":" << GetCurrentProcessId() << ",\"resolve_pid\":" << resolvePid
             << ",\"time\":\"" << timestamp << "\",\"event\":\"" << event << "\",\"message\":" << diagnosticJsonString(message) << "}\n";
     } catch (...) { /* Diagnostic storage failure must not prevent launching. */ }

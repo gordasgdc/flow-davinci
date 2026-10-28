@@ -20,7 +20,7 @@ if lock.exists():
         item['included'] = result.returncode == 0
         item['ancestry_verified'] = result.returncode in (0, 1)
         features.append(item)
-manifest = {'schema': 1, 'product': 'OpenGate', 'vendor': 'CineWaltz', 'foundation': 'Unbound by Wolfgang Woehl (MIT)', 'branch': git('branch', '--show-current'), 'commit': git('rev-parse', 'HEAD'),
+manifest = {'schema': 1, 'product': 'Flow DaVinci', 'vendor': 'Cristi Gordas (GDC)', 'foundation': 'OpenGate by CineWaltz (MIT), based on Unbound by Wolfgang Woehl (MIT)', 'branch': git('branch', '--show-current'), 'commit': git('rev-parse', 'HEAD'),
             'dirty': bool(git('status', '--porcelain')), 'features': features,
             'macos_deployment_target': os.getenv('OPENGATE_MACOS_DEPLOYMENT_TARGET', 'unspecified'),
             'macos_architectures': os.getenv('OPENGATE_MACOS_ARCHS', 'host-default'),

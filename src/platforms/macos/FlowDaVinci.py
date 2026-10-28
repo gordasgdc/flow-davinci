@@ -12,5 +12,5 @@ temporary = directory / (token + ".request")
 temporary.write_text(token)
 os.replace(temporary, directory / "show-controls.request")
 with (directory / "launches.jsonl").open("a") as log:
-    log.write(json.dumps({"component": "OpenGate", "vendor": "CineWaltz", "event": "workflow.launch", "time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    log.write(json.dumps({"component": "Flow DaVinci", "vendor": "Cristi Gordas (GDC)", "event": "workflow.launch", "time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                           "pid": os.getpid(), "request": token}) + "\n")

@@ -47,8 +47,8 @@ int main(int argc, char **argv)
         main.hide();
         check(Unbound::currentWorkspacePage(&main).isEmpty(),"hidden or unavailable pages are not guessed to be Edit");
     }
-    check(Unbound::productName()=="OpenGate" && Unbound::productVendor()=="CineWaltz" &&
-        Unbound::productCredit().contains("Wolfgang Woehl"),"OpenGate identity preserves explicit foundation credit");
+    check(Unbound::productName()=="Flow DaVinci" && Unbound::productVendor()=="Cristi Gordas (GDC)" &&
+        Unbound::productCredit().contains("Wolfgang Woehl") && Unbound::productCredit().contains("OpenGate"),"Flow DaVinci identity preserves explicit foundation credit");
     Unbound::ArrangementStore store; QString first,second;
     check(store.create("Edit & Review",{{"version",1}},first).isEmpty() && store.create("Audio",{{"version",1}},second).isEmpty(), "create stable saved workspace identities");
     {

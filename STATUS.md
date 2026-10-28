@@ -15,8 +15,12 @@ Actualizat: 2026-10-28. Adaptare în limba română a OpenGate (MIT), bazat pe U
 - Semnare: identități Developer ID Application + Installer (Team 8AR6XP8MG7) și profil notary `gdc-notary` prezente; fără blocaj.
 - Nepachetat, neinstalat în Resolve, nepublicat.
 
+## Lot curent (2026-10-28): Despre + actualizări + pagină + Windows CI
+- Implementat: `Despre Flow DaVinci…`, `Verifică actualizările…` (meniu Resolve și aplicație), helper `flow-update` (manifest semnat, descărcare ghidată), versiune/build dintr-un singur `release-manifest.json`, identitate Flow DaVinci peste tot (doc/flow/UPDATES.md). Teste noi: test-update-check.py, test-about.sh (în matrice). Cheie de release creată în Certificates/ (de salvat cu backup-ul cheilor de produs).
+- Windows CI (GitHub Actions, ramura flow-davinci-ro): prima rulare a picat la auditul de dependențe (bootstrap se numea OpenGate.dvcp în CMake, acum FlowDaVinci.dvcp — corectat); de rulat din nou după push. Fără verificare pe Windows real.
+- Pagina https://gordas.dev/flow-davinci: sursa în /Volumes/CristiGordas/TESTE/GDC_PROJECTS/FLOW_DAVINCI/site (release.json = sursa unică, build_page.py, logo/*.svg); worktree site: /Volumes/CristiGordas/TESTE/GDC_PROJECTS/FLOW_DAVINCI/site-worktree. Nepublicată.
+
 ## Următoarea acțiune exactă
-1. Commit corecții + docs → reia `verify-integration.py --hidden-only` (cu FLOW_DAVINCI_LANG=en) → receipt PASS.
-2. Symlink `release` extern → `package-prototype.py --sign --notary-profile gdc-notary` (notarizare + stapling + spctl) + repetiție rollback în sandbox.
-3. Întreabă Cristi dacă Resolve e liber → verificare live într-un context separat.
-4. Pagina https://gordas.dev/flow-davinci (în depozitul site-ului, worktree curat din origin/main; vezi HANDOFF), logo SVG, apoi push repo + release + verificare URL-uri.
+1. Commit → rebuild runtime curat → `verify-integration.py --hidden-only` (receipt PASS) → pachet semnat/notarizat (`--sign --notary-profile gdc-notary`).
+2. Întreabă Cristi dacă Resolve e liber → verificare live (context separat).
+3. Pachet în site (downloads/), manifest semnat, pagină, push site, verificare URL publice; release.

@@ -2,6 +2,7 @@
 #pragma once
 #include "flowlocale.h"
 #include "productidentity.h"
+#include "aboutdialog.h"
 #include <QApplication>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -102,7 +103,8 @@ private:
                         invoke(operation,{});wire();return;
                     }
                     if (operation == "PanelShortcuts") { if (showPanelShortcuts) showPanelShortcuts(); return; }
-                    if (operation == "About") { QMessageBox::about(nullptr,FD("About OpenGate"),productCredit()); return; }
+                    if (operation == "About") { showAbout(); return; }
+                    if (operation == "CheckUpdates") { checkForUpdates(); return; }
                     if (operation == "Keyboard") { openNativeKeyboardCustomization(); return; }
                     if (operation == "PanelManager") {
                         logEvent("workspace.menu.command",{{"operation",operation},{"page",currentPage()}});
@@ -135,6 +137,7 @@ private:
         auto native = action(root, "unboundRestoreNativeWorkspace",QStringLiteral("Use Original Resolve UI"), "Native");
         native->setToolTip(FD("Restore Resolve’s standard interface without OpenGate layout management"));
         auto about=action(root,"openGateAbout",FD("About OpenGate…"),"About");
+        QAction *updates=updatesSupported() ? action(root,"flowCheckUpdates",FD("Check for Updates…"),"CheckUpdates") : nullptr;
         auto shortcuts=action(root,"unboundPanelShortcuts",FD(commands?"Keyboard Shortcuts…":"OpenGate Panel Shortcuts…"),"PanelShortcuts",{},!commands);
         if(commands && !commands->actions().contains(shortcuts))commands->addAction(shortcuts);
         shortcuts->setEnabled(bool(showPanelShortcuts));
@@ -217,7 +220,7 @@ private:
         if (!manageDivider) { manageDivider = root->addSeparator(); manageDivider->setObjectName("unboundWorkspaceManagementSeparator"); }
         if(!advanced->actions().contains(menu->menuAction()))advanced->addMenu(menu);
         QList<QAction *> topOrder{browser->menuAction(),update,saveAs,divider,native,manageDivider};
-        if (callers) topOrder.append(callers->menuAction());topOrder.append(manager);topOrder.append(commands?commands->menuAction():shortcuts);topOrder.append(advanced->menuAction());topOrder.append(about);
+        if (callers) topOrder.append(callers->menuAction());topOrder.append(manager);topOrder.append(commands?commands->menuAction():shortcuts);topOrder.append(advanced->menuAction());topOrder.append(about);if(updates)topOrder.append(updates);
         divider->setVisible(true);
         if (root->actions() != topOrder) { for (auto item : root->actions()) root->removeAction(item); for (auto item : topOrder) root->addAction(item); }
         for (auto item : root->findChildren<QAction *>(QString(),Qt::FindDirectChildrenOnly))

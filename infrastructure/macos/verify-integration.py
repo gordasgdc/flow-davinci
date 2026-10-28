@@ -39,7 +39,7 @@ if args.hidden_only:
     tests=['crash-session','workspace-headers','first-install-profile','settings-profile','modular-layout-recovery','attached-toolbar-reveal','native-keyboard-navigation','workflow-command-menu','panel-command-menu','source-presentation','edit-page-lifecycle','workflow-command','workflow-wrappers','panel-scale','native-presentation','native-edit-command','workspace-restoration','panel-accessories','panel-commands','timeline-control','window-stack-policy','workspace-menu','build-manifest']
 tests += ['shared-diagnostics','shared-layout','shared-ownership','shared-sessions','panel-caller-flow','keyframes-panel-flow','project-preset-restore','display-placement','pinned-workspace-header','surface-page-navigation','native-tab-viewport','native-preset-bindings','interaction-audit','timeline-overflow','background-flow', 'page-workspace-state','page-arrangement-controls','page-panel-inventory','native-surface-doors','native-entry-flow','clean-arrangements','opengate-first-open','resolve-layout-policy','panel-title-gesture','vacated-contents','stack-docking','stack-docking-flow','startup-readiness']
 tests += ['control-launch-requests','retained-window-close','panel-menu-preparation']
-tests += ['flow-locale','product-conflict','active-product']
+tests += ['flow-locale','product-conflict','active-product','about','update-check']
 if args.displayed_only:
     tests=['panel-sessions','panel-groups','native-arrangements','native-workspace-ui','workspace-reopen','reliability','controls-hidden','viewer-expansion-latency','mixer-mounted']
 receipt = {'matrix': 'displayed' if args.displayed_only else 'hidden' if args.hidden_only else 'functional' if args.functional_only else 'full', 'commit': commit, 'branch': git('branch', '--show-current'),
@@ -55,7 +55,7 @@ def save():
 
 save()
 for name in tests:
-    script = root / 'infrastructure/macos' / ('test-' + name + ('.py' if name in ('build-manifest','first-install-profile','clean-arrangements') else '.sh'))
+    script = root / 'infrastructure/macos' / ('test-' + name + ('.py' if name in ('build-manifest','first-install-profile','clean-arrangements','update-check') else '.sh'))
     command = [sys.executable, str(script)] if script.suffix == '.py' else ['bash', str(script)]
     print('RUN: ' + name, flush=True)
     start = time.monotonic()

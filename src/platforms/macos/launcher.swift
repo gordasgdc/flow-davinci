@@ -8,7 +8,7 @@ func record(_ event: String, details: [String: Any] = [:]) {
     do {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var row = details
-        row["component"] = "OpenGate"; row["vendor"] = "CineWaltz"
+        row["component"] = "Flow DaVinci"; row["vendor"] = "Cristi Gordas (GDC)"
         row["event"] = event
         row["time"] = ISO8601DateFormatter().string(from: Date())
         row["pid"] = ProcessInfo.processInfo.processIdentifier
@@ -18,7 +18,7 @@ func record(_ event: String, details: [String: Any] = [:]) {
         defer { try? file.close() }
         try file.seekToEnd()
         try file.write(contentsOf: JSONSerialization.data(withJSONObject: row) + Data([10]))
-    } catch { NSLog("OpenGate logging: %@", error.localizedDescription) }
+    } catch { NSLog("Flow DaVinci logging: %@", error.localizedDescription) }
 }
 
 @discardableResult func requestControls() throws -> String {
@@ -41,18 +41,20 @@ if CommandLine.arguments.contains("--self-test") {
 
 final class Launcher: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
-    private let status = NSTextField(wrappingLabelWithString: "Open Resolve and a project to use panel controls.")
+    private let status = NSTextField(wrappingLabelWithString: "Deschide Resolve și un proiect pentru a folosi controalele panourilor.")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         record("app.launch")
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 240),
                           styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "OpenGate"
+        window.title = "Flow DaVinci"
         window.isReleasedWhenClosed = false
-        let show = NSButton(title: "Show Panel Controls", target: self, action: #selector(showControls))
-        let logs = NSButton(title: "Open Diagnostic Logs", target: self, action: #selector(openLogs))
-        let credit = NSTextField(wrappingLabelWithString: "OpenGate by CineWaltz. Built on Unbound by Wolfgang Woehl (MIT).")
-        let stack = NSStackView(views: [status, show, logs, credit])
+        let show = NSButton(title: "Afișează controalele panourilor", target: self, action: #selector(showControls))
+        let logs = NSButton(title: "Deschide jurnalele de diagnostic", target: self, action: #selector(openLogs))
+        let about = NSButton(title: "Despre Flow DaVinci", target: self, action: #selector(showAbout))
+        let updates = NSButton(title: "Verifică actualizările…", target: self, action: #selector(checkUpdates))
+        let credit = NSTextField(wrappingLabelWithString: "Flow DaVinci — versiune pentru testare. Adaptare inițiată de Cristi Gordaș (GDC), bazată pe OpenGate de CineWaltz și Unbound de Wolfgang Woehl (MIT).")
+        let stack = NSStackView(views: [status, show, logs, about, updates, credit])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 16
@@ -86,10 +88,76 @@ final class Launcher: NSObject, NSApplicationDelegate {
                     }
                 }
             }
-            status.stringValue = "Controls requested. Resolve’s installed helper will show them when ready."
+            status.stringValue = "Controalele au fost cerute. Asistentul instalat în Resolve le va afișa când este gata."
         } catch {
             status.stringValue = error.localizedDescription
             record("app.controls.failed", details: ["error": error.localizedDescription])
+        }
+    }
+    @objc func showAbout() {
+        record("app.button", details: ["action": "about"])
+        let info = Bundle.main.infoDictionary ?? [:]
+        let alert = NSAlert()
+        alert.messageText = "Flow DaVinci"
+        alert.informativeText = "Versiunea \(info["CFBundleShortVersionString"] as? String ?? "necunoscută") · build \(info["CFBundleVersion"] as? String ?? "—")\nVersiune pentru testare\n\nAdaptare inițiată și coordonată de Cristi Gordaș (GDC). Program gratuit, licență MIT; notificările de drepturi de autor ale autorilor originali se păstrează în pachet.\n\nOpenGate by CineWaltz, construit pe Unbound de Wolfgang Woehl (licență MIT).\n\nProiect independent, neafiliat cu Blackmagic Design. DaVinci Resolve este marcă a Blackmagic Design."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+    private func updateHelperResult(_ command: String) -> [String: Any] {
+        let helper = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("flow-update")
+        let process = Process(), pipe = Pipe()
+        process.executableURL = helper; process.arguments = [command]; process.standardOutput = pipe
+        do { try process.run() } catch { return ["status": "failed", "reason": "helper"] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? ["status": "failed", "reason": "helper"]
+    }
+    @objc func checkUpdates() {
+        record("app.button", details: ["action": "check-updates"])
+        status.stringValue = "Se verifică actualizările…"
+        DispatchQueue.global().async {
+            let result = self.updateHelperResult("check")
+            DispatchQueue.main.async { self.presentUpdate(result) }
+        }
+    }
+    private func presentUpdate(_ result: [String: Any]) {
+        status.stringValue = "Deschide Resolve și un proiect pentru a folosi controalele panourilor."
+        let alert = NSAlert()
+        switch result["status"] as? String {
+        case "up_to_date":
+            alert.messageText = "Flow DaVinci este la zi."
+        case "available":
+            alert.messageText = "Este disponibilă o versiune nouă: \(result["version"] as? String ?? "") (build \(result["build"] as? Int ?? 0))."
+            alert.informativeText = ((result["notes"] as? String) ?? "") + "\n\nPachetul este descărcat, verificat (SHA-256, semnătură, notarizare) și apoi deschis. Închide DaVinci Resolve înainte de instalare; setările și presetările tale se păstrează."
+            alert.addButton(withTitle: "Descarcă și verifică")
+            alert.addButton(withTitle: "Mai târziu")
+            if alert.runModal() == .alertFirstButtonReturn { downloadUpdate() }
+            return
+        default:
+            alert.alertStyle = .warning
+            let reason = result["reason"] as? String
+            alert.messageText = reason == "offline" ? "Verificarea nu a reușit: nu există conexiune la serverul de actualizări." : "Verificarea nu a reușit: răspunsul serverului nu este valid."
+        }
+        alert.runModal()
+    }
+    private func downloadUpdate() {
+        status.stringValue = "Se descarcă și se verifică pachetul…"
+        DispatchQueue.global().async {
+            let result = self.updateHelperResult("download")
+            DispatchQueue.main.async {
+                self.status.stringValue = "Deschide Resolve și un proiect pentru a folosi controalele panourilor."
+                let alert = NSAlert()
+                if result["status"] as? String == "downloaded", let path = result["path"] as? String {
+                    alert.messageText = "Actualizarea a fost descărcată și verificată. Închide DaVinci Resolve, apoi deschide instalatorul."
+                    alert.addButton(withTitle: "Deschide instalatorul")
+                    alert.addButton(withTitle: "Mai târziu")
+                    if alert.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(URL(fileURLWithPath: path)) }
+                } else {
+                    alert.alertStyle = .warning
+                    alert.messageText = (result["message"] as? String) ?? "Descărcarea a eșuat."
+                    alert.runModal()
+                }
+            }
         }
     }
     @objc func openLogs() {

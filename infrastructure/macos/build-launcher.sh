@@ -11,6 +11,14 @@ for architecture in "${opengate_macos_architectures[@]}"; do
     launcher_slices+=("$slice")
 done
 xcrun lipo -create "${launcher_slices[@]}" -output "$out/MacOS/FlowDaVinci"
+# Helperul de verificare/descărcare a actualizărilor (CryptoKit, manifest semnat); apelat din interfața Flow DaVinci.
+update_slices=()
+for architecture in "${opengate_macos_architectures[@]}"; do
+    slice="$root/build/macos/flow-update-$architecture"
+    xcrun swiftc -O -target "$architecture-apple-macosx$OPENGATE_MACOS_DEPLOYMENT_TARGET" "$root/src/platforms/macos/update.swift" -o "$slice"
+    update_slices+=("$slice")
+done
+xcrun lipo -create "${update_slices[@]}" -output "$out/MacOS/flow-update"
 cat > "$out/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -29,6 +37,7 @@ import plistlib,sys
 from pathlib import Path
 path=Path(sys.argv[1]);data=plistlib.loads(path.read_bytes());data['LSMinimumSystemVersion']=sys.argv[2];path.write_bytes(plistlib.dumps(data))
 PYINFO
+/usr/bin/codesign --force --sign - "$out/MacOS/flow-update"
 /usr/bin/codesign --force --sign - "$root/build/macos/Flow DaVinci.app"
 testdir="$(mktemp -d "$root/build/macos/launcher-test.XXXXXX")"
 UNBOUND_LAUNCH_DIRECTORY="$testdir" "$out/MacOS/FlowDaVinci" --self-test

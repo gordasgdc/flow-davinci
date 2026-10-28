@@ -49,7 +49,7 @@ int main(int argc,char **argv) {
     for(const auto &line:bytes.split('\n')) {
         if(line.isEmpty())continue;
         const auto record=QJsonDocument::fromJson(line).object();const auto event=record["event"].toString();
-        check(record["component"]=="OpenGate"&&record["vendor"]=="CineWaltz","every record identifies OpenGate");
+        check(record["component"]=="Flow DaVinci"&&record["vendor"]=="Cristi Gordas (GDC)","every record identifies Flow DaVinci");
         check(!record["module"].toString().isEmpty()&&!record["build"].toString().isEmpty(),"module and build accompany events");
         if(session.isEmpty())session=record["session"].toString();
         check(!session.isEmpty()&&record["session"]==session,"session correlates signals and transitions");
